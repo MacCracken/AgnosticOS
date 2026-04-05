@@ -97,7 +97,8 @@ AGNOS is built as a layered system where each component has a specific, named id
 | Firewall | **nein** | 0.90.0 | Rust | Programmatic nftables, policy, NAT |
 | Edge fleet | **seema** | 0.1.0 | Rust | Edge fleet management and device orchestration |
 | Scheduler | **samay** | 0.1.0 | Rust | Task scheduling daemon |
-| Systems language | **cyrius** | 0.1.0 | Rust/ASM | Sovereign systems language — bootstraps from raw metal |
+| Systems language | **cyrius** | 1.0 | Cyrius | Sovereign systems language — self-hosting from 29KB seed |
+| Build tool | **cyrb** | 1.0 | Cyrius | Build system written in Cyrius: compile, test, self-host, suite runner |
 
 ### Cyrius — The Language
 
@@ -105,15 +106,72 @@ AGNOS is built as a layered system where each component has a specific, named id
 
 AGNOS's sovereign systems language. Named after **Cyrus the Great**, the king who decreed the rebuilding of the Temple of Solomon — the only non-Jewish figure called *Mashiach* in the Hebrew Bible (Isaiah 45:1).
 
-Cyrius frees the OS from dependency on external toolchains, registries, and governance bodies. The bootstrap chain:
+Cyrius frees the OS from dependency on external toolchains, registries, and governance bodies. Zero external dependencies — no C compiler, no Rust, no Python, no LLVM, no libc in any path.
+
+#### Compiler
+
+Self-hosting modular compiler: 5,665 lines across 7 modules, 268 functions, 93KB binary. Compiles itself in 9ms. Full bootstrap from 29KB seed in 42ms. Byte-exact reproducibility — the compiler produces identical output whether compiled by the seed or by itself.
+
+#### Language Features
+
+Structs, typed pointers (element-size scaling), enums, switch/match, for loops, break/continue, elif, logical && / || with short-circuit, inline assembly (raw bytes + 18 mnemonics), progressive type annotations, function pointers, nested structs with chained dot access, global initializers, heap allocator, argc/argv, include system, buffered I/O.
+
+#### Standard Library
+
+35 modules, 199 functions — built from scratch in Cyrius:
+string, alloc, str, vec, io, fmt, args, fnptr, hashmap, json, regex, process, filesystem, networking, tagged unions, traits, benchmarking, bounds checking, and more.
+
+#### Developer Tools
+
+8 tools, all written in Cyrius:
+- **cyrb** — build system (compile, test, self-host, suite runner, 18 commands)
+- **cyrfmt** — code formatter
+- **cyrlint** — linter
+- **cyrdoc** — documentation generator
+- **cyrc** — compiler CLI
+- **ark** — package manager (rewritten from Rust)
+- installer + version manager
+
+#### Kernel
+
+58KB AGNOS kernel compiled by Cyrius:
+Multiboot1 boot → 32-to-64 bit shim → long mode, serial console, GDT, IDT (256 vectors), PIC remap, PIT timer (100Hz), keyboard input, page tables (16MB identity map, 2MB pages), physical memory manager (bitmap, 4096 pages), virtual memory manager (map/unmap/alloc), process table, syscall interface (exit, write, getpid). Built in 5ms.
+
+#### Programs
+
+56 programs compiled by Cyrius (41 userspace + 3 kernel + tools + algorithms). Userspace programs are 10-233x smaller than GNU equivalents and match or beat GNU on speed (wc 2.4x faster after buffered I/O).
+
+#### Crate Rewrites
+
+5 Rust crates rewritten in Cyrius, eliminating Rust dependencies:
+- **agnostik** — shared types (6 modules, 54 tests)
+- **agnosys** — syscall bindings (50 constants, 20+ wrappers)
+- **kybernet** — PID 1 init (7 modules, 38 tests)
+- **nous** — package resolver
+- **ark** — package manager
+
+#### Architectures
+
+x86_64 (primary) + aarch64 (cross-compilation, 29 tests passing on QEMU).
+
+#### Benchmarks
+
+38 benchmarks across 3 tiers with CSV regression tracking. Binary sizes 10-233x smaller than GNU. Compile speed faster than process fork+exec. Full toolchain: 204KB (29KB seed → 12KB bootstrap → 93KB compiler → 62KB kernel).
+
+#### Bootstrap Chain
 
 ```
-Assembly (raw metal) → Rust (structure) → Cyrius (sovereignty)
-rustc 1.96.0-dev → cyrius-seed (assembler, 102 tests) → stage1a/1b (codegen) → self-hosting
+29KB seed (committed binary, auditable)
+  → 12KB stage1f (bootstrap compiler)
+    → 93KB cc2 (full self-hosting compiler)
+      → 62KB kernel (AGNOS, VM + processes + syscalls)
+      → 56 programs (userspace + kernel + tools)
+      → 35 stdlib modules (199 functions)
+      → 5 crate rewrites (replacing Rust)
+Total: 204KB from void to sovereign OS
 ```
 
-- **cyrius-seed** (0.1.0) — Diamond-hardened zero-dependency assembler. 38 x86_64 instructions, ~13 MB/s pipeline, 12M ops/sec encoder.
-- **stage1b** — Runtime codegen compiler. Variables, if/while, all comparison operators, nested control flow. 5051-byte binary, 32 tests.
+Full details: [Cyrius README](https://github.com/MacCracken/cyrius) | [Cyrius Roadmap](https://github.com/MacCracken/cyrius/blob/main/docs/development/roadmap.md) | [Migration Plan](development/cyrius-lang-migration.md)
 
 ### Shared Crates (crates.io)
 
