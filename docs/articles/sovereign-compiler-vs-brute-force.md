@@ -4,7 +4,7 @@
 
 ---
 
-## Two Compilers, One Week
+## Two Compilers, Two Philosophies
 
 In 2026, two compiler projects were built using Claude (Anthropic's Opus 4.6 model). Anthropic's team built theirs over two weeks in February to demonstrate the model's capabilities. The AGNOS project built Cyrius over three days in April out of necessity. The approaches could not have been more different.
 
@@ -102,7 +102,7 @@ You can read every byte of it. You can verify it produces the correct output. Yo
 
 No other self-hosting compiler chain in existence starts from a smaller trusted base. Not GCC. Not Go. Not Rust. Not tcc. They all require a pre-existing C compiler or a pre-existing binary of themselves measured in megabytes.
 
-29KB is the smallest foundation any compiler has ever stood on. And it was built in three days.
+29KB is the smallest foundation any compiler has ever stood on. And it was built in one day.
 
 ---
 
