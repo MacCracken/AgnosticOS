@@ -43,47 +43,19 @@ An AGI system that cannot prove its own integrity cannot be trusted with autonom
 
 ## History
 
-### Timeline
+| Milestone | Date | Days from Start |
+|-----------|------|----------------|
+| First commit | 2026-02-11 | 0 |
+| Alpha release | 2026-03-05 | 22 |
+| First ISO build | 2026-03-22 | 39 |
+| First clean multi-arch release | 2026-03-31 | 48 |
+| Monolith dismantled | 2026-04-01 | 49 |
+| Cyrius self-hosting compiler | 2026-04-04 | 52 |
+| AGNOS kernel compiled by Cyrius | 2026-04-04 | 52 |
+| Cyrius ecosystem (stdlib, tools, crate rewrites) | 2026-04-05 | 53 |
+| **Target: Beltane release** | **2026-05-01** | **79** |
 
-| Date | Event |
-|------|-------|
-| **2026-02-11** | Initial commit. Kernel configuration, Phase 1 (Core OS bootable base), Phase 2 (AI Shell with human oversight), and Phase 5 (Production scaffolding) completed on Day 1 |
-| **2026-02-16** | Continued Phase 5 development — production hardening and stabilization |
-| **2026-02-22** | Core OS updates and refinement |
-| **2026-02-26** | First code audit round — tests, fixes, quality gates |
-| **2026-03-04** | Coverage expansion begins |
-| **2026-03-05** | **Alpha release** (tag `2026.3.5`) — first tagged release, CalVer versioning adopted |
-| **2026-03-06** | Phases 6-7 completed. Code audit work begins in earnest. Marketplace module scaffolded |
-| **2026-03-07** | Alpha Docker image published (`ghcr.io/maccracken/agnosticos`). CI/CD pipeline established on GitHub Actions. Multiple audit rounds |
-| **2026-03-08** | Release workflow automated (auto-publish instead of draft). Ark package recipes begin |
-| **2026-03-09** | Browser builds (Firefox ESR, Chromium), CI integration, database recipe integration |
-| **2026-03-10** | Full coverage infrastructure. gRPC, service mesh, OIDC modules. Multiple audit cycles |
-| **2026-03-11** | Phase 14 (Edge OS Profile) added to roadmap. Continued audit and repair rounds |
-| **2026-03-13** | First ISO build work begins — `build-installer.sh` development |
-| **2026-03-14** | aarch64 ISO work — RPi4 ARM64 support |
-| **2026-03-15** | RPi4 build fixes. Edge fleet management. Version and release patches |
-| **2026-03-16** | Self-hosted runner setup begins for Tier 1 builds. Shared crates published to crates.io |
-| **2026-03-17** | Audit completion rounds. Release `2026.3.17` |
-| **2026-03-18** | Release `2026.3.18` — major milestone. Photis Nadi migrated from Flutter to Rust native. Consumer app packages updated. Sutra released (v2026.3.18) |
-| **2026-03-19** | Recipe updates and fixes across marketplace |
-| **2026-03-20** | Self-hosted runner repaired. ISO build pipeline work continues |
-| **2026-03-21** | Build improvements. stiva, nein, t-ron, impetus scaffolded. Multiple ISO build iterations |
-| **2026-03-22** | **First successful ISO build** (early morning, after ~9 days of iteration). Abacus desktop calculator released. 266 commits, 298 recipes, 10,800+ tests, ~84.3% coverage |
-| **2026-03-24** | Science stack push: 9 crates reach v1.0 in one session (impetus, hisab, bhava, bodh, sangha, and others). Agnosys integration ready for consumers |
-| **2026-03-25** | Massive session: process refinement, SY migration planning, NPO groundwork |
-| **2026-03-28** | AgnosAI benchmarks (4/5 wins vs CrewAI, 2000-4500x faster cached). Release `2026.3.29` |
-| **2026-03-31** | **First fully clean release** (`2026.3.31`). All 17 artifacts built successfully — x86_64 ISO (desktop + minimal + edge), aarch64 SD card images (desktop + minimal + edge), userland tarballs, multi-arch Docker container. First release with zero build failures across all architectures. 80 shared crates (45 at v1.0+). 3 new science crates scaffolded (mastishk, rasayan, varna). 336 commits, 19 tagged releases |
-| **2026-04-01** | **Monolith dismantled**. agent-runtime, ai-shell, llm-gateway, desktop-environment removed from workspace. 12 standalone repos extracted (aethersafha, agnoshi, sigil, ark, nous, takumi, argonaut, aegis, agnova, mela, seema, samay). 3 crate absorptions (bote 0.91.0, kavach 2.0.0, t-ron 0.90.0). Named subsystems: edge→seema, scheduler→samay. Crypto boundary resolved: sigil owns all AGNOS trust/crypto |
-| **2026-04-02** | **Sigil 1.0.0** — first trust crate stable. Bote 0.91.0 — MCP 2025-11-25 spec compliance (tool annotations, audio, sessions, OAuth 2.1, streamable HTTP). Libro 0.90.0 — BLAKE3 support. T-ron 0.90.0 — correlation detection. **agnosticos.org** domain registered, coming-soon site deployed via GitHub Pages. 77 shared crates (56 at v1.0+). 95+ marketplace recipes |
-| **2026-04-03** | **Cyrius language** — cyrius-seed 0.1.0 (diamond-hardened assembler, 102 tests, 13 MB/s pipeline). **Pure AGNOS desktop boot** achieved: 3.2s boot, 80ms init→event loop, 7 real binaries, 21MB initramfs, zero external dependencies. **Edge boot profile**: 7.9MB initramfs, 128MB RAM, 99ms init→ready. **Full recipe audit**: 109 marketplace recipes audited (licenses, versions, headers, structure). Edge recipes synced with base. **zugot** decided as standalone recipe repository. **Genesis layer** architecture clarified: agnosticos = brain of the OS, boots the system, then packages take over |
-
-### Development Pace
-
-AGNOS went from initial commit to first bootable ISO in **39 days** (2026-02-11 to 2026-03-22), and from first ISO to first fully clean multi-architecture release in **48 days** (2026-02-11 to 2026-03-31).
-
-The project accumulated **336 commits** across **19 tagged releases**, achieving 10,800+ passing tests and ~84.3% code coverage. The shared crate ecosystem grew to **77 crates** (56 at v1.0+ stable), with 19+ consumer applications developed in parallel.
-
-The ISO build itself required approximately 9 days of iteration (2026-03-13 to 2026-03-22) to resolve cross-compilation, package dependency ordering, and bootloader integration challenges. The CI pipeline required another 9 days (2026-03-22 to 2026-03-31) to achieve fully automated, zero-failure builds across x86_64 ISOs, aarch64 SD card images, edge profiles, and multi-arch Docker containers.
+From initial commit to self-hosting sovereign language with its own kernel in **52 days**. Full timeline: [History & Timeline](history.md).
 
 ---
 
@@ -285,6 +257,7 @@ See [Philosophy](philosophy.md) for the full exploration of AGNOS as temple arch
 ## See Also
 
 - [Philosophy & Intention](philosophy.md) — the deeper vision behind AGNOS
+- [History & Timeline](history.md) — full project timeline with dated milestones
 - [Development Roadmap](development/roadmap.md) — phases, blockers, release targets
 - [Application Development Roadmap](development/applications/roadmap.md) — planned first-party applications
 - [First-Party Application Standards](development/applications/first-party-standards.md) — conventions for consumer apps
