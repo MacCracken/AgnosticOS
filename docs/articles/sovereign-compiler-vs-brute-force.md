@@ -1,6 +1,6 @@
 # The 29KB Compiler vs The $20,000 Compiler
 
-> How two teams used the same AI to build compilers in the same week — and what the difference reveals about software philosophy.
+> Two teams used the same AI to build compilers in the same week. One spent $20,000 and 16 agents to compile someone else's kernel. The other spent $400 and one agent to build a sovereign language, a self-hosting compiler, a complete developer toolchain, and its own operating system kernel — all from a 29KB seed with zero external dependencies. This is what the difference reveals about software philosophy.
 
 ---
 
@@ -25,7 +25,7 @@ One important difference in motivation: Project A was built as a capability demo
 | Duration | ~2 weeks | 3 days |
 | Agents | 16 parallel | 1 |
 | Sessions | ~2,000 | 3 |
-| Cost | ~$20,000 API | ~$600 (Max subscription) |
+| Cost | ~$20,000 API | ~$400 (Max subscription — $200 for Cyrius compiler, $200 for vidya reference library that drove the methodology) |
 | Compiler size | 100,000 lines Rust | 5,665 lines Cyrius (268 functions, 93KB binary, 7 modules) |
 | Standard library | Rust stdlib (~400K lines) | 35 modules, 199 functions, built from scratch |
 | Developer tools | None | 8 tools: formatter, linter, doc generator, audit, package manager |
@@ -173,15 +173,15 @@ The parallel agents approach scales capability. The sovereign approach scales in
 
 ---
 
-## $20,000 vs $600
+## $20,000 vs $400
 
 The cost difference deserves its own section because it reveals what each project actually is.
 
 $20,000 in API costs produces a benchmark — a demonstration that autonomous agents can sustain complex work. It proved the point. It will sit in a repository. Nobody will build a production system on it.
 
-~$600 in subscription costs produces a sovereign language — the actual compiler for an actual operating system with 82 library crates, a self-hosting boot chain, a complete developer toolchain, and a seven-wave migration roadmap. Five Rust crates already rewritten. Cyrius will compile AGNOS. It is not a demo. It is infrastructure.
+~$400 in subscription costs produces a sovereign language — the actual compiler for an actual operating system with 82 library crates, a self-hosting boot chain, a complete developer toolchain, and a seven-wave migration roadmap. Five Rust crates already rewritten. Cyrius will compile AGNOS. It is not a demo. It is infrastructure.
 
-33x cheaper. Self-hosting. Ships. Has a future.
+50x cheaper. Self-hosting. Ships. Has a future.
 
 The difference is not budget. The difference is intent. A demo optimizes for impressiveness. A tool optimizes for survival.
 
@@ -409,7 +409,7 @@ Every rejection removed a dependency. Every wall forced a deeper question. Every
 
 The pattern: external systems that say "no" are not obstacles. They are the signal that a dependency exists which shouldn't. Remove the dependency, and the "no" becomes irrelevant.
 
-$20,000 buys a demo that proves agents can work at scale. $600 and a payment rejection buys a sovereign language, a self-hosting compiler, a complete developer toolchain, five crate rewrites, and an operating system that owes nothing to anyone.
+$20,000 buys a demo that proves agents can work at scale. $400 and a payment rejection buys a sovereign language, a self-hosting compiler, a complete developer toolchain, five crate rewrites, and an operating system that owes nothing to anyone.
 
 ---
 
@@ -419,7 +419,7 @@ There is room for both approaches. The world needs compilers that can build Linu
 
 But if you're building infrastructure for artificial general intelligence — systems that must be trusted with autonomous action, that must prove their own integrity, that must survive the failure of any external dependency — then the question is not "how much can we build?" The question is "how little must we trust?"
 
-The answer, as of April 2026, is 29 kilobytes. From that seed: a self-hosting compiler (93KB, 268 functions), 35 standard library modules (199 functions), 8 developer tools, 56 programs that beat GNU on size and speed, a 62KB operating system kernel with virtual memory, processes, and syscalls, 5 crate rewrites replacing Rust dependencies, dual-architecture support, and a benchmark suite tracking 38 metrics. 204 kilobytes from void to running OS. Built in three days for $600.
+The answer, as of April 2026, is 29 kilobytes. From that seed: a self-hosting compiler (93KB, 268 functions), 35 standard library modules (199 functions), 8 developer tools, 56 programs that beat GNU on size and speed, a 62KB operating system kernel with virtual memory, processes, and syscalls, 5 crate rewrites replacing Rust dependencies, dual-architecture support, and a benchmark suite tracking 38 metrics. 204 kilobytes from void to running OS. Built in three days for $400.
 
 The temple didn't just touch its foundation stone. It's standing. Layer 1 has virtual memory. Layer 2 has syscalls. Layer 3 has processes. Layer 4 has the developer toolchain — formatter, linter, doc generator, package manager, audit pipeline. And the whole thing — compiler, kernel, toolchain, userland — is smaller than a profile photo.
 

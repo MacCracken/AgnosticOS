@@ -102,6 +102,14 @@ All userland code has been extracted. The workspace contains only examples.
 - [x] Structural fixes — 3 misplaced install blocks, tazama stale gstreamer deps removed
 - [ ] SHA256 verification — placeholder fields added to all 109 recipes, need actual hashes from release tarballs
 
+### agnosticos.org Website (P0)
+- [ ] Update landing page stats (82 crates, 420+ recipes)
+- [ ] Add Cyrius mention and article link to landing page
+- [ ] Publish "The 29KB Compiler vs The $20,000 Compiler" as web article
+- [ ] Add philosophy page
+- [ ] Full site roadmap: `agnosticos-org/docs/site-roadmap.md`
+- **Blocked on**: Cyrius language maturity + agnosys/agnostik/kybernet Cyrius rewrites + micro OS tested. Plan now, execute after core stabilizes.
+
 ### Recipe Version Bumps (deferred — evaluate compatibility)
 - [ ] **nvidia-cuda-toolkit** 12.8.1 → 13.2.0
 - [ ] **rocm** 6.4.0 → 7.2.1
