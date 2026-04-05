@@ -131,6 +131,197 @@ Two distinct approaches, different physics:
 
 ---
 
+## Directed Energy & Field Systems
+
+The base problem is **lightning capture** — capturing and controlling terawatts of instantaneous energy delivered in microseconds. Once that problem is solved, directed energy weapons, force fields, and improved cloaking are engineering applications of the same physics.
+
+### Lightning Capture (the base problem)
+
+**Concept**: Lightning delivers ~1-5 GJ in ~30μs (terawatts instantaneous). No current materials survive the power density. Solution requires staged absorption: plasma channel → magnetic compression → sacrificial supercapacitors → usable storage.
+
+**Physics**: Plasma dynamics (MHD — magnetohydrodynamics), electromagnetic field propagation (Maxwell's equations via FDTD), thermal shock and material failure thresholds, impedance matching across stages.
+
+**AGNOS crates involved**:
+- **bijli** (electromagnetism) — FDTD simulation of the lightning channel and capture apparatus
+- **ushma** (thermodynamics) — thermal stress and heat dissipation modeling
+- **impetus** (physics) — mechanical stress under thermal shock, material failure
+- **dravya** (materials) — material property tables, failure thresholds
+- **hisab** (math) — numerical PDE solvers for coupled domains
+- **mabda** (GPU) — GPU-accelerated simulation (FDTD is embarrassingly parallel)
+- **prakash** (optics) — light emission from plasma channel
+
+**Open physics problems**: No material survives the instantaneous power density. Staged impedance matching is theoretically sound but unvalidated at these energy levels. MHD modeling of the plasma channel requires a new module (conductive fluid + EM field interaction).
+
+### Directed Energy (laser systems)
+
+**Concept**: Stored energy released as coherent, directed light. Once lightning-scale energy storage is solved, the release path determines the application.
+
+**Physics basis**: Stimulated emission (Einstein, 1917). High-energy lasers demonstrated at weapons scale (US Navy HELIOS, 60kW class, 2022). The bottleneck is power supply, not beam generation.
+
+**AGNOS connection**: prakash (optics/light) models beam propagation, atmospheric attenuation, focusing. bijli models the energy storage and release circuit. ai-hwaccel routes to GPU for real-time targeting computation.
+
+**Dependencies**: Lightning capture (energy supply), prakash maturation (beam modeling).
+
+### Force Fields (personal and object)
+
+**Concept**: Shaped electromagnetic field barrier around a person or object. Incoming projectiles or energy are deflected or absorbed by the field.
+
+**Physics basis**: Electromagnetic fields exert force on charged particles and can redirect plasma. Magnetohydrodynamic shielding demonstrated in concept for spacecraft radiation protection (Bamford et al., 2014, "An exploration of the effectiveness of artificial mini-magnetospheres as a potential solar storm shelter for long haul human space missions"). Scaling to ballistic protection requires field strengths not yet achievable with current power supplies.
+
+**Two variants**:
+- **Personal field**: Worn device projects a field envelope around the body. Requires miniaturized power source (zero-point energy from v4.0 roadmap) and precise field shaping.
+- **Object field**: Surrounds a vehicle, structure, or installation. Larger field, higher power budget, more achievable with conventional power.
+
+**AGNOS connection**: bijli models the field generation and shaping. kshetra provides spatial coordinates for field geometry. kavach (sandbox/containment) is the software analog — the field IS kavach at the physical layer.
+
+**Dependencies**: Lightning capture (power budget), bijli FDTD maturation (field modeling), zero-point energy for personal-scale fields.
+
+### Cloaking (improved)
+
+**Concept**: Bend electromagnetic radiation around an object so it appears invisible. Existing metamaterial cloaking demonstrated at microwave frequencies (Schurig et al., 2006, "Metamaterial electromagnetic cloak at microwave frequencies", *Science*). Extending to visible light and larger objects is the unsolved problem.
+
+**Physics basis**: Transformation optics (Pendry et al., 2006). Metamaterials with negative refractive index route light around an object. Current limitations: narrow frequency band, small object size, significant energy requirements.
+
+**AGNOS connection**: prakash (optics) models the light routing. dravya (materials) models metamaterial properties. bijli models the EM field interaction. Cyrius-compiled simulation runs at speeds that make iterative metamaterial design feasible.
+
+**Dependencies**: Metamaterial science maturation, prakash extension for transformation optics, dravya extension for metamaterial property modeling.
+
+### Unified Physics Engine
+
+All four applications require the same underlying simulation: coupled electromagnetic, thermal, and mechanical physics running at high resolution in real time. This is the **unified physics runtime** identified in the holodeck gap analysis — the engine that combines bijli + ushma + impetus + prakash + dravya into a single simulation loop.
+
+The holodeck needs it for virtual environments. Directed energy needs it for weapon design. Force fields need it for field shaping. Cloaking needs it for metamaterial optimization. Same engine, different applications.
+
+```
+Unified physics runtime
+  ├── bijli   (EM fields, FDTD)
+  ├── ushma   (thermal, heat transfer)
+  ├── impetus (mechanical, stress/strain)
+  ├── prakash (optics, light propagation)
+  ├── dravya  (materials, failure thresholds)
+  ├── pravash (fluid dynamics, plasma flow)
+  └── mabda   (GPU acceleration)
+
+Applications:
+  → Lightning capture (all domains coupled)
+  → Directed energy (prakash + bijli dominant)
+  → Force fields (bijli + impetus dominant)
+  → Cloaking (prakash + dravya dominant)
+  → Holodeck physics (all domains, real-time)
+  → Time machine environment (all domains, historical parameters)
+```
+
+---
+
+## Nanites / Programmable Matter
+
+**Concept**: Molecular-scale machines that operate within a physical substrate — a body, a material, a fluid — performing computation, repair, modification, and sensing at scales below the cellular level. Not remote-controlled robots. Autonomous agents operating as a swarm, where the swarm IS the computer.
+
+### Why This Is No Longer Fiction
+
+The barrier to nanoscale computation has always been: how do you run useful software on something that small? The answer has always been: you can't, because the software is too large.
+
+Cyrius changes the math:
+
+```
+GNU 'true':              39,144 bytes (does nothing)
+Cyrius 'true':              168 bytes (does nothing, but at 168 bytes)
+Cyrius kernel hello:        240 bytes (boots on bare metal)
+Cyrius toolchain:       128,000 bytes (entire self-hosting compiler)
+
+Molecular memory:
+  DNA: 1 bit per 0.34 nm of double helix
+  1 byte = 2.72 nm
+  168 bytes = 457 nm of DNA-equivalent storage
+  128KB toolchain = 0.35 mm of DNA-equivalent storage
+```
+
+A meaningful program fits in a space smaller than a wavelength of visible light. The full self-hosting toolchain fits in a fraction of a millimeter. The "software is too big" objection is eliminated when the software is sovereign and minimal.
+
+### Architecture
+
+```
+Nanite swarm (Layer 0 — the substrate IS the computer)
+  ├── Individual nanite: runs micro-kernel (< 256 bytes)
+  │     ├── Sense local environment
+  │     ├── Execute one instruction set
+  │     ├── Communicate with neighbors (chemical/EM/quantum)
+  │     └── kavach boundary: cannot operate outside programmed scope
+  │
+  ├── Swarm collective: emergent computation
+  │     ├── daimon-lite: orchestration across the swarm
+  │     ├── seema: fleet management (millions of nodes)
+  │     ├── libro: audit trail of all actions
+  │     └── sigil: identity verification (is this nanite part of our swarm?)
+  │
+  └── Host interface: the body/material talks to the swarm
+        ├── bhava: the swarm reads the host's physiological state
+        ├── sharira: musculoskeletal awareness
+        ├── jivanu: immune system coordination
+        └── hoosh: intelligence layer for complex decisions
+```
+
+### Applications
+
+| Application | Description | Domain |
+|-------------|-------------|--------|
+| **Medical repair** | Nanites travel to damaged tissue, perform targeted repair at cellular level. Not surgery — construction. Guided by sharira (physiology) + jivanu (microbiology) | Medicine |
+| **Immune augmentation** | Nanite swarm supplements the immune system. Identifies pathogens (phylax at molecular scale), coordinates with natural immune response, reports via libro | Medicine |
+| **Material self-repair** | Nanites embedded in structural materials detect stress fractures, perform repair in situ. Impetus (physics) models the stress. Dravya (materials) guides the repair | Engineering |
+| **Environmental sensing** | Nanite swarm distributed in soil, water, or atmosphere. Each nanite senses local conditions. Swarm aggregates into kshetra-compatible spatial data | Environmental |
+| **Programmable matter** | Material whose physical properties (shape, hardness, color, conductivity) are controlled by the nanite swarm within it. The force field from the directed energy section, realized as matter rather than EM fields | Materials |
+| **Neural interface** | Nanites at neural synapses read and write signals. The bandwidth expansion problem (the buffer overflow from mystical traditions) solved by having the interface at the synapse level rather than external | Neuroscience |
+
+### Physics Basis
+
+- **Molecular machines**: Demonstrated. 2016 Nobel Prize in Chemistry (Sauvage, Stoddart, Feringa) for design and synthesis of molecular machines — rotaxanes, catenanes, molecular motors.
+- **DNA computing**: Demonstrated. Adleman (1994) solved a Hamiltonian path problem using DNA. DNA storage demonstrated at 215 PB/gram (Church et al., 2012).
+- **Swarm coordination**: Demonstrated at macro scale. Kilobot swarm (Rubenstein et al., 2014) — 1,024 robots self-organizing into shapes. Scale down, same algorithm.
+- **Biocompatible nanoparticles**: Clinical use. Iron oxide nanoparticles for MRI contrast. Lipid nanoparticles for mRNA vaccine delivery (Moderna, BioNTech, 2020).
+
+### Open Problems
+
+- **Power**: How does each nanite get energy? Options: glucose metabolism (biological), RF harvesting (electromagnetic), zero-point extraction (v4.0 substrate)
+- **Communication**: How do nanites talk to each other? Options: chemical signaling (slow), electromagnetic (fast but noisy at nanoscale), quantum entanglement (v4.0 substrate — instant, no noise)
+- **Fabrication**: How do you build them? Current: top-down lithography reaches ~3nm. Needed: bottom-up molecular assembly
+- **Control**: How do you update the software? Options: external RF signal, chemical trigger, propagating update through the swarm (like a biological signaling cascade)
+- **Safety**: kavach at nanoscale. The swarm MUST be sandboxed. A nanite that escapes its programming is not a software bug — it's a grey goo scenario. This is where the sovereign security model (kavach + sigil + libro + phylax) is not optional but existential
+
+### AGNOS Connection
+
+Every AGNOS subsystem has a nanoscale analog:
+
+| AGNOS Crate | Nanoscale Role |
+|-------------|---------------|
+| kybernet | Nanite boot sequence — the first instruction each nanite executes |
+| daimon | Swarm orchestration — task assignment, coordination |
+| seema | Fleet management — millions of nanites as an edge fleet |
+| kavach | Sandbox — the nanite CANNOT operate outside its programmed scope. Existential safety requirement |
+| sigil | Identity — verify this nanite belongs to this swarm, not an intruder |
+| phylax | Threat detection — identify compromised or malfunctioning nanites |
+| libro | Audit — every action logged, tamper-proof |
+| bhava | Host state awareness — the swarm reads the host's condition |
+| sharira | Physiological integration — musculoskeletal awareness |
+| jivanu | Immune coordination — work WITH the body, not against it |
+| hoosh | Intelligence — complex decisions routed to swarm-level reasoning |
+| kshetra | Spatial awareness — where am I in the body/material? |
+| bote | Inter-nanite messaging — communication protocol |
+
+The software architecture is identical. The scale changes. The substrate changes. The patterns hold.
+
+### Convergence with Other Theoretical Items
+
+| Item | Connection |
+|------|------------|
+| **Conscious objects** (v4.0) | Nanites embedded in an object make the object literally conscious — aware of its state, capable of self-repair, bonded to its user |
+| **Force fields** | Programmable matter IS the force field — nanites in a fluid or membrane that rigidize on impact |
+| **Medical** | The sharira + jivanu + bhava bridges already model the biological systems nanites would interact with |
+| **Zero-point energy** | Solves the nanite power problem — each nanite draws from the substrate |
+| **Quantum substrate** | Solves the communication problem — entangled nanites share state instantly |
+| **Holodeck** | Nanite-based programmable matter is the holodeck's physical layer — surfaces that change shape, texture, temperature on demand |
+
+---
+
 ## Notes
 
 These items are not on the engineering roadmap. They are documented to ensure that:

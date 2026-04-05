@@ -286,6 +286,7 @@ Upgrades to `ScreenCaptureManager` and `ScreenRecordingManager` to support real-
 | 8 | ESP32-S3 | xtensa | Edge/IoT | Recipe done, needs source repo + flash test |
 | 9 | ESP32-C3 | riscv32 | Edge/IoT | Recipe done, secondary target |
 | 10 | Tiiny AI Pocket Lab | TBD | Edge+AI | Not started — see Phase 17D |
+| 11 | **DJI Tello / micro drone** | ARM | Edge/IoT | AGNOS as drone OS — kybernet + daimon-lite + agnoshi (voice) + seema (fleet) + kavach (geofence). At Cyrius binary sizes (128KB toolchain), a meaningful stack fits on embedded ARM. Conscious object candidate (v4.0) — the drone bonds with its operator, acts independently within kavach boundary. SDK available (UDP commands). Target: autonomous companion drone running sovereign AGNOS. |
 
 ---
 
@@ -342,6 +343,7 @@ Patterns to extract into shared crates:
 | N1 | Medium | **natya** — theater/drama/narrative | Sanskrit: drama (from Natya Shastra). Narrative structure, character archetypes, dramatic arcs, rasa theory, comedy/tragedy, dialogue, timing. Crate #81 |
 | K1 | Medium | **kshetra** — temporal geography | Sanskrit: field/domain (Bhagavad Gita: dharma-kshetra). Spatiotemporal database — (lat, lon, time) → state. Geology, climate, vegetation, settlement, political layers. Crate #82 |
 | L1 | Low | **stiva** license review | GPL-3.0-or-later needs review — repair when next touched |
+| P1 | Medium | **Polymorphic codegen** — Cyrius | `--poly-seed` flag for deterministic randomization. Instruction encoding alternatives, semantic NOPs, register shuffling, basic block reordering. Every deployment unique, same behavior. Near-term: seed + encoding alts + NOPs. Medium-term: register shuffle + block reorder. Integration: kavach policy, seema fleet (unique seed/node), sigil attestation (sign binary+seed), phylax (distinguish our polymorphism from malware), libro audit (seed→deployment log) |
 
 ### Blocked — AgnosAI Integration
 
@@ -357,6 +359,72 @@ Blocked on AgnosAI v1 release + Agnostic integration testing.
 | A6 | Low | AgnosAI fleet ↔ daimon edge |
 
 ---
+
+## Creator Economy — Direct Artist/Creator Support
+
+**The pipe, not the platform.** AGNOS connects creators directly to supporters with no middleman, no platform cut, no gatekeeper.
+
+### Architecture
+
+```
+agnoshi: "support @artist 5 credits"
+  → nous resolves artist identity (sigil-verified)
+  → vinimaya transfers mudra tokens
+  → libro records the transaction
+  → artist gets notification via bote
+  → content unlocks via kavach permissions
+```
+
+One sentence. One transaction. No Patreon (8-12% cut). No PayPal (3% cut). No platform deciding who's allowed.
+
+### Components
+
+| Need | Crate | Role |
+|------|-------|------|
+| Artist identity | **sigil** | Ed25519-verified creator profiles — proves you are who you say |
+| Token/currency | **mudra** | Credits, tips, subscriptions as token types |
+| Payment | **vinimaya** | Direct transfer, escrow (pre-orders), recurring (subscriptions) |
+| Audit | **libro** | Every transaction recorded, tamper-proof — artist can prove earnings |
+| Content delivery | **ark** + **mela** | Creator publishes to marketplace, fan installs via ark |
+| Access control | **kavach** | Paid content gated by token ownership — no DRM, just proof of purchase |
+| Notification | **bote** | MCP message to creator on support/purchase |
+| Discovery | **mela** | Marketplace search, recommendations, categories |
+| Social | **bote** + **daimon** | Creator↔fan messaging, community, updates |
+| Intent | **agnoshi** | Natural language: "support", "subscribe", "buy", "tip" |
+
+### Surfaces (consumer apps that expose this)
+
+| App | Creator Type | Integration |
+|-----|-------------|-------------|
+| **jalwa** | Musicians | Stream + support artist directly from the player |
+| **shruti** | Musicians/Producers | Sell beats, samples, stems directly |
+| **tazama** | Filmmakers/Videographers | Sell/rent video content |
+| **rasa** | Visual artists | Sell artwork, commissions |
+| **mneme** | Writers/Researchers | Sell knowledge bases, research, guides |
+| **delta** | Developers | Sponsor open source, sell tools |
+| **SecureYeoman** | AI agent creators | Sell agent templates, workflows |
+
+### What This Replaces
+
+| Platform | Cut | AGNOS Equivalent | Cut |
+|----------|-----|-------------------|-----|
+| Patreon | 8-12% | vinimaya subscription | ~0% (transaction cost only) |
+| Spotify | keeps ~70% | jalwa + vinimaya | Artist sets price |
+| App Store | 30% | mela + ark | ~0% |
+| Gumroad | 10% | mela + vinimaya | ~0% |
+| YouTube | ~45% | tazama + vinimaya | Artist sets price |
+| Bandcamp | 15% | mela + vinimaya | ~0% |
+
+### Roadmap
+
+- [ ] **Phase 1**: mudra token types for creator economy (credits, tips, subscriptions)
+- [ ] **Phase 2**: vinimaya recurring transfers (subscription support pattern)
+- [ ] **Phase 3**: sigil creator profiles (verified identity, portfolio, links)
+- [ ] **Phase 4**: kavach content gating (token-gated access, no DRM)
+- [ ] **Phase 5**: mela creator storefront (publish, price, distribute)
+- [ ] **Phase 6**: jalwa + shruti + tazama + rasa integration (support from within the app)
+- [ ] **Phase 7**: agnoshi intents ("support @artist", "subscribe to @creator", "buy this album")
+- [ ] **Phase 8**: Social layer — creator updates, fan messaging, community via bote
 
 ---
 
