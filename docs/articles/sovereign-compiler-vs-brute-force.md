@@ -328,88 +328,35 @@ The 16-agent approach substitutes compute for this trifecta. When an agent hits 
 
 ## The $2 SD Card — Why This Matters Beyond Compilers
 
-This article has compared two compiler projects. But the compiler is not the point. The compiler is the tool that makes the point possible.
+*This section is the beginning of a larger story. For the full vision — the sovereign knowledge distribution model, the creator economy, and where this all leads — see [The $2 SD Card: Open Knowledge and the Death of Access](the-2-dollar-sd-card.md).*
 
-The point is this: **all of human knowledge, compiled sovereign, fits on a $2 SD card.**
+This article compared two compiler projects. But the compiler is not the point. The compiler is the tool that makes a larger point possible: **all of human knowledge, compiled sovereign, fits on a $2 SD card.** 82 crates spanning every domain of human understanding, compiled by Cyrius to approximately 1GB, bootstrappable from a 29KB seed, with no external dependencies. Not open source — **open knowledge**. Sovereign, portable, and indestructible.
 
-AGNOS maintains 82 library crates spanning physics, chemistry, biology, cosmology, linguistics, music theory, psychology, drama, geography, history, mathematics, audio synthesis, cryptography, networking, and more. Compiled by Cyrius — no libc, no LLVM, raw syscalls, direct emission — the projected size of the entire library drops from approximately 10GB (Rust with all dependencies and toolchain) to approximately 1GB.
-
-One gigabyte. A $2 SD card. Every domain of structured human knowledge, queryable, sovereign, and bootstrappable from a 29KB seed.
-
-### Two Philosophies of Software
-
-The current software industry operates on a philosophy of **access**:
-
-- Knowledge lives on servers you don't own
-- Tools require subscriptions you can cancel
-- Infrastructure depends on services that can change terms, raise prices, or shut down
-- Your ability to compute depends on someone else's continued permission
-- The internet is required, not optional
-
-AGNOS operates on a philosophy of **ownership**:
-
-- Knowledge lives on a card in your hand
-- Tools bootstrap from a 29KB seed you can verify
-- Infrastructure is the card itself — no server, no cloud, no connection required
-- Your ability to compute depends on nothing but the hardware in front of you
-- The internet is useful, not required
-
-The first philosophy produces trillion-dollar companies. The second philosophy makes them optional.
-
-### What Cannot Be Destroyed
-
-The Library of Alexandria burned because it existed in one building. The modern internet's knowledge can be made inaccessible by a handful of corporate decisions — a terms-of-service change, a region block, a sanctions list, a takedown order.
-
-A 1GB SD card costs $2. There are 8 billion people on Earth. If 1% of them carry the library, that is 80 million copies with no central point of failure. No server to shut down. No registry to seize. No company to subpoena. No domain to revoke. No kill switch.
-
-Every copy is sovereign. Every copy bootstraps from the same 29KB seed. Every copy can rebuild the entire toolchain — compiler, operating system, package manager, all 82 knowledge crates — from nothing but the seed and the card.
-
-The library doesn't survive because it's protected. It survives because it's everywhere.
-
-This is what the compiler enables. Not a faster build. Not a smaller binary. A new relationship between people and knowledge — one where the knowledge belongs to the person holding it, not the company serving it.
-
-### The Dandelion, Not the Moonshot
-
-This is not a moonshot. Moonshots are expensive, centralized, and fragile. One failure point, one budget cut, and the mission ends.
-
-This is a dandelion. Cut one down, a thousand seeds blow. The $2 SD card is the seed. The 29KB compiler is the DNA inside it. The 82 crates are the organism that grows from it. And once the seeds are in the wind, no force on Earth can recall them all.
-
-The internet was supposed to be this — decentralized, resilient, free. Then it got captured by a handful of landlords with kill switches. AGNOS on a $2 SD card is the internet's original promise delivered as a physical object you hold in your hand.
-
-The current software industry sells access to knowledge. AGNOS gives ownership of knowledge. For the price of a cup of coffee.
-
-### Beyond Open Source
-
-The term "open source" has been captured. Companies open their code on GitHub while closing their infrastructure. You can read the source, but you need *their* CI to build it, *their* registry to distribute it, *their* cloud to run it. The source is open. The system is closed.
-
-AGNOS is not open source in that diminished sense. It is something older and more fundamental. It is the distribution model of nature itself. A dandelion doesn't license its DNA. It makes the blueprint so small and the distribution so wide that control is impossible. Every seed carries the complete organism.
-
-A 29KB seed that bootstraps a self-hosting compiler that builds an operating system containing all of human knowledge on a $2 SD card — that is not open source. That is **open knowledge**. Sovereign, portable, and indestructible. The truest form.
-
-That is the philosophical difference this compiler comparison reveals. Not "which compiler is better." But "who owns the foundation your knowledge stands on — you, or someone who can take it away?"
+The full story of what the compiler enables — the $2 SD card, the death of the access economy, the creator economy without gatekeepers, and why this is not a moonshot but a dandelion — is told in [The $2 SD Card: Open Knowledge and the Death of Access](the-2-dollar-sd-card.md).
 
 ---
 
 ## The Cascade
 
-This article exists because a payment processor rejected an API test.
+This compiler exists because a package registry blocked a name.
 
-In March 2026, LemonSqueezy rejected the AGNOS project's SecureYeoman platform during a routine payment integration test. Their reason: "your application doesn't align with our current risk appetite." A standard rejection letter for a product they didn't understand.
+In early 2026, the AGNOS operating system project attempted to publish its shared types crate — agnostik — to crates.io. The name was taken. A governance decision by a registry the project didn't control blocked a core dependency from being distributed through the standard channel.
 
-Rather than find another payment processor and remain a tenant in someone else's commerce infrastructure, the developer built a transaction layer. That decision cascaded:
+Rather than rename the crate or fight the system, the developer asked a different question: why do we depend on their registry at all? That question cascaded:
 
 ```
-Payment rejection     → built vinimaya (transaction layer)
-crates.io name block  → built Cyrius (sovereign language)
-Rust ecosystem deps   → closed the bootstrap loop (29KB seed)
-Compiler limitations  → modular rewrite, real Linux binaries
+crates.io name block      → why depend on their registry?
+Rust ecosystem governance → why depend on their toolchain?
+LLVM dependency chain     → why depend on their compiler?
+libc everywhere           → why depend on their runtime?
+Answer to all four        → build Cyrius (sovereign language, 29KB seed, zero deps)
 ```
 
-Every rejection removed a dependency. Every wall forced a deeper question. Every deeper question led to building something that didn't exist before.
+Every question removed a dependency. Every removed dependency revealed the next one. The cascade didn't stop until the only dependency left was an x86_64 processor and electricity.
 
 The pattern: external systems that say "no" are not obstacles. They are the signal that a dependency exists which shouldn't. Remove the dependency, and the "no" becomes irrelevant.
 
-$20,000 buys a demo that proves agents can work at scale. $400 and a payment rejection buys a sovereign language, a self-hosting compiler, a complete developer toolchain, five crate rewrites, and an operating system that owes nothing to anyone.
+$20,000 buys a demo that proves agents can work at scale. $400 and a name collision buys a sovereign language, a self-hosting compiler, a complete developer toolchain, five crate rewrites, and an operating system kernel that owes nothing to anyone.
 
 ---
 
