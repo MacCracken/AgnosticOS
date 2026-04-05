@@ -1,12 +1,12 @@
 # The 29KB Compiler vs The $20,000 Compiler
 
-> Two teams used the same AI to build compilers in the same week. One spent $20,000 and 16 agents to compile someone else's kernel. The other spent $400 and one agent to build a sovereign language, a self-hosting compiler, a complete developer toolchain, and its own operating system kernel — all from a 29KB seed with zero external dependencies. This is what the difference reveals about software philosophy.
+> Two teams used the same AI model to build compilers in 2026. One spent $20,000 and 16 agents over two weeks to compile someone else's kernel. The other spent $400 and one agent over three days to build a sovereign language, a self-hosting compiler, a complete developer toolchain, and its own operating system kernel — all from a 29KB seed with zero external dependencies. This is what the difference reveals about software philosophy.
 
 ---
 
 ## Two Compilers, One Week
 
-In early April 2026, two compiler projects were completed using Claude (Anthropic's Opus 4.6 model). The approaches could not have been more different.
+In 2026, two compiler projects were built using Claude (Anthropic's Opus 4.6 model). Anthropic's team built theirs over two weeks in February to demonstrate the model's capabilities. The AGNOS project built Cyrius over three days in April out of necessity. The approaches could not have been more different.
 
 **Project A** — Anthropic's engineering team tasked 16 parallel Claude agents with building a C compiler in Rust. The project ran for two weeks across nearly 2,000 sessions, consumed 2 billion input tokens, and cost just under $20,000. The result: 100,000 lines of Rust that can compile the Linux kernel, QEMU, FFmpeg, SQLite, PostgreSQL, Redis, and Doom, with a 99% pass rate on GCC torture tests.
 
