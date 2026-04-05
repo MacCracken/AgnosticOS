@@ -146,6 +146,17 @@ For the technical story of how the compiler was built, see [The 29KB Compiler vs
 
 ---
 
+---
+
+## Further Reading
+
+- [The 29KB Compiler vs The $20,000 Compiler](sovereign-compiler-vs-brute-force.md) — the technical story of how the compiler was built
+- [AGNOS — Philosophy & Intention](../philosophy.md) — why AGNOS exists, the temple architecture, the naming, the deeper intention
+- [AGNOS — Project Overview](../AGNOS.md) — the operating system: subsystems, architecture, history, technical statistics
+- [agnosticos.org](https://agnosticos.org) — the project home
+
+---
+
 *Robert 'Cyrius' B. MacCracken*
 *AGNOS Project — [agnosticos.org](https://agnosticos.org)*
 *April 2026*
