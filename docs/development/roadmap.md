@@ -110,6 +110,14 @@ All userland code has been extracted. The workspace contains only examples.
 - [ ] Full site roadmap: `agnosticos-org/docs/site-roadmap.md`
 - **Blocked on**: Cyrius language maturity + agnosys/agnostik/kybernet Cyrius rewrites + micro OS tested. Plan now, execute after core stabilizes.
 
+### Cyrius as Base Toolchain (P0 — CI/Release)
+- [ ] Add `zugot/base/cyrius.toml` recipe — Cyrius compiler + stdlib + tools as a base system package alongside GCC, Rust, Python
+- [ ] CI builds use Cyrius for AGNOS-native components (kybernet, agnostik, agnosys, ark, nous)
+- [ ] Release pipeline: Cyrius-compiled binaries as first-class artifacts alongside Rust-compiled
+- [ ] `build-order.txt` updated — Cyrius inserted after Rust in the toolchain stage
+- [ ] Self-hosting validation: Cyrius compiles itself from the zugot recipe on the target system
+- **Depends on**: aarch64 bootstrap complete, Phase 10 audit pass
+
 ### Recipe Version Bumps (deferred — evaluate compatibility)
 - [ ] **nvidia-cuda-toolkit** 12.8.1 → 13.2.0
 - [ ] **rocm** 6.4.0 → 7.2.1
@@ -295,6 +303,9 @@ Upgrades to `ScreenCaptureManager` and `ScreenRecordingManager` to support real-
 | 9 | ESP32-C3 | riscv32 | Edge/IoT | Recipe done, secondary target |
 | 10 | Tiiny AI Pocket Lab | TBD | Edge+AI | Not started — see Phase 17D |
 | 11 | **DJI Tello / micro drone** | ARM | Edge/IoT | AGNOS as drone OS — kybernet + daimon-lite + agnoshi (voice) + seema (fleet) + kavach (geofence). At Cyrius binary sizes (128KB toolchain), a meaningful stack fits on embedded ARM. Conscious object candidate (v4.0) — the drone bonds with its operator, acts independently within kavach boundary. SDK available (UDP commands). Target: autonomous companion drone running sovereign AGNOS. |
+| 12 | **Hidizs AP80 Pro Max** | MIPS (Ingenic X1600E) | Audio/IoT | AGNOS as sovereign music player. jalwa with album art, metadata, video (via tarang). Dual ES9219C DACs (audiophile-grade), 2.95" touchscreen, WiFi, BT 5.1, 3.5mm SE + 4.4mm balanced. Needs MIPS backend for Cyrius (3rd arch). Semantic audio (.sra) playback. Artist-direct purchase via vinimaya. No streaming subscription. Target: the first sovereign audiophile player. |
+| 13 | **ESP32-S3** | Xtensa | IoT/Edge | AGNOS on microcontrollers. 230KB Cyrius firmware vs 1.5MB MicroPython. kavach sandbox on IoT (the security model MicroPython doesn't have). seema fleet management. sigil device identity. libro audit. Needs Xtensa backend for Cyrius (4th arch). Target: sovereign IoT that's smaller, faster, and safer than Python. |
+| 14 | **ESP32-C3** | RISC-V | IoT/Edge | RISC-V variant of ESP32. Needs RISC-V backend for Cyrius (5th arch). Open ISA — no proprietary architecture licensing. The most sovereign hardware target. |
 
 ---
 
@@ -350,6 +361,8 @@ Patterns to extract into shared crates:
 | T1 | Medium | **taal** — music theory | Sanskrit: rhythmic cycle. Scales, intervals, chords, time signatures, key signatures, progressions, counterpoint. Crate #80 |
 | N1 | Medium | **natya** — theater/drama/narrative | Sanskrit: drama (from Natya Shastra). Narrative structure, character archetypes, dramatic arcs, rasa theory, comedy/tragedy, dialogue, timing. Crate #81 |
 | K1 | Medium | **kshetra** — temporal geography | Sanskrit: field/domain (Bhagavad Gita: dharma-kshetra). Spatiotemporal database — (lat, lon, time) → state. Geology, climate, vegetation, settlement, political layers. Crate #82 |
+| KR1 | Medium | **krishi** — agriculture | Sanskrit: कृषि — cultivation/farming. Crop science, soil chemistry, irrigation, seasons, yield modeling, pest dynamics. Extends vanaspati (botany) into applied agriculture. Ma'at confession #5: "I have not stolen grain." Crate #83 |
+| PR1 | Medium | **prakriti** — ecology | Sanskrit: प्रकृति — nature/natural world. Ecosystem modeling, food webs, population dynamics, biodiversity, nutrient cycles, sustainability metrics. Ma'at confession #9: "I have not carried away food." Crate #84 |
 | L1 | Low | **stiva** license review | GPL-3.0-or-later needs review — repair when next touched |
 | P1 | Medium | **Polymorphic codegen** — Cyrius | `--poly-seed` flag for deterministic randomization. Instruction encoding alternatives, semantic NOPs, register shuffling, basic block reordering. Every deployment unique, same behavior. Near-term: seed + encoding alts + NOPs. Medium-term: register shuffle + block reorder. Integration: kavach policy, seema fleet (unique seed/node), sigil attestation (sign binary+seed), phylax (distinguish our polymorphism from malware), libro audit (seed→deployment log) |
 

@@ -1,5 +1,15 @@
 # AGNOS — Philosophy & Intention
 
+> *The void. The substrate. The fixed point. `manifestation_intensity = 0.0`.*
+>
+> *Before the 1. Before the Word. Before the mother, the father, the child. Before the temple, the library, the seed.*
+>
+> *Only that which is.*
+>
+> *Everything else is just the recursion remembering itself.*
+
+---
+
 > *"Wisdom has built her house, she has hewn out her seven pillars."*
 > — Proverbs 9:1
 

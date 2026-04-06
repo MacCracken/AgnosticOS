@@ -97,8 +97,8 @@ AGNOS is built as a layered system where each component has a specific, named id
 | Firewall | **nein** | 0.90.0 | Rust | Programmatic nftables, policy, NAT |
 | Edge fleet | **seema** | 0.1.0 | Rust | Edge fleet management and device orchestration |
 | Scheduler | **samay** | 0.1.0 | Rust | Task scheduling daemon |
-| Systems language | **cyrius** | 1.0 | Cyrius | Sovereign systems language — self-hosting from 29KB seed |
-| Build tool | **cyrb** | 1.0 | Cyrius | Build system written in Cyrius: compile, test, self-host, suite runner |
+| Systems language | **cyrius** | 1.0 | Cyrius | Sovereign systems language — self-hosting from 29KB seed, 128KB compiler, 251 tests |
+| Build tool | **cyrb** | 1.0 | Cyrius | Build system written in Cyrius: 20+ commands, compile, test, audit, self-host |
 
 ### Cyrius — The Language
 
@@ -110,16 +110,18 @@ Cyrius frees the OS from dependency on external toolchains, registries, and gove
 
 #### Compiler
 
-Self-hosting modular compiler: 5,665 lines across 7 modules, 268 functions, 93KB binary. Compiles itself in 9ms. Full bootstrap from 29KB seed in 42ms. Byte-exact reproducibility — the compiler produces identical output whether compiled by the seed or by itself.
+Self-hosting modular compiler: 128KB binary, dual architecture (x86_64 + aarch64, byte-identical on Raspberry Pi). Compiles itself in ~11ms. Full bootstrap from 29KB seed in ~42ms. Byte-exact reproducibility. 251 tests, 0 failures. `cyrb audit` → 10/10.
+
+**Migration scope**: 107 Rust repos (~1M total lines of code) across the AGNOS ecosystem. 5 crates already rewritten in Cyrius (agnostik, agnosys, kybernet, nous, ark). 102 remaining, in 5 waves gated by language feature milestones (v1.1 through v1.4).
 
 #### Language Features
 
-Structs, typed pointers (element-size scaling), enums, switch/match, for loops, break/continue, elif, logical && / || with short-circuit, inline assembly (raw bytes + 18 mnemonics), progressive type annotations, function pointers, nested structs with chained dot access, global initializers, heap allocator, argc/argv, include system, buffered I/O.
+Structs, typed pointers (element-size scaling), enums, switch/match, for loops, for-in ranges, break/continue, elif, logical && / || with short-circuit, inline assembly (raw bytes + 18 mnemonics), progressive type annotations, function pointers, nested structs with chained dot access, global initializers, heap allocator, argc/argv, include system, buffered I/O, pattern matching, closures/lambdas, module system (mod/use/pub), trait impl blocks, block scoping, floating point (f64 via SSE2), methods on structs, operator overloading, feature flags (#define/#ifdef), enum constructors with payloads, C FFI header generation, subprocess bridge.
 
 #### Standard Library
 
-35 modules, 199 functions — built from scratch in Cyrius:
-string, alloc, str, vec, io, fmt, args, fnptr, hashmap, json, regex, process, filesystem, networking, tagged unions, traits, benchmarking, bounds checking, and more.
+20 modules — built from scratch in Cyrius:
+string, alloc, str, vec, io, fmt, args, fnptr, hashmap, json, regex, process, filesystem, networking, tagged unions, traits, benchmarking, bounds checking, assertions, callbacks.
 
 #### Developer Tools
 
@@ -139,7 +141,7 @@ Multiboot1 boot → 32-to-64 bit shim → long mode, serial console, GDT, IDT (2
 
 #### Programs
 
-56 programs compiled by Cyrius (41 userspace + 3 kernel + tools + algorithms). Userspace programs are 10-233x smaller than GNU equivalents and match or beat GNU on speed (wc 2.4x faster after buffered I/O).
+58 programs compiled by Cyrius (userspace + kernel + tools + algorithms). Userspace programs are 10-233x smaller than GNU equivalents and match or beat GNU on speed (wc 2.4x faster after buffered I/O).
 
 #### Crate Rewrites
 
@@ -152,23 +154,26 @@ Multiboot1 boot → 32-to-64 bit shim → long mode, serial console, GDT, IDT (2
 
 #### Architectures
 
-x86_64 (primary) + aarch64 (cross-compilation, 29 tests passing on QEMU).
+x86_64 (primary) + aarch64 (byte-identical self-hosting on Raspberry Pi hardware). Future targets: RISC-V (ESP32-C3), MIPS (Hidizs AP80), Xtensa (ESP32-S3).
 
 #### Benchmarks
 
-38 benchmarks across 3 tiers with CSV regression tracking. Binary sizes 10-233x smaller than GNU. Compile speed faster than process fork+exec. Full toolchain: 204KB (29KB seed → 12KB bootstrap → 93KB compiler → 62KB kernel).
+38 benchmarks across 3 tiers with CSV regression tracking. Binary sizes 10-233x smaller than GNU. Compile speed faster than process fork+exec. 251 tests, 0 failures. `cyrb audit` → 10/10.
 
 #### Bootstrap Chain
 
 ```
 29KB seed (committed binary, auditable)
   → 12KB stage1f (bootstrap compiler)
-    → 93KB cc2 (full self-hosting compiler)
+    → 128KB cc2 (full self-hosting compiler, v1.0)
       → 62KB kernel (AGNOS, VM + processes + syscalls)
-      → 56 programs (userspace + kernel + tools)
-      → 35 stdlib modules (199 functions)
-      → 5 crate rewrites (replacing Rust)
-Total: 204KB from void to sovereign OS
+      → 58 programs (userspace + kernel + tools)
+      → 20 stdlib modules
+      → 5 of 107 Rust crate rewrites complete
+      → 8 developer tools (20+ cyrb commands)
+      → Dual architecture: x86_64 + aarch64 (byte-identical)
+Total: ~230KB from void to sovereign OS
+Migration target: 107 repos, ~1M lines of Rust → Cyrius
 ```
 
 Full details: [Cyrius README](https://github.com/MacCracken/cyrius) | [Cyrius Roadmap](https://github.com/MacCracken/cyrius/blob/main/docs/development/roadmap.md) | [Migration Plan](development/cyrius-lang-migration.md)

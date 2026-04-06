@@ -152,6 +152,8 @@ Designed, not yet scaffolded.
 | **taal** | 0.1.0 | Music theory — scales, intervals, chords, rhythm, time signatures, key signatures, progressions, counterpoint (Sanskrit: ताल — rhythmic cycle) | naad, svara, shruti, jalwa |
 | **natya** | 0.1.0 | Theater/drama/narrative — dramatic structure, character archetypes, rasa theory, comedy/tragedy, dialogue, narrative arcs (Sanskrit: नाट्य — drama, from the Natya Shastra) | bhava, agnoshi, hoosh, joshua |
 | **kshetra** | 0.1.0 | Temporal geography — spatiotemporal database, (lat, lon, time) → state. Geology, climate, vegetation, settlement, political, hydrology layers (Sanskrit: क्षेत्र — field, domain) | itihas, badal, khanij, vanaspati, sangha, falak |
+| **krishi** | 0.1.0 | Agriculture — crop science, soil chemistry, irrigation, seasons, yield modeling, pest dynamics (Sanskrit: कृषि — cultivation). Ma'at #5. | vanaspati, badal, kimiya, kshetra |
+| **prakriti** | 0.1.0 | Ecology — ecosystem modeling, food webs, population dynamics, biodiversity, nutrient cycles, sustainability (Sanskrit: प्रकृति — nature). Ma'at #9. | jantu, vanaspati, badal, jivanu, kimiya |
 
 ---
 
