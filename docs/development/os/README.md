@@ -5,7 +5,7 @@ OS-level subsystems not yet at v1.0. Each is a standalone repo.
 ## Core Services
 
 - [daimon](daimon.md) — Agent orchestrator (0.6.0)
-- [agnoshi](agnoshi.md) — AI shell (0.1.0)
+- [agnoshi](agnoshi.md) — AI shell (0.90.0)
 - [aethersafha](aethersafha.md) — Wayland compositor (0.1.0)
 
 ## Trust & Security
@@ -16,9 +16,9 @@ OS-level subsystems not yet at v1.0. Each is a standalone repo.
 
 ## MCP & Infrastructure
 
-- [bote](bote.md) — MCP core (0.90.0)
-- [libro](libro.md) — Audit chain (0.25.3)
-- [nein](nein.md) — Firewall (0.24.3)
+- [bote](bote.md) — MCP core (0.92.0)
+- [libro](libro.md) — Audit chain (0.92.0)
+- [nein](nein.md) — Firewall (0.90.0)
 - [yukti](yukti.md) — Device abstraction (0.25.3)
 - [samay](samay.md) — Task scheduler (0.1.0)
 
@@ -27,11 +27,12 @@ OS-level subsystems not yet at v1.0. Each is a standalone repo.
 - [ark](ark.md) — Package manager (0.1.0)
 - [nous](nous.md) — Package resolver (0.1.0)
 - [takumi](takumi.md) — Build system (0.1.0)
+- [zugot](https://github.com/MacCracken/zugot) — Recipe repository (Hebrew: pairs that enter the ark)
 - [mela](mela.md) — App marketplace (0.1.0)
 
 ## Init & Install
 
-- [argonaut](argonaut.md) — Init system (0.1.0)
+- [argonaut](argonaut.md) — Init system (0.90.0)
 - [agnova](agnova.md) — OS installer (0.1.0)
 
 ## Edge
