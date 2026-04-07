@@ -18,9 +18,19 @@ Both projects used Claude Opus 4.6. The results are meaningfully different.
 
 **Project A (Anthropic)** — 16 parallel Claude agents built a C compiler in Rust over two weeks across ~2,000 sessions, consuming 2 billion input tokens at a cost of ~$20,000. The compiler produces 100,000 lines of Rust and passes 99% of GCC torture tests. It can compile the Linux kernel, QEMU, FFmpeg, SQLite, PostgreSQL, Redis, and Doom.
 
-**Project B (AGNOS/Cyrius)** — One developer working with one Claude agent built a self-hosting systems language and operating system kernel over four days across three sessions, at a cost of ~$400 (two Max subscriptions — one for the compiler, one for the reference library that informed the methodology). The compiler is 131KB (v1.7.1), self-hosts in 11ms from a 29KB seed binary, and has zero external dependencies. The kernel is 98KB (v1.1.0) with 27 subsystems, 25 syscalls, and a 188-cycle getpid — booting to an interactive shell in <100ms.
+**Project B (AGNOS/Cyrius)** — One developer working with one Claude agent built a self-hosting systems language and operating system kernel over four days across three sessions, at a cost of ~$400 (two Max subscriptions — one for the compiler, one for the reference library that informed the methodology). The compiler is 164KB (v1.8.2), self-hosts in 11ms from a 29KB seed binary, and has zero external dependencies. The kernel is 98KB (v1.1.0) with 27 subsystems, 25 syscalls, and a 178-cycle getpid — booting to an interactive shell in <100ms.
 
-**Motivation**: Project A was built as a capability demonstration. Project B was built out of necessity — the AGNOS operating system project encountered a crates.io name collision that blocked publishing a core crate, prompting the question of why the project depended on an external registry at all. Cyrius was the answer.
+**Motivation**: Project A was built as a capability demonstration. Project B was built out of necessity.
+
+AGNOS is a 108-repo Rust project. The codebase was mature — science crates, security primitives, an init system, a compositor. The plan was to publish shared crates to crates.io so repos could depend on each other via feature flags without going fully public.
+
+crates.io requires a globally unique name to publish. Even for private feature-gated dependencies, the registry checks the name against all public crates. The project hit name squatting five times. Five different crates, five different squatters — placeholder repos with no code occupying the names that a 108-repo operating system needed. Some projects were renamed. The fifth collision prompted a different question.
+
+Not "what name is available?" but "why am I asking permission to publish my own code?"
+
+That question cascaded. If the registry is the bottleneck, remove the registry. If the registry requires the language's toolchain, remove the language. If the language requires LLVM, remove LLVM. Each dependency peeled back revealed another dependency underneath, until the only remaining dependency was an x86_64 processor and electricity.
+
+Cyrius was not planned. It was precipitated — by a registry model where anyone can squat a name and block a project they have never seen. The five squatters did not know they were building the case for a sovereign toolchain. They were just occupying space. But the response was not to find more space. It was to stop renting.
 
 ---
 
@@ -75,20 +85,21 @@ Every binary in the AGNOS stack is compiled by a compiler that compiled itself. 
 | Agents | 16 parallel | 1 (3 sessions total) |
 | Sessions | ~2,000 | 3 |
 | Cost | ~$20,000 (API) | ~$400 (subscription) |
-| Compiler | 100,000 lines Rust | 4,127 lines Cyrius (131KB binary) |
+| Compiler | 100,000 lines Rust | 4,127 lines Cyrius (164KB binary) |
 | Standard library | Rust stdlib | 21 modules, 3,099 lines |
 | Developer tools | None reported | cyrb (20+ commands), formatter, linter, doc generator, auditor |
 | Self-hosting | No | Yes — byte-exact |
 | Self-compile | Not applicable | 11ms |
 | Seed binary | ~200MB (rustc) | 29KB |
 | External dependencies | Rust, LLVM, GCC, assembler, linker | Zero |
-| Tests | GCC torture suite (99%) | 263 (0 failures) |
+| Tests | GCC torture suite (99%) | 267 (0 failures) |
 | Architectures | x86_64 | x86_64 + aarch64 (byte-identical on Raspberry Pi) |
 | Kernel | Compiles Linux kernel | Compiles its own — 98KB, 27 subsystems, 25 syscalls |
-| Kernel syscall | N/A | 188 cycles (5.3M/sec on QEMU) |
+| Kernel syscall | N/A | 178 cycles (5.6M/sec on QEMU) |
 | Networking | Not demonstrated | IP/UDP, VirtIO-net, PCI bus scan |
 | Lines of C in stack | 100,000 (Rust needs LLVM/GCC) | Zero |
-| Seed → networked OS | Not applicable | 258KB total |
+| Seed → networked OS | Not applicable | 291KB total |
+| DOOM | Compiles it | Runs it — and rewrites it smaller |
 
 Project A has broader C compatibility. Project B has deeper sovereignty. These are different goals.
 
@@ -173,13 +184,13 @@ Benchmarks (QEMU, ~1GHz emulated):
 
 | Operation | Cycles | Throughput |
 |-----------|--------|------------|
-| Syscall (getpid) | 188 | 5.3M/sec |
-| PMM alloc+free | 1,304 | 767K/sec |
-| Heap 32B alloc+free | 1,207 | 829K/sec |
-| VFS open+read+close | 5,912 | 169K/sec |
-| Memory write 1MB | 6.1M total | 163 MB/s |
+| Syscall (getpid) | 178 | 5.6M/sec |
+| PMM alloc+free | 1,222 | 818K/sec |
+| Heap 32B alloc+free | 1,187 | 843K/sec |
+| VFS open+read+close | 5,374 | 186K/sec |
+| Memory write 1MB | 5.6M total | 179 MB/s |
 
-The 188-cycle getpid is within the range of Linux on native hardware (100-200 cycles) while running in QEMU emulation.
+The 178-cycle getpid is within the range of Linux on native hardware (100-200 cycles) while running in QEMU emulation.
 
 For comparison: Linux 0.01 (1991) was ~10,000 lines of C, ~62KB, needed GCC + libc + as + ld. No networking, no shell, no Ring 3.
 
@@ -188,11 +199,11 @@ For comparison: Linux 0.01 (1991) was ~10,000 lines of C, ~62KB, needed GCC + li
 | Component | Size |
 |-----------|------|
 | Seed binary | 29KB |
-| Compiler (v1.7.1) | 131KB |
+| Compiler (v1.8.2) | 164KB |
 | Kernel (v1.1.0) | 98KB |
-| **Seed → networked OS** | **258KB** |
+| **Seed → networked OS** | **291KB** |
 
-GCC: ~100MB. Clang/LLVM: ~500MB. The sovereign stack is 387x smaller than GCC.
+GCC: ~100MB. Clang/LLVM: ~500MB. The sovereign stack is 344x smaller than GCC.
 
 Head-to-head Cyrius vs Rust benchmarks on real crate conversions: [Cyrius vs Rust Benchmarks](cyrius-vs-rust-benchmarks.md).
 

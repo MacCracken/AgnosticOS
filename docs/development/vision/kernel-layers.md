@@ -1,9 +1,10 @@
 # AGNOS Kernel — Layer Roadmap
 
-> **Status**: Layer 1 complete (31KB) | **Last Updated**: 2026-04-06
+> **Status**: Layers 1-4 largely complete (98KB) | **Last Updated**: 2026-04-07
 >
-> 5 layers from "boots" to "usable OS." Layer 1 is done. Each layer builds on the previous.
-> The shortest path to "boots into a shell" is 5 items from Layer 2 + Layer 3 + Layer 5.
+> 5 layers from "boots" to "usable OS." Layers 1-4 are largely done. Kernel boots to interactive shell
+> with 27 subsystems, 25 syscalls, 12 commands, Ring 3 user mode, VFS, initrd, VirtIO-net, IP/UDP.
+> 180-cycle getpid (5.6M/sec on QEMU).
 
 ---
 
@@ -129,6 +130,29 @@ Result: AGNOS boots → shell prompt → user types "cat /etc/motd" → it works
 | Full Layer 1-5 | ~70-80KB | Complete usable OS |
 
 For reference: a single GNU `cat` binary is 47KB. The entire AGNOS kernel with all 5 layers may be smaller than one GNU utility.
+
+---
+
+## DOOM Milestone
+
+The industry-standard "is it a real OS?" test. Three stages:
+
+| Stage | What | Size Estimate | Dependencies |
+|-------|------|---------------|-------------|
+| 1 | **Run original DOOM** | ~700KB WAD + C binary in kavach | Framebuffer driver, keyboard input (done), timer (done), file I/O (done) |
+| 2 | **Port DOOM to Cyrius** | ~30-50KB binary | Direct framebuffer access, no libc, no SDL, no X11 — just kernel syscalls |
+| 3 | **DOOM as kernel demo** | Included in initrd | Boot → shell → `doom` → plays |
+
+**Why this matters**: Anthropic's $20,000 compiler *compiles* DOOM. The AGNOS kernel *runs* it. Cyrius *rewrites it smaller*. The original DOOM binary (~700KB) becomes ~30-50KB — direct framebuffer writes, WAD loader via VFS, keyboard via existing PS/2 driver, timer via existing PIT.
+
+**Required kernel features**:
+- Framebuffer/VGA driver (Layer 3 — not yet implemented)
+- Memory-mapped I/O for display (Layer 3)
+- Everything else already exists (keyboard, timer, VFS, initrd, process management)
+
+**Optional**: Sound via PC speaker or VirtIO-sound. Not required for playable DOOM.
+
+**Killswitch**: `doom --no-render` for headless mode, `kybernet` service management for start/stop. Standard process lifecycle — DOOM is just another userspace binary.
 
 ---
 

@@ -1,16 +1,16 @@
 # Cyrius vs Rust: Head-to-Head Benchmarks
 
-> Real-world benchmarks from porting two AGNOS crates — agnosys (kernel interface) and kybernet (PID 1 init system) — from Rust to Cyrius. Same APIs, same operations, measured head-to-head.
+> Real-world benchmarks from porting three AGNOS crates — agnosys (kernel interface), kybernet (PID 1 init system), and agnostik (shared domain types) — from Rust to Cyrius. Same APIs, same operations, measured head-to-head.
 
 ---
 
 ## Background
 
-agnosys provides Rust bindings for Linux kernel syscalls and security primitives (Landlock, seccomp, sysinfo, uname). kybernet is the AGNOS init system — PID 1, responsible for service management, signal handling, and system boot.
+agnosys provides Rust bindings for Linux kernel syscalls and security primitives (Landlock, seccomp, sysinfo, uname). kybernet is the AGNOS init system — PID 1, responsible for service management, signal handling, and system boot. agnostik is the shared types crate — domain primitives (agent IDs, trace contexts, sandbox configs, inference requests, audit entries) that every AGNOS subsystem depends on.
 
-Both are syscall-heavy, I/O-bound crates — the core of an operating system. They represent the highest-priority migration targets and the most direct comparison: thin wrappers around the same kernel calls, compiled by two different toolchains.
+These three crates span the full spectrum: syscall-heavy I/O (agnosys), system orchestration (kybernet), and domain object construction and serialization (agnostik). Together they represent the core of the operating system.
 
-Rust versions: agnosys 0.51.0 (136 transitive dependencies), kybernet 0.51.0 (similar dependency tree). Cyrius versions: matching API surface, zero dependencies.
+Rust versions: agnosys 0.51.0 (136 transitive dependencies), kybernet 0.51.0 (similar dependency tree), agnostik 0.90.0 (10 feature gates). Cyrius versions: agnosys 0.90.0, matching API surface, zero dependencies.
 
 ---
 
@@ -177,6 +177,50 @@ After three optimizations, Cyrius matches or beats Rust on every runtime metric 
 
 kybernet's hot path (syscalls) is at parity. The cold path (allocation-heavy setup, struct construction) favors Rust but runs once at boot — total cold-path cost is microseconds. The actual boot (init-to-event-loop) is 2x faster because 81x smaller binary = less to load, decompress, and page-fault. For a PID 1 that spends 99% of its time in epoll_wait, binary size and boot speed are the deciding metrics.
 
+### agnostik
+
+| Metric | Rust | Cyrius | Winner |
+|--------|------|--------|--------|
+| Struct construction (agent_id) | 45 ns | 30 ns | **Cyrius (1.5x)** |
+| Struct construction (trace_context_child) | 53 ns | 40 ns | **Cyrius (1.3x)** |
+| Struct construction (trace_context_new) | 94 ns | 89 ns | **Cyrius (1.1x)** |
+| Integration (inference_request) | 573 ns | 507 ns | **Cyrius (1.1x)** |
+| Integration (audit_entry) | 1,004 ns | 754 ns | **Cyrius (1.3x)** |
+| Integration (accelerator_device) | 711 ns | 141 ns | **Cyrius (5x)** |
+| String serialization (agent_id) | 46 ns | 314 ns | **Rust (6.8x)** |
+| String roundtrip (agent_id) | 106 ns | 613 ns | **Rust (5.8x)** |
+| Multi-collection (sandbox_config) | 40 ns | 1,480 ns | **Rust (37x)** |
+
+agnostik is the shared types crate — the domain primitives that every AGNOS subsystem depends on. Cyrius beats Rust on 6 of 9 comparable benchmarks. The three Rust wins are string serialization (serde is highly optimized for formatting) and multi-collection construction (sandbox_config creates hashmaps + vectors + sub-objects — arena allocator territory).
+
+The Tier 3 integration benchmarks — the real-world objects that flow through the system at runtime (inference requests, audit entries, device descriptors) — Cyrius wins all three. The operations that dominate production throughput are already faster.
+
+### abaco
+
+| Metric | Rust | Cyrius | Winner |
+|--------|------|--------|--------|
+| factor_large (1234567890) | 2,920 ns | 3,000 ns | **Parity (1.03x)** |
+| factor_small (360) | 71 ns | 534 ns | **Rust (7.5x)** |
+| binomial (60,30) | 82 ns | 549 ns | **Rust (6.7x)** |
+| totient (1000000) | 50 ns | 456 ns | **Rust (9.1x)** |
+| is_prime_small (104729) | 914 ns | 17,000 ns | **Rust (18.6x)** |
+| is_prime_large (999999999989) | 3,159 ns | 103,000 ns | **Rust (32.6x)** |
+| next_prime (1000000) | 1,340 ns | 24,000 ns | **Rust (17.9x)** |
+| fibonacci (92) | 14 ns | 583 ns | **Rust (41.6x)** |
+| sanitize_4096 (batch) | 3,186 ns | 14,000 ns | **Rust (4.4x)** |
+| poly_blep_4096 (batch) | 3,320 ns | 32,000 ns | **Rust (9.6x)** |
+| DSP scalar ops | 0.6-1.6 ns | ~400 ns | **Rust (300-700x)** |
+
+abaco is the first pure-compute benchmark — no syscalls, no I/O, no allocation patterns. Raw math and DSP against LLVM -O3. This is where Cyrius shows its current codegen ceiling and where specific compiler optimizations have the clearest targets.
+
+**Three distinct gaps**:
+
+**Near parity** — `factor_large` at 1.03x. Trial division with small divisors, same algorithm, same machine code, same speed. Proof that when the algorithm is identical and the operations are native, Cyrius matches LLVM.
+
+**Algorithm gap (7-42x)** — Number theory operations dominated by `mod_mul`, which uses a binary method performing 64 additions per multiply because Cyrius has no u128 type. Rust uses native 128-bit multiplication in a single instruction. `fibonacci` at 41.6x reflects the same limitation — Rust uses fast-doubling with u128, Cyrius uses iterative i64. Adding u128 or mul-with-overflow to the compiler would collapse the is_prime gap to an estimated 2-3x.
+
+**Inlining gap (300-700x)** — DSP scalar results are misleading. Rust's sub-nanosecond times mean LLVM inlined the entire function and is measuring a single already-computed instruction. Cyrius's ~400ns floor is the function call overhead through the benchmark harness — `bench_run` → `fncall0` → actual computation → return. The batch numbers (sanitize_4096 at 4.4x, poly_blep_4096 at 9.6x) are the honest comparison: Cyrius has no SIMD auto-vectorization and no cross-function inlining, but processes 4,096-sample audio buffers at usable rates. Cross-function inlining and SIMD are documented compiler optimization targets.
+
 ---
 
 ## Optimization Trajectory
@@ -191,7 +235,39 @@ Round 3 (packed encoding):  beats Rust on syscalls AND allocation
 
 The trajectory is one-directional. Each optimization pass closes gaps. No pass has opened new ones. The remaining gaps in kybernet (pure compute, cold-path allocation) are documented optimization targets for the Cyrius compiler — constant folding, function inlining, and stack-allocated small strings.
 
-These benchmarks are from Cyrius v1.5–v1.6 with zero optimization passes in the compiler. Rust uses LLVM -O3 with LTO. The comparison is unoptimized direct emission vs the most aggressive optimization pipeline in the industry. Parity under these conditions suggests that basic compiler optimizations will move Cyrius ahead.
+The agnosys and kybernet benchmarks are from Cyrius v1.5–v1.6 with zero optimization passes. The agnostik benchmarks are from v1.7.7, which includes constant folding, tail call optimization, dead code elimination, and jump tables for dense switches. Rust uses LLVM -O3 with LTO across all comparisons.
+
+The progression from v1.5 to v1.7.7 confirms the trajectory: each compiler optimization closes gaps without opening new ones. agnostik — benchmarked with the most mature compiler version — shows Cyrius winning 6 of 9 comparable benchmarks against LLVM -O3. The remaining gaps (string serialization, multi-collection construction) map to known optimization targets (stack-allocated small strings, arena allocator).
+
+---
+
+## Development Velocity
+
+The benchmarks document performance. The release history documents something else: the speed at which a language can evolve when the developer and the compiler are in the same feedback loop.
+
+Cyrius v1.7.0 through v1.7.8 shipped in hours, not weeks. Eight point releases in a single development stretch:
+
+```
+v1.7.0  DCE (dead code elimination)
+v1.7.1  Compiler size stabilized at 131KB
+v1.7.2  Tail call optimization, 512KB input buffer
+v1.7.3  Constant folding (* / << >>)
+v1.7.4  256 locals, && / || in expressions
+v1.7.5  aarch64 tail calls, allocator regression fixed
+v1.7.6  tok_names/struct_ftypes overlap fixed, all P1 bugs resolved
+v1.7.7  Constant folding (+ - & | ^), jump tables for dense switches
+v1.7.8  Self-hosting verified, both architectures
+```
+
+Each release was driven by a real port hitting a real limitation. Port agnosys — discover the allocator needs stack returns. Port kybernet — discover the pure compute gap needs constant folding. Port agnostik — discover the identifier buffer overlaps the struct table. The port is the test suite. The benchmark is the acceptance criteria. The fix ships in the same session.
+
+This is the human/AI collaboration loop applied to language development. The human identifies the architectural need, steers the port, and reads the benchmarks. The AI holds the full compiler context — every codegen path, every memory layout, every optimization interaction — and implements at a speed that keeps pace with the discovery rate. The result is a language that evolves in hours at a pace that traditional language development measures in months.
+
+GCC has mass. LLVM has mass. They are correct and complete and slow to change. Cyrius has no mass. A memory layout bug is found, diagnosed, fixed, self-hosted, and benchmarked before a traditional compiler team would finish triaging the issue. The 29KB seed is not just small in bytes — it is small in inertia.
+
+The velocity is also a function of the migration source. AGNOS is not a greenfield project — it is 108 Rust repos totaling ~1M lines, with production APIs, real test suites, and real dependency trees. These are not toy programs: physics engines, math libraries, DSP primitives, audio/video codecs, cryptography, GPU acceleration, a Wayland compositor, kernel interfaces, security sandboxing, and build tooling. The kind of crates that engineers depend on for real infrastructure. Each port is a genuine stress test against code that was already working. This is why v1.7.x evolved so fast: the ports surface real compiler limitations, not synthetic ones.
+
+The economic case compounds across the ecosystem. A single Rust crate like agnosys pulls 136 transitive dependencies. Multiply that across 108 repos and the disk footprint — `target/` directories, `.rlib` files, LLVM artifacts, duplicated dependencies compiled per-project — measures in gigabytes. The same ecosystem in Cyrius compiles in seconds, fits in megabytes, and shares zero transitive dependencies because there are none to share. The storage savings alone justify the migration before the performance numbers enter the conversation.
 
 ---
 

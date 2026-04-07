@@ -1,6 +1,6 @@
 # Theoretical — Future Explorations
 
-> **Status**: Theoretical | **Last Updated**: 2026-04-03
+> **Status**: Theoretical | **Last Updated**: 2026-04-06
 >
 > Items that have a plausible path from the AGNOS architecture but depend on
 > physics and engineering breakthroughs beyond current capability. Documented
@@ -213,6 +213,83 @@ Applications:
 
 ---
 
+## Temporal Transit
+
+**Concept**: Extension of the spatial portal physics to include the temporal dimension. Not simulation (that's the time machine doc) — actual traversal to a different point in spacetime.
+
+### Physics Basis
+
+- **Gödel (1949)**: Einstein's field equations permit closed timelike curves (CTCs) — paths through spacetime that loop back to their origin. Mathematical proof within general relativity.
+- **Thorne (1988)**: A traversable wormhole can become a time machine by moving one end at relativistic speeds. Time dilation between endpoints creates a temporal offset.
+- **Deutsch (1991)**: Quantum mechanics resolves the grandfather paradox — traversal enters a different branch in the quantum multiverse. You cannot change the timeline you came from.
+- **Stark inversion** (fictional, MCU — but physically sound): "You don't move time through the object, you move the object through time." The observer traverses the temporal manifold; the manifold is static. Time is a landscape, not a river.
+
+### The Möbius Topology
+
+Time as a Möbius strip — a surface with one side, one boundary, continuous traversal. The symbol ∞ (infinity) is a Möbius strip viewed edge-on. The number 88 — two infinity symbols standing upright — encodes this: not a speed threshold, but an energy threshold where the temporal field becomes self-sustaining.
+
+The insight: temporal transit is not about velocity. It is about reaching the energy density where a **plasma envelope** forms around the observer — insulating the object from the local timeframe. The plasma field is not propulsion; it is **temporal insulation**. The object inside the envelope is decoupled from the surrounding spacetime, free to traverse the manifold.
+
+This mirrors atmospheric reentry: a plasma sheath forms around objects passing between environments (space → atmosphere). Temporal transit generates a plasma sheath for passing between timeframes (now → then). The physics is analogous — an object crossing a boundary generates a field that separates it from both sides during transit.
+
+```
+Spatial reentry:    space → plasma envelope → atmosphere
+Temporal transit:   time_A → plasma envelope → time_B
+
+The envelope is the boundary condition. Inside it: the traveler.
+Outside it: the destination timeframe. The field is what makes transit survivable.
+```
+
+### Relationship to Spatial Portals
+
+Temporal transit is the same physics with an additional coordinate:
+
+```
+Tier 1 — Spatial portal:   kshetra.at(lat, lon, now)     → kshetra.at(lat2, lon2, now)
+Tier 4 — Temporal portal:  kshetra.at(lat, lon, time_A)  → kshetra.at(lat2, lon2, time_B)
+```
+
+kshetra already models `(lat, lon, time) → state` for simulation. Temporal transit changes the query from read-only to read-write.
+
+### The Timecop Problem — Ripple Effects
+
+This is the most dangerous item in this document.
+
+| Risk | Description | Mitigation |
+|------|-------------|------------|
+| Grandfather paradox | Changing past invalidates reason for traveling | Deutsch branching — enter different timeline, origin untouched |
+| Butterfly effect | Small changes cascade | Observation-only default — kavach temporal sandbox prevents interaction |
+| Information paradox | Sending info backward creates causal loops | Temporal libro — audit trail spanning timelines |
+| Weaponization | Hostile actors rewrite history | Temporal sigil — cryptographic proof of timeline integrity |
+| Accidental contamination | Unintended interaction | kavach observation bubble — traveler cannot touch destination |
+
+### Safe vs Dangerous Models
+
+**Observation-only** (recommended default): the traveler witnesses but cannot interact. The plasma envelope is the boundary — kavach at the physical layer. The observer moves through the temporal manifold inside the field; the field prevents interaction with the destination timeframe. The time machine simulation handles "what if." Temporal transit handles "what was." The difference between running a model and watching a recording.
+
+**Interactive** (requires governance): if interaction becomes possible, it requires temporal kavach (sandbox), temporal libro (cross-timeline audit), temporal sigil (tamper detection), temporal phylax (intrusion detection), and civilizational-level governance. This is not a technology one entity should control.
+
+### Ethical Position
+
+This is the only item in this document with an explicit ethical stance: **temporal transit should default to observation-only**. The ability to modify the past is the most dangerous capability conceivable. The time machine (simulation) provides most of the value without the causal risk. Walk through ancient Rome as a simulation. Watch the Library of Alexandria before its destruction as an observation. Neither requires the ability to change anything.
+
+### AGNOS Crates
+
+| Crate | Temporal Role |
+|-------|--------------|
+| **kshetra** | Spatiotemporal coordinates — the "time GPS" |
+| **kavach** | Temporal sandbox — observation-only bubble |
+| **libro** | Cross-timeline audit trail |
+| **sigil** | Timeline integrity proof |
+| **phylax** | Unauthorized temporal access detection |
+| **bhava** | Observer psychological modeling |
+
+### Prerequisites
+
+All spatial portal prerequisites plus: controlled spacetime curvature, temporal coordinate resolution in kshetra, CTC stabilization, branching detection (confirming Deutsch model), governance framework.
+
+---
+
 ## Nanites / Programmable Matter
 
 **Concept**: Molecular-scale machines that operate within a physical substrate — a body, a material, a fluid — performing computation, repair, modification, and sensing at scales below the cellular level. Not remote-controlled robots. Autonomous agents operating as a swarm, where the swarm IS the computer.
@@ -333,4 +410,4 @@ The pattern: every item above reduces to "transmit a pattern and reconstruct fro
 
 ---
 
-*Last Updated: 2026-04-03*
+*Last Updated: 2026-04-06*
