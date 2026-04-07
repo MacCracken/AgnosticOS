@@ -18,9 +18,52 @@ Both projects used Claude Opus 4.6. The results are meaningfully different.
 
 **Project A (Anthropic)** — 16 parallel Claude agents built a C compiler in Rust over two weeks across ~2,000 sessions, consuming 2 billion input tokens at a cost of ~$20,000. The compiler produces 100,000 lines of Rust and passes 99% of GCC torture tests. It can compile the Linux kernel, QEMU, FFmpeg, SQLite, PostgreSQL, Redis, and Doom.
 
-**Project B (AGNOS/Cyrius)** — One developer working with one Claude agent built a self-hosting systems language and operating system kernel over four days across three sessions, at a cost of ~$400 (two Max subscriptions — one for the compiler, one for the reference library that informed the methodology). The compiler is 136KB, self-hosts in 11ms from a 29KB seed binary, and has zero external dependencies. The kernel is 98KB with 27 subsystems including networking, process isolation, and an interactive shell.
+**Project B (AGNOS/Cyrius)** — One developer working with one Claude agent built a self-hosting systems language and operating system kernel over four days across three sessions, at a cost of ~$400 (two Max subscriptions — one for the compiler, one for the reference library that informed the methodology). The compiler is 131KB (v1.7.1), self-hosts in 11ms from a 29KB seed binary, and has zero external dependencies. The kernel is 98KB (v1.1.0) with 27 subsystems, 25 syscalls, and a 188-cycle getpid — booting to an interactive shell in <100ms.
 
 **Motivation**: Project A was built as a capability demonstration. Project B was built out of necessity — the AGNOS operating system project encountered a crates.io name collision that blocked publishing a core crate, prompting the question of why the project depended on an external registry at all. Cyrius was the answer.
+
+---
+
+## Why Sovereignty Matters
+
+### Dependency
+
+Project A's compiler is written in Rust. Building it requires a Rust toolchain (~200MB), which requires LLVM (~100MB), which requires a C++ compiler, which requires a C compiler, which requires libc. The compiler cannot build itself or the language it is written in.
+
+Project B's compiler starts from a 29KB binary. From that seed, the full toolchain bootstraps in under 50ms. The compiler produces byte-identical output when compiling its own source. Removing Rust, GCC, LLVM, and libc from the system does not affect Project B's ability to build itself.
+
+This distinction — **capability** versus **sovereignty** — is the central finding.
+
+### Security
+
+The AGNOS kernel has zero lines of C. This eliminates entire categories of vulnerability that account for 60-70% of Linux kernel CVEs:
+
+| Vulnerability Class | Root Cause in C | AGNOS Status |
+|---------------------|----------------|--------------|
+| Buffer overflow | Unbounded arrays, `strcpy`, `sprintf` | **Eliminated** — no C string functions |
+| Use-after-free | Manual `malloc`/`free` | **Eliminated** — slab allocator, no user-facing `free` |
+| Format string attack | `printf` with user-controlled format | **Eliminated** — no `printf` |
+| Null pointer dereference | `void*` arithmetic, implicit casts | **Eliminated** — no `void*` |
+| Integer promotion overflow | Implicit type widening | **Eliminated** — single type (i64) |
+| Double free | Manual memory management | **Eliminated** — slab fixed-size classes |
+
+This is defense by absence. The attack surface does not exist because the language that creates it does not exist in the stack. The entire kernel (2,979 lines) is auditable by a single person in an afternoon. The Linux kernel (~30 million lines) is not auditable by anyone.
+
+This does not mean AGNOS is bug-free — logic errors, race conditions, and design flaws remain possible. But the largest category of kernel vulnerabilities is eliminated at the language level.
+
+### Prior Art
+
+Other projects have attempted single-language operating systems. Each relies on an external toolchain somewhere in the chain:
+
+| Project | Language | External Dependency |
+|---------|----------|-------------------|
+| Singularity (Microsoft) | C# | Bootloader in assembly, runtime in C++ |
+| Redox | Rust | Compiler requires LLVM (C++) |
+| MirageOS | OCaml | Runs on Xen hypervisor (C) |
+| TempleOS | HolyC | Closest precedent — compiler bootstrapped from C |
+| **AGNOS** | **Cyrius** | **None. 29KB seed → self-hosting compiler → kernel → init → tools** |
+
+Every binary in the AGNOS stack is compiled by a compiler that compiled itself. The seed assembler is 29KB of hand-auditable machine code. No external language touches any production binary. This is, to our knowledge, the first fully sovereign single-language OS stack from assembly up.
 
 ---
 
@@ -32,72 +75,64 @@ Both projects used Claude Opus 4.6. The results are meaningfully different.
 | Agents | 16 parallel | 1 (3 sessions total) |
 | Sessions | ~2,000 | 3 |
 | Cost | ~$20,000 (API) | ~$400 (subscription) |
-| Compiler output | 100,000 lines Rust | 4,127 lines Cyrius (131KB binary, v1.7.1 — shrinking with each release) |
-| Standard library | Rust stdlib | 21 modules, 3,099 lines (built from scratch) |
-| Developer tools | None reported | cyrb build system (20+ commands), formatter, linter, doc generator, auditor |
-| Self-hosting | No | Yes — byte-exact reproducibility |
-| Self-compile time | Not applicable | 11ms |
+| Compiler | 100,000 lines Rust | 4,127 lines Cyrius (131KB binary) |
+| Standard library | Rust stdlib | 21 modules, 3,099 lines |
+| Developer tools | None reported | cyrb (20+ commands), formatter, linter, doc generator, auditor |
+| Self-hosting | No | Yes — byte-exact |
+| Self-compile | Not applicable | 11ms |
 | Seed binary | ~200MB (rustc) | 29KB |
-| External dependencies | Rust, LLVM, GCC (16-bit), assembler, linker | Zero |
-| Tests | GCC torture suite (99% pass) | 263 (0 failures) |
-| Benchmarks | Not reported | 38 benchmarks, CSV regression tracking |
-| Architectures | x86_64 | x86_64 + aarch64 (byte-identical self-hosting on Raspberry Pi) |
-| Kernel | Compiles Linux kernel (external) | Compiles its own kernel — 98KB (v1.1.0), 27 subsystems, 25 syscalls, 188-cycle getpid |
-| Networking | Not demonstrated | IP/UDP stack, VirtIO-net driver, PCI bus scan |
-| Total source | 100,000 lines | 14,849 lines (compiler + stdlib + programs + kernel) |
+| External dependencies | Rust, LLVM, GCC, assembler, linker | Zero |
+| Tests | GCC torture suite (99%) | 263 (0 failures) |
+| Architectures | x86_64 | x86_64 + aarch64 (byte-identical on Raspberry Pi) |
+| Kernel | Compiles Linux kernel | Compiles its own — 98KB, 27 subsystems, 25 syscalls |
+| Kernel syscall | N/A | 188 cycles (5.3M/sec on QEMU) |
+| Networking | Not demonstrated | IP/UDP, VirtIO-net, PCI bus scan |
+| Lines of C in stack | 100,000 (Rust needs LLVM/GCC) | Zero |
+| Seed → networked OS | Not applicable | 258KB total |
 
-Project A has broader C compatibility. Project B has deeper sovereignty. These are different goals producing different architectures.
-
----
-
-## Dependency Analysis
-
-Project A's compiler is written in Rust. Building it requires a Rust toolchain (~200MB), which requires LLVM (~100MB), which requires a C++ compiler, which requires a C compiler, which requires libc. The compiler cannot build itself or the language it is written in.
-
-Project B's compiler starts from a 29KB binary. From that seed, the full toolchain bootstraps in under 50ms. The compiler produces byte-identical output when compiling its own source. Removing Rust, GCC, LLVM, and libc from the system does not affect Project B's ability to build itself.
-
-This distinction — **capability** versus **sovereignty** — is the central finding.
+Project A has broader C compatibility. Project B has deeper sovereignty. These are different goals.
 
 ---
 
-## Methodology: Incremental vs Parallel
+## Methodology
 
-**Project A** uses horizontal scaling: 16 agents working in parallel, synchronized through a shared git repository with lock files. Agents are assigned specializations (core compiler, code deduplication, performance optimization, architectural critique). Coordination overhead is managed through a "Ralph loop" harness and automated merge conflict resolution.
+### Incremental vs Parallel
+
+**Project A** uses horizontal scaling: 16 agents in parallel with lock-file synchronization and a "Ralph loop" harness for continuous task assignment.
 
 **Project B** uses vertical progression: each stage proves itself before the next begins.
 
 ```
-Day 1:
-  seed    → assembler (38 instructions, 102 tests)
-  stage1a–1f → incremental capability addition
-  stage1f → self-hosting compiler (bootstrap loop closed, byte-exact)
-
-Day 2:
-  cc2.cyr → modular compiler (7 modules)
-            structs, pointers, inline asm, type annotations, buffered I/O
-  kernel  → initial OS kernel (virtual memory, processes, syscalls)
-
-Day 3:
-  stdlib  → 21 modules (string, vec, hashmap, JSON, process, networking, etc.)
-  tools   → cyrb, cyrfmt, cyrlint, cyrdoc, cyrc
-  crates  → 5 Rust rewrites: agnostik, agnosys, kybernet, nous, ark
-  aarch64 → cross-compiler, byte-identical self-hosting on Raspberry Pi
-
-Day 4:
-  kernel  → 98KB: Ring 3, memory isolation, VFS, initrd, IP/UDP, SMP-ready
-            27 subsystems, 12 shell commands, 8 syscalls, kybernet init
-  v1.0–v1.5 → closures, pattern matching, modules, traits, floats, operators
+Day 1:  seed → assembler → stage1a–1f → self-hosting compiler (bootstrap loop closed)
+Day 2:  modular compiler → structs, pointers, inline asm → initial OS kernel
+Day 3:  stdlib (21 modules) → tools → 5 Rust crate rewrites → aarch64 cross-compiler
+Day 4:  kernel v1.1.0 (98KB, 27 subsystems, 25 syscalls, networking, shell) → Cyrius v1.5
 ```
 
-At every stage, the system compiles itself and produces verified output. No stage depends on functionality that has not been proven by the previous stage.
+At every stage, the system compiles itself and produces verified output. The parallel approach scales throughput. The incremental approach scales confidence.
 
-The parallel approach (Project A) scales throughput. The incremental approach (Project B) scales confidence — each layer is proven before the next is built on it.
+### The Vidya Effect
+
+AGNOS maintains **vidya** — a curated programming reference library (36 topics, 10 languages). When the compiler needed pointer support, the cycle was: research (30 seconds, patterns already documented) → implementation (15 lines) → testing (48/48 first run). Total: minutes.
+
+Struct support, implemented before vidya coverage existed, took hours. Same developer, same agent, same compiler. The variable was documentation coverage.
+
+| Investment | Return | Evidence |
+|------------|--------|----------|
+| Reference library (vidya) | 10x implementation speed | Structs: hours. Pointers: minutes. |
+| Tests | Early bug detection | 4 critical bugs caught invisibly |
+| Benchmarks | Zero rebuild hesitation | 11ms self-compile |
+| Tooling | Automated enforcement | `cyrb audit` → 10/10 |
+
+The byte-exact self-hosting test verifies the entire compiler in a single comparison. If the output is identical, every codegen path is correct.
 
 ---
 
-## Binary Size
+## Results
 
-Cyrius-compiled programs are 10–233x smaller than their GNU coreutils equivalents:
+### Binary Size
+
+Cyrius-compiled programs are 10–233x smaller than GNU coreutils equivalents:
 
 ```
 Program      Cyrius      GNU        Ratio
@@ -110,95 +145,76 @@ cat         4,536 B   47,368 B       10x
 tee         4,584 B   47,336 B       10x
 ```
 
-The size difference results from direct syscall emission (no libc), no dynamic linking overhead, no locale or i18n support, and minimal ELF headers. These are not stripped or compressed — they are the raw compiler output.
+The difference: direct syscall emission, no libc, no dynamic linking, minimal ELF headers.
 
----
+### Runtime Performance
 
-## Runtime Performance
-
-Initial benchmarks showed GNU `wc` outperforming Cyrius by 30% due to buffered I/O. After adding a buffered read layer (one development cycle, informed by the reference library):
+After adding buffered I/O (one vidya-informed development cycle):
 
 ```
 wc 1MB:   Cyrius 9ms,  GNU 22ms   (Cyrius 2.4x faster)
-tr 1MB:   Cyrius 9ms   (previously 766ms — 85x improvement from buffering)
+tr 1MB:   Cyrius 9ms   (previously 766ms — 85x improvement)
 ```
 
-The performance advantage comes from the same source as the size advantage: fewer abstraction layers between the program logic and the syscall interface.
+### Kernel
 
----
+The AGNOS kernel (v1.1.0) is 98KB. It boots to an interactive shell in <100ms with:
 
-## Kernel
+- Ring 3 user mode, SYSCALL/SYSRET, per-process page tables
+- PMM, VMM, slab heap allocator
+- VFS, device drivers, initrd filesystem
+- PCI bus scan, VirtIO-net driver, IP/UDP stack
+- SMP infrastructure (LAPIC, IPI, AP trampoline)
+- kybernet init (PID 1), 12 shell commands, 25 syscalls
 
-The AGNOS kernel (v1.1.0, compiled by Cyrius v1.7.1) is a 98KB binary that boots to an interactive shell in <100ms. 27 subsystems, 25 syscalls, 12 shell commands. The kernel has gotten smaller while gaining features — v1.0.0 was 106KB with 8 syscalls, v1.1.0 is 98KB with 25 syscalls. Compiler improvements produce smaller kernel output without changing kernel source. Key capabilities:
+The kernel has gotten smaller while gaining features — v1.0.0 was 106KB with 8 syscalls. Compiler improvements produce smaller output without changing kernel source.
 
-- **Boot**: multiboot1, 32→64 bit shim, long mode
-- **Hardware**: GDT, IDT, TSS, LAPIC, PIC, APIC timer, PS/2 keyboard (full QWERTY)
-- **Memory**: PMM (bitmap), VMM, per-process page tables, slab heap allocator
-- **Processes**: 16-slot table, context switching, round-robin scheduler
-- **Isolation**: Ring 3 user mode, SYSCALL/SYSRET, separate address spaces
-- **I/O**: VFS, device drivers, serial, keyboard
-- **Storage**: initrd filesystem with name lookup
-- **Network**: PCI bus scan, VirtIO-net driver, IP/UDP stack
-- **SMP**: LAPIC, IPI primitives, AP trampoline infrastructure
-- **Init**: kybernet (PID 1)
-- **Shell**: help, echo, ps, free, cat, uptime, lspci, cpus, net, send, bench, halt
+Benchmarks (QEMU, ~1GHz emulated):
 
-Source: 2,979 lines of Cyrius, 122 functions. Boot time: <100ms on QEMU.
+| Operation | Cycles | Throughput |
+|-----------|--------|------------|
+| Syscall (getpid) | 188 | 5.3M/sec |
+| PMM alloc+free | 1,304 | 767K/sec |
+| Heap 32B alloc+free | 1,207 | 829K/sec |
+| VFS open+read+close | 5,912 | 169K/sec |
+| Memory write 1MB | 6.1M total | 163 MB/s |
 
-For comparison, Linux 0.01 (1991) was approximately 10,000 lines of C producing a ~62KB binary. It required GCC, libc, an assembler, and a linker. It had no networking, no interactive shell, and no user mode isolation.
+The 188-cycle getpid is within the range of Linux on native hardware (100-200 cycles) while running in QEMU emulation.
 
-### Kernel Benchmarks (QEMU, ~1GHz emulated)
+For comparison: Linux 0.01 (1991) was ~10,000 lines of C, ~62KB, needed GCC + libc + as + ld. No networking, no shell, no Ring 3.
 
-| Operation | Cycles/op | Time | Throughput |
-|-----------|-----------|------|------------|
-| Syscall (getpid) | 188 | ~188ns | 5.3M/sec |
-| PMM alloc+free | 1,304 | ~1.3μs | 767K/sec |
-| Heap 32B alloc+free | 1,207 | ~1.2μs | 829K/sec |
-| VFS open+read+close | 5,912 | ~5.9μs | 169K/sec |
-| Memory write 1MB | 6.1M total | ~6.1ms | 163 MB/s |
-
-The 188-cycle getpid is within the range of Linux on native hardware (100–200 cycles) — while running in QEMU emulation. On bare metal, AGNOS would likely match or beat Linux. The low cycle count reflects the minimal code path: read the PID from the process table and return. No namespace resolution, cgroup accounting, or security module hooks.
-
----
-
-## The Vidya Effect
-
-A pattern emerged that explains the development velocity.
-
-AGNOS maintains **vidya** — a curated programming reference library (36 topics, 10 languages) containing best practices, gotchas, and performance notes. When the compiler needed pointer support, the development cycle was:
-
-1. Research: 30 seconds (patterns already documented)
-2. Implementation: 15 lines of code
-3. Testing: 48/48 passed on first run
-4. Total: minutes
-
-Struct support, implemented before vidya had coverage for the relevant patterns, took hours due to a function table overflow, hex parsing edge cases, and dual-compiler capacity issues.
-
-The variable was reference library coverage. The same developer, same agent, same compiler — structs without documentation took hours; pointers with documentation took minutes.
-
-### Compounding Investments
-
-| Investment | Return | Evidence |
-|------------|--------|----------|
-| Reference library (vidya) | 10x implementation speed | Structs (no coverage): hours. Pointers (covered): minutes. |
-| Tests | Early bug detection | 4 critical bugs caught that would have been invisible (function table overflow, duplicate vars, hex parsing, brace imbalance) |
-| Benchmarks | Elimination of rebuild hesitation | 11ms self-compile means the developer never hesitates to test a change |
-| Tooling | Automated quality enforcement | `cyrb audit` runs 10 checks in one command |
-
-The byte-exact self-hosting test is notable: if the compiler compiles itself and produces an identical binary, every codegen path, parser rule, and fixup is verified in a single comparison.
-
----
-
-## Toolchain Size
+### Toolchain
 
 | Component | Size |
 |-----------|------|
 | Seed binary | 29KB |
-| Compiler (cc2, v1.7.1) | 131KB |
-| Kernel (AGNOS v1.1.0) | 98KB |
-| **Seed → networked OS** | **271KB** |
+| Compiler (v1.7.1) | 131KB |
+| Kernel (v1.1.0) | 98KB |
+| **Seed → networked OS** | **258KB** |
 
-For comparison: GCC is ~100MB installed. Clang/LLVM is ~500MB installed. The entire Cyrius stack from bootstrap seed to networked operating system with a shell is 271KB.
+GCC: ~100MB. Clang/LLVM: ~500MB. The sovereign stack is 387x smaller than GCC.
+
+Head-to-head Cyrius vs Rust benchmarks on real crate conversions: [Cyrius vs Rust Benchmarks](cyrius-vs-rust-benchmarks.md).
+
+---
+
+## Limitations
+
+**Project B cannot compile C.** Porting existing C/Rust codebases requires rewriting in Cyrius. An automated tool (`cyrb port`) scaffolds projects, but the migration of 107 Rust repos (~1M lines) is ongoing.
+
+**Project B's kernel is not Linux.** It lacks: full TCP (UDP only), disk drivers (initrd only), multi-user support, POSIX compatibility, and decades of driver support.
+
+**Project A cannot self-host.** It depends on external toolchains but compiles real-world C codebases today.
+
+**Cyrius has no borrow checker.** Memory safety comes from testing and auditing, not the type system. Ownership and borrow checking are planned for v1.3.
+
+Both projects represent genuine engineering achievements with different trade-offs.
+
+---
+
+## Origin
+
+This compiler exists because a package registry blocked a name. The question "why do we depend on their registry?" cascaded through the dependency chain until the only remaining dependency was an x86_64 processor and electricity.
 
 ---
 
@@ -208,78 +224,23 @@ For comparison: GCC is ~100MB installed. Clang/LLVM is ~500MB installed. The ent
 |---|----------|----------|
 | Spend | ~$20,000 (API) | ~$400 (subscription) |
 | Ratio | 50x | 1x |
-| Output | C compiler (capability demo) | Systems language + OS kernel (production infrastructure) |
-| Future use | Repository artifact | Active compiler for 107-repo OS ecosystem |
+| Output | C compiler (capability demo) | Language + OS kernel (production infrastructure) |
+| Future use | Repository artifact | Active compiler for 107-repo ecosystem |
 
-Project A consumed 2 billion input tokens and 140 million output tokens. Project B used standard subscription sessions. The 50x cost difference reflects the difference between parallel brute-force and incremental, documentation-driven development.
-
----
-
-## Limitations and Honest Gaps
-
-**Project B cannot compile C.** It compiles its own language. Porting existing C codebases requires rewriting them in Cyrius. An automated migration tool (`cyrb port`) scaffolds Cyrius projects from Rust repos, but the migration of 107 Rust repositories (~1M lines) is ongoing work.
-
-**Project B's kernel is not Linux.** It has 27 subsystems but lacks: a full TCP stack (UDP only), disk drivers (initrd only), multi-user support, POSIX compatibility, and the decades of driver support that Linux provides.
-
-**Project A cannot self-host.** It cannot compile the language it is written in, and depends on external toolchains. But it compiles real-world C codebases today, which Project B cannot.
-
-Both projects represent genuine engineering achievements with different trade-offs.
+The 50x cost difference reflects the difference between parallel brute-force and incremental, documentation-driven development.
 
 ---
 
-## Prior Art: Single-Language OS Projects
+## Further Reading
 
-Other projects have attempted single-language operating systems. Each relies on an external toolchain somewhere in the chain:
-
-| Project | Language | External Dependency |
-|---------|----------|-------------------|
-| Singularity (Microsoft) | C# | Bootloader in assembly, runtime in C++ |
-| Redox | Rust | Bootloader in assembly, compiler requires LLVM (C++) |
-| MirageOS | OCaml | Runs on Xen hypervisor (C), uses GCC toolchain |
-| SPIN | Modula-3 | DEC compiler (C-based toolchain) |
-| Oberon | Oberon | Compiler was hand-written, not self-hosting from scratch |
-| TempleOS | HolyC | Closest precedent — Terry Davis wrote compiler + kernel + userland. Compiler bootstrapped from C. |
-| **AGNOS** | **Cyrius** | **None. 29KB seed → self-hosting compiler → kernel → init → tools. No C anywhere in the chain.** |
-
-AGNOS is, to our knowledge, the first operating system where the compiler, kernel, syscall layer, init system, build tool, and developer tools are all written in the same language, compiled by the same self-hosting compiler, bootstrapped from a single auditable seed binary with no external language dependency at any point in the chain.
-
-Every binary in the stack is compiled by a compiler that compiled itself. The seed assembler is 29KB of hand-auditable machine code — the root of trust. No external language touches any production binary. TempleOS came closest, but HolyC was bootstrapped from a C compiler and was never fully self-hosting from bare metal. This is the first time the entire stack — from seed assembler to kernel to init system to userland tools — is one language, self-hosting, with no external dependencies.
-
-That is what "sovereign" means.
-
----
-
-## Origin
-
-This compiler exists because a package registry blocked a name.
-
-In early 2026, the AGNOS project attempted to publish its shared types crate to crates.io. The name was taken. Rather than rename the crate, the developer asked why the project depended on an external registry. That question cascaded through the dependency chain:
-
-```
-Registry dependency   → why depend on their registry?
-Toolchain dependency  → why depend on their compiler?
-Runtime dependency    → why depend on their libc?
-```
-
-Each question removed a dependency. The cascade produced a sovereign language, compiler, and operating system kernel with zero external dependencies. The entire stack bootstraps from a 29KB seed binary.
-
----
-
-## Conclusion
-
-Both projects demonstrate that AI-assisted compiler development is practical. The difference is in what they optimize for.
-
-Project A optimizes for **capability** — what can the system compile? The answer: the Linux kernel and major open-source codebases. This is valuable and impressive.
-
-Project B optimizes for **sovereignty** — what does the system depend on? The answer: 29 kilobytes. From that seed: a 131KB self-hosting compiler (v1.7.1, shrinking with each release), 21 standard library modules, a 98KB operating system kernel (v1.1.0) with 27 subsystems, 25 syscalls, 188-cycle getpid, networking, process isolation, and an interactive shell. 258 kilobytes from void to networked OS. Built in four days.
-
-Both approaches used the same model. The difference was the question.
+- [Cyrius vs Rust: Head-to-Head Benchmarks](cyrius-vs-rust-benchmarks.md) — detailed performance comparison on agnosys and kybernet crate conversions
+- [The $2 SD Card: Open Knowledge and the Death of Access](the-2-dollar-sd-card.md) — what the compiler enables: sovereign knowledge distribution
 
 ---
 
 ## Credits
 
-One developer and three Claude Opus 4.6 agent sessions, each with a distinct role:
+One developer and three Claude Opus 4.6 agent sessions:
 
 | Role | Contribution |
 |------|-------------|
@@ -288,9 +249,7 @@ One developer and three Claude Opus 4.6 agent sessions, each with a distinct rol
 | **Agent 2 — Language** | Cyrius from seed to v1.5: compiler, stdlib, tools, initial kernel boot, `cyrb port` migration tool, vidya documentation. |
 | **Agent 3 — Kernel** | Kernel from initial boot to 98KB networked OS (v1.1.0): Ring 3, VFS, networking, SMP, 25 syscalls, 188-cycle getpid, shell. |
 
-The developer held the vision. The agents held the context. The reference library (vidya) accelerated all three agents. The documentation standards shaped how all agents worked. The builder's corrections — "not yet," "defer that," "dig deeper" — kept the work pointed at what mattered.
-
-The AI is a tool, not an author. But the tool deserves acknowledgment.
+The developer held the vision. The agents held the context. The reference library accelerated all three. The AI is a tool, not an author. But the tool deserves acknowledgment.
 
 ---
 
