@@ -20,7 +20,7 @@ Rust versions: agnosys 0.51.0 (136 transitive dependencies), kybernet 0.51.0 (si
 |--------|------|--------|-------|
 | Clean build time | 11.7s | 0.008s | **1,462x faster** |
 | Binary size (agnosys) | 6.9 MB (.rlib) | 117 KB (ELF) | **59x smaller** |
-| Binary size (kybernet) | 3.9 MB | 64 KB | **61x smaller** |
+| Binary size (kybernet) | 3.9 MB | 48 KB (v1.7.1) | **81x smaller** |
 | Source lines (agnosys) | 29,257 | 8,460 | **3.5x fewer** |
 | Dependencies | 136 crates | 0 | **Zero** |
 
@@ -71,40 +71,76 @@ The optimized allocation paths now beat Rust because Cyrius eliminates abstracti
 
 kybernet benchmarks measure the full spectrum: syscalls, pure compute, and allocation-heavy setup.
 
-### Syscall-Dominated (hot path)
+### Syscall-Dominated (hot path — runs millions of times)
 
 | Operation | Cyrius | Rust | Ratio |
 |-----------|--------|------|-------|
-| getpid | 306 ns | 287 ns | 1.06x |
-| getuid | 290 ns | 272 ns | 1.06x |
-| is_root | 303 ns | 273 ns | 1.10x |
-| is_mounted | 142 μs | 98 μs | 1.44x |
+| getpid | 333 ns | 308 ns | 1.08x |
+| getuid | 314 ns | 295 ns | 1.06x |
+| is_root | 319 ns | 295 ns | 1.08x |
+| is_mounted(/proc) | 153 μs | 106 μs | 1.44x |
 
-Near parity. These are the operations PID 1 performs millions of times. The 6-10% overhead is within measurement noise for syscall-dominated paths.
+Near parity. The 6-8% overhead is within measurement noise for syscall-dominated paths. These are the operations PID 1 performs continuously.
 
-### Pure Compute (no allocation)
+### Pure Compute (no allocation — signal handling, event parsing)
 
 | Operation | Cyrius | Rust | Ratio |
 |-----------|--------|------|-------|
 | classify_signal | 2 ns | 1 ns | 2x |
-| W* macros | 7 ns | 1 ns | 7x |
-| notify_parse | 20 ns | 2 ns | 10x |
+| is_handled_signal | 5 ns | 1 ns | 5x |
+| W* macros (4 calls) | 7 ns | 1 ns | 7x |
+| notify_parse | 21 ns | 2 ns | 10x |
+| sigset ops | 19 ns | 1 ns | 19x |
 
-The pure compute gap reflects codegen quality. Rust + LLVM -O3 applies constant folding, branch optimization, and function inlining. Cyrius v1.5+ emits unoptimized direct machine code. These are optimization targets — constant folding and inline expansion would close the gap.
+The pure compute gap reflects codegen quality. Rust + LLVM -O3 applies constant folding, branch optimization, and function inlining — these 1ns results are likely compile-time-evaluated constants. Cyrius emits unoptimized direct machine code. These gaps are blocked on the compiler's 512KB buffer expansion, which unblocks constant folding and function inlining.
 
-For kybernet in production, these operations are called during signal handling and notification parsing — low-frequency events measured in nanoseconds. The gap is measurable but not impactful.
+For kybernet in production, these are low-frequency operations measured in single-digit nanoseconds. The gap is measurable but not impactful on boot or runtime performance.
+
+### Struct Construction (no allocation, pure memory)
+
+| Operation | Cyrius | Rust | Ratio |
+|-----------|--------|------|-------|
+| epoll_event_new | 14 ns | 1 ns | 14x |
+| timerspec_new | 22 ns | 1 ns | 22x |
+
+Rust's 1ns struct construction is likely LLVM constant-propagating the entire struct at compile time. Cyrius constructs at runtime. Same optimization target as pure compute — constant folding would close this gap.
 
 ### Allocation-Heavy (cold path — runs once at boot)
 
 | Operation | Cyrius | Rust | Ratio |
 |-----------|--------|------|-------|
-| str_builder | 371 ns | 52 ns | 7x |
-| cgroup_path | 466 ns | 24 ns | 19x |
-| seccomp_build | 2.4 μs | 69 ns | 36x |
+| str_builder (3 seg) | 406 ns | 55 ns | 7x |
+| str_builder (int mix) | 434 ns | 100 ns | 4x |
+| vec (push+get+len) | 98 ns | 12 ns | 8x |
+| cgroup_path | 498 ns | 26 ns | 19x |
+| cgroup_file | 908 ns | 43 ns | 21x |
+| sandbox_basic_service | 220 ns | 8 ns | 28x |
+| seccomp_build (5 insn) | 497 ns | 22 ns | 23x |
+| seccomp_build (37 insn) | 2,618 ns | 59 ns | 44x |
 
-The largest gaps. These result from Cyrius's bump allocator vs Rust's LLVM-optimized stack allocation and string handling. seccomp_build generates a 23-instruction BPF program — the gap is per-instruction heap allocation vs Rust's compile-time-sized array.
+The largest gaps. These result from Cyrius's bump allocator vs Rust's LLVM-optimized stack allocation and string handling. seccomp_build (37 instructions) at 44x is the worst case — per-instruction heap allocation vs Rust's compile-time-sized array.
 
-For PID 1, these functions run once during system initialization. The absolute cost of the worst case (seccomp_build) is 2.4 microseconds — once, at boot. The 99% hot path is epoll_wait + syscalls, where Cyrius is at parity.
+For PID 1, these functions run once during system initialization. The absolute cost of the worst case is 2.6 microseconds — once, at boot. The 99% hot path is epoll_wait + syscalls, where Cyrius is at parity.
+
+### Tagged Unions (Result/Option)
+
+| Operation | Cyrius | Rust | Ratio |
+|-----------|--------|------|-------|
+| Ok + is_ok | 18 ns | ~0 ns | — |
+| Err + is_err | 18 ns | ~0 ns | — |
+| Some + unwrap | 23 ns | ~0 ns | — |
+
+Rust's ~0ns reflects compile-time optimization — LLVM eliminates the enum construction entirely when the result is immediately consumed. Cyrius allocates at runtime. Stack-allocated tagged unions (planned v1.2) would reduce these to single-digit nanoseconds.
+
+### Boot Performance
+
+| Metric | Cyrius | Rust | Ratio |
+|--------|--------|------|-------|
+| Init-to-event-loop | 66 ms | 120-140 ms | **2x faster** |
+| Binary size | 48 KB | 3,922 KB | **81x smaller** |
+| Initramfs | 308 KB | 2.4 MB | **7.8x smaller** |
+
+The init system that is 81x smaller also boots 2x faster. Smaller binary means less to load from disk, less to decompress, less to page-fault into memory.
 
 ---
 
@@ -130,13 +166,16 @@ After three optimizations, Cyrius matches or beats Rust on every runtime metric 
 
 | Metric | Rust | Cyrius | Winner |
 |--------|------|--------|--------|
-| Binary size | 3.9 MB | 64 KB | **Cyrius (61x)** |
-| Syscalls (hot path) | 272-287 ns | 290-306 ns | **Parity (1.06-1.10x)** |
-| Pure compute | 1-2 ns | 2-20 ns | **Rust (2-10x)** |
-| Allocation (cold path) | 24-69 ns | 371 ns-2.4 μs | **Rust (7-36x)** |
-| Boot impact | — | — | **Negligible** (cold paths run once) |
+| Binary size | 3.9 MB | 48 KB | **Cyrius (81x)** |
+| Init-to-event-loop | 120-140 ms | 66 ms | **Cyrius (2x faster)** |
+| Initramfs | 2.4 MB | 308 KB | **Cyrius (7.8x)** |
+| Syscalls (hot path) | 295-308 ns | 314-333 ns | **Parity (1.06-1.08x)** |
+| Pure compute | 1-2 ns | 2-21 ns | **Rust (2-19x)** |
+| Struct construction | ~0-1 ns | 14-22 ns | **Rust (compile-time optimized)** |
+| Allocation (cold path) | 8-100 ns | 98 ns-2.6 μs | **Rust (4-44x)** |
+| Tagged unions | ~0 ns | 18-23 ns | **Rust (compile-time optimized)** |
 
-kybernet's hot path (syscalls) is at parity. The cold path (allocation-heavy setup) favors Rust but runs once at boot. For a PID 1 that spends 99% of its time in epoll_wait, the binary size (61x smaller = 61x less attack surface) is the deciding metric.
+kybernet's hot path (syscalls) is at parity. The cold path (allocation-heavy setup, struct construction) favors Rust but runs once at boot — total cold-path cost is microseconds. The actual boot (init-to-event-loop) is 2x faster because 81x smaller binary = less to load, decompress, and page-fault. For a PID 1 that spends 99% of its time in epoll_wait, binary size and boot speed are the deciding metrics.
 
 ---
 
@@ -170,6 +209,29 @@ Cyrius eliminates this attack category by eliminating the supply chain.
 
 ---
 
+## The Sovereign Stack Effect
+
+A pattern emerged during migration that has no equivalent in external-toolchain development: **compiler improvements remove kernel workarounds**.
+
+When the compiler and kernel are maintained together, a fix in one eliminates hacks in the other. This does not happen with external toolchains — kernel developers work around compiler quirks for years because they cannot fix the compiler they depend on. The workaround becomes permanent. Nobody removes it because nobody owns both sides.
+
+Cyrius v1.7.0 demonstrated this with four crutch removals in a single release:
+
+| Compiler Fix | Kernel Impact | Crutch Removed |
+|-------------|---------------|----------------|
+| aarch64 SP setup in kernel preamble | Kernel boots without post-compilation patching | `scripts/patch_aarch64.py` — deleted from build pipeline |
+| aarch64 string fixup for large binaries | Multi-function kernels work on ARM | 1KB binary size limit on aarch64 — gone |
+| `#ifdef` inside included files (multi-pass) | Library dispatchers work across architectures | Consumer-side ifdef duplication — gone |
+| aarch64 asm mnemonic validation | x86 assembly in shared code caught at compile time | Forced `arch_wait()`/`arch_halt()` abstraction — actually produced better architecture |
+
+The fourth case is notable: the compiler constraint did not just fix the problem — it improved the design. Validating architecture-specific mnemonics forced the kernel to abstract platform-specific operations behind clean interfaces. The workaround removal produced better code than the original.
+
+This effect compounds across the migration. Each of the 107 Rust repos contains workarounds for Rust/LLVM limitations — lifetime gymnastics, `unsafe` blocks for FFI, `#[allow]` attributes suppressing valid warnings, `Pin<Box<dyn Future>>` patterns forced by the borrow checker. When the workaround exists because of the language, porting to a sovereign language eliminates both the workaround and the limitation it worked around.
+
+The result: migrated code is not just translated — it is structurally improved. The codebase gets cleaner with every port, not dirtier.
+
+---
+
 ## Known Issues
 
 **Function table limit**: Programs exceeding ~1,024 functions produce a compile-time error (expanded from 256→512→1024 in v1.6.7). The proper fix is multi-file compilation with object linking. Workaround: split large modules into separate compilation units.
@@ -184,7 +246,7 @@ All benchmarks measured on the same x86_64 Linux host. Rust compiled with `cargo
 
 Rust agnosys: v0.51.0 (136 transitive dependencies). Cyrius agnosys: matching API surface, 8,460 lines, zero dependencies.
 
-Rust kybernet: v0.51.0. Cyrius kybernet: 7 modules, matching functionality, 64KB binary.
+Rust kybernet: v0.51.0. Cyrius kybernet: 7 modules, matching functionality, 48KB binary (v1.7.1).
 
 ---
 

@@ -18,7 +18,7 @@ Both projects used Claude Opus 4.6. The results are meaningfully different.
 
 **Project A (Anthropic)** — 16 parallel Claude agents built a C compiler in Rust over two weeks across ~2,000 sessions, consuming 2 billion input tokens at a cost of ~$20,000. The compiler produces 100,000 lines of Rust and passes 99% of GCC torture tests. It can compile the Linux kernel, QEMU, FFmpeg, SQLite, PostgreSQL, Redis, and Doom.
 
-**Project B (AGNOS/Cyrius)** — One developer working with one Claude agent built a self-hosting systems language and operating system kernel over four days across three sessions, at a cost of ~$400 (two Max subscriptions — one for the compiler, one for the reference library that informed the methodology). The compiler is 136KB, self-hosts in 11ms from a 29KB seed binary, and has zero external dependencies. The kernel is 106KB with 27 subsystems including networking, process isolation, and an interactive shell.
+**Project B (AGNOS/Cyrius)** — One developer working with one Claude agent built a self-hosting systems language and operating system kernel over four days across three sessions, at a cost of ~$400 (two Max subscriptions — one for the compiler, one for the reference library that informed the methodology). The compiler is 136KB, self-hosts in 11ms from a 29KB seed binary, and has zero external dependencies. The kernel is 98KB with 27 subsystems including networking, process isolation, and an interactive shell.
 
 **Motivation**: Project A was built as a capability demonstration. Project B was built out of necessity — the AGNOS operating system project encountered a crates.io name collision that blocked publishing a core crate, prompting the question of why the project depended on an external registry at all. Cyrius was the answer.
 
@@ -32,7 +32,7 @@ Both projects used Claude Opus 4.6. The results are meaningfully different.
 | Agents | 16 parallel | 1 (3 sessions total) |
 | Sessions | ~2,000 | 3 |
 | Cost | ~$20,000 (API) | ~$400 (subscription) |
-| Compiler output | 100,000 lines Rust | 4,127 lines Cyrius (136KB binary) |
+| Compiler output | 100,000 lines Rust | 4,127 lines Cyrius (131KB binary, v1.7.1 — shrinking with each release) |
 | Standard library | Rust stdlib | 21 modules, 3,099 lines (built from scratch) |
 | Developer tools | None reported | cyrb build system (20+ commands), formatter, linter, doc generator, auditor |
 | Self-hosting | No | Yes — byte-exact reproducibility |
@@ -42,7 +42,7 @@ Both projects used Claude Opus 4.6. The results are meaningfully different.
 | Tests | GCC torture suite (99% pass) | 263 (0 failures) |
 | Benchmarks | Not reported | 38 benchmarks, CSV regression tracking |
 | Architectures | x86_64 | x86_64 + aarch64 (byte-identical self-hosting on Raspberry Pi) |
-| Kernel | Compiles Linux kernel (external) | Compiles its own kernel — 106KB, 27 subsystems |
+| Kernel | Compiles Linux kernel (external) | Compiles its own kernel — 98KB (v1.1.0), 27 subsystems, 25 syscalls, 188-cycle getpid |
 | Networking | Not demonstrated | IP/UDP stack, VirtIO-net driver, PCI bus scan |
 | Total source | 100,000 lines | 14,849 lines (compiler + stdlib + programs + kernel) |
 
@@ -84,7 +84,7 @@ Day 3:
   aarch64 → cross-compiler, byte-identical self-hosting on Raspberry Pi
 
 Day 4:
-  kernel  → 106KB: Ring 3, memory isolation, VFS, initrd, IP/UDP, SMP-ready
+  kernel  → 98KB: Ring 3, memory isolation, VFS, initrd, IP/UDP, SMP-ready
             27 subsystems, 12 shell commands, 8 syscalls, kybernet init
   v1.0–v1.5 → closures, pattern matching, modules, traits, floats, operators
 ```
@@ -129,7 +129,7 @@ The performance advantage comes from the same source as the size advantage: fewe
 
 ## Kernel
 
-The AGNOS kernel is a 106KB binary compiled by Cyrius. It boots to an interactive shell with 12 commands. Key capabilities:
+The AGNOS kernel (v1.1.0, compiled by Cyrius v1.7.1) is a 98KB binary that boots to an interactive shell in <100ms. 27 subsystems, 25 syscalls, 12 shell commands. The kernel has gotten smaller while gaining features — v1.0.0 was 106KB with 8 syscalls, v1.1.0 is 98KB with 25 syscalls. Compiler improvements produce smaller kernel output without changing kernel source. Key capabilities:
 
 - **Boot**: multiboot1, 32→64 bit shim, long mode
 - **Hardware**: GDT, IDT, TSS, LAPIC, PIC, APIC timer, PS/2 keyboard (full QWERTY)
@@ -151,12 +151,13 @@ For comparison, Linux 0.01 (1991) was approximately 10,000 lines of C producing 
 
 | Operation | Cycles/op | Time | Throughput |
 |-----------|-----------|------|------------|
-| Syscall (getpid) | 306 | ~306ns | 3.3M/sec |
-| PMM alloc+free | 2,041 | ~2μs | 490K/sec |
-| Heap alloc+free | 2,565 | ~2.6μs | 390K/sec |
-| Memory write 1MB | 10.9M total | ~10.9ms | 91 MB/s |
+| Syscall (getpid) | 188 | ~188ns | 5.3M/sec |
+| PMM alloc+free | 1,304 | ~1.3μs | 767K/sec |
+| Heap 32B alloc+free | 1,207 | ~1.2μs | 829K/sec |
+| VFS open+read+close | 5,912 | ~5.9μs | 169K/sec |
+| Memory write 1MB | 6.1M total | ~6.1ms | 163 MB/s |
 
-The 306-cycle syscall is measured in QEMU emulation. Linux getpid on native hardware is typically 100–200 cycles. The low cycle count reflects the minimal code path: read the PID from the process table and return. No namespace resolution, cgroup accounting, or security module hooks.
+The 188-cycle getpid is within the range of Linux on native hardware (100–200 cycles) — while running in QEMU emulation. On bare metal, AGNOS would likely match or beat Linux. The low cycle count reflects the minimal code path: read the PID from the process table and return. No namespace resolution, cgroup accounting, or security module hooks.
 
 ---
 
@@ -193,8 +194,8 @@ The byte-exact self-hosting test is notable: if the compiler compiles itself and
 | Component | Size |
 |-----------|------|
 | Seed binary | 29KB |
-| Compiler (cc2) | 136KB |
-| Kernel (AGNOS) | 106KB |
+| Compiler (cc2, v1.7.1) | 131KB |
+| Kernel (AGNOS v1.1.0) | 98KB |
 | **Seed → networked OS** | **271KB** |
 
 For comparison: GCC is ~100MB installed. Clang/LLVM is ~500MB installed. The entire Cyrius stack from bootstrap seed to networked operating system with a shell is 271KB.
@@ -270,7 +271,7 @@ Both projects demonstrate that AI-assisted compiler development is practical. Th
 
 Project A optimizes for **capability** — what can the system compile? The answer: the Linux kernel and major open-source codebases. This is valuable and impressive.
 
-Project B optimizes for **sovereignty** — what does the system depend on? The answer: 29 kilobytes. From that seed: a 136KB self-hosting compiler, 21 standard library modules, a 106KB operating system kernel with 27 subsystems, networking, process isolation, and an interactive shell. 271 kilobytes from void to networked OS. Built in four days.
+Project B optimizes for **sovereignty** — what does the system depend on? The answer: 29 kilobytes. From that seed: a 131KB self-hosting compiler (v1.7.1, shrinking with each release), 21 standard library modules, a 98KB operating system kernel (v1.1.0) with 27 subsystems, 25 syscalls, 188-cycle getpid, networking, process isolation, and an interactive shell. 258 kilobytes from void to networked OS. Built in four days.
 
 Both approaches used the same model. The difference was the question.
 
@@ -285,7 +286,7 @@ One developer and three Claude Opus 4.6 agent sessions, each with a distinct rol
 | **Developer** (Robert MacCracken) | Architecture, decisions, steering. All design choices are human. |
 | **Agent 1 — Meta** | Documentation, roadmaps, ecosystem standards. No compiler or kernel code. |
 | **Agent 2 — Language** | Cyrius from seed to v1.5: compiler, stdlib, tools, initial kernel boot, `cyrb port` migration tool, vidya documentation. |
-| **Agent 3 — Kernel** | Kernel from initial boot to 106KB networked OS: Ring 3, VFS, networking, SMP, shell. |
+| **Agent 3 — Kernel** | Kernel from initial boot to 98KB networked OS (v1.1.0): Ring 3, VFS, networking, SMP, 25 syscalls, 188-cycle getpid, shell. |
 
 The developer held the vision. The agents held the context. The reference library (vidya) accelerated all three agents. The documentation standards shaped how all agents worked. The builder's corrections — "not yet," "defer that," "dig deeper" — kept the work pointed at what mattered.
 
