@@ -8,7 +8,7 @@
 | Version | `0.22.4` |
 | Repository | `MacCracken/dhvani` |
 | Runtime | library crate (Rust) |
-| Recipe | `recipes/marketplace/dhvani.toml` |
+| Recipe | `zugot/marketplace/dhvani.toml` |
 | crates.io | [dhvani](https://crates.io/crates/dhvani) |
 
 ---

@@ -8,7 +8,7 @@
 | Version | `1.0.0` |
 | Repository | `MacCracken/dravya` |
 | Runtime | library crate (Rust) |
-| Recipe | `recipes/marketplace/dravya.toml` |
+| Recipe | `zugot/marketplace/dravya.toml` |
 | crates.io | `dravya` |
 
 ---

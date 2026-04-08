@@ -8,7 +8,7 @@
 | Version | `1.0.1` |
 | Repository | `MacCracken/kavach` |
 | Runtime | library crate (Rust) |
-| Recipe | `recipes/marketplace/kavach.toml` |
+| Recipe | `zugot/marketplace/kavach.toml` |
 | crates.io | `kavach` |
 
 ---

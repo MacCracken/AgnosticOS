@@ -8,7 +8,7 @@
 | Version | `1.0.0` |
 | Repository | `MacCracken/khanij` |
 | Runtime | library crate (Rust) |
-| Recipe | `recipes/marketplace/khanij.toml` |
+| Recipe | `zugot/marketplace/khanij.toml` |
 | crates.io | `khanij` |
 
 ---

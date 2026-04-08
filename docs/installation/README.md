@@ -313,7 +313,7 @@ cargo build --release --target x86_64-unknown-linux-musl \
 ./scripts/build-kernel.sh -v 6.6-lts
 
 # Build base system packages
-./scripts/ark-build-all.sh recipes/base/
+./scripts/ark-build-all.sh zugot/base/
 
 # Build ISO
 make iso

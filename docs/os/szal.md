@@ -8,7 +8,7 @@
 | Version | `0.23.4` |
 | Repository | `MacCracken/szal` |
 | Runtime | library crate (Rust) |
-| Recipe | `recipes/marketplace/szal.toml` |
+| Recipe | `zugot/marketplace/szal.toml` |
 | crates.io | N/A (not yet published) |
 
 ---

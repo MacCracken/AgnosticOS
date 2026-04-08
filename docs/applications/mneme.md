@@ -8,7 +8,7 @@
 | Version | `2026.3.13` |
 | Repository | `MacCracken/mneme` |
 | Runtime | native-binary (~17MB amd64, ~16MB arm64) |
-| Recipe | `recipes/marketplace/mneme.toml` |
+| Recipe | `zugot/marketplace/mneme.toml` |
 | MCP Tools | 7 `mneme_*` |
 | Agnoshi Intents | 7 |
 | Port | N/A (desktop app + CLI) |

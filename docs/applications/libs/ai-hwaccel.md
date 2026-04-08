@@ -8,7 +8,7 @@
 | Version | `0.23.3` |
 | Repository | `MacCracken/ai-hwaccel` |
 | Runtime | library crate (Rust) |
-| Recipe | `recipes/marketplace/ai-hwaccel.toml` |
+| Recipe | `zugot/marketplace/ai-hwaccel.toml` |
 | crates.io | [ai-hwaccel](https://crates.io/crates/ai-hwaccel) |
 
 ---

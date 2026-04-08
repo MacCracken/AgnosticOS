@@ -8,7 +8,7 @@
 | Version | Latest GitHub release |
 | Repository | `MacCracken/agnostic` |
 | Runtime | python-container (~472KB) |
-| Recipe | `recipes/marketplace/agnostic.toml` |
+| Recipe | `zugot/marketplace/agnostic.toml` |
 | MCP Tools | 5 `agnostic_*` |
 | Agnoshi Intents | 5 |
 | Port | N/A |

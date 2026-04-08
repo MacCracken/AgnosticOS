@@ -8,7 +8,7 @@
 | Version | Latest GitHub release |
 | Repository | `MacCracken/selah` |
 | Runtime | native-binary (Rust) |
-| Recipe | `recipes/marketplace/selah.toml` |
+| Recipe | `zugot/marketplace/selah.toml` |
 | MCP Tools | 5 `selah_*` |
 | Agnoshi Intents | 5 |
 | Port | N/A |

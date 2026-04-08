@@ -8,7 +8,7 @@
 | Version | `1.1.0` |
 | Repository | `MacCracken/impetus` |
 | Runtime | library crate (Rust) |
-| Recipe | `recipes/marketplace/impetus.toml` |
+| Recipe | `zugot/marketplace/impetus.toml` |
 | crates.io | `impetus` |
 
 ---

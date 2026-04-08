@@ -8,7 +8,7 @@
 | Version | Latest GitHub release |
 | Repository | `MacCracken/rahd` |
 | Runtime | native-binary (Rust) |
-| Recipe | `recipes/marketplace/rahd.toml` |
+| Recipe | `zugot/marketplace/rahd.toml` |
 | MCP Tools | 5 `rahd_*` |
 | Agnoshi Intents | 5 |
 | Port | N/A |

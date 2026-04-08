@@ -8,7 +8,7 @@
 | Version | `1.1.0` |
 | Repository | `MacCracken/pravash` |
 | Runtime | library crate (Rust) |
-| Recipe | `recipes/marketplace/pravash.toml` |
+| Recipe | `zugot/marketplace/pravash.toml` |
 | crates.io | `pravash` |
 
 ---

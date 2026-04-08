@@ -8,7 +8,7 @@
 | Version | `2026.3.22` |
 | Repository | `MacCracken/abacus` |
 | Runtime | native-binary (Rust, GUI) |
-| Recipe | `recipes/marketplace/abacus.toml` |
+| Recipe | `zugot/marketplace/abacus.toml` |
 | Port | N/A |
 
 ---

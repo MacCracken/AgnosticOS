@@ -8,7 +8,7 @@
 | Version | `1.0.0` |
 | Repository | `MacCracken/goonj` |
 | Runtime | library crate (Rust) |
-| Recipe | `recipes/marketplace/goonj.toml` |
+| Recipe | `zugot/marketplace/goonj.toml` |
 | crates.io | `goonj` |
 
 ---

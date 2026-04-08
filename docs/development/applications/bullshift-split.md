@@ -111,7 +111,7 @@ bullshift-app/
 - **FFI bridge**: Flutter talks to Rust via `cdylib` + `dart:ffi`. After split, the cdylib lives in the app repo as a thin wrapper around the engine crate.
 - **Mobile**: The `mobile/` module stays in the engine — it's API code, not GUI.
 - **Docker**: `Dockerfile` and `docker-compose.yml` move to the app repo since they build the full stack (engine + GUI).
-- **Marketplace recipe**: Currently `recipes/marketplace/bullshift.toml` — update to fetch from app repo releases.
+- **Marketplace recipe**: Currently `zugot/marketplace/bullshift.toml` — update to fetch from app repo releases.
 
 ---
 

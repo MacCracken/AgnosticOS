@@ -8,7 +8,7 @@
 | Version | `1.1.0` |
 | Repository | `MacCracken/prakash` |
 | Runtime | library crate (Rust) |
-| Recipe | `recipes/marketplace/prakash.toml` |
+| Recipe | `zugot/marketplace/prakash.toml` |
 | crates.io | `prakash` |
 
 ---

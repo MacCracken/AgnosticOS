@@ -8,7 +8,7 @@
 | Version | `1.0.0` |
 | Repository | `MacCracken/bijli` |
 | Runtime | library crate (Rust) |
-| Recipe | `recipes/marketplace/bijli.toml` |
+| Recipe | `zugot/marketplace/bijli.toml` |
 | crates.io | `bijli` |
 
 ---

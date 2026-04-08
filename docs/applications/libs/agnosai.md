@@ -8,7 +8,7 @@
 | Version | `0.25.3` |
 | Repository | `MacCracken/agnosai` |
 | Runtime | library crate (Rust) |
-| Recipe | `recipes/marketplace/agnosai.toml` |
+| Recipe | `zugot/marketplace/agnosai.toml` |
 | crates.io | [agnosai](https://crates.io/crates/agnosai) |
 
 ---

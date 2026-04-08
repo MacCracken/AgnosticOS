@@ -154,7 +154,7 @@ scriba/                              # Desktop GUI — AGPL-3.0-only
 | **Phylax** | PII pattern matching for redaction suggestions |
 | **MCP tools** | 5-8 tools: open, summarize, redact, convert, sign, compare, extract_text, extract_tables |
 | **Agnoshi** | Intents: "open this PDF", "summarize document", "redact SSNs", "convert to Word" |
-| **Marketplace** | Recipe in `recipes/marketplace/` |
+| **Marketplace** | Recipe in `zugot/marketplace/` |
 
 ---
 

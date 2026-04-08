@@ -8,7 +8,7 @@
 | Version | `0.22.3` |
 | Repository | `MacCracken/majra` |
 | Runtime | library crate (Rust) |
-| Recipe | `recipes/marketplace/majra.toml` |
+| Recipe | `zugot/marketplace/majra.toml` |
 | crates.io | [majra](https://crates.io/crates/majra) |
 
 ---

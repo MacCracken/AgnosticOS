@@ -11,19 +11,19 @@
 
 | App | Package | Recipe | Notes |
 |-----|---------|--------|-------|
-| Web Browser | Firefox ESR 128.9.0 | `recipes/browser/firefox.toml` | Aegis phishing detection, sandboxed |
-| Web Browser | Chromium 134.0.6998.88 | `recipes/browser/chromium.toml` | Alternative, sandboxed |
-| Terminal | Foot | `recipes/desktop/foot.toml` | Wayland-native, fast, minimal deps |
-| Text Editor | Helix | `recipes/desktop/helix.toml` | Rust-native, default config included |
-| File Manager | yazi | `recipes/desktop/yazi.toml` | Rust TUI, async, rich previews |
-| PDF Viewer | Zathura | `recipes/desktop/zathura.toml` | Lightweight, plugin-based (PDF/DJVU/PS) |
-| Image Viewer | imv | `recipes/desktop/imv.toml` | Wayland-native, HEIF/SVG/WebP |
-| Media Player | mpv | `recipes/desktop/mpv.toml` | PipeWire, Vulkan, VA-API hwdec |
-| Notifications | mako | `recipes/desktop/mako.toml` | Wayland-native, systemd user service |
-| Clipboard | cliphist | `recipes/desktop/cliphist.toml` | Go-based, wl-clipboard integration |
-| App Launcher | fuzzel | `recipes/desktop/fuzzel.toml` | Wayland-native dmenu/rofi alternative |
-| Printing | CUPS | `recipes/desktop/cups.toml` | Print daemon |
-| Fonts | fontconfig + Noto | `recipes/desktop/` | Core rendering |
+| Web Browser | Firefox ESR 128.9.0 | `zugot/browser/firefox.toml` | Aegis phishing detection, sandboxed |
+| Web Browser | Chromium 134.0.6998.88 | `zugot/browser/chromium.toml` | Alternative, sandboxed |
+| Terminal | Foot | `zugot/desktop/foot.toml` | Wayland-native, fast, minimal deps |
+| Text Editor | Helix | `zugot/desktop/helix.toml` | Rust-native, default config included |
+| File Manager | yazi | `zugot/desktop/yazi.toml` | Rust TUI, async, rich previews |
+| PDF Viewer | Zathura | `zugot/desktop/zathura.toml` | Lightweight, plugin-based (PDF/DJVU/PS) |
+| Image Viewer | imv | `zugot/desktop/imv.toml` | Wayland-native, HEIF/SVG/WebP |
+| Media Player | mpv | `zugot/desktop/mpv.toml` | PipeWire, Vulkan, VA-API hwdec |
+| Notifications | mako | `zugot/desktop/mako.toml` | Wayland-native, systemd user service |
+| Clipboard | cliphist | `zugot/desktop/cliphist.toml` | Go-based, wl-clipboard integration |
+| App Launcher | fuzzel | `zugot/desktop/fuzzel.toml` | Wayland-native dmenu/rofi alternative |
+| Printing | CUPS | `zugot/desktop/cups.toml` | Print daemon |
+| Fonts | fontconfig + Noto | `zugot/desktop/` | Core rendering |
 
 ## Bazaar — Community Repository
 
@@ -59,4 +59,4 @@ Installed via `ark bazaar install <pkg>`. 90 recipes across 8 categories.
 
 ---
 
-*Last Updated: 2026-03-18*
+*Last Updated: 2026-04-07*

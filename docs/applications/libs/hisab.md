@@ -8,7 +8,7 @@
 | Version | `1.1.0` |
 | Repository | `MacCracken/hisab` |
 | Runtime | library crate (Rust) |
-| Recipe | `recipes/marketplace/hisab.toml` |
+| Recipe | `zugot/marketplace/hisab.toml` |
 | crates.io | `hisab` |
 
 ---

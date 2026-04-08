@@ -8,7 +8,7 @@
 | Version | `0.1.0` |
 | Repository | `MacCracken/abaco` |
 | Runtime | library crate (Rust) |
-| Recipe | `recipes/marketplace/abaco.toml` |
+| Recipe | `zugot/marketplace/abaco.toml` |
 | Port | N/A |
 
 ---

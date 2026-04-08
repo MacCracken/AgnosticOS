@@ -8,7 +8,7 @@
 | Version | `0.24.3` |
 | Repository | `MacCracken/nein` |
 | Runtime | library crate (Rust) |
-| Recipe | `recipes/marketplace/nein.toml` |
+| Recipe | `zugot/marketplace/nein.toml` |
 | crates.io | [nein](https://crates.io/crates/nein) |
 
 ---

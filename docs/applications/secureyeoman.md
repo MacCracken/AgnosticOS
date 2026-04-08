@@ -8,7 +8,7 @@
 | Version | Latest GitHub release |
 | Repository | `MacCracken/SecureYeoman` |
 | Runtime | native-binary (~124MB) |
-| Recipe | `recipes/marketplace/secureyeoman.toml` |
+| Recipe | `zugot/marketplace/secureyeoman.toml` |
 | MCP Tools | 5 `yeoman_*` |
 | Agnoshi Intents | 5 |
 | Port | N/A |
@@ -41,7 +41,7 @@ SecureYeoman is the flagship product that showcases AGNOS as an AI-native operat
 |---------|--------|------|----------|
 | SecureYeoman | `secureyeoman.toml` | ~124MB | Full platform |
 | SecureYeoman Lite | `secureyeoman-lite.toml` | ~124MB | Standalone agent |
-| SecureYeoman Edge | `recipes/edge/secureyeoman-edge.toml` | ~7MB | IoT/edge devices |
+| SecureYeoman Edge | `zugot/edge/secureyeoman-edge.toml` | ~7MB | IoT/edge devices |
 
 ## Architecture
 

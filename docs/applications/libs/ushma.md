@@ -8,7 +8,7 @@
 | Version | `1.1.0` |
 | Repository | `MacCracken/ushma` |
 | Runtime | library crate (Rust) |
-| Recipe | `recipes/marketplace/ushma.toml` |
+| Recipe | `zugot/marketplace/ushma.toml` |
 | crates.io | `ushma` |
 
 ---

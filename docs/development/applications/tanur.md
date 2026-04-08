@@ -8,7 +8,7 @@
 | Priority | 2 — desktop experience for Irfan, LM Studio replacement |
 | Repository | `MacCracken/tanur` |
 | Runtime | native-binary (egui or iced) |
-| Recipe | `recipes/marketplace/tanur.toml` |
+| Recipe | `zugot/marketplace/tanur.toml` |
 | Domain | Desktop LLM management / training studio |
 
 ---

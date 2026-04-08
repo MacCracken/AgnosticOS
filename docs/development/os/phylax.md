@@ -8,7 +8,7 @@
 | Version | `0.22.3` |
 | Repository | `MacCracken/phylax` |
 | Runtime | library crate (Rust) |
-| Recipe | `recipes/marketplace/phylax.toml` |
+| Recipe | `zugot/marketplace/phylax.toml` |
 | crates.io | N/A (not yet published) |
 
 ---

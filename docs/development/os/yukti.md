@@ -8,7 +8,7 @@
 | Version | `0.25.3` |
 | Repository | `MacCracken/yukti` |
 | Runtime | library crate (Rust) |
-| Recipe | `recipes/marketplace/yukti.toml` |
+| Recipe | `zugot/marketplace/yukti.toml` |
 | crates.io | [yukti](https://crates.io/crates/yukti) |
 
 ---

@@ -8,7 +8,7 @@
 | Version | `2026.3.15` |
 | Repository | `MacCracken/rasa` |
 | Runtime | native-binary (~3.2MB amd64, ~3.0MB arm64) |
-| Recipe | `recipes/marketplace/rasa.toml` |
+| Recipe | `zugot/marketplace/rasa.toml` |
 | MCP Tools | 9 `rasa_*` |
 | Agnoshi Intents | 9 |
 | Port | N/A (desktop app) |

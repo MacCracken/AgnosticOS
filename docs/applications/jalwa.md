@@ -8,7 +8,7 @@
 | Version | `2026.3.16-1` |
 | Repository | `MacCracken/jalwa` |
 | Runtime | native-binary (~9.9MB) |
-| Recipe | `recipes/marketplace/jalwa.toml` |
+| Recipe | `zugot/marketplace/jalwa.toml` |
 | MCP Tools | 8 `jalwa_*` |
 | Agnoshi Intents | 8 |
 | Port | N/A (desktop app) |

@@ -8,7 +8,7 @@
 | Version | `2026.3.14` |
 | Repository | `MacCracken/tazama` |
 | Runtime | native-binary (~5.7MB) |
-| Recipe | `recipes/marketplace/tazama.toml` |
+| Recipe | `zugot/marketplace/tazama.toml` |
 | MCP Tools | 7 `tazama_*` |
 | Agnoshi Intents | 7 |
 | Port | N/A (desktop app) |

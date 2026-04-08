@@ -52,7 +52,7 @@ It includes `/usr/src/agnos` with the full source tree for self-hosting.
 
 ### selfhost-build.yml — Self-Hosting Build
 
-**Triggers**: Push changes to `scripts/`, `recipes/base/`, `kernel/config/`; manual dispatch.
+**Triggers**: Push changes to `scripts/`, `zugot/base/`, `kernel/config/`; manual dispatch.
 
 **Runner**: `[self-hosted, linux, x64]` — requires root, 20 GB+ disk, 2+ hours.
 

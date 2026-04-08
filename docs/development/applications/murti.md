@@ -384,7 +384,7 @@ prefer = "llama-cpp"               # Backend preference (auto-selected if omitte
 | `tracing` | Structured logging |
 | `thiserror` | Error types |
 
-Backend-specific deps are feature-gated. The llama.cpp binary is a system dependency managed by `recipes/ai/llama-cpp.toml`.
+Backend-specific deps are feature-gated. The llama.cpp binary is a system dependency managed by `zugot/ai/llama-cpp.toml`.
 
 ## Feature Flags
 

@@ -8,7 +8,7 @@
 | Version | `0.25.3` |
 | Repository | `MacCracken/hoosh` |
 | Runtime | library crate (Rust) |
-| Recipe | `recipes/marketplace/hoosh.toml` |
+| Recipe | `zugot/marketplace/hoosh.toml` |
 | crates.io | [hoosh](https://crates.io/crates/hoosh) |
 | Port | 8088 |
 
@@ -16,7 +16,7 @@
 
 ## What It Does
 
-- OpenAI-compatible API gateway routing to 15 LLM providers (Ollama, llama.cpp, OpenAI, Anthropic, Google, DeepSeek, Mistral, Grok, Groq, OpenRouter, LM Studio, LocalAI, OpenCode, Letta, Synapse)
+- OpenAI-compatible API gateway routing to 15 LLM providers (Ollama, llama.cpp, OpenAI, Anthropic, Google, DeepSeek, Mistral, Grok, Groq, OpenRouter, LM Studio, LocalAI, OpenCode, Letta, Ifran)
 - Local model serving with automatic hardware detection via ai-hwaccel
 - Speech-to-text and text-to-speech routing
 - Token budget management (reserve, check, report, release) with named pools

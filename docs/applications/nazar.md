@@ -8,7 +8,7 @@
 | Version | Latest GitHub release |
 | Repository | `MacCracken/nazar` |
 | Runtime | native-binary (Rust) |
-| Recipe | `recipes/marketplace/nazar.toml` |
+| Recipe | `zugot/marketplace/nazar.toml` |
 | MCP Tools | 5 `nazar_*` |
 | Agnoshi Intents | 5 |
 | Port | 8095 |

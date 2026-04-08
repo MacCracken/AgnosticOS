@@ -8,7 +8,7 @@
 | Version | `0.22.3` |
 | Repository | `MacCracken/bote` |
 | Runtime | library crate (Rust) |
-| Recipe | `recipes/marketplace/bote.toml` |
+| Recipe | `zugot/marketplace/bote.toml` |
 | crates.io | [bote](https://crates.io/crates/bote) |
 
 ---

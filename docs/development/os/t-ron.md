@@ -8,7 +8,7 @@
 | Version | `0.22.4` |
 | Repository | `MacCracken/t-ron` |
 | Runtime | library crate (Rust) |
-| Recipe | `recipes/marketplace/t-ron.toml` |
+| Recipe | `zugot/marketplace/t-ron.toml` |
 | crates.io | N/A (not yet published) |
 
 ---

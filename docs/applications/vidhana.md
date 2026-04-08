@@ -8,7 +8,7 @@
 | Version | 2026.3.18 |
 | Repository | `MacCracken/vidhana` |
 | Runtime | native-binary (Rust) |
-| Recipe | `recipes/marketplace/vidhana.toml` |
+| Recipe | `zugot/marketplace/vidhana.toml` |
 | MCP Tools | 5 `vidhana_*` |
 | Agnoshi Intents | 5 |
 | Port | 8099 |

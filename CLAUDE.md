@@ -37,7 +37,7 @@ This repo is the **genesis layer** — it owns system init and the infrastructur
 | **agnosys** | 0.51.0 | Kernel interface (Landlock, seccomp, syscalls) |
 | **daimon** | 0.6.0 | Agent orchestrator, 144 MCP tools |
 | **hoosh** | 1.2.0 | LLM inference gateway, 15 providers |
-| **agnoshi** | 0.90.0 | AI shell |
+| **agnoshi** | 0.90.0 | AI shell  |
 | **aethersafha** | 0.1.0 | Wayland compositor |
 | **kybernet** | 0.51.0 | PID 1 binary |
 | **argonaut** | 0.90.0 | Init system library |

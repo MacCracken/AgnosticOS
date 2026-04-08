@@ -8,7 +8,7 @@
 | Version | `2026.3.18` |
 | Repository | `MacCracken/sutra` |
 | Runtime | native-binary (Rust) |
-| Recipe | `recipes/marketplace/sutra.toml` |
+| Recipe | `zugot/marketplace/sutra.toml` |
 | MCP Tools | 6 `sutra_*` |
 | Agnoshi Intents | 6 |
 | Port | N/A (CLI tool) |

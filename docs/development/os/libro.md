@@ -8,7 +8,7 @@
 | Version | `0.90.0` |
 | Repository | `MacCracken/libro` |
 | Runtime | library crate (Rust) |
-| Recipe | `recipes/marketplace/libro.toml` |
+| Recipe | `zugot/marketplace/libro.toml` |
 | crates.io | [libro](https://crates.io/crates/libro) |
 
 ---

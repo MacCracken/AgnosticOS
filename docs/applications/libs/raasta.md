@@ -8,7 +8,7 @@
 | Version | `0.26.3` |
 | Repository | `MacCracken/raasta` |
 | Runtime | library crate (Rust) |
-| Recipe | `recipes/marketplace/raasta.toml` |
+| Recipe | `zugot/marketplace/raasta.toml` |
 | crates.io | N/A (not yet published) |
 
 ---

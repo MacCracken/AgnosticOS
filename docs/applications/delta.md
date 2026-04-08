@@ -8,7 +8,7 @@
 | Version | latest |
 | Repository | `MacCracken/delta` |
 | Runtime | native-binary |
-| Recipe | `recipes/marketplace/delta.toml` |
+| Recipe | `zugot/marketplace/delta.toml` |
 | MCP Tools | 5 `delta_*` |
 | Agnoshi Intents | 5 |
 | Port | 8070 |

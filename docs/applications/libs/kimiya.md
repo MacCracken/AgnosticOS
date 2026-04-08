@@ -8,7 +8,7 @@
 | Version | `1.0.0` |
 | Repository | `MacCracken/kimiya` |
 | Runtime | library crate (Rust) |
-| Recipe | `recipes/marketplace/kimiya.toml` |
+| Recipe | `zugot/marketplace/kimiya.toml` |
 | crates.io | `kimiya` |
 
 ---

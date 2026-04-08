@@ -8,7 +8,7 @@
 | Version | Latest GitHub release |
 | Repository | `anomalyco/aequi` |
 | Runtime | native-binary (Rust/Tauri v2) |
-| Recipe | `recipes/marketplace/aequi.toml` |
+| Recipe | `zugot/marketplace/aequi.toml` |
 | MCP Tools | 5 `aequi_*` |
 | Agnoshi Intents | 5 |
 | Port | N/A |

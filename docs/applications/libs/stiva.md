@@ -8,7 +8,7 @@
 | Version | `1.0.0` |
 | Repository | `MacCracken/stiva` |
 | Runtime | library crate (Rust) |
-| Recipe | `recipes/marketplace/stiva.toml` |
+| Recipe | `zugot/marketplace/stiva.toml` |
 | crates.io | `stiva` |
 
 ---

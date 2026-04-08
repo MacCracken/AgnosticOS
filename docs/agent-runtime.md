@@ -575,7 +575,7 @@ CPUQuota=50%
 | Delta | Code hosting platform, 5 MCP tools (`delta_*`), marketplace recipe |
 | Shruti | DAW, 5 MCP tools (`shruti_*`), marketplace recipe |
 | BullShift | Trading platform, marketplace recipe |
-| Synapse | LLM management, marketplace recipe |
+| Ifran | LLM inference & training engine, marketplace recipe |
 
 ## Related Subsystems
 

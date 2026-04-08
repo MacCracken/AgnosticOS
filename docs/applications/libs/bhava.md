@@ -8,7 +8,7 @@
 | Version | `1.1.0` |
 | Repository | `MacCracken/bhava` |
 | Runtime | library crate (Rust) |
-| Recipe | `recipes/marketplace/bhava.toml` |
+| Recipe | `zugot/marketplace/bhava.toml` |
 | crates.io | `bhava` |
 
 ---

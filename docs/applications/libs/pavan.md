@@ -8,7 +8,7 @@
 | Version | `1.0.0` |
 | Repository | `MacCracken/pavan` |
 | Runtime | library crate (Rust) |
-| Recipe | `recipes/marketplace/pavan.toml` |
+| Recipe | `zugot/marketplace/pavan.toml` |
 | crates.io | `pavan` |
 
 ---

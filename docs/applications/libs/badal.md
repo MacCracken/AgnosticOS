@@ -8,7 +8,7 @@
 | Version | `1.0.0` |
 | Repository | `MacCracken/badal` |
 | Runtime | library crate (Rust) |
-| Recipe | `recipes/marketplace/badal.toml` |
+| Recipe | `zugot/marketplace/badal.toml` |
 | crates.io | `badal` |
 
 ---

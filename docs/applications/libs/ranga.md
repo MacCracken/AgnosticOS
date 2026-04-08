@@ -8,7 +8,7 @@
 | Version | `0.24.3` |
 | Repository | `MacCracken/ranga` |
 | Runtime | library crate (Rust) |
-| Recipe | `recipes/marketplace/ranga.toml` |
+| Recipe | `zugot/marketplace/ranga.toml` |
 | crates.io | [ranga](https://crates.io/crates/ranga) |
 
 ---

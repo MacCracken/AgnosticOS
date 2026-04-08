@@ -243,25 +243,25 @@ AI-native knowledge base with semantic search. Bridge: `MnemeBridge` → `http:/
 
 ---
 
-### Synapse — LLM Management (5 tools, 5 intents)
+### Ifran — LLM Management (5 tools, 5 intents)
 
-LLM management and training platform. Bridge: `SynapseBridge` → `http://127.0.0.1:8080`
+LLM inference & training engine. Bridge: `IfranBridge` → `http://127.0.0.1:8080`
 
 | Tool | Description | Required Args |
 |------|-------------|---------------|
-| `synapse_models` | Manage LLM models (download, delete, list) | `action` |
-| `synapse_serve` | Start/stop model serving | `action` |
-| `synapse_finetune` | Fine-tuning jobs (LoRA, QLoRA, DPO, RLHF) | `action` |
-| `synapse_chat` | Run inference/completion | `model` |
-| `synapse_status` | Health, GPU usage, loaded models | — |
+| `ifran_models` | Manage LLM models (download, delete, list) | `action` |
+| `ifran_serve` | Start/stop model serving | `action` |
+| `ifran_finetune` | Fine-tuning jobs (LoRA, QLoRA, DPO, RLHF) | `action` |
+| `ifran_chat` | Run inference/completion | `model` |
+| `ifran_status` | Health, GPU usage, loaded models | — |
 
 | Agnoshi Intent | Example |
 |----------------|---------|
-| `SynapseModels` | "synapse models list" |
-| `SynapseServe` | "synapse serve start llama-3.1-8b" |
-| `SynapseFinetune` | "synapse finetune start llama method lora" |
-| `SynapseChat` | "synapse chat llama-3.1-8b hello" |
-| `SynapseStatus` | "synapse status" |
+| `IfranModels` | "ifran models list" |
+| `IfranServe` | "ifran serve start llama-3.1-8b" |
+| `IfranFinetune` | "ifran finetune start llama method lora" |
+| `IfranChat` | "ifran chat llama-3.1-8b hello" |
+| `IfranStatus` | "ifran status" |
 
 ---
 
@@ -345,7 +345,7 @@ To add a new consumer project integration (5 MCP tools + 5 intents):
 7. **Parse**: `interpreter/parse.rs` — add 5 pattern match blocks
 8. **Translator**: `ai-shell/src/interpreter/translate/{project}.rs` — translate function
 9. **Translator registration**: `translate/mod.rs` — add `mod {project};` and match arms
-10. **Marketplace recipe**: `recipes/marketplace/{project}.toml`
+10. **Marketplace recipe**: `zugot/marketplace/{project}.toml`
 11. **Tests**: Update manifest tool count assertion in `mcp_server/tests.rs`
 
 See existing implementations (e.g., `shruti.rs`) as reference.
@@ -366,7 +366,7 @@ See existing implementations (e.g., `shruti.rs`) as reference.
 | Tazama | 5 | 5 | 8092 | Pre-release |
 | Rasa | 5 | 5 | 8093 | Pre-release |
 | Mneme | 5 | 5 | 8094 | Pre-release |
-| Synapse | 5 | 5 | 8080 | Released |
+| Ifran | 5 | 5 | 8080 | Released |
 | BullShift | 5 | 5 | 8075 | Released |
 | SecureYeoman | 5 | 5 | 18789 | Released |
 | **Total** | **71** | **63+** | | |

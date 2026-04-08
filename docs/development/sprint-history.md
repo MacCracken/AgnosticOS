@@ -87,4 +87,46 @@
 
 ---
 
+## Monolith Extraction — Complete (2026-04-01 to 2026-04-07)
+
+The original monolith (`userland/`) contained agent-runtime, ai-shell, llm-gateway, desktop-environment, agnos-common, and agnos-sys. All have been extracted.
+
+### Completed Extractions
+
+| Original | Extracted To | Version | Method | Date |
+|----------|-------------|---------|--------|------|
+| `agent-runtime/` | 12 standalone repos (see below) | various | Code moved to new repos | 2026-04-01 |
+| `ai-shell/` | **agnoshi** (`MacCracken/agnoshi`) | 0.1.0 | Code moved | 2026-04-01 |
+| `llm-gateway/` | **hoosh** (`MacCracken/hoosh`) | 1.2.0 | Code moved | 2026-04-01 |
+| `desktop-environment/` | **aethersafha** (`MacCracken/aethersafha`) | 0.1.0 | Code moved | 2026-04-01 |
+| `agnos-common/` | **agnostik** (`MacCracken/agnostik`) | 0.90.0 | Git dep, tag `0.90.0` | 2026-04-02 |
+| `agnos-sys/` | **agnosys** (`MacCracken/agnosys`) | 0.51.0 | Git dep, tag `0.51.0` | 2026-04-02 |
+| `agnos-sudo/` | **shakti** (`MacCracken/shakti`) | 0.1.0 | Standalone repo | 2026-04-03 |
+
+### Crate Absorptions (code merged into existing repos)
+
+| Source Module | Absorbed Into | New Version |
+|--------------|---------------|-------------|
+| `agent-runtime/mcp_server/` | **bote** | 0.92.0 |
+| `agent-runtime/sandbox_mod/` | **kavach** | 2.0.0 |
+| `agent-runtime/safety/` | **t-ron** | 0.90.0 |
+
+### Post-Extraction Cleanup
+
+- [x] Clean up workspace `Cargo.toml` — removed 14 unused deps, fixed agnosys tag 0.50.0 → 0.51.0
+- [x] Repo identity: meta-repo (docs, scripts, kernel configs, CI/CD). CLAUDE.md updated.
+- [x] **Extract `recipes/` to zugot** — all 421 recipes migrated (2026-04-07). zugot is authoritative.
+
+### Recipe Audit — Complete (moved to zugot)
+
+- [x] License audit — all 109 marketplace recipes set to `GPL-3.0-only`
+- [x] Version sync — 5 recipe versions corrected (agnosys, daimon, hoosh, kybernet, bote)
+- [x] Header comments — 29 stale comments updated
+- [x] Structural fixes — 3 misplaced install blocks, tazama stale gstreamer deps removed
+- [x] Recipes extracted to zugot (2026-04-07) — zugot is authoritative
+- [x] Edge recipes synced: openssl, glibc, bash, iproute2
+- Remaining recipe work (SHA256 verification, version bumps) tracked in zugot
+
+---
+
 *This file is maintained alongside [CHANGELOG.md](/CHANGELOG.md). The changelog has full details; this file provides quick reference summaries.*

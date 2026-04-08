@@ -8,7 +8,7 @@
 | Version | `2026.3.16-1` |
 | Repository | `MacCracken/tarang` |
 | Runtime | native-binary (~4.4MB) |
-| Recipe | `recipes/marketplace/tarang.toml` |
+| Recipe | `zugot/marketplace/tarang.toml` |
 | MCP Tools | 8 `tarang_*` |
 | Agnoshi Intents | 8 |
 | Port | N/A (library + CLI) |

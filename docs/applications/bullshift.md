@@ -8,7 +8,7 @@
 | Version | latest |
 | Repository | `MacCracken/BullShift` |
 | Runtime | native-binary (~2.8MB) |
-| Recipe | `recipes/marketplace/bullshift.toml` |
+| Recipe | `zugot/marketplace/bullshift.toml` |
 | MCP Tools | 7 `bullshift_*` |
 | Agnoshi Intents | 7 |
 | Port | N/A |

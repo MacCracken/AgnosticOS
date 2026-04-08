@@ -8,7 +8,7 @@
 | Version | `0.25.3` |
 | Repository | `MacCracken/aethersafta` |
 | Runtime | library crate (Rust) |
-| Recipe | `recipes/marketplace/aethersafta.toml` |
+| Recipe | `zugot/marketplace/aethersafta.toml` |
 | crates.io | [aethersafta](https://crates.io/crates/aethersafta) |
 
 ---

@@ -8,7 +8,7 @@
 | Version | `2026.3.14-1` |
 | Repository | `MacCracken/shruti` |
 | Runtime | native-binary (~8.9MB) |
-| Recipe | `recipes/marketplace/shruti.toml` |
+| Recipe | `zugot/marketplace/shruti.toml` |
 | MCP Tools | 7 `shruti_*` |
 | Agnoshi Intents | 7 |
 | Port | N/A (desktop app) |

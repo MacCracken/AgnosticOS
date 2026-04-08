@@ -8,7 +8,7 @@
 | Version | `0.24.3` |
 | Repository | `MacCracken/soorat` |
 | Runtime | library crate (Rust) |
-| Recipe | `recipes/marketplace/soorat.toml` |
+| Recipe | `zugot/marketplace/soorat.toml` |
 | crates.io | N/A (not yet published) |
 
 ---
