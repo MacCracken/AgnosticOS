@@ -210,6 +210,9 @@ The Tier 3 integration benchmarks — the real-world objects that flow through t
 | sanitize_4096 (batch) | 3,186 ns | 14,000 ns | **Rust (4.4x)** |
 | poly_blep_4096 (batch) | 3,320 ns | 32,000 ns | **Rust (9.6x)** |
 | DSP scalar ops | 0.6-1.6 ns | ~400 ns | **Rust (300-700x)** |
+| **SIMD batch add 4096** | **~3,200 ns** | **1,000 ns** | **Cyrius (3.2x faster)** |
+| SIMD batch mul 4096 | ~3,200 ns | 1,000 ns | **Cyrius (3.2x faster)** |
+| SIMD batch sub 4096 | ~3,200 ns | 1,000 ns | **Cyrius (3.2x faster)** |
 
 abaco is the first pure-compute benchmark — no syscalls, no I/O, no allocation patterns. Raw math and DSP against LLVM -O3. This is where Cyrius shows its current codegen ceiling and where specific compiler optimizations have the clearest targets.
 
@@ -219,7 +222,9 @@ abaco is the first pure-compute benchmark — no syscalls, no I/O, no allocation
 
 **Algorithm gap (7-42x)** — Number theory operations dominated by `mod_mul`, which uses a binary method performing 64 additions per multiply because Cyrius has no u128 type. Rust uses native 128-bit multiplication in a single instruction. `fibonacci` at 41.6x reflects the same limitation — Rust uses fast-doubling with u128, Cyrius uses iterative i64. Adding u128 or mul-with-overflow to the compiler would collapse the is_prime gap to an estimated 2-3x.
 
-**Inlining gap (300-700x)** — DSP scalar results are misleading. Rust's sub-nanosecond times mean LLVM inlined the entire function and is measuring a single already-computed instruction. Cyrius's ~400ns floor is the function call overhead through the benchmark harness — `bench_run` → `fncall0` → actual computation → return. The batch numbers (sanitize_4096 at 4.4x, poly_blep_4096 at 9.6x) are the honest comparison: Cyrius has no SIMD auto-vectorization and no cross-function inlining, but processes 4,096-sample audio buffers at usable rates. Cross-function inlining and SIMD are documented compiler optimization targets.
+**Inlining gap (300-700x)** — DSP scalar results are misleading. Rust's sub-nanosecond times mean LLVM inlined the entire function and is measuring a single already-computed instruction. Cyrius's ~400ns floor is the function call overhead through the benchmark harness — `bench_run` → `fncall0` → actual computation → return. The scalar batch numbers (sanitize_4096 at 4.4x, poly_blep_4096 at 9.6x) reflect the gap without SIMD.
+
+**SIMD wins (3.2x faster)** — With explicit SSE2 intrinsics (`addpd`/`mulpd`/`subpd`), Cyrius beats Rust's auto-vectorized batch operations by 3.2x on 4,096-element f64 arrays. The reason: Cyrius emits direct packed double instructions with no loop overhead. Rust's LLVM auto-vectorizer must analyze the loop, decide whether to vectorize, and generate the SIMD — an optimization hoping to find the right instruction. Cyrius just emits the instruction. Intent beats inference. Remaining SIMD targets: `f64v_div`, `f64v_sqrt`, `f64v_abs`, single-pass fused multiply-add (FMA).
 
 ---
 
@@ -231,6 +236,7 @@ Three manual optimizations on agnosys closed every runtime gap and opened new le
 Round 1 (initial port):     parity on syscalls, 2.4-3.4x slower on allocation
 Round 2 (stack returns):    parity on syscalls, 1.4-1.9x slower on allocation
 Round 3 (packed encoding):  beats Rust on syscalls AND allocation
+Round 4 (SIMD):             beats Rust 3.2x on batch DSP — intent beats auto-vectorization
 ```
 
 The trajectory is one-directional. Each optimization pass closes gaps. No pass has opened new ones. The remaining gaps in kybernet (pure compute, cold-path allocation) are documented optimization targets for the Cyrius compiler — constant folding, function inlining, and stack-allocated small strings.
