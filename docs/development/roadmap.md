@@ -3,7 +3,7 @@
 > **Status**: Pre-Beta | **Last Updated**: 2026-04-03
 > **Monolith fully dismantled** — all subsystems extracted to standalone repos. Workspace: examples only. agnostik (0.90.0), agnosys (0.51.0), shakti (0.1.0) all standalone.
 > **Recipes**: 116 base + 71 desktop + 25 AI + 9 network + 8 browser + 109 marketplace + 4 python + 3 database + 31 edge = 376 OS (+ 90 bazaar community)
-> **Build order**: 178 packages in `recipes/build-order.txt` (base + desktop, dependency-ordered)
+> **Build order**: 178 packages in zugot `build-order.txt` (base + desktop, dependency-ordered)
 > **Phases 10–14 complete** | **Phase 15A**: Core scanning done (phylax) | **Phase 16A**: Desktop essentials done | **Phase 17**: Local inference optimization (planned) | **Audit**: 16 rounds
 > **Shared Crates**: 77 library crates — 56 at v1.0+ stable, 20 pre-1.0. Key milestones: sigil 1.0.0, kavach 2.0.0, bote 0.92.0, t-ron 0.90.0, agnostik 0.90.0, agnosys 0.51.0
 > **Consumer Projects**: 19+ released (including Vidhana v1, Sutra v1, Abacus)
@@ -356,6 +356,7 @@ Patterns to extract into shared crates:
 | E1 | Medium | ESP32 agent source repo | Recipe done, MQTT bridge done. Pending: source repo + firmware |
 | S2 | Medium | SGX/SEV hardware validation | kavach backends implemented, need hardware |
 | R1 | P0 | Full recipe audit (95+ recipes) | SHA verification, version sync, field audit — license/version/structure done, SHA placeholders added |
+| R2 | High | Update scripts/CI for zugot | `recipes/` removed from genesis repo (migrated to zugot). 16 scripts/CI/config files still reference local `recipes/` paths — update to source from zugot |
 | V1 | Medium | **mudra** — token/value primitives | Sanskrit: coin/seal/token. Asset identity, ownership, divisibility. Crate #78 |
 | V2 | Medium | **vinimaya** — transaction layer | Sanskrit: exchange/barter. Atomic transfers, escrow, settlement. Depends on mudra, libro, sigil. Crate #79 |
 | T1 | Medium | **taal** — music theory | Sanskrit: rhythmic cycle. Scales, intervals, chords, time signatures, key signatures, progressions, counterpoint. Crate #80 |
