@@ -401,7 +401,7 @@ Library crates are documented in [docs/applications/libs/](../../applications/li
 - Priority 2-3 strengthen daily-driver story
 - Priority 4-6 are post-v1.0 or community-contributed
 - Shared crate registry: [shared-crates.md](shared-crates.md) — 77 crates (56 stable)
-- Orchestration platform: [k8s-roadmap.md](../k8s-roadmap.md)
+- Orchestration platform: [k8s-roadmap.md](../vision/architecture/k8s-roadmap.md)
 
 ---
 

@@ -326,7 +326,7 @@ See [Philosophy](philosophy.md) for the full exploration of AGNOS as temple arch
 - [First-Party Application Standards](development/applications/first-party-standards.md) — conventions for consumer apps
 - [Shared Crates Reference](development/applications/shared-crates.md) — ecosystem crate registry
 - [CI/CD Architecture](development/ci-cd-guide.md) — build and release pipeline
-- [Network Evolution](development/network-evolution.md) — TCP/HTTP → QUIC → binary agent protocol
+- [Network Evolution](development/vision/architecture/network-evolution.md) — TCP/HTTP → QUIC → binary agent protocol
 - [Performance Benchmarks](development/performance-benchmarks.md) — comparison data
 
 ---

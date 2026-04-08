@@ -197,7 +197,7 @@ The Library of Alexandria's music collection didn't survive because the recordin
 
 ### For Bandwidth
 
-A 7KB song transmits in milliseconds on any connection. Over the deep space relay network (see [space-infrastructure.md](space-infrastructure.md)), an entire music library transmits in the time it currently takes to buffer one streaming song.
+A 7KB song transmits in milliseconds on any connection. Over the deep space relay network (see [space-infrastructure.md](../research/space-infrastructure.md)), an entire music library transmits in the time it currently takes to buffer one streaming song.
 
 Voyager could receive the complete works of every musician on Earth. At 160bps, the entire semantic music library of humanity would take days, not centuries.
 

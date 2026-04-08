@@ -44,14 +44,20 @@ Future architecture, theoretical exploration, and long-range planning.
 
 | Document | Description |
 |----------|-------------|
-| [vision/holodeck.md](vision/holodeck.md) | Immersive simulation architecture — 12+ existing crates mapped |
-| [vision/time-machine.md](vision/time-machine.md) | Temporal simulation engine — probable pasts and futures |
-| [vision/space-infrastructure.md](vision/space-infrastructure.md) | Orbital & deep space AGNOS nodes — Planet Labs, satcom retrofit, Voyager |
-| [vision/theoretical.md](vision/theoretical.md) | Spatial transit, directed energy, force fields, nanites, programmable matter |
-| [vision/paper-unified-consciousness-model.md](vision/paper-unified-consciousness-model.md) | Unified consciousness framework — Nobel-track paper outline |
-| [vision/personality-architecture.md](vision/personality-architecture.md) | Runtime personality via LLM + bhava loop |
-| [vision/k8s-roadmap.md](vision/k8s-roadmap.md) | Kubernetes-equivalent orchestration |
-| [vision/network-evolution.md](vision/network-evolution.md) | TCP → QUIC → binary agent protocol evolution |
+| [vision/release-vision.md](vision/release-vision.md) | Release milestones (v2-v4), Phase 20 kernel, Foundation |
+| **vision/architecture/** | |
+| [kernel-layers.md](vision/architecture/kernel-layers.md) | Cyrius kernel roadmap — 5 layers to "boots into a shell" |
+| [k8s-roadmap.md](vision/architecture/k8s-roadmap.md) | Kubernetes-equivalent orchestration |
+| [network-evolution.md](vision/architecture/network-evolution.md) | TCP → QUIC → binary agent protocol evolution |
+| **vision/applications/** | |
+| [holodeck.md](vision/applications/holodeck.md) | Immersive simulation architecture — 12+ existing crates mapped |
+| [time-machine.md](vision/applications/time-machine.md) | Temporal simulation engine — probable pasts and futures |
+| [semantic-audio.md](vision/applications/semantic-audio.md) | Recipe-based audio compression (4,400x vs MP3) |
+| [personality-architecture.md](vision/applications/personality-architecture.md) | Runtime personality via LLM + bhava loop |
+| **vision/research/** | |
+| [paper-unified-consciousness-model.md](vision/research/paper-unified-consciousness-model.md) | Unified consciousness framework — paper outline |
+| [theoretical.md](vision/research/theoretical.md) | Spatial transit, directed energy, nanites, programmable matter |
+| [space-infrastructure.md](vision/research/space-infrastructure.md) | Orbital & deep space AGNOS nodes |
 
 ## OS Subsystems
 

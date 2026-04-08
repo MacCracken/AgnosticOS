@@ -195,7 +195,7 @@ Extract when **3+ projects** implement the same pattern. Until then, keep it in-
 
 See [monolith-extraction.md](../monolith-extraction.md) for the daimon/hoosh/agnoshi extraction plan.
 
-See [k8s-roadmap.md](../k8s-roadmap.md) for stiva + nein + majra + kavach orchestration platform.
+See [k8s-roadmap.md](../vision/architecture/k8s-roadmap.md) for stiva + nein + majra + kavach orchestration platform.
 
 ---
 
