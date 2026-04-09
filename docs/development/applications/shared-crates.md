@@ -141,7 +141,17 @@ Full documentation for each crate: [docs/applications/libs/{crate}.md](../../app
 
 ---
 
-## Planned (2 crates)
+## Cyrius-Native (3 crates)
+
+New crates designed for Cyrius from the start, not ported from Rust.
+
+| Crate | Version | Description | Key Consumers |
+|-------|---------|-------------|---------------|
+| **sakshi** | 0.5.0 | Tracing, error handling, structured logging — the silent witness (Sanskrit: साक्षी). Zero-alloc hot path, 4 output targets (stderr, file, ring buffer, UDP), `#ref` TOML config. | Every crate — foundational dependency |
+| **bsp** | 0.1.0 | Binary Space Partitioning — spatial geometry primitives. BSP tree construction/traversal, AABB, blockmap, frustum culling, ray casting. Fixed-point math, zero deps. | cyrius-doom, kiran, aethersafha, phylax |
+| **cyrius-doom** | 0.1.0 | DOOM engine in Cyrius — 44KB core binary (15x smaller than original). WAD parser, BSP renderer, fixed-point math, framebuffer output. | Standalone game / kernel demo |
+
+## Planned (7 crates)
 
 Designed, not yet scaffolded.
 
@@ -199,4 +209,4 @@ See [k8s-roadmap.md](../vision/architecture/k8s-roadmap.md) for stiva + nein + m
 
 ---
 
-*Last Updated: 2026-03-31*
+*Last Updated: 2026-04-08*

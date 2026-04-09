@@ -1,6 +1,6 @@
 # First-Party Application Standards
 
-> **Status**: Active | **Last Updated**: 2026-04-03
+> **Status**: Active | **Last Updated**: 2026-04-08
 >
 > Standards, conventions, and workflows for all AGNOS first-party consumer applications.
 > These are non-negotiable for interoperability with daimon, agnoshi, mela, and the marketplace infrastructure.
@@ -102,7 +102,7 @@ tarpaulin-report.*
 
 **Cargo.lock**: Track it for binaries (`!Cargo.lock` override), exclude for libraries. If your project is a library crate published to crates.io, remove the `!Cargo.lock` line.
 
-### Flat vs Workspace
+### Flat vs Workspace (Rust)
 
 **Prefer flat crates** (single `Cargo.toml`, modules under `src/`, feature-gated):
 - Shared library crates: abaco, hisab, yukti, dhvani, ai-hwaccel, libro, kavach, majra, etc.
@@ -112,6 +112,45 @@ tarpaulin-report.*
 **Use workspaces** only when the project has genuinely independent binaries or crates with different dependency trees:
 - Consumer apps with separate `-core`, `-ai`, `-mcp` crates: kiran, phylax, joshua
 - Projects with both a library and a binary that shouldn't share all deps
+
+### Cyrius Project Structure
+
+Projects written in or ported to Cyrius follow a parallel structure. The Rust version (if it existed) is preserved in `rust-old/` for reference during migration.
+
+```
+{project}/
+├── VERSION
+├── cyrius.toml                      # Cyrius manifest (deps, build config)
+├── CLAUDE.md
+├── Makefile
+├── README.md / CHANGELOG.md / LICENSE / CONTRIBUTING.md / SECURITY.md / CODE_OF_CONDUCT.md
+├── rust-old/                        # Preserved Rust source (ported projects only)
+│   ├── Cargo.toml
+│   └── src/
+├── src/
+│   ├── lib.cyr                      # Library root (includes modules)
+│   └── {module}.cyr                 # Cyrius modules
+├── lib/                             # Stdlib extensions / shared includes
+├── tests/
+│   └── *.tcyr                       # Cyrius-native test files (v2.0)
+├── benches/
+│   └── *.bcyr                       # Cyrius-native benchmark files (v2.0)
+├── programs/                        # Standalone programs / examples
+├── build/                           # Build output
+├── scripts/
+├── docs/
+└── .github/workflows/
+    └── ci.yml                       # cyrb build + test, ~1 minute pipeline
+```
+
+**Key differences from Rust:**
+- `cyrius.toml` replaces `Cargo.toml` — dependency resolution, build config
+- No `Cargo.lock` — zero transitive dependencies means no lockfile needed
+- `.tcyr` / `.bcyr` replace criterion and `#[test]` — native test/bench format (v2.0)
+- `lib/` directory for shared stdlib modules (string, alloc, vec, etc.)
+- Build output in `build/` not `target/` — seconds, not minutes
+- CI pipeline is ~1 minute, not 10-20 minutes
+- **sakshi** replaces `tracing` + `thiserror` — foundational error/trace crate for all Cyrius projects
 
 ### Cargo.toml Metadata (Required)
 
@@ -988,4 +1027,4 @@ The continuous improvement cycle for every crate. Each pass makes the crate meas
 
 ---
 
-*Last Updated: 2026-04-03*
+*Last Updated: 2026-04-08*

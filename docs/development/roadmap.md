@@ -240,6 +240,7 @@ Scaffold when 3+ consumers need shared implementations, or when a P0/P1 app bloc
 
 | Domain | Trigger | Likely Consumers | Priority |
 |--------|---------|------------------|----------|
+| **Service mesh** | Cyrius services need shared HTTP/TCP/TLS layer + service discovery + health checks. The networking foundation every `X serve` depends on — like sakshi for services. | vidya, hoosh, ifran, daimon, mela, every service-enabled crate | High (post-boot) |
 | **Geography / GIS** | joshua terrain, edge fleet, raasta pathfinding | joshua, kiran, raasta, nazar | Medium |
 | **Music theory** | shruti or 3rd consumer needs shared scales/rhythm | shruti, naad, jalwa, kiran | Medium |
 | **Typography / font metrics** | sahifa (PDF suite) needs font layout | sahifa, aethersafha, scriba | Low |

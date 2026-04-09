@@ -14,7 +14,7 @@
 | **Welcome to the Future** | agnosticos.org |
 | **AGNOS** | The stone the builders rejected. |
 | **42** | Robinson. Adams. Ma'at. AGNOS. |
-| **$2** | All of human knowledge. Your pocket. No permission. |
+| **<3GB** | All of human knowledge. Your pocket. No permission. |
 
 ### Culture
 
@@ -27,6 +27,8 @@
 | **The Librarian** | 82 rooms and counting |
 | **I do not hit. It hits all by itself.** | 9ms self-compile |
 | **There is no opponent.** | — Bruce Lee / AGNOS |
+| **There is no I.** | — Bruce Lee / C.Y.R.I.U.S. |
+| **Every bug is a test case that didn't exist yet.** | QA is the whole game. |
 
 ### Technical
 
@@ -36,6 +38,8 @@
 | **168 bytes** | `true` — 233x smaller than GNU |
 | **73KB** | Full OS. Shell. Ring 3. Memory isolation. Zero dependencies. |
 | **Dandelion** | Not a moonshot. Cut one down, a thousand seeds blow. |
+| **The dandelion doesn't argue with the lawn. It just grows.** | 29KB |
+| **44KB** | DOOM. No libc. No SDL. Just syscalls. |
 | **sudo rm -rf /dependency** | Cyrius v1.0 |
 
 ### Founding Crew
@@ -64,4 +68,4 @@ The ultimate merch: a $2 SD card with the entire sovereign OS, all 82+ crates, t
 
 ---
 
-*Last Updated: 2026-04-06*
+*Last Updated: 2026-04-08*
