@@ -8,7 +8,7 @@
 
 **April 3, 2026** — Cyrius doesn't exist. There is no language, no compiler, no assembler. There is a crates.io name squatting problem and a question: "why am I asking permission to publish my own code?"
 
-**April 3–8** — The question cascades. In six days, Cyrius goes from nothing to v2.2.2: a self-hosting compiler with multi-width types, native test/bench runners, fuzzing, and dependency resolution. 215KB compiler. 29KB seed. Zero external dependencies.
+**April 3–8** — The question cascades. In six days, Cyrius goes from nothing to v2.2.2: a self-hosting compiler with multi-width types, native test/bench runners, fuzzing, and dependency resolution. 215KB compiler. 29KB seed. Zero external dependencies. ([Full story](sovereign-compiler-vs-brute-force.md))
 
 **April 8, 3:31 AM** — First commit: `cyrius-doom` scaffolded. The compiler has never rendered a pixel.
 

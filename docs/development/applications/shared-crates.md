@@ -147,9 +147,10 @@ New crates designed for Cyrius from the start, not ported from Rust.
 
 | Crate | Version | Description | Key Consumers |
 |-------|---------|-------------|---------------|
-| **sakshi** | 0.5.0 | Tracing, error handling, structured logging — the silent witness (Sanskrit: साक्षी). Zero-alloc hot path, 4 output targets (stderr, file, ring buffer, UDP), `#ref` TOML config. | Every crate — foundational dependency |
-| **bsp** | 0.1.0 | Binary Space Partitioning — spatial geometry primitives. BSP tree construction/traversal, AABB, blockmap, frustum culling, ray casting. Fixed-point math, zero deps. | cyrius-doom, kiran, aethersafha, phylax |
-| **cyrius-doom** | 0.1.0 | DOOM engine in Cyrius — 44KB core binary (15x smaller than original). WAD parser, BSP renderer, fixed-point math, framebuffer output. | Standalone game / kernel demo |
+| **sakshi** | 0.9.0 | Tracing, error handling, structured logging — the silent witness (Sanskrit: साक्षी). Zero-alloc hot path, 4 output targets (stderr, file, ring buffer, UDP), `#ref` TOML config. Cyrius stdlib integrated. | Every crate — foundational dependency |
+| **bsp** | 0.7.1 | Binary Space Partitioning — spatial geometry primitives. BSP tree/traversal, AABB, blockmap, frustum culling, ray casting. 74 tests, 13 benchmarks. | cyrius-doom, kiran, aethersafha, phylax |
+| **patra** | 0.12.0 | Structured storage and SQL queries — sovereign database (Sanskrit: पत्र — document, record). B+ tree, WAL, transactions, SHA-256 via sigil, 243 tests. | libro, daimon, vidya, agnoshi, mela, hoosh |
+| **cyrius-doom** | 0.17.2 | DOOM engine in Cyrius — 129KB binary (5.4x smaller than original). Full Episode 1, textured walls, sprites, HUD, doors, automap, level transitions. 2.9ms/frame. | Standalone game / kernel demo |
 
 ## Planned (7 crates)
 
@@ -164,6 +165,29 @@ Designed, not yet scaffolded.
 | **kshetra** | 0.1.0 | Temporal geography — spatiotemporal database, (lat, lon, time) → state. Geology, climate, vegetation, settlement, political, hydrology layers (Sanskrit: क्षेत्र — field, domain) | itihas, badal, khanij, vanaspati, sangha, falak |
 | **krishi** | 0.1.0 | Agriculture — crop science, soil chemistry, irrigation, seasons, yield modeling, pest dynamics (Sanskrit: कृषि — cultivation). Ma'at #5. | vanaspati, badal, kimiya, kshetra |
 | **prakriti** | 0.1.0 | Ecology — ecosystem modeling, food webs, population dynamics, biodiversity, nutrient cycles, sustainability (Sanskrit: प्रकृति — nature). Ma'at #9. | jantu, vanaspati, badal, jivanu, kimiya |
+
+## Audio I/O (pure Cyrius)
+
+| Crate | Description | Key Consumers |
+|-------|-------------|---------------|
+| **vani** | Audio device I/O — the voice (Sanskrit: वाणी — speech, voice, Saraswati's name). PCM playback/capture via direct syscalls to ALSA/OSS. No PulseAudio, no PipeWire daemon. `lib/vani.cyr` in stdlib for basics, full crate for multi-device routing. | shravan, dhvani, naad, jalwa, shruti, cyrius-doom, agnoshi |
+
+```
+naad (create) → dhvani (process) → shravan (encode) → vani (output to speakers)
+vani (input from mic) → shravan (decode) → dhvani (process)
+```
+
+## Video Codec Projects (pure Cyrius, post-tarang core)
+
+Sovereign video codecs — no C, no FFI, no libav*. Each codec is a standalone crate. **drishti** (Sanskrit: दृष्टि — vision, sight, seeing).
+
+| Crate | Replaces | Description | Key Consumers |
+|-------|----------|-------------|---------------|
+| **drishti-av1** | dav1d | AV1 decode — royalty-free, next-gen video | tarang, tazama, jalwa |
+| **drishti-h264** | openh264 | H.264/AVC decode/encode — ubiquitous video codec | tarang, tazama, aethersafta |
+| **drishti-h265** | libde265 | H.265/HEVC decode — 4K/HDR video | tarang, tazama |
+| **drishti-vpx** | libvpx | VP8/VP9 decode — WebM video | tarang, tazama, jalwa |
+| **drishti-rav1e** | rav1e | AV1 encode — royalty-free encoding | tarang, tazama, aethersafta |
 
 ---
 
