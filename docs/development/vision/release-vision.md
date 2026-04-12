@@ -1,5 +1,9 @@
 # AGNOS Release Vision
 
+> **⚠ Fossil notice (added 2026-04-11):** This document was written before the Cyrius kernel went self-hosting on **2026-04-04 23:16 PDT** ("kernel solid" commit in the `cyrius` repo, subsequently broken out as the `agnos` repo on 2026-04-05). The v2.0 "Rust microkernel" and v3.0 "AGNOS owns the language" milestones described below were superseded inside a 44-hour window that vaporized two full release horizons. This file is preserved as a **dated snapshot** of what the roadmap looked like from the far side of that commit — not as a current plan. For current state, see [roadmap.md](../roadmap.md) and [docs/articles/python-in-the-bootstrap.md](../../articles/python-in-the-bootstrap.md).
+>
+> A new forward-looking compass document will live alongside this file once the post-Beltane phase is underway. The fossil is kept as an artifact of the pre-transition state.
+
 > Long-term release milestones and architectural vision. For active work, see [roadmap.md](../roadmap.md).
 
 ---
