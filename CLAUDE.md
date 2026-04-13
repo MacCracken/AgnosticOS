@@ -74,6 +74,29 @@ This repo is the **genesis layer** — it owns system init and the infrastructur
 - **NEVER use `gh` CLI** — use `curl` to GitHub API only
 - Do not add unnecessary dependencies
 
+## Cyrius (scripts/)
+
+The `scripts/` directory is a **Cyrius project** — the sovereign boot pipeline.
+Cyrius is the AGNOS systems language. It has its own build tool and dep system.
+
+**Rules:**
+- **NEVER use raw `cat file | cc3`** — always `cyrius build`
+- `cyrius build` auto-resolves deps from `scripts/cyrius.toml` and auto-prepends includes
+- Toolchain version pinned in `scripts/.cyrius-toolchain`
+- If stdout/println doesn't work, you're missing includes — use `cyrius build`, not raw cc3
+
+**Build:**
+```sh
+cd scripts
+cyrius build src/boot.cyr build/boot
+cyrius test src/boot_smoke.tcyr
+```
+
+**Deps are declared in `scripts/cyrius.toml`** — do NOT manually include stdlib.
+Source files only need project includes (`src/types.cyr` etc.).
+
+**Current toolchain:** 3.10.2 — see `.cyrius-toolchain`
+
 ## Documentation Structure
 
 ```
