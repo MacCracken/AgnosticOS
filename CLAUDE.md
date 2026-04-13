@@ -4,60 +4,69 @@
 
 **AGNOS** — AI-Native General Operating System
 
-- **Type**: Genesis repository — the brain of the OS
+- **Type**: Genesis repository — meta, build wrapper, documentation
 - **License**: GPL-3.0-only
 - **Version**: CalVer `2026.3.31` (YYYY.M.D, patches as `-N`)
 - **Version file**: `VERSION` at repo root (single source of truth)
-- **MSRV**: 1.89
-- **Status**: Pre-Beta — monolith fully dismantled, all code in standalone repos
+- **Language**: Cyrius (sovereign systems language, 29KB seed, zero external deps)
+- **Status**: Pre-Beta — kernel 1.21.0 shipped (220KB, 33 subsystems), boot pipeline active
 
 ## Role
 
-This repo is the **genesis layer** — it owns system init and the infrastructure to build AGNOS from nothing. Once the system boots and ark takes over, this repo's job is done.
+This repo is the **genesis layer** — meta, narrative, and the infrastructure to build AGNOS from nothing. Once the system boots and ark takes over, this repo's job is done.
 
 **Owns:**
-- **kernel/** — Linux kernel configs (what we boot)
-- **scripts/** — Bootstrap toolchain, ISO/image build, chroot, validation (33 scripts)
-- **docs/** — Architecture, roadmap, specs, security (161 files)
-- **.github/workflows/** — CI/CD that validates the whole system (15 workflows)
+- **scripts/** — Sovereign boot pipeline in **Cyrius** (build, boot, validate, ISO assembly)
+- **kernel/** — Linux kernel configs (for host bootstrap; AGNOS kernel lives in `agnos` repo)
+- **docs/** — Architecture, roadmap, articles, philosophy, specs, security
+- **.github/workflows/** — CI/CD that validates the whole system
 - **docker/** — Dockerfiles for dev/edge/installer
-- **Makefile** — Top-level build orchestration
-- **userland/examples/** — Agent SDK examples (only Cargo workspace member)
 
 **Does NOT own (extracted):**
-- **Recipes** → **zugot** (`MacCracken/zugot`) — all takumi build recipes
-- **Production code** → standalone repos under `/home/macro/Repos/{name}/`
+- **AGNOS kernel** → `agnos` repo (v1.21.0, 220KB, Cyrius-native)
+- **Cyrius compiler** → `cyrius` repo (v3.10.3, 299KB, self-hosting from 29KB seed)
+- **Recipes** → `zugot` repo (421 base + 90 bazaar recipes)
+- **Production code** → 130+ standalone repos under `/home/macro/Repos/{name}/`
+- **Old userland/** — monolith fully dismantled 2026-04-01. No Cargo workspace remains.
 
-## Standalone Repos
+## Standalone Repos (Cyrius-native)
 
-| Subsystem | Version | Role |
-|-----------|---------|------|
-| **zugot** | — | Recipe repository (all takumi build recipes) |
-| **agnostik** | 0.90.0 | Shared types, domain primitives (10 feature gates) |
-| **agnosys** | 0.51.0 | Kernel interface (Landlock, seccomp, syscalls) |
-| **daimon** | 0.6.0 | Agent orchestrator, 144 MCP tools |
-| **hoosh** | 1.2.0 | LLM inference gateway, 15 providers |
-| **agnoshi** | 0.90.0 | AI shell  |
-| **aethersafha** | 0.1.0 | Wayland compositor |
-| **kybernet** | 0.51.0 | PID 1 binary |
-| **argonaut** | 0.90.0 | Init system library |
-| **sigil** | 1.0.0 | Trust/crypto boundary |
-| **ark** | 0.1.0 | Package manager |
-| **nous** | 0.1.0 | Package resolver |
-| **takumi** | 0.1.0 | Build system |
-| **aegis** | 0.1.0 | Security daemon |
-| **shakti** | 0.1.0 | Privilege escalation |
-| **kavach** | 2.0.0 | Sandbox execution |
-| **bote** | 0.92.0 | MCP core + host registry |
-| **t-ron** | 0.90.0 | MCP security |
-| **phylax** | 0.22.3 | Threat detection |
+| Subsystem | Version | Role | Port Status |
+|-----------|---------|------|-------------|
+| **agnos** | 1.21.0 | AGNOS kernel (220KB, 33 subsystems, 26 syscalls) | **Native** |
+| **cyrius** | 3.10.3 | Sovereign compiler + stdlib + toolchain | **Native** |
+| **zugot** | — | Recipe repository (all takumi build recipes) | — |
+| **agnostik** | Cyrius | Shared types, domain primitives | **Ported** |
+| **agnosys** | Cyrius | Kernel interface (Landlock, seccomp, syscalls) | **Ported** |
+| **kybernet** | 1.0.1 | PID 1 binary (486KB, 140 tests, 46 benchmarks) | **Ported** |
+| **argonaut** | 1.2.0 | Init system library | **Ported** |
+| **sigil** | Cyrius | Trust/crypto boundary | **Ported** |
+| **libro** | Cyrius | Cryptographic audit chain | **Ported** |
+| **hoosh** | 2.0.0 | LLM inference gateway (474KB, 15 providers) | **Ported** |
+| **avatara** | 2.0.1 | Divine archetype overlay (2,761× faster cached) | **Ported** |
+| **ai-hwaccel** | 2.0.0 | GPU detection (217KB, 518 tests) | **Ported** |
+| **hadara** | 1.0.0 | Culture modeling (50 cultures, Cyrius-native) | **Native** |
+| **shravan** | 2.0.0 | Audio codecs | **Ported** |
+| **mabda** | 2.1.2 | GPU foundation (folded into Cyrius stdlib) | **Ported** |
+| **daimon** | 0.6.0 | Agent orchestrator, 144 MCP tools | Pending |
+| **agnoshi** | 0.90.0 | AI shell | Pending |
+| **aethersafha** | 0.1.0 | Wayland compositor | Pending |
+| **ark** | Cyrius | Package manager | **Ported** |
+| **nous** | Cyrius | Package resolver | **Ported** |
+| **takumi** | 0.1.0 | Build system | Pending |
+| **aegis** | 0.1.0 | Security daemon | Pending |
+| **shakti** | 0.1.0 | Privilege escalation | Pending |
+| **kavach** | 2.0.0 | Sandbox execution | Pending |
+| **bote** | 0.92.0 | MCP core + host registry | Pending |
+| **t-ron** | 0.90.0 | MCP security | Pending |
+| **phylax** | 0.22.3 | Threat detection | Pending |
 
 ## Development Process
 
 ### Work Loop (continuous)
 
-1. Work phase — script fixes, kernel configs, doc improvements, CI/CD
-2. If touching examples: `cargo fmt --check`, `cargo clippy --all-features --all-targets -- -D warnings` (from `userland/`)
+1. Work phase — scripts (Cyrius), kernel configs, doc improvements, CI/CD
+2. If touching scripts/: `cd scripts && cyrius build src/boot.cyr build/boot`
 3. Documentation — update CHANGELOG, roadmap, docs
 4. Version check — VERSION and docs all in sync
 5. Return to step 1
@@ -84,18 +93,26 @@ Cyrius is the AGNOS systems language. It has its own build tool and dep system.
 - `cyrius build` auto-resolves deps from `scripts/cyrius.toml` and auto-prepends includes
 - Toolchain version pinned in `scripts/.cyrius-toolchain`
 - If stdout/println doesn't work, you're missing includes — use `cyrius build`, not raw cc3
+- **Programs must call main() at top level** — Cyrius executes top-level code, not fn main() automatically:
+  ```cyrius
+  fn main() { ... return 0; }
+  var exit_code = main();
+  syscall(60, exit_code);
+  ```
+- **Study working programs** before writing new code — see `cyrius/programs/*.cyr` (46 examples)
 
 **Build:**
 ```sh
 cd scripts
 cyrius build src/boot.cyr build/boot
-cyrius test src/boot_smoke.tcyr
+./build/boot --help
+./build/boot --test --kernel /path/to/agnos
 ```
 
 **Deps are declared in `scripts/cyrius.toml`** — do NOT manually include stdlib.
 Source files only need project includes (`src/types.cyr` etc.).
 
-**Current toolchain:** 3.10.2 — see `.cyrius-toolchain`
+**Current toolchain:** 3.10.3 — see `.cyrius-toolchain`
 
 ## Documentation Structure
 
@@ -106,11 +123,17 @@ Root files (required):
 docs/ (required):
   architecture/overview.md — module map, data flow, consumers
   development/roadmap.md — completed, backlog, future, v1.0 criteria
-  development/applications/shared-crates.md — 77-crate registry
+  development/applications/shared-crates.md — 78-crate registry
 
 docs/ (when earned):
   adr/ — architectural decision records
   guides/usage.md — patterns and examples
+
+scripts/ (Cyrius project):
+  cyrius.toml — build manifest + deps
+  src/boot.cyr — sovereign boot pipeline (48KB compiled)
+  tests/ — test suites
+  archive-pre-cyrius/ — 34 archived bash scripts (Rust era, reference only)
 ```
 
 ## CHANGELOG Format
