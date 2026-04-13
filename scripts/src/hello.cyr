@@ -1,0 +1,5 @@
+fn main() {
+    alloc_init();
+    println("hello");
+    return 0;
+}

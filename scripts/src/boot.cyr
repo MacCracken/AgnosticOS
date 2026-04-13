@@ -27,8 +27,8 @@ var verbose = 0;
 fn resolve_kernel() {
     if (kernel_path != 0) { return kernel_path; }
 
-    # Try sibling agnos repo
-    var sibling = "../agnos/build/agnos";
+    # Try sibling agnos repo (scripts/ is inside agnosticos/)
+    var sibling = "../../agnos/build/agnos";
     var fd = sys_open(sibling, O_RDONLY, 0);
     if (fd >= 0) {
         sys_close(fd);
@@ -190,3 +190,6 @@ fn main() {
     }
     return 0;
 }
+
+var exit_code = main();
+syscall(60, exit_code);
