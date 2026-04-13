@@ -13,6 +13,9 @@
 > *"Wisdom has built her house, she has hewn out her seven pillars."*
 > — Proverbs 9:1
 
+> *"We are the music-makers, and we are the dreamers of dreams."*
+> — Arthur O'Shaughnessy, *Ode* (1874), via Willy Wonka
+
 ---
 
 ## What AGNOS Is

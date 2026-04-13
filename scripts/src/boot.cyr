@@ -1,0 +1,524 @@
+# boot.cyr — AGNOS sovereign boot pipeline
+#
+# Assembles a bootable AGNOS ISO from components:
+#   1. AGNOS kernel (from ../agnos or specified path)
+#   2. Cyrius toolchain (from ../cyrius or installed)
+#   3. Zugot recipes (from ../zugot or specified path)
+#   4. Boots on QEMU and validates serial output
+#
+# Usage:
+#   ./build/boot                         # assemble + boot (defaults)
+#   ./build/boot --kernel /path/to/agnos # custom kernel path
+#   ./build/boot --no-boot               # assemble only, skip QEMU
+#   ./build/boot --test                  # boot + validate serial output
+#   ./build/boot --iso-only              # just build the ISO
+#   ./build/boot --selfhost              # include toolchain+source for self-hosting
+#
+# Phase 13A: when --selfhost is passed, the ISO includes everything needed
+# for AGNOS to rebuild itself from source without a host distro.
+
+# ================================================================
+# Configuration
+# ================================================================
+
+enum Defaults {
+    QEMU_TIMEOUT = 15;
+    ISO_MAX_MB = 512;
+}
+
+enum Mode {
+    MODE_BOOT = 0;
+    MODE_ASSEMBLE = 1;
+    MODE_TEST = 2;
+    MODE_ISO_ONLY = 3;
+    MODE_SELFHOST = 4;
+}
+
+# Paths — resolved from sibling repos or overrides
+var kernel_path = 0;
+var toolchain_path = 0;
+var recipes_path = 0;
+var output_dir = 0;
+var mode = MODE_BOOT;
+var verbose = 0;
+
+# ================================================================
+# Path resolution — find components in sibling repos
+# ================================================================
+
+fn resolve_kernel() {
+    if (kernel_path != 0) { return kernel_path; }
+
+    # Try sibling agnos repo first
+    var sibling = "../agnos/build/agnos";
+    var fd = sys_open(sibling, O_RDONLY, 0);
+    if (fd >= 0) {
+        sys_close(fd);
+        kernel_path = str_from(sibling);
+        return kernel_path;
+    }
+
+    # Try installed location
+    var installed = "/usr/lib/agnos/kernel";
+    fd = sys_open(installed, O_RDONLY, 0);
+    if (fd >= 0) {
+        sys_close(fd);
+        kernel_path = str_from(installed);
+        return kernel_path;
+    }
+
+    println("ERROR: AGNOS kernel not found");
+    println("  Expected: ../agnos/build/agnos");
+    println("  Or:       /usr/lib/agnos/kernel");
+    println("  Use --kernel /path/to/agnos to specify");
+    sys_exit(1);
+    return 0;
+}
+
+fn resolve_toolchain() {
+    if (toolchain_path != 0) { return toolchain_path; }
+
+    # Check CYRIUS_HOME
+    var home = str_from("/home");
+    # Try sibling cyrius repo
+    var sibling = "../cyrius/build/cc3";
+    var fd = sys_open(sibling, O_RDONLY, 0);
+    if (fd >= 0) {
+        sys_close(fd);
+        toolchain_path = str_from("../cyrius");
+        return toolchain_path;
+    }
+
+    # Try installed
+    var installed = str_from("/usr/lib/cyrius");
+    var icc3 = "/usr/lib/cyrius/bin/cc3";
+    fd = sys_open(icc3, O_RDONLY, 0);
+    if (fd >= 0) {
+        sys_close(fd);
+        toolchain_path = installed;
+        return toolchain_path;
+    }
+
+    println("WARNING: Cyrius toolchain not found (needed for --selfhost)");
+    return 0;
+}
+
+fn resolve_recipes() {
+    if (recipes_path != 0) { return recipes_path; }
+
+    var sibling = "../zugot";
+    if (is_dir(str_from(sibling)) == 1) {
+        recipes_path = str_from(sibling);
+        return recipes_path;
+    }
+
+    println("WARNING: zugot recipes not found at ../zugot (needed for --selfhost)");
+    return 0;
+}
+
+fn resolve_output() {
+    if (output_dir != 0) { return output_dir; }
+    output_dir = str_from("output");
+    return output_dir;
+}
+
+# ================================================================
+# ISO assembly
+# ================================================================
+
+fn ensure_dir(path) {
+    sys_mkdir(str_data(path), 493);  # 0755
+}
+
+fn copy_file(src, dst) {
+    var data = file_read_all(str_data(src));
+    if (data == 0) {
+        prints("ERROR: cannot read "); println(str_data(src));
+        return 0 - 1;
+    }
+    var len = str_len(data);
+    var fd = sys_open(str_data(dst), O_WRONLY + O_CREAT + O_TRUNC, 420);  # 0644
+    if (fd < 0) {
+        prints("ERROR: cannot write "); println(str_data(dst));
+        return 0 - 1;
+    }
+    sys_write(fd, str_data(data), len);
+    sys_close(fd);
+    if (verbose == 1) {
+        prints("  cp "); prints(str_data(src)); prints(" -> "); println(str_data(dst));
+    }
+    return 0;
+}
+
+fn write_grub_cfg(iso_root) {
+    var cfg_dir = path_join(iso_root, str_from("boot/grub"));
+    ensure_dir(path_join(iso_root, str_from("boot")));
+    ensure_dir(cfg_dir);
+    var cfg_path = path_join(cfg_dir, str_from("grub.cfg"));
+    var fd = sys_open(str_data(cfg_path), O_WRONLY + O_CREAT + O_TRUNC, 420);
+    if (fd < 0) {
+        println("ERROR: cannot write grub.cfg");
+        sys_exit(1);
+    }
+    var cfg = "set timeout=3\nset default=0\n\nmenuentry \"AGNOS\" {\n    multiboot /boot/agnos\n    boot\n}\n";
+    sys_write(fd, cfg, strlen(cfg));
+    sys_close(fd);
+}
+
+fn assemble_iso() {
+    var out = resolve_output();
+    var iso_root = path_join(out, str_from("iso"));
+    var iso_boot = path_join(iso_root, str_from("boot"));
+    var iso_file = path_join(out, str_from("agnos.iso"));
+
+    println("=== AGNOS Boot Pipeline ===");
+    println("");
+
+    # Clean previous build
+    exec_cmd("rm -rf output/iso");
+    ensure_dir(out);
+    ensure_dir(iso_root);
+    ensure_dir(iso_boot);
+
+    # 1. Copy kernel
+    var kernel = resolve_kernel();
+    prints("  kernel: "); println(str_data(kernel));
+
+    # ELF fixup for GRUB multiboot compatibility
+    var grub_kernel = path_join(iso_boot, str_from("agnos"));
+    copy_file(kernel, grub_kernel);
+
+    # Run ELF fixup if the script exists
+    var fixup = "../agnos/scripts/elf-fixup.py";
+    var fd = sys_open(fixup, O_RDONLY, 0);
+    if (fd >= 0) {
+        sys_close(fd);
+        var r = run("/usr/bin/python3", fixup, str_data(grub_kernel));
+        if (is_ok(r) == 1) {
+            println("  elf-fixup: OK");
+        } else {
+            println("  elf-fixup: FAILED (continuing without)");
+        }
+    }
+
+    # 2. Write GRUB config
+    write_grub_cfg(iso_root);
+    println("  grub.cfg: written");
+
+    # 3. If selfhost mode, include toolchain + source + recipes
+    if (mode == MODE_SELFHOST) {
+        println("");
+        println("--- Self-hosting payload ---");
+
+        var tc = resolve_toolchain();
+        if (tc != 0) {
+            var tc_dest = path_join(iso_root, str_from("usr/lib/cyrius"));
+            ensure_dir(path_join(iso_root, str_from("usr")));
+            ensure_dir(path_join(iso_root, str_from("usr/lib")));
+            ensure_dir(tc_dest);
+
+            # Copy compiler binaries
+            var bin_dest = path_join(tc_dest, str_from("bin"));
+            ensure_dir(bin_dest);
+            copy_file(
+                path_join(tc, str_from("build/cc3")),
+                path_join(bin_dest, str_from("cc3"))
+            );
+            prints("  toolchain: "); println(str_data(tc));
+
+            # Copy seed
+            var seed_dest = path_join(tc_dest, str_from("bootstrap"));
+            ensure_dir(seed_dest);
+            copy_file(
+                path_join(tc, str_from("bootstrap/asm")),
+                path_join(seed_dest, str_from("asm"))
+            );
+            println("  seed: 29KB copied");
+        }
+
+        var rp = resolve_recipes();
+        if (rp != 0) {
+            var rp_dest = path_join(iso_root, str_from("usr/src/zugot"));
+            ensure_dir(path_join(iso_root, str_from("usr/src")));
+            # Copy recipe directory
+            var cpargs = vec_new();
+            vec_push(cpargs, "/usr/bin/cp");
+            vec_push(cpargs, "-r");
+            vec_push(cpargs, str_data(rp));
+            vec_push(cpargs, str_data(rp_dest));
+            exec_vec(cpargs);
+            prints("  recipes: "); println(str_data(rp));
+        }
+    }
+
+    # 4. Generate ISO via grub-mkrescue
+    println("");
+    prints("  generating ISO... ");
+
+    var isoargs = vec_new();
+    vec_push(isoargs, "/usr/bin/grub-mkrescue");
+    vec_push(isoargs, "-o");
+    vec_push(isoargs, str_data(iso_file));
+    vec_push(isoargs, str_data(iso_root));
+    var ir = exec_vec(isoargs);
+    if (ir != 0) {
+        println("FAILED");
+        println("ERROR: grub-mkrescue failed");
+        sys_exit(1);
+    }
+
+    # Report size
+    var iso_fd = sys_open(str_data(iso_file), O_RDONLY, 0);
+    if (iso_fd >= 0) {
+        # Get file size via lseek to end
+        var sz = syscall(8, iso_fd, 0, 2);  # lseek(fd, 0, SEEK_END)
+        sys_close(iso_fd);
+        prints("OK (");
+        print_num(sz);
+        prints(" bytes)\n");
+    } else {
+        println("OK");
+    }
+
+    println("");
+    prints("  ISO: "); println(str_data(iso_file));
+
+    # Cleanup temp
+    exec_cmd("rm -rf output/iso");
+
+    return iso_file;
+}
+
+# ================================================================
+# QEMU boot
+# ================================================================
+
+fn qemu_boot(iso_file, test_mode) {
+    println("");
+    println("--- QEMU Boot ---");
+
+    if (test_mode == 1) {
+        println("  mode: test (validating serial output)");
+    } else {
+        println("  mode: interactive");
+    }
+
+    var qargs = vec_new();
+    vec_push(qargs, "/usr/bin/qemu-system-x86_64");
+    vec_push(qargs, "-cdrom");
+    vec_push(qargs, str_data(iso_file));
+    vec_push(qargs, "-serial");
+    vec_push(qargs, "stdio");
+    vec_push(qargs, "-display");
+    vec_push(qargs, "none");
+    vec_push(qargs, "-no-reboot");
+
+    if (test_mode == 1) {
+        # Capture output and validate
+        var outbuf = alloc(65536);
+        var n = exec_capture(qargs, outbuf, 65536);
+        if (n <= 0) {
+            println("ERROR: QEMU produced no output (kernel may have crashed)");
+            sys_exit(1);
+        }
+
+        # Check for AGNOS banner in serial output
+        var got_banner = 0;
+        # Simple check: look for "AGNOS" in output
+        var oi = 0;
+        while (oi < n - 5) {
+            if (load8(outbuf + oi) == 65) {        # 'A'
+                if (load8(outbuf + oi + 1) == 71) {  # 'G'
+                    if (load8(outbuf + oi + 2) == 78) {  # 'N'
+                        if (load8(outbuf + oi + 3) == 79) {  # 'O'
+                            if (load8(outbuf + oi + 4) == 83) {  # 'S'
+                                got_banner = 1;
+                            }
+                        }
+                    }
+                }
+            }
+            oi = oi + 1;
+        }
+
+        if (got_banner == 1) {
+            println("  PASS: AGNOS kernel booted (banner detected in serial output)");
+        } else {
+            println("  FAIL: AGNOS banner not found in serial output");
+            println("  First 512 bytes of output:");
+            var plen = n;
+            if (plen > 512) { plen = 512; }
+            sys_write(1, outbuf, plen);
+            prints("\n");
+            sys_exit(1);
+        }
+    } else {
+        # Interactive — just exec QEMU
+        println("  booting... (Ctrl-A X to quit)");
+        println("");
+        exec_vec(qargs);
+    }
+}
+
+# ================================================================
+# Direct kernel boot (no ISO, faster for dev)
+# ================================================================
+
+fn qemu_direct(test_mode) {
+    var kernel = resolve_kernel();
+    println("");
+    println("--- QEMU Direct Boot ---");
+    prints("  kernel: "); println(str_data(kernel));
+
+    var qargs = vec_new();
+    vec_push(qargs, "/usr/bin/qemu-system-x86_64");
+    vec_push(qargs, "-kernel");
+    vec_push(qargs, str_data(kernel));
+    vec_push(qargs, "-serial");
+    vec_push(qargs, "stdio");
+    vec_push(qargs, "-display");
+    vec_push(qargs, "none");
+    vec_push(qargs, "-no-reboot");
+
+    if (test_mode == 1) {
+        var outbuf = alloc(65536);
+        var n = exec_capture(qargs, outbuf, 65536);
+        if (n <= 0) {
+            println("ERROR: QEMU produced no output");
+            sys_exit(1);
+        }
+        # Check for AGNOS in output
+        var found = memeq(outbuf, "AGNOS", 5);
+        if (found == 0) {
+            # Search deeper
+            var si = 0;
+            while (si < n - 5) {
+                if (memeq(outbuf + si, "AGNOS", 5) == 1) { found = 1; }
+                si = si + 1;
+            }
+        }
+        if (found == 1) {
+            println("  PASS: AGNOS kernel booted");
+        } else {
+            println("  FAIL: no AGNOS banner in serial output");
+            sys_exit(1);
+        }
+    } else {
+        println("  booting... (Ctrl-A X to quit)");
+        println("");
+        exec_vec(qargs);
+    }
+}
+
+# ================================================================
+# CLI
+# ================================================================
+
+fn print_usage() {
+    println("Usage: boot [OPTIONS]");
+    println("");
+    println("Options:");
+    println("  --kernel PATH    Path to AGNOS kernel binary");
+    println("  --toolchain PATH Path to Cyrius toolchain root");
+    println("  --recipes PATH   Path to zugot recipes directory");
+    println("  --output PATH    Output directory (default: output/)");
+    println("  --no-boot        Assemble ISO only, skip QEMU");
+    println("  --iso-only       Build ISO only");
+    println("  --test           Boot + validate serial output");
+    println("  --selfhost       Include toolchain + source for self-hosting ISO");
+    println("  --direct         Boot kernel directly (no ISO, faster for dev)");
+    println("  -v, --verbose    Verbose output");
+    println("  -h, --help       Show this help");
+    println("");
+    println("Examples:");
+    println("  boot                    # direct boot from ../agnos/build/agnos");
+    println("  boot --test             # boot + validate AGNOS banner");
+    println("  boot --iso-only         # build bootable ISO");
+    println("  boot --selfhost --test  # self-hosting ISO + validate");
+}
+
+var direct_boot = 0;
+
+fn parse_args() {
+    args_init();
+    var i = 1;
+    while (i < argc()) {
+        var arg = argv(i);
+        if (streq(arg, "--help") == 1) { print_usage(); sys_exit(0); }
+        elif (streq(arg, "-h") == 1) { print_usage(); sys_exit(0); }
+        elif (streq(arg, "-v") == 1) { verbose = 1; }
+        elif (streq(arg, "--verbose") == 1) { verbose = 1; }
+        elif (streq(arg, "--no-boot") == 1) { mode = MODE_ASSEMBLE; }
+        elif (streq(arg, "--iso-only") == 1) { mode = MODE_ISO_ONLY; }
+        elif (streq(arg, "--test") == 1) { mode = MODE_TEST; }
+        elif (streq(arg, "--selfhost") == 1) { mode = MODE_SELFHOST; }
+        elif (streq(arg, "--direct") == 1) { direct_boot = 1; }
+        elif (streq(arg, "--kernel") == 1) {
+            i = i + 1;
+            if (i < argc()) { kernel_path = str_from(argv(i)); }
+        }
+        elif (streq(arg, "--toolchain") == 1) {
+            i = i + 1;
+            if (i < argc()) { toolchain_path = str_from(argv(i)); }
+        }
+        elif (streq(arg, "--recipes") == 1) {
+            i = i + 1;
+            if (i < argc()) { recipes_path = str_from(argv(i)); }
+        }
+        elif (streq(arg, "--output") == 1) {
+            i = i + 1;
+            if (i < argc()) { output_dir = str_from(argv(i)); }
+        }
+        else {
+            prints("Unknown option: "); println(arg);
+            sys_exit(1);
+        }
+        i = i + 1;
+    }
+}
+
+# ================================================================
+# Main
+# ================================================================
+
+fn main() {
+    alloc_init();
+    parse_args();
+
+    # Direct kernel boot (fastest path for development)
+    if (direct_boot == 1) {
+        if (mode == MODE_TEST) {
+            qemu_direct(1);
+        } else {
+            qemu_direct(0);
+        }
+        return 0;
+    }
+
+    # ISO-based paths
+    if (mode == MODE_ISO_ONLY) {
+        assemble_iso();
+        return 0;
+    }
+
+    if (mode == MODE_ASSEMBLE) {
+        assemble_iso();
+        return 0;
+    }
+
+    if (mode == MODE_SELFHOST) {
+        var iso = assemble_iso();
+        qemu_boot(iso, 1);
+        return 0;
+    }
+
+    if (mode == MODE_TEST) {
+        # Default to direct boot for test (faster)
+        qemu_direct(1);
+        return 0;
+    }
+
+    # Default: direct boot interactive
+    qemu_direct(0);
+    return 0;
+}

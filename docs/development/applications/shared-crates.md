@@ -2,7 +2,7 @@
 
 > **Status**: Active | **Last Updated**: 2026-04-03
 >
-> **77 crates** — 56 at v1.0+ stable (11 OS, 25 science, 10 media, 5 lang/nav, 5 physics), 20 pre-1.0, 1 internal
+> **78 crates** — 56 at v1.0+ stable (11 OS, 25 science, 10 media, 5 lang/nav, 5 physics), 21 pre-1.0 (incl. hadara), 1 internal
 >
 > v1.0+ crate documentation lives in [docs/applications/libs/](../../applications/libs/).
 > This file tracks **pre-1.0 crates**, **unpublished crates**, and the **stable crate index**.
@@ -138,6 +138,12 @@ Full documentation for each crate: [docs/applications/libs/{crate}.md](../../app
 | Crate | Version | Description | Key Consumers |
 |-------|---------|-------------|---------------|
 | [rasayan](https://github.com/MacCracken/rasayan) | 0.4.0 | Biochemistry — enzyme kinetics, metabolism, signal transduction, membrane transport | mastishk, sharira, jivanu, kimiya |
+
+### Culture & Knowledge
+
+| Crate | Version | Description | Key Consumers |
+|-------|---------|-------------|---------------|
+| [hadara](https://github.com/MacCracken/hadara) | 0.1.0 | Culture as first-class entity (Arabic: حضارة — civilization, presence). Cultures with practices, values, art forms, lineage, evolution, diaspora, relationships. | bhava, avatara, joshua, natya, jnana, kshetra, varna, itihas |
 
 ---
 
