@@ -172,7 +172,7 @@ What it grew from was a compass, a team of two, and the realization that the Pyt
 - [Cyrius vs Rust: Head-to-Head Benchmarks](cyrius-vs-rust-benchmarks.md) — the technical ledger, including current gaps
 - [Building a Sovereign Compiler and OS Kernel with Claude](sovereign-compiler-vs-brute-force.md) — the broader comparison with Anthropic's internal C compiler project
 - [The Dandelion Core](the-2-dollar-sd-card.md) — the philosophical frame
-- [DOOM in 129KB](doom-in-107kb.md) — the 23-hour companion sprint
+- [DOOM in Cyrius](doom-in-cyrius.md) — the 23-hour companion sprint
 - [Cyrius field notes](https://github.com/MacCracken/vidya/blob/main/content/cyrius/field_notes.toml) — the agent's voice on the methodology
 - [AGNOS — Philosophy & Intention](../philosophy.md) — the temple, the compass, the Builder
 

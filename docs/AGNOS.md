@@ -306,7 +306,7 @@ See [Philosophy](philosophy.md) for the full exploration.
 | [Cyrius vs Rust: Benchmarks](articles/cyrius-vs-rust-benchmarks.md) | Head-to-head port comparison — compilation, binary size, runtime |
 | [Building a Sovereign Compiler with Claude](articles/sovereign-compiler-vs-brute-force.md) | 1 dev + $400 vs 16 agents + $20K |
 | [The Dandelion Core](articles/the-2-dollar-sd-card.md) | Open knowledge and the death of access |
-| [DOOM in 129KB](articles/doom-in-107kb.md) | A 23-hour sprint in a 7-day-old language |
+| [DOOM in Cyrius](articles/doom-in-cyrius.md) | A 23-hour sprint in a 7-day-old language |
 
 ---
 

@@ -177,8 +177,24 @@ Alpha is feature complete. Beta is polish:
 - Input tuning and collision edge cases
 - Black Book audit — verify rendering against Fabien Sanglard's analysis
 - Real hardware testing (bare metal Linux, then AGNOS kernel)
-- Binary size optimization — target under 107KB
 - The goal: boot AGNOS kernel → shell → `doom` → play
+
+---
+
+## Second Session: Plays, Hardened, Faster
+
+Five days later, v0.24.2. The engine went from **renders DOOM** to **plays DOOM** — E1M1 end-to-end, menus, weapons, ammo, hitscan, keys, armor. A P(-1) audit fixed 5 CVE-class findings against historical DOOM vulnerability classes. BSP hit **1.0.0** — the first stable library in the Cyrius ecosystem.
+
+And render_frame dropped from 2.9ms to **2.66ms** with zero engine changes, because Cyrius shipped rep movsb, LASE, short-circuit `&&`, and dead-code elimination during the session. **The compiler improved under the game.**
+
+| | v0.17.0 | v0.24.2 |
+|---|---|---|
+| Binary | 129KB | 196KB (game grew) |
+| render_frame | 2.9ms | 2.66ms (compiler grew) |
+| Does | Renders DOOM | **Plays** DOOM |
+| Security | Untested | P(-1), 5 CVEs fixed |
+
+Per-session granularity lives in the [cyrius-doom field notes](https://github.com/MacCracken/vidya/blob/main/content/cyrius/field_notes/doom.toml).
 
 ---
 
@@ -186,9 +202,9 @@ Alpha is feature complete. Beta is polish:
 
 Every OS, every language, every platform eventually answers the question: can it run DOOM?
 
-Cyrius doesn't just run DOOM. It rewrites DOOM smaller. 5.4x smaller binary. 6x fewer lines. Zero dependencies. 2.9ms frame time with 90% headroom. In a language that bootstraps from a 29KB seed that didn't exist seven days before the first DOOM commit.
+Cyrius doesn't just run DOOM. It rewrites DOOM smaller, hardens it against its own historical CVEs, and runs it at 2.66ms/frame with 91% tick headroom on a ten-day-old language. The engine plays, the WADs parse safely, the compiler is still improving underneath it, and BSP shipped 1.0.0 as the first stable library in the ecosystem. In a language that bootstraps from a 29KB seed that didn't exist eleven days before the first DOOM commit.
 
-The walls render. The textures map. The sprites draw. The lighting shades. The pistol fires. The HUD updates. The frame finishes in 2.9ms. And the compiler that made it all possible weighs less than the game it compiled.
+The walls render. The textures map. The sprites draw. The lighting shades. The pistol fires. The shotgun picks up. The keys unlock doors. The HUD updates. The WAD parser refuses malicious input. The frame finishes in 2.66ms. And the compiler that made it all possible weighs less than the game it compiled.
 
 ---
 

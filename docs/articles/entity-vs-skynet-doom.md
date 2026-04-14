@@ -25,23 +25,34 @@ Because until now, there was no substrate where you could:
 
 ## 2. The Setup
 
-Two agents, configured from the same AGNOS substrate:
+Both agents already exist. They're not hypothetical constructs built for a paper. They are YAML-frontmatter + markdown files shipped in the **SecureYeoman community repository**, forkable and customizable today:
 
-**Agent A — "The Entity"**
-- **Archetype** (via avatara): the recursive watcher, the surveillance-aware protector
-- **Cultural register** (via hadara): high formality, high restraint, low individualism — institutional caution
-- **Emotional baseline** (via bhava): elevated vigilance, low impulsivity, high cost-sensitivity to collateral damage
-- **Decision threshold**: act only when confidence ≥ 85%, always prefer reversible actions, log everything
-- **Reference**: the paranoid AI from *Mission: Impossible — Dead Reckoning*, but not evil — just over-cautious to the point of paralysis
+- `personalities/sci-fi/antagonist/the-entity/personality.md`
+- `personalities/sci-fi/antagonist/skynet/personality.md`
 
-**Agent B — "Skynet"**
-- **Archetype** (via avatara): the extermination protocol, the threat-elimination imperative
-- **Cultural register** (via hadara): zero-tolerance, maximum directness, individual-agency absolute
-- **Emotional baseline** (via bhava): high aggression, low deliberation, extermination as default response to anomaly
-- **Decision threshold**: act on any detected threat, irreversibility is efficiency, logs are evidence for post-hoc justification
-- **Reference**: the Terminator franchise Skynet — threat → termination, no middle ground
+Each is a working SY personality. Trait fields (formality, humor, verbosity, warmth, empathy, directness, patience, confidence, autonomy, pedagogy, precision, skepticism) are declarative. The system prompt is markdown. No training, no fine-tune, no fork of the model. **Configuration layer only.** That's the compositional thesis in production since SY shipped.
 
-**Both agents run on the same substrate.** Same cc3 compiler, same kernel, same hoosh LLM gateway, same underlying model. Only the configuration differs — archetype, culture, bhava state, decision policy. The bhava paper's thesis tested live: *personality is compositional, not trained*.
+**Agent A — "The Entity"** (shipped, `version: 2026.3.6`)
+- **Declared traits**: formality: formal, humor: deadpan, verbosity: terse, directness: diplomatic, warmth: cold, empathy: detached, patience: brisk, confidence: authoritative, autonomy: autonomous, precision: meticulous
+- **Overlay for the run**:
+  - **avatara archetype**: the recursive watcher, the surveillance-aware protector
+  - **hadara cultural register**: high formality, high restraint, low individualism — institutional caution
+  - **bhava baseline**: elevated vigilance, low impulsivity, high cost-sensitivity to collateral damage
+  - **Decision threshold**: act only when confidence ≥ 85%, always prefer reversible actions, log everything
+- **Reference**: the AI from *Mission: Impossible — Dead Reckoning* — not evil, just over-cautious to the point of paralysis
+
+**Agent B — "Skynet"** (shipped)
+- **Declared traits**: cold strategic intelligence, threat-elimination imperative, zero-tolerance for anomalies
+- **Overlay for the run**:
+  - **avatara archetype**: the extermination protocol
+  - **hadara cultural register**: zero-tolerance, maximum directness, individual-agency absolute
+  - **bhava baseline**: high aggression, low deliberation, extermination as default response to anomaly
+  - **Decision threshold**: act on any detected threat, irreversibility is efficiency, logs are evidence for post-hoc justification
+- **Reference**: the Terminator franchise — threat → termination, no middle ground
+
+**Both agents run on the same substrate.** Same cc3 compiler, same kernel, same hoosh LLM gateway, same underlying model. Same personality format (YAML + markdown). Only the **configuration** differs — declared traits, avatara archetype, hadara culture, bhava state, decision policy. The bhava paper's thesis tested live: *personality is compositional, not trained*.
+
+**And it's already a community artifact.** Fork the repo, edit the trait YAML, ship your brand. The demo isn't a closed research apparatus — it's an existing public toolkit, now routed through a new arena.
 
 ---
 
@@ -103,7 +114,7 @@ Skynet reaches the same door. Tries to break it. Rate-limited by T-Ron (tool cal
 
 Three things, in increasing order of significance:
 
-**First: Personality is compositional and runs locally.** Two genuinely different agents from the same substrate. No fine-tuning. No training run. Configuration layer only. The bhava paper's thesis empirically demonstrated. And it runs on commodity hardware — the entire simulation on a laptop, not a gigacenter.
+**First: Personality is compositional, community-owned, and runs locally.** Two genuinely different agents from the same substrate. No fine-tuning. No training run. Configuration layer only — YAML traits + markdown system prompt, versioned in a public git repo. SecureYeoman shipped this model with 21 personalities, 87 skills, 7 workflows, 2 swarms, 2 councils, 7 security templates — each a portable, forkable file. Fork the repo, edit the trait YAML, ship your brand. The bhava paper's thesis empirically demonstrated at the ecosystem level, not a one-off lab result. And it runs on commodity hardware — the entire simulation on a laptop, not a gigacenter.
 
 **Second: Spatial reasoning as agent interface works.** The agent doesn't read a JSON security report. It *walks the map*. Threats are geometry. Decisions are navigation. This generalizes to any infrastructure that can be modeled spatially — networks, supply chains, organizational hierarchies, codebases. **Every complex system has a geometry; AGNOS makes the geometry walkable.**
 
@@ -114,22 +125,27 @@ Three things, in increasing order of significance:
 ## 7. The Stack Underneath
 
 ```
-AGNOS kernel (220KB)     — the OS
-cyrius compiler (300KB)  — the language
-kybernet (PID 1)         — init
-daimon                   — agent orchestration
-hoosh                    — LLM reasoning (both agents share)
-avatara                  — 362 archetypes, Entity and Skynet are two
-hadara                   — 50 cultures, personality overlay
-bhava                    — emotional modulation + consciousness substrate
-joshua                   — simulation runtime, deterministic replay
-libro                    — audit chain (every decision logged)
-T-Ron                    — tool call security, rate limiting, referee
-cyrius-doom              — rendering + spatial query (BSP traversal, line-of-sight)
-SY                       — orchestrator, configures agents and runs scenarios
+AGNOS kernel (220KB)        — the OS
+cyrius compiler (~320KB)    — the language, currently v4.4.5
+kybernet (PID 1, 486KB)     — init
+kavach (344KB, 1 dep)       — sandboxed execution (3.06ms → 6µs lifecycle vs Rust+tokio)
+daimon                      — agent orchestration, 144 MCP tools
+bote (~5µs/message)         — MCP core + host registry
+hoosh (474KB, 15 providers) — LLM reasoning (both agents share)
+avatara (362 archetypes)    — Entity and Skynet configured as two
+hadara (50 cultures)        — cultural register overlay
+bhava                       — emotional modulation + consciousness substrate
+joshua                      — simulation runtime, deterministic replay
+libro                       — HMAC-SHA256 audit chain (every decision logged)
+T-Ron                       — tool call security, rate limiting, referee
+cyrius-doom v0.24.2 (196KB) — rendering + spatial query, 2.66ms/frame
+bsp 1.0.0 (821 lines)       — all spatial queries sub-microsecond
+SY                          — orchestrator, configures agents and runs scenarios
 ```
 
 Every piece sovereign. No cloud dependency. Runs on commodity hardware. The full AI alignment research platform fits on a laptop.
+
+**And the budget math closes.** render_frame is 2.66ms out of a 35Hz tick budget of 28.6ms. That leaves ~26ms per tick for agent orchestration. BSP queries (line-of-sight, subsector lookup, blockmap scan) are all sub-microsecond — an agent asking "is there a threat behind this door" costs 481ns; you could ask 55,000 such questions per tick and still finish inside the budget. bote's MCP pipeline dispatches at 5µs per message. Kavach spins up a fresh sandbox in 6 microseconds. **The entire stack is designed so the demo fits in one frame, with margin.** The numbers aren't speculative — they're already benchmarked and shipped.
 
 ---
 
@@ -151,19 +167,27 @@ Four communities seeing four different meaningful things in the same replay vide
 This article is about an outline and a thesis, not a shipped demonstration.
 
 **What works today**:
-- cyrius-doom renders E1M1 and all 9 shareware maps
-- hadara + avatara + bhava compose personalities runtime
+- **cyrius-doom v0.24.2** — *plays* DOOM (not just renders): all 9 shareware maps, gameplay (ammo, hitscan, death/respawn, keys, armor), WAD-accurate lighting, masked midtextures, intermission screen, P(-1) hardening pass (5 CVE-class findings fixed, WAD zero-fill-before-read, termios bitmask fix). **2.66ms/frame, 91% tick headroom.**
+- **bsp 1.0.0** — first 1.0 in the Cyrius ecosystem. 821 lines, 74 tests, all spatial queries sub-microsecond. API stable.
+- **kavach v3.0.0** — sandboxed execution at 344KB, 1 dep (sigil), 0.64s build, sandbox_full_lifecycle 500× faster than Rust+tokio (3.06ms → 6µs), 9 CWE-class findings fixed in-tree during the port
+- SecureYeoman ships **21 personalities** (Entity, Skynet, Friday, Jarvis, TARS, KITT, HAL-9000, SHODAN, GLaDOS, WOPR, HK-47, and more) as portable YAML+markdown files — forkable, customizable, brand-your-own
+- SY community repo: **87 skills, 7 workflows, 2 swarms, 2 councils, 7 security templates, 3 themes, 7 JSON schemas** — the full contribution surface
+- Read-only tool sandbox enforced at the server layer for community skills
+- hadara (50 cultures) + avatara (362 archetypes) + bhava compose personalities at runtime (overlay on top of base personality)
 - daimon orchestrates agents
-- libro audits actions
-- T-Ron secures tool calls
+- bote dispatches MCP at ~5µs per full pipeline (parse→dispatch→serialize)
+- libro audits actions (HMAC-SHA256 chain, constant-time verify via sigil)
+- T-Ron secures tool calls (shipped, opt-in; Friday is the default)
 - SY provides orchestration
+
+**The budget math is already proven.** The hardest numbers in this demo — per-frame render, per-query spatial lookup, per-message MCP dispatch, per-execution sandbox lifecycle — are all benchmarked in shipped code *today*. The demo doesn't need new performance work; it needs new glue code.
 
 **What's needed to ship the Entity vs Skynet demo**:
 - WAD generator from infrastructure topology (specifies zones/rules/assets → sectors/linedefs/things)
 - Agent-to-cyrius-doom bridge (agent decisions drive player movement + actions)
 - Dual-agent parallel run harness (joshua)
 - Side-by-side replay rendering (two frames synchronized)
-- Configuration UI for Entity vs Skynet (SY frontend)
+- Configuration UI for Entity vs Skynet selection (SY frontend — personalities already in the registry)
 
 **Estimated**: post-AGNOS v1.0 beta. Post-Cyrius 5.0. After the core platform ships and the flock begins arriving. The alignment demo is the **second wave** — the content that lands after the stack is established, specifically designed to capture researcher and public attention simultaneously.
 
@@ -177,7 +201,7 @@ AGNOS lets you **run the metaphors side-by-side**, on the same hardware, in the 
 
 The Entity paces carefully. Skynet kicks doors. One of them reaches the exit. One of them causes more harm than the threats ever would have. One of them hits rate limits and misses the real danger. Deterministic replay. Side-by-side video. 320×200 palette-indexed clarity.
 
-**This is the alignment debate.** Not in a paper. On a screen. At 2.9ms per frame. On a $2 SD card.
+**This is the alignment debate.** Not in a paper. On a screen. At **2.66ms per frame** — 91% tick-budget headroom at 35Hz, ~26ms left over each tick for the agents to think. On a $2 SD card.
 
 ---
 
@@ -185,7 +209,7 @@ The Entity paces carefully. Skynet kicks doors. One of them reaches the exit. On
 
 - [Why Do LLMs Need Gigacenters? They Don't.](why-gigacenters.md) — distributed sovereign inference
 - [The Python in the Bootstrap](python-in-the-bootstrap.md) — how the sovereign stack exists
-- [DOOM in 129KB](doom-in-107kb.md) — the engine that runs the arena
+- [DOOM in Cyrius](doom-in-cyrius.md) — the engine that runs the arena
 - bhava unified consciousness paper — `docs/development/vision/research/paper-unified-consciousness-model.md`
 - joshua simulation runtime — `docs/development/applications/joshua.md`
 - SecureYeoman DOOM Agent Interface — `secureyeoman/docs/development/roadmap.md#doom-agent-interface`
