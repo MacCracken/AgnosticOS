@@ -4,72 +4,113 @@
 
 **{Project}** ({language}: {meaning}) — {one-line description}
 
-- **Type**: Flat library crate / Binary / Workspace
+- **Type**: Shared library / Binary / Workspace
 - **License**: GPL-3.0-only
-- **MSRV**: 1.89
-- **Version**: SemVer 0.1.0
+- **Language**: Cyrius (sovereign systems language, compiled by cc3)
+- **Version**: SemVer, version file at `VERSION`
+- **Status**: {version} — {brief status}
 - **Genesis repo**: [agnosticos](https://github.com/MacCracken/agnosticos)
-- **Philosophy**: [AGNOS Philosophy & Intention](https://github.com/MacCracken/agnosticos/blob/main/docs/philosophy.md)
-- **First-party standards**: [First-Party Application Standards](https://github.com/MacCracken/agnosticos/blob/main/docs/development/applications/first-party-standards.md)
-- **Recipe repo**: [zugot](https://github.com/MacCracken/zugot) — takumi build recipes
+- **Standards**: [First-Party Standards](https://github.com/MacCracken/agnosticos/blob/main/docs/development/applications/first-party-standards.md)
+- **Shared crates**: [shared-crates.md](https://github.com/MacCracken/agnosticos/blob/main/docs/development/applications/shared-crates.md)
+
+## Scaffolding
+
+**This project was scaffolded using:**
+- New project: `cyrius init {project}` then `cyrius init --ci`
+- Ported from Rust: `cyrius port /path/to/rust-project`
+
+**Do not manually create project structure.** Use the tools. They ensure consistency with first-party standards across all AGNOS repos. If the tools are missing something, fix the tools.
 
 ## Consumers
 
-{List which AGNOS components depend on this crate: daimon, hoosh, agnoshi, etc.}
+| Project | Usage |
+|---------|-------|
+| {crate} | {how it uses this project} |
+
+## Architecture
+
+```
+src/
+  lib.cyr         — public API (includes all modules)
+  {module}.cyr    — {description}
+```
 
 ## Development Process
 
 ### P(-1): Scaffold Hardening (before any new features)
 
-0. Read roadmap, CHANGELOG, and open issues — know what was intended before auditing what was built
-1. Test + benchmark sweep of existing code
-2. Cleanliness check: `cargo fmt --check`, `cargo clippy --all-features --all-targets -- -D warnings`, `cargo audit`, `cargo deny check`, `RUSTDOCFLAGS="-D warnings" cargo doc --all-features --no-deps`
-3. Get baseline benchmarks (`./scripts/bench-history.sh`)
-4. Internal deep review — gaps, optimizations, security, logging/errors, docs
-5. External research — domain completeness, missing capabilities, best practices, world-class accuracy
-6. Cleanliness check — must be clean after review
-7. Additional tests/benchmarks from findings
-8. Post-review benchmarks — prove the wins
-9. Documentation audit (see [Documentation Standards](#documentation-standards))
-10. Repeat if heavy
+0. Read roadmap, CHANGELOG, and open issues — know what was intended
+1. Cleanliness check: `cyrius build`, `cyrlint`, all tests pass
+2. Benchmark baseline: `cyrius bench`
+3. Internal deep review — gaps, optimizations, correctness, docs
+4. External research — domain completeness, best practices
+5. **Security audit** — review all input handling, syscall usage, buffer sizes, pointer validation. Run against known CVE patterns for the domain. File findings in `docs/audit/YYYY-MM-DD-audit.md`
+6. Additional tests/benchmarks from findings
+7. Post-review benchmarks — prove the wins
+8. Documentation audit
+9. Repeat if heavy
 
 ### Work Loop / Working Loop (continuous)
 
 1. Work phase — new features, roadmap items, bug fixes
-2. Cleanliness check: `cargo fmt --check`, `cargo clippy --all-features --all-targets -- -D warnings`, `cargo audit`, `cargo deny check`, `RUSTDOCFLAGS="-D warnings" cargo doc --all-features --no-deps`
+2. Build check: `cyrius build`
 3. Test + benchmark additions for new code
-4. Run benchmarks (`./scripts/bench-history.sh`)
-5. Internal review — performance, memory, security, throughput, correctness
-6. Cleanliness check — must be clean after review
-7. Deeper tests/benchmarks from review observations
-8. Run benchmarks again — prove the wins
-9. If review heavy → return to step 5
-10. Documentation — update CHANGELOG, roadmap, docs, ADRs, source citations (see [Documentation Standards](#documentation-standards))
-11. Version check — VERSION, Cargo.toml, recipe (in zugot) all in sync
-12. Return to step 1
+4. Internal review — performance, memory, correctness
+5. **Security check** — any new syscall usage, user input handling, buffer allocation reviewed for safety
+6. Documentation — update CHANGELOG, roadmap, docs
+7. Version check — VERSION, cyrius.toml in sync
+8. Return to step 1
+
+### Security Hardening (before release)
+
+Run a dedicated security audit pass before any version release:
+
+1. **Input validation** — every function that accepts external data (user input, file content, network data) validates bounds, types, and ranges before use
+2. **Buffer safety** — every `var buf[N]` and `alloc(N)` verified: N is in BYTES, max access offset < N, no adjacent-variable overflow
+3. **Syscall review** — every `syscall()` and `sys_*()` call reviewed: arguments validated, return values checked, error paths handled
+4. **Pointer validation** — no raw pointer dereference of untrusted input without bounds checking
+5. **No command injection** — no `sys_system()` or `exec_cmd()` with unsanitized user input. Use `exec_vec()` with explicit argv instead
+6. **No path traversal** — file paths from external input validated against allowed directories. No `../` escape
+7. **Known CVE check** — review dependencies and patterns against current CVE databases
+8. **File findings** — all issues documented in `docs/audit/YYYY-MM-DD-audit.md` with severity, file, line, and fix
+
+Severity levels:
+- **CRITICAL** — exploitable immediately, remote or privilege escalation
+- **HIGH** — exploitable with moderate effort
+- **MEDIUM** — exploitable under specific conditions
+- **LOW** — defense-in-depth improvement
+
+### Closeout Pass (before every minor/major bump)
+
+Run a closeout pass before tagging x.Y.0 or x.0.0. Ship as the last patch of the current minor (e.g. 2.2.5 before 2.3.0):
+
+1. **Full test suite** — all .tcyr pass, zero failures
+2. **Benchmark baseline** — `cyrius bench`, save CSV for comparison
+3. **Dead code audit** — check for unused functions, remove dead source code
+4. **Stale comment sweep** — grep for old version refs, outdated TODOs
+5. **Security re-scan** — quick grep for new `sys_system`, unchecked writes, unsanitized input, buffer size mismatches
+6. **Downstream check** — all consumers that depend on this crate still build and pass tests with the new version
+7. **CHANGELOG/roadmap sync** — all docs reflect current state, version numbers consistent
+8. **Version verify** — VERSION, cyrius.toml, CHANGELOG header all match
+9. **Full build from clean** — `rm -rf build && cyrius deps && cyrius build` passes clean
 
 ### Task Sizing
 
 - **Low/Medium effort**: Batch freely — multiple items per work loop cycle
-- **Large effort**: Small bites only — break into sub-tasks, verify each before moving to the next. Never batch large items together
-- **If unsure**: Treat it as large. Smaller bites are always safer than overcommitting
+- **Large effort**: Small bites only — break into sub-tasks, verify each before moving to the next
+- **If unsure**: Treat it as large
 
-### Refactoring
+## Key Principles
 
-- Refactor when the code tells you to — duplication, unclear boundaries, performance bottlenecks
-- Never refactor speculatively. Wait for the third instance before extracting an abstraction
-- Refactoring is part of the work loop, not a separate phase. If a review (step 5) reveals structural issues, refactor before moving to step 6
-- Every refactor must pass the same cleanliness + benchmark gates as new code
-
-### Key Principles
-
-- Never skip benchmarks
-- `#[non_exhaustive]` on ALL public enums (forward compatibility)
-- `#[must_use]` on all pure functions
-- Every type must be Serialize + Deserialize (serde)
-- Feature-gate optional modules — consumers pull only what they need
-- Zero unwrap/panic in library code
-- All types must have serde roundtrip tests
+- **Correctness is the optimum sovereignty** — if it's wrong, you don't own it, the bugs own you
+- Test after EVERY change, not after the feature is done
+- ONE change at a time — never bundle unrelated changes
+- Research before implementation — check vidya for existing patterns
+- Study working programs (`cyrius/programs/*.cyr`) before writing new code
+- Programs must call main() at top level: `var exit_code = main(); syscall(60, exit_code);`
+- `cyrius build` handles everything — NEVER use raw `cat file | cc3`
+- Source files only need project includes — deps auto-resolve from cyrius.toml
+- Every buffer declaration is a contract: `var buf[N]` = N BYTES, not N entries
 - {Add project-specific principles here}
 
 ## DO NOT
@@ -77,108 +118,50 @@
 - **Do not commit or push** — the user handles all git operations
 - **NEVER use `gh` CLI** — use `curl` to GitHub API only
 - Do not add unnecessary dependencies
-- Do not break backward compatibility without a major version bump
-- Do not skip benchmarks before claiming performance improvements
+- Do not skip tests before claiming changes work
+- Do not use `sys_system()` with unsanitized input — command injection risk
+- Do not trust external data (file content, network input, user args) without validation
 - {Add project-specific constraints here}
 
-## Documentation Standards
-
-Documentation is not a phase — it is part of every step. Every P(-1) audit and every work loop cycle must verify documentation is current.
-
-### Required Structure
+## Documentation Structure
 
 ```
 Root files (required):
-  README.md          — what it is, how to use it, quick start
-  CHANGELOG.md       — every change, every version
-  CLAUDE.md          — this file (Claude Code instructions)
-  CONTRIBUTING.md    — how to contribute
-  SECURITY.md        — vulnerability reporting
-  CODE_OF_CONDUCT.md — community standards
-  LICENSE            — GPL-3.0-only
+  README.md, CHANGELOG.md, CLAUDE.md, CONTRIBUTING.md,
+  SECURITY.md, CODE_OF_CONDUCT.md, VERSION, LICENSE
 
 docs/ (required):
-  architecture/overview.md  — module map, data flow, consumers
-  development/roadmap.md    — completed, backlog, future, v1.0 criteria
+  development/roadmap.md — completed, backlog, future
 
 docs/ (when earned):
-  adr/                      — architectural decision records (see below)
-  guides/                   — usage guides, integration patterns
-  examples/                 — worked examples with explanation
-  standards/                — compliance, conformance, spec references
-  compliance/               — regulatory, licensing, security compliance
+  adr/ — architectural decision records
+  audit/ — security audit reports (YYYY-MM-DD-audit.md)
+  guides/ — usage patterns, integration
+  sources/ — academic/domain citations (required for science/math crates)
 ```
 
-### Architectural Decision Records (ADRs)
+## .gitignore (Required)
 
-Record significant design decisions in `docs/adr/` using the format:
+```gitignore
+# Build
+/build/
+/dist/
 
+# Cyrius
+lib/*.cyr
+!lib/k*.cyr
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
 ```
-docs/adr/
-  NNNN-short-title.md
-```
-
-Each ADR must include:
-- **Context** — what problem or choice prompted the decision
-- **Decision** — what was decided and why
-- **Consequences** — what follows from this decision (trade-offs, constraints)
-- **Status** — proposed / accepted / deprecated / superseded
-
-Create an ADR when:
-- Choosing between competing approaches (algorithms, data structures, protocols)
-- Adopting or rejecting a dependency
-- Changing a public API in a breaking way
-- Choosing a performance trade-off (speed vs memory, latency vs throughput)
-
-### Guides and Examples
-
-- **Guides** (`docs/guides/`) — written for consumers of this crate. How to integrate, common patterns, migration between versions.
-- **Examples** (`examples/` or `docs/examples/`) — working code with comments explaining *why*, not just *what*. Every public API should have at least one example.
-
-### Standards and Compliance
-
-- **Standards** (`docs/standards/`) — reference external specifications this crate implements or conforms to. Link to the spec, note the version, document any deviations.
-- **Compliance** (`docs/compliance/`) — regulatory, licensing, or security compliance documentation. Audit results, certification status, known limitations.
-
-### Source Citations (Required for Science/Math/Domain Crates)
-
-For crates that implement scientific, mathematical, financial, or domain-specific algorithms:
-
-**In code** — every algorithm, formula, constant, or domain model must cite its source:
-
-```rust
-/// Rosenberg glottal pulse model for vocal fold simulation.
-///
-/// # Source
-/// Rosenberg, A.E. (1971). "Effect of Glottal Pulse Shape on the Quality
-/// of Natural Vowels." *Journal of the Acoustical Society of America*,
-/// 49(2B), 583-590. doi:10.1121/1.1912389
-///
-/// # Implementation Notes
-/// Uses the two-parameter model (Tp, Tn) from Section III of the paper.
-/// Open phase ratio defaults to 0.6 per Table I.
-fn glottal_pulse(t: f64, tp: f64, tn: f64) -> f64 {
-```
-
-```rust
-/// Standard gravitational parameter for Earth.
-///
-/// # Source
-/// IERS Conventions (2010), Table 1.1
-/// https://www.iers.org/IERS/EN/Publications/TechnicalNotes/tn36.html
-///
-/// Value: 3.986004418e14 m^3/s^2 (±8e5 m^3/s^2)
-const EARTH_MU: f64 = 3.986_004_418e14;
-```
-
-**In docs** — maintain a `docs/sources.md` or `docs/references.md` that lists:
-- Every paper, textbook, or specification the crate draws from
-- URLs to freely available versions where possible
-- Which module or function uses which source
-- Why a particular source was chosen over alternatives
-
-**The standard**: a reviewer unfamiliar with the domain should be able to trace any algorithm back to its origin and verify the implementation against the published source. No magic numbers. No undocumented formulas. No "trust me, this is how it works."
 
 ## CHANGELOG Format
 
-Follow [Keep a Changelog](https://keepachangelog.com/). Performance claims MUST include benchmark numbers. Breaking changes get a **Breaking** section with migration guide.
+Follow [Keep a Changelog](https://keepachangelog.com/). Performance claims MUST include benchmark numbers. Breaking changes get a **Breaking** section with migration guide. Security fixes get a **Security** section with CVE references where applicable.

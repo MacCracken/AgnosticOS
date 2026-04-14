@@ -1,134 +1,59 @@
 # First-Party Application Standards
 
-> **Status**: Active | **Last Updated**: 2026-04-13
+> **Status**: Active | **Last Updated**: 2026-04-08
 >
-> Standards, conventions, and workflows for all AGNOS first-party applications.
-> Non-negotiable for interoperability with daimon, agnoshi, mela, and the marketplace.
-> **Language**: Cyrius (sovereign systems language). Rust-era standards archived at `docs/archive/first-party-standards-rust-era.md`.
+> Standards, conventions, and workflows for all AGNOS first-party consumer applications.
+> These are non-negotiable for interoperability with daimon, agnoshi, mela, and the marketplace infrastructure.
 >
-> **Reference implementations**: [kybernet](https://github.com/MacCracken/kybernet) (Cyrius port gold standard), [hadara](https://github.com/MacCracken/hadara) (Cyrius-native gold standard).
->
-> **IMPORTANT**: This document is transitioning from Rust to Cyrius conventions. Sections below still reference Cargo/Rust in some places — these are being updated as repos port. The example CLAUDE.md template (`example_claude.md`) is fully updated for Cyrius. The **Security Hardening** section is new as of 2026-04-13 and applies to ALL projects regardless of language.
-
----
-
-### Scaffolding — Use the Tools
-
-**Always use the Cyrius tooling to scaffold and port.** Do not manually create project structures.
-
-#### New Cyrius-native project:
-
-```sh
-cyrius init myproject
-cd myproject
-cyrius deps
-cyrius build src/main.cyr build/myproject
-```
-
-`cyrius init` creates: `cyrius.toml`, `src/main.cyr`, `src/test.cyr`, `lib/` (vendored stdlib), `scripts/`, `docs/`, CI workflows, VERSION, LICENSE, README, CHANGELOG, .gitignore. Everything aligned with first-party standards from the first commit.
-
-Use `cyrius init --ci` to also generate `.cyrius-toolchain` and CI/release workflows.
-
-Use `cyrius init --dry-run myproject` to see what would be created without writing files.
-
-#### Porting a Rust project to Cyrius:
-
-```sh
-cyrius port /path/to/rust-project
-```
-
-`cyrius port` moves all Rust code to `rust-old/` (preserved for reference benchmarks), scaffolds the Cyrius project structure, vendors stdlib, and generates an initial source file. The Rust-era code is preserved as a git-tagged snapshot for benchmark comparison — see the retirement-via-git-tag pattern.
-
-After porting:
-1. Implement the Cyrius source files referencing `rust-old/` for logic
-2. Preserve Rust benchmark data in `docs/benchmarks-rust-v-cyrius.md`
-3. Run comparative benchmarks
-4. Delete `rust-old/` only after the Cyrius version has equal or better test coverage
-
-**Do NOT manually scaffold projects.** The tools ensure consistency across 130+ repos. If the tools are missing something, fix the tools — don't work around them.
-
----
-
-### Security Hardening (NEW — required before every release)
-
-Every project must run a security audit pass before release. This was added after a full-chain 0-day sweep on 2026-04-13 that found 30 kernel issues, 13 compiler issues, and additional shell issues — all in one night, triggered by a VIM CVE report.
-
-**The process:**
-
-1. **Input validation** — every function accepting external data validates bounds, types, ranges
-2. **Buffer safety** — every `var buf[N]` verified: N is BYTES, max access < N, no overflow into adjacent variables
-3. **Syscall review** — every syscall validated: args checked, returns handled, error paths complete
-4. **Pointer validation** — no raw pointer dereference of untrusted input without bounds
-5. **No command injection** — no `sys_system()` or `exec_cmd()` with unsanitized input; use `exec_vec()` with explicit argv
-6. **No path traversal** — file paths from external input validated, no `../` escape
-7. **Known CVE review** — check dependencies and patterns against current CVE databases
-8. **Document findings** — file all issues in `docs/audit/YYYY-MM-DD-audit.md`
-
-**Severity levels:** CRITICAL (remote/privilege escalation), HIGH (moderate effort), MEDIUM (specific conditions), LOW (defense-in-depth).
-
-**The lesson:** The VIM zero-day (CVE-2026-34714) was a modeline sandbox escape — the editor managed its own security and its own features could bypass it. In AGNOS, **kavach owns the sandbox, not the application.** Applications never manage their own security boundaries.
+> **Reference implementations**: [libro](https://github.com/MacCracken/libro) (gold standard), [hisab](https://github.com/MacCracken/hisab) (benchmark practices).
 
 ---
 
 ## Scaffolding
 
-### Required Project Structure (Cyrius)
+### Required Project Structure
 
 ```
 {project}/
-├── VERSION                          # Single source of truth (SemVer)
-├── cyrius.toml                      # Build manifest + dependencies
-├── .cyrius-toolchain                # Pinned compiler version
-├── CLAUDE.md                        # Claude Code project instructions (see example_claude.md)
-├── README.md                        # Architecture, quick start, usage examples
+├── VERSION                          # Single source of truth (CalVer or SemVer)
+├── Cargo.toml                       # Flat crate or workspace root
+├── CLAUDE.md                        # Claude Code project instructions (see CLAUDE.md section)
+├── rust-toolchain.toml              # channel = "stable", components = ["rustfmt", "clippy"]
+├── Makefile                         # check/fmt/clippy/test/audit/deny/bench/coverage/build/doc/clean
+├── README.md                        # Architecture, quick start, feature flags, usage examples
 ├── CHANGELOG.md                     # Keep a Changelog format
 ├── CONTRIBUTING.md                  # Contribution guidelines
 ├── CODE_OF_CONDUCT.md               # Code of conduct
 ├── SECURITY.md                      # Security policy and reporting
 ├── LICENSE                          # GPL-3.0-only
+├── deny.toml                        # cargo-deny license + advisory config
+├── codecov.yml                      # Coverage reporting config
 ├── scripts/
-│   └── version-bump.sh              # Updates VERSION + cyrius.toml
+│   ├── version-bump.sh              # Updates VERSION + Cargo.toml + Cargo.lock
+│   └── bench-history.sh             # Runs criterion, outputs CSV + MD (see Benchmarking)
 ├── docs/
+│   ├── architecture/overview.md     # System diagram, module structure, consumers
 │   ├── development/roadmap.md       # Versioned milestones through v1.0
-│   ├── audit/                       # Security audit reports (YYYY-MM-DD-audit.md)
 │   ├── adr/                         # Architectural decision records (when earned)
 │   ├── guides/                      # Usage guides, integration patterns (when earned)
-│   ├── sources/                     # Per-module academic citations (science/math crates — required)
-│   └── benchmarks-rust-v-cyrius.md  # Port comparison data (for ported crates)
+│   ├── standards/                   # External spec conformance docs (when earned)
+│   ├── compliance/                  # Regulatory, audit, security compliance (when earned)
+│   ├── sources.md                   # Source citations for algorithms/formulas (science/math crates — required)
+│   └── examples/                    # Worked examples with explanation (when earned)
 ├── src/
-│   ├── lib.cyr                      # Library public API (includes all modules)
-│   ├── main.cyr                     # CLI/server entrypoint (if binary)
-│   ├── {module}.cyr                 # Domain modules
-│   └── seed.cyr                     # Pre-built data (if applicable)
+│   ├── main.rs                      # CLI entrypoint (if binary)
+│   ├── lib.rs                       # Library root with doc examples
+│   └── {modules}.rs                 # Feature-gated domain modules
 ├── tests/
-│   └── {project}.tcyr               # Test suite
+│   └── integration.rs               # Cross-module integration tests
+├── examples/
+│   └── basic.rs                     # At least one runnable example
+├── benches/
+│   └── benchmarks.rs                # Criterion benchmarks (required for shared crates)
 ├── .github/workflows/
-│   ├── ci.yml                       # build + test + lint
-│   └── release.yml                  # CI gate → build → version verify → release
+│   ├── ci.yml                       # fmt + clippy + deny + audit + test + msrv + coverage
+│   └── release.yml                  # CI gate → build → version verify → publish → release
 └── .gitignore
-```
-
-### .gitignore (Required)
-
-```gitignore
-# Build output
-/build/
-/dist/
-
-# Resolved deps (auto-generated by cyrius deps)
-lib/*.cyr
-!lib/k*.cyr
-
-# IDE
-.idea/
-.vscode/
-*.swp
-*~
-
-# OS
-.DS_Store
-Thumbs.db
-```
 ```
 
 ### .gitignore (Required)

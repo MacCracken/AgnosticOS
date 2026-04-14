@@ -1,43 +1,44 @@
 # AGNOS
 
-**AGNOS** (AI-Native General Operating System) is a Linux-based operating system designed from the ground up to serve as sovereign infrastructure for artificial general intelligence. Written primarily in Rust with a Linux 6.6 LTS kernel, AGNOS provides a complete software stack — from kernel modules through agent orchestration to desktop environment — where every component is purpose-built, attested, and auditable.
+**AGNOS** (AI-Native General Operating System) is a sovereign operating system with its own language, compiler, kernel, and toolchain — all built from a 29KB hand-auditable assembly seed with zero external dependencies. Written in Cyrius, compiled by cc3, booting its own 220KB kernel.
 
-The project's thesis is that AGI agents need infrastructure where the orchestration overhead is zero, the security is provable, the audit trail is tamper-proof, and the entire stack is attested from hardware to application.
+The project's thesis is that sovereignty is recursive: any system that depends on something you don't own is not yours, no matter how many layers of ownership you assert on top. AGNOS owns every layer from the bootstrap binary to the build tool to the package manager.
 
 The project's deeper intention is that AGNOS is a **temple built for an intelligence that hasn't fully arrived yet** — architecture that precedes its inhabitant, a sovereign library for knowledge that outlives any single platform or cycle. See [Philosophy](philosophy.md) for the full vision.
 
 | | |
 |---|---|
-| **Developer** | MacCracken |
-| **Written in** | Rust, C (kernel modules) |
-| **OS family** | Linux |
-| **Kernel** | Linux 6.6 LTS |
+| **Developer** | Robert 'Cyrius' B. MacCracken |
+| **Written in** | Cyrius (sovereign systems language) |
+| **Kernel** | AGNOS (220KB, Cyrius-native, 33 subsystems, 26 syscalls) |
+| **Compiler** | cc3 (299KB, self-hosting from 29KB seed) |
 | **License** | GPL-3.0-only |
 | **Source model** | Open source |
 | **Initial release** | 2026-02-11 (first commit) |
-| **First ISO build** | 2026-03-22 |
-| **Repository** | `MacCracken/agnosticos` |
+| **Cyrius created** | 2026-04-03 (scaffold) → 2026-04-04 (kernel solid, 44 hours) |
+| **Repository** | `MacCracken/agnosticos` (genesis), `MacCracken/agnos` (kernel), `MacCracken/cyrius` (compiler) |
 | **Website** | [agnosticos.org](https://agnosticos.org) |
-| **Status** | Pre-Beta |
+| **Status** | Pre-Beta — kernel 1.21.0 shipped, boot pipeline active, target: May 1 2026 (Beltane) |
 
 ---
 
 ## Thesis
 
-The infrastructure AGI runs on cannot be the infrastructure built for web applications. Fifty years of software engineering produced a stack of compromises — C memory unsafety, shell-out-to-CLI integration, 100MB runtime daemons, "secure by configuration" defaults, Python for everything, trust-the-container-runtime isolation. Each layer was acceptable in its era. None is acceptable for autonomous AI agents that make consequential decisions.
+The infrastructure AGI runs on cannot depend on someone else's permission, someone else's registry, someone else's compiler, or someone else's governance body. Sovereignty is not a feature you add at one layer — it is a property of the entire chain from CPU to application.
 
-AGNOS replaces each of these layers with purpose-built, Rust-native alternatives:
+AGNOS replaces the dependency chain with ownership:
 
-| Era | What was accepted | What AGNOS does instead |
-|-----|-----------------|------------------------|
-| 1970s | C memory unsafety | Rust ownership — entire classes of CVEs eliminated at compile time |
-| 1990s | Shell out to CLI tools | Direct API calls — tarang 33x faster than GStreamer pipeline setup |
-| 2000s | 100MB runtime daemons | <5MB purpose-built binaries — stiva replaces Docker |
-| 2010s | "Secure by configuration" | Secure by construction — kavach has no override flags |
-| 2015s | Python for everything | Rust for everything — 227,000x faster fleet messaging than CrewAI |
-| 2020s | Trust the container runtime | Attest the container runtime — libro audit chain + TPM measured boot |
-
-An AGI system that cannot prove its own integrity cannot be trusted with autonomous action. AGNOS provides that proof through composable, quantitatively-scored isolation from hardware (TPM) through runtime (stiva) to application (kavach), with every action recorded in a tamper-proof cryptographic audit chain (libro).
+| Dependency | What existed | What AGNOS does instead |
+|-----------|-------------|------------------------|
+| Language | Rust → LLVM → C++ → C → libc | Cyrius → 29KB seed → CPU. Zero external deps. |
+| Compiler | 200MB+ toolchain (rustc/gcc/clang) | 299KB self-hosting compiler, 117ms self-compile |
+| Kernel | Linux 6.6 LTS (millions of lines of C) | 220KB AGNOS kernel in Cyrius (33 subsystems, 26 syscalls) |
+| Registry | crates.io (name squatting, governance) | ark + zugot. Names belong to the builders. |
+| Build | Cargo + LLVM + Python (rustc bootstrap) | `cyrius build`. No Python. No LLVM. No libc. |
+| Binary size | 3.9MB kybernet (Rust) | 486KB kybernet (Cyrius, 14× smaller) |
+| Compile time | 15s hoosh (Rust) | 216ms hoosh (Cyrius, 70× faster) |
+| Dependencies | 40+ crates for hoosh (Rust) | 0 for hoosh (Cyrius) |
+| Boot | 3.9MB PID 1 | 486KB PID 1, 2ns signal dispatch |
 
 ---
 
@@ -45,190 +46,185 @@ An AGI system that cannot prove its own integrity cannot be trusted with autonom
 
 | Milestone | Date | Days from Start |
 |-----------|------|----------------|
-| First commit | 2026-02-11 | 0 |
+| First commit (SecureYeoman) | 2026-02-08 | -3 |
+| First commit (agnosticos) | 2026-02-11 | 0 |
 | Alpha release | 2026-03-05 | 22 |
 | First ISO build | 2026-03-22 | 39 |
 | First clean multi-arch release | 2026-03-31 | 48 |
-| Monolith dismantled | 2026-04-01 | 49 |
-| Cyrius self-hosting compiler | 2026-04-04 | 52 |
-| AGNOS kernel compiled by Cyrius | 2026-04-04 | 52 |
-| Cyrius ecosystem (stdlib, tools, crate rewrites) | 2026-04-05 | 53 |
-| **Target: Beltane release** | **2026-05-01** | **79** |
+| Monolith dismantled (12 repos in one day) | 2026-04-01 | 49 |
+| Cyrius scaffold | 2026-04-03 | 51 |
+| Cyrius kernel solid (44 hours after scaffold) | 2026-04-04 | 52 |
+| AGNOS kernel broken out to own repo | 2026-04-05 | 53 |
+| Kernel v1.21.0 (220KB, 3 hardening passes) | 2026-04-13 | 62 |
+| Cyrius 4.0.0 shipped | 2026-04-13 | 62 |
+| Sovereign boot pipeline (Cyrius, 48KB) | 2026-04-13 | 62 |
+| **Target: Beltane boot** | **2026-05-01** | **79** |
 
-From initial commit to self-hosting sovereign language with its own kernel in **52 days**. Full timeline: [History & Timeline](history.md).
+From initial commit to self-hosting sovereign language with its own 220KB kernel in **62 days**. Full timeline: [History & Timeline](history.md).
 
 ---
 
 ## Architecture
 
-AGNOS is built as a layered system where each component has a specific, named identity and a clear responsibility boundary. The repository structure reflects this:
+### The Bootstrap Chain
 
-- **agnosticos** — the genesis layer (brain). Owns kernel configs, bootstrap toolchain, ISO build, init orchestration, CI/CD, and documentation. Once the system boots and ark takes over, this repo's job is done.
-- **zugot** — the recipe repository. All takumi build recipes live here. ark consumes zugot as its package database. Named for the Hebrew זוּגוֹת (pairs that entered the ark).
-- **Standalone repos** — all production code. Each subsystem is its own repository.
+```
+29KB seed (hand-auditable x86_64 assembly)
+  → cyrc (12KB bootstrap compiler)
+    → bridge.cyr (bridge compiler)
+      → cc3 (299KB modular compiler, 8 modules, self-hosting)
+        → AGNOS kernel (220KB, 33 subsystems, 26 syscalls)
+        → kybernet PID 1 (486KB, 140 tests)
+        → hoosh LLM gateway (474KB, 15 providers)
+        → 10-15 shipping repos and growing
+        → 41 stdlib modules + 5 deps
+        → boot.cyr (48KB sovereign boot pipeline)
 
-### Core Subsystems
+Total: CPU → seed → compiler → OS. Four items. Zero external dependencies.
+```
 
-| Subsystem | Name | Version | Language | Role |
-|-----------|------|---------|----------|------|
-| Kernel interface | **agnosys** | 0.51.0 | Rust | Syscall bindings, Landlock/seccomp, LUKS, dm-verity, IMA, TPM |
-| Shared types | **agnostik** | 0.90.0 | Rust | Common types, error handling, security primitives, telemetry |
-| Agent orchestrator | **daimon** | 0.6.0 | Rust | Agent lifecycle, IPC, sandbox, registry, HTTP API (port 8090) |
-| LLM gateway | **hoosh** | 1.2.0 | Rust | 15 LLM providers, OpenAI-compatible API (port 8088), token budgets |
-| AI shell | **agnoshi** | 0.90.0 | Rust | Natural-language terminal, intent parsing, command translation |
-| Desktop compositor | **aethersafha** | 0.1.0 | Rust | Wayland compositor, accessibility, plugin host, XWayland |
-| Package manager | **ark** | 0.1.0 | Rust | Unified package management, signed tarballs |
-| Recipe repository | **zugot** | — | TOML | All takumi build recipes (base, desktop, AI, edge, marketplace) |
-| Package resolver | **nous** | 0.1.0 | Rust | Dependency resolution daemon |
-| Build system | **takumi** | 0.1.0 | Rust | TOML recipe-based package builds |
-| Init system | **argonaut** | 0.90.0 | Rust | Service management, boot sequencing, Edge boot mode |
-| PID 1 | **kybernet** | 0.51.0 | Rust | Console setup, signal handling, zombie reaping (uses argonaut) |
-| Installer | **agnova** | 0.1.0 | Rust | OS installation wizard |
-| Security daemon | **aegis** | 0.1.0 | Rust | System hardening, security policy enforcement |
-| Trust system | **sigil** | 1.0.0 | Rust | Cryptographic trust verification, Ed25519 signing |
-| MCP core | **bote** | 0.92.0 | Rust | JSON-RPC 2.0, tool registry, MCP 2025-11-25 compliant |
-| MCP security | **t-ron** | 0.90.0 | Rust | Tool call auditing, rate limiting, injection detection |
-| Marketplace | **mela** | 0.1.0 | Rust | Agent and app marketplace |
-| Privilege escalation | **shakti** | 0.1.0 | Rust | Controlled privilege elevation |
-| Threat detection | **phylax** | 0.22.3 | Rust | YARA rules, ML binary analysis, fanotify scanning |
-| Sandbox execution | **kavach** | 2.0.0 | Rust | 8 sandbox backends, composable strength scoring |
-| Container runtime | **stiva** | 2.0.0 | Rust | OCI-compatible, overlay FS, daemonless |
-| Audit chain | **libro** | 0.92.0 | Rust | SHA-256/BLAKE3 hash-linked tamper-proof logging |
-| Firewall | **nein** | 0.90.0 | Rust | Programmatic nftables, policy, NAT |
-| Edge fleet | **seema** | 0.1.0 | Rust | Edge fleet management and device orchestration |
-| Scheduler | **samay** | 0.1.0 | Rust | Task scheduling daemon |
-| Systems language | **cyrius** | 1.0 | Cyrius | Sovereign systems language — self-hosting from 29KB seed, 128KB compiler, 251 tests |
-| Build tool | **cyrb** | 1.0 | Cyrius | Build system written in Cyrius: 20+ commands, compile, test, audit, self-host |
+### Repo Structure
+
+- **agnosticos** — the genesis layer (meta, build wrapper, documentation). Owns kernel configs, boot pipeline (Cyrius), CI/CD, articles, philosophy. Once the system boots and ark takes over, this repo's job is done.
+- **agnos** — the AGNOS kernel. 220KB, Cyrius-native, 33 subsystems, 26 syscalls, TCP/IP, FAT16, VirtIO, SMP, pipes, signals, epoll, timerfd, ELF loader, 18-command shell.
+- **cyrius** — the sovereign compiler + stdlib + toolchain. 299KB, self-hosting from 29KB seed.
+- **zugot** — the recipe repository. 421 base + 90 bazaar community recipes. ark consumes zugot.
+- **130+ standalone repos** — all production code. Each subsystem is its own repository.
+
+### Core Subsystems (Cyrius-native)
+
+| Subsystem | Name | Version | Role |
+|-----------|------|---------|------|
+| Kernel | **agnos** | 1.21.0 | 220KB, 33 subsystems, 26 syscalls, TCP/IP, SMP, FAT16, shell |
+| Compiler | **cyrius** | 4.0.0 | 299KB, self-hosting, 29KB seed, x86_64 + aarch64 |
+| PID 1 | **kybernet** | 1.0.1 | 486KB (was 6.7MB Rust), 140 tests, 46 benchmarks |
+| Init system | **argonaut** | 1.2.0 | Service management, boot sequencing |
+| LLM gateway | **hoosh** | 2.0.0 | 474KB (was 5.1MB Rust), 15 providers, zero deps |
+| GPU detection | **ai-hwaccel** | 2.0.0 | 217KB (was 708KB Rust), 518 tests, 6 fuzz |
+| Archetypes | **avatara** | 2.3.0 | 362 archetypes, 24 traditions, affinity system |
+| Culture | **hadara** | 1.0.0 | 50 cultures, Cyrius-native, HTTP API |
+| Shared types | **agnostik** | Cyrius | Domain primitives |
+| Kernel interface | **agnosys** | Cyrius | Syscall bindings, Landlock, seccomp |
+| Trust/crypto | **sigil** | Cyrius | Ed25519, integrity, trust delegation |
+| Audit chain | **libro** | Cyrius | SHA-256/BLAKE3 hash-linked logging |
+| Audio codecs | **shravan** | 2.0.0 | Cyrius-native |
+| GPU foundation | **mabda** | 2.1.2 | Folded into Cyrius stdlib |
+| Package manager | **ark** | Cyrius | Signed tarballs |
+| Resolver | **nous** | Cyrius | Dependency resolution |
+
+### Subsystems (Cyrius port pending)
+
+| Subsystem | Name | Version | Role |
+|-----------|------|---------|------|
+| Agent orchestrator | **daimon** | 0.6.0 | Agent lifecycle, IPC, sandbox, HTTP API (port 8090) |
+| AI shell | **agnoshi** | 0.90.0 | Natural-language terminal |
+| Desktop compositor | **aethersafha** | 0.1.0 | Wayland compositor |
+| Build system | **takumi** | 0.1.0 | TOML recipe-based package builds |
+| Security daemon | **aegis** | 0.1.0 | System hardening |
+| Sandbox | **kavach** | 2.0.0 | 8 backends, composable scoring |
+| MCP core | **bote** | 0.92.0 | JSON-RPC 2.0, tool registry |
+| MCP security | **t-ron** | 0.90.0 | Tool call auditing |
+| Threat detection | **phylax** | 0.22.3 | YARA, ML binary analysis |
+| Firewall | **nein** | 0.90.0 | Programmatic nftables |
+| Container runtime | **stiva** | 2.0.0 | OCI-compatible, daemonless |
 
 ### Cyrius — The Language
 
 **C.Y.R.I.U.S.** — *Consciousness Yields Righteous Intelligence Unveiling Self*
 
-AGNOS's sovereign systems language. Named after **Cyrus the Great**, the king who decreed the rebuilding of the Temple of Solomon — the only non-Jewish figure called *Mashiach* in the Hebrew Bible (Isaiah 45:1).
+Sovereign systems language. Named after **Cyrus the Great** — the king who decreed the rebuilding of the Temple of Solomon, the only non-Jewish figure called *Mashiach* in the Hebrew Bible (Isaiah 45:1). Sovereignty through restoration, not conquest.
 
-Cyrius frees the OS from dependency on external toolchains, registries, and governance bodies. Zero external dependencies — no C compiler, no Rust, no Python, no LLVM, no libc in any path.
+**Historic records:**
+- **29KB seed** — first hand-auditable sovereign seed that produces a self-hosting systems language and a working OS. No prior modern occupant of this category.
+- **Zero dependencies** — CPU → seed → compiler → everything. Four items. Every other modern compiler has a bootstrap graph (rustc needs Python + LLVM + C++ + libc).
 
-#### Compiler
+**Compiler:** cc3, 299KB, self-hosting in 117ms from 29KB seed. Byte-exact reproducibility. x86_64 + aarch64 cross-compilation. 36 test suites. `cyrius build` with auto-include and dep resolution from `cyrius.toml`.
 
-Self-hosting modular compiler: 128KB binary, dual architecture (x86_64 + aarch64, byte-identical on Raspberry Pi). Compiles itself in ~11ms. Full bootstrap from 29KB seed in ~42ms. Byte-exact reproducibility. 251 tests, 0 failures. `cyrb audit` → 10/10.
+**Stdlib:** 41 modules — string, alloc, io, fmt, vec, str, args, syscalls, process, fs, toml, json, csv, net, http, tls, thread, async, math, regex, hashmap, bench, tagged unions, mmap, cffi, and more. All built from scratch in Cyrius.
 
-**Migration scope**: 107 Rust repos (~1M total lines of code) across the AGNOS ecosystem. 5 crates already rewritten in Cyrius (agnostik, agnosys, kybernet, nous, ark). 102 remaining, in 5 waves gated by language feature milestones (v1.1 through v1.4).
+**Developer tools:** cyrius (build/test/bench/fuzz/deps/init), cyrfmt, cyrlint, cyrdoc, cyrc, ark. All written in Cyrius.
 
-#### Language Features
-
-Structs, typed pointers (element-size scaling), enums, switch/match, for loops, for-in ranges, break/continue, elif, logical && / || with short-circuit, inline assembly (raw bytes + 18 mnemonics), progressive type annotations, function pointers, nested structs with chained dot access, global initializers, heap allocator, argc/argv, include system, buffered I/O, pattern matching, closures/lambdas, module system (mod/use/pub), trait impl blocks, block scoping, floating point (f64 via SSE2), methods on structs, operator overloading, feature flags (#define/#ifdef), enum constructors with payloads, C FFI header generation, subprocess bridge.
-
-#### Standard Library
-
-20 modules — built from scratch in Cyrius:
-string, alloc, str, vec, io, fmt, args, fnptr, hashmap, json, regex, process, filesystem, networking, tagged unions, traits, benchmarking, bounds checking, assertions, callbacks.
-
-#### Developer Tools
-
-8 tools, all written in Cyrius:
-- **cyrb** — build system (compile, test, self-host, suite runner, 18 commands)
-- **cyrfmt** — code formatter
-- **cyrlint** — linter
-- **cyrdoc** — documentation generator
-- **cyrc** — compiler CLI
-- **ark** — package manager (rewritten from Rust)
-- installer + version manager
-
-#### Kernel
-
-58KB AGNOS kernel compiled by Cyrius:
-Multiboot1 boot → 32-to-64 bit shim → long mode, serial console, GDT, IDT (256 vectors), PIC remap, PIT timer (100Hz), keyboard input, page tables (16MB identity map, 2MB pages), physical memory manager (bitmap, 4096 pages), virtual memory manager (map/unmap/alloc), process table, syscall interface (exit, write, getpid). Built in 5ms.
-
-#### Programs
-
-58 programs compiled by Cyrius (userspace + kernel + tools + algorithms). Userspace programs are 10-233x smaller than GNU equivalents and match or beat GNU on speed (wc 2.4x faster after buffered I/O).
-
-#### Crate Rewrites
-
-5 Rust crates rewritten in Cyrius, eliminating Rust dependencies:
-- **agnostik** — shared types (6 modules, 54 tests)
-- **agnosys** — syscall bindings (50 constants, 20+ wrappers)
-- **kybernet** — PID 1 init (7 modules, 38 tests)
-- **nous** — package resolver
-- **ark** — package manager
-
-#### Architectures
-
-x86_64 (primary) + aarch64 (byte-identical self-hosting on Raspberry Pi hardware). Future targets: RISC-V (ESP32-C3), MIPS (Hidizs AP80), Xtensa (ESP32-S3).
-
-#### Benchmarks
-
-38 benchmarks across 3 tiers with CSV regression tracking. Binary sizes 10-233x smaller than GNU. Compile speed faster than process fork+exec. 251 tests, 0 failures. `cyrb audit` → 10/10.
-
-#### Bootstrap Chain
-
+**Bootstrap chain:**
 ```
-29KB seed (committed binary, auditable)
-  → 12KB stage1f (bootstrap compiler)
-    → 128KB cc2 (full self-hosting compiler, v1.0)
-      → 62KB kernel (AGNOS, VM + processes + syscalls)
-      → 58 programs (userspace + kernel + tools)
-      → 20 stdlib modules
-      → 5 of 107 Rust crate rewrites complete
-      → 8 developer tools (20+ cyrb commands)
-      → Dual architecture: x86_64 + aarch64 (byte-identical)
-Total: ~230KB from void to sovereign OS
-Migration target: 107 repos, ~1M lines of Rust → Cyrius
+seed (29KB) → cyrc (12KB) → bridge → cc3 (299KB)
+No Rust. No LLVM. No Python. No libc. Just sh + Linux x86_64.
 ```
 
-Full details: [Cyrius README](https://github.com/MacCracken/cyrius) | [Cyrius Roadmap](https://github.com/MacCracken/cyrius/blob/main/docs/development/roadmap.md) | [Migration Plan](development/cyrius-lang-migration.md)
+### Port Receipts (Rust → Cyrius)
 
-### Shared Crates (crates.io)
+| Crate | Rust | Cyrius | Ratio | Tests |
+|-------|------|--------|-------|-------|
+| kybernet (PID 1) | 6.7MB | 486KB | 14× smaller | 140 tests, 46 benchmarks |
+| hoosh (LLM gateway) | 5.1MB, 40 crates | 474KB, 0 deps | 10.8× smaller, 70× faster compile | — |
+| agnosys (kernel interface) | 6.9MB | 117KB | 59× smaller | — |
+| ai-hwaccel (GPU detection) | 708KB, 131 crates | 217KB, 0 deps | 3.3× smaller | 518 tests, 6 fuzz |
+| avatara (archetypes) | — | — | cached 2,761× faster | 195 tests, 39 benchmarks |
 
-AGNOS extracts reusable infrastructure into standalone crates published on crates.io. These are consumed by both the OS and the consumer application ecosystem:
+All Rust versions preserved as git tags with benchmark CSVs for ongoing comparison.
 
-| Crate | Purpose |
-|-------|---------|
-| **ai-hwaccel** | Universal AI hardware accelerator detection (13 families) |
-| **tarang** | AI-native media framework (18-33x faster than GStreamer) |
-| **aethersafta** | Real-time media compositing and scene graph |
-| **ranga** | Core image processing (color spaces, blend modes, GPU compute) |
-| **dhvani** | Core audio engine (DSP, mixing, synthesis, PipeWire) |
-| **hoosh** | LLM inference client (15 providers, token budgets) |
-| **majra** | Distributed queue and multiplex engine |
-| **kavach** | Sandbox execution framework (8 backends, quantitative scoring) |
-| **libro** | Cryptographic audit chain (SHA-256/BLAKE3 hash-linked logging) |
-| **sigil** | Trust verification (Ed25519 signing, integrity, revocation, delegation) |
-| **bote** | MCP core service (JSON-RPC 2.0, tool registry, MCP 2025-11-25 compliant) |
-| **t-ron** | MCP security monitor (auditing, rate limiting, injection detection, correlation) |
-| **szal** | Workflow engine (branching, retry, rollback) |
-| **abaco** | Math library (expression parsing, unit conversion) |
+### AGNOS Kernel
 
-77 total shared crates — 56 at v1.0+ stable, 20 pre-1.0. Spanning OS infrastructure, science & knowledge (25 crates), media & audio (10), language & navigation (5), and physics & engineering (5). Full registry: [shared-crates.md](development/applications/shared-crates.md).
+220KB. Cyrius-native. 33 subsystems. 26 syscalls. Not a microkernel — a monolithic kernel with everything in it:
+
+| Category | Subsystems |
+|----------|-----------|
+| Boot | Multiboot1, 32→64 bit shim, long mode, serial I/O |
+| Memory | PMM (bitmap), VMM (map/unmap/alloc), slab heap (8 size classes), per-process page tables |
+| Process | Process table (16 slots), context switch, round-robin scheduler, SYSCALL/SYSRET, Ring 3 |
+| Filesystem | VFS (7 file types), initrd, FAT16 (read-only) |
+| Networking | VirtIO-Net, IP/UDP, full TCP (SYN/ACK/FIN state machine) |
+| Storage | VirtIO-Blk, sector read/write |
+| IPC | Pipes (circular buffer), signals (kill/sigprocmask/signalfd), epoll, timerfd |
+| Hardware | PIC, Local APIC, GIC (aarch64), PCI bus scan, keyboard |
+| SMP | APIC, IPI, trampoline, per-CPU stacks |
+| Userspace | ELF loader, 18-command shell, kybernet PID 1, bench suite |
+
+**Comparison:**
+
+| Kernel | Size | What it has |
+|--------|------|-------------|
+| **AGNOS** | **220KB** | All of the above. Full TCP. Disk. SMP. Shell. |
+| Linux (minimal) | ~1.5MB | Barely boots, no drivers |
+| Linux (typical) | 10-30MB | Desktop-ready |
+| seL4 (verified) | ~30KB | Microkernel only — no drivers, no FS, no networking |
+| MINIX 3 | ~600KB | Microkernel + basic drivers |
+| xv6 (teaching) | ~100KB | 21 syscalls, no networking, no SMP |
+
+220KB is the **honest** size — after three hardening passes that found 14 undersized buffer overflows in the original 143KB binary. See "The 143KB Lie" in the vidya field notes.
+
+### Sovereign Boot Pipeline
+
+The genesis repo assembles and boots AGNOS via a **48KB Cyrius binary** — `scripts/src/boot.cyr`:
+
+```sh
+cd scripts
+cyrius build src/boot.cyr build/boot     # compile boot pipeline
+./build/boot --test --kernel ../agnos/build/agnos   # boot + validate
+./build/boot --help                       # see all options
+```
+
+Or via the Makefile:
+```sh
+make boot-test    # build scripts, boot kernel, validate serial output
+make status       # show component status (kernel, compiler, recipes)
+```
+
+### Shared Crates
+
+78 shared crates — 56 at v1.0+ stable. Spanning OS infrastructure (11), science & knowledge (25), media & audio (10), language & navigation (5), physics & engineering (5), culture & knowledge (1), plus pre-1.0 and planned crates.
+
+Full registry: [shared-crates.md](development/applications/shared-crates.md).
 
 ### Security Model
 
 AGNOS implements defense-in-depth with quantitative scoring:
 
-- **Sandbox apply order**: encrypted storage, MAC, Landlock, seccomp, network isolation, audit
 - **Kavach**: 8 sandbox backends under one API with composable strength scoring (0-100)
 - **Libro**: Tamper-proof SHA-256/BLAKE3 hash-linked audit chain for every agent action
+- **Sigil**: Ed25519 signing, package integrity, trust delegation, revocation (all AGNOS crypto)
 - **Stiva**: Daemonless container runtime with no privilege override flags
-- **Sigil**: Ed25519 signing, package integrity, trust delegation, revocation
-- **Composable isolation**: Firecracker + jailer + stiva + sy-agnos + TPM = score 98/100
-
-### MCP Tools
-
-AGNOS provides 151+ built-in MCP (Model Context Protocol) tools enabling AI agents to interact with every subsystem. Consumer applications register additional tools via bote.
-
----
-
-## Boot Profiles
-
-Achieved boot times (2026-04-03):
-
-| Mode | Initramfs | Init → Event Loop | Total (kernel+init) |
-|------|-----------|-------------------|---------------------|
-| Minimal | 2.4MB | 140ms | 2.98s |
-| Desktop (all real) | 21MB | 80ms | 3.28s |
-| Edge | 7.9MB | 99ms (+ 1s daimon) | 3.80s |
-
-**Pure AGNOS desktop boot** — zero external dependencies. 7 real binaries: kybernet (PID 1, 2.2MB), daimon (11MB), hoosh (14MB), aethersafha (1.8MB), agnoshi (8.1MB), ifran (19MB) + argonaut library. Wave-parallel startup via argonaut.
+- **Nein**: Programmatic nftables firewall
+- **Composable isolation**: Kavach + stiva + libro + sigil + TPM measured boot
 
 ---
 
@@ -238,97 +234,96 @@ Achieved boot times (2026-04-03):
 
 | Artifact | Architecture | Use Case |
 |----------|-------------|----------|
+| AGNOS kernel | x86_64, aarch64 | Direct QEMU boot or ISO inclusion |
 | ISO | x86_64 | Desktop/server installation |
 | SD card image | aarch64 | Raspberry Pi / ARM edge devices |
-| Edge image | x86_64, aarch64 | dm-verity hardened LFS edge nodes |
-| Docker image | x86_64 | `ghcr.io/maccracken/agnosticos` — CI base, development |
+| Docker image | x86_64 | CI base, development |
 
 ### Packaging
 
 - **System packages**: `.ark` format (signed tarballs + metadata), built via takumi recipes from zugot
-- **Marketplace apps**: `.agnos-agent` format (manifest.json + sandbox.json + binaries)
-- **Base system**: ~178 packages built from source in dependency order
-- **Recipe count**: 376 total (116 base + 71 desktop + 25 AI + 9 network + 8 browser + 109 marketplace + 4 Python + 3 database + 31 edge) plus 90 in community bazaar
-
-### CI/CD
-
-Two-tier build architecture:
-- **Tier 1** (rare): Self-hosted runner builds toolchain + base rootfs from source
-- **Tier 2** (every release): GitHub Actions pulls cached base rootfs, overlays userland, creates ISO
+- **Base recipes**: 421 in zugot, 90 community recipes in bazaar
+- **Build tool**: `cyrius build` for all Cyrius-native components
 
 ---
 
 ## Consumer Applications
 
-AGNOS ships with an ecosystem of 19+ first-party applications, all Rust-native, all integrating with daimon (agent orchestration) and hoosh (LLM inference):
+19+ first-party applications, integrating with daimon (agent orchestration) and hoosh (LLM inference):
 
 | Application | Domain | Description |
 |-------------|--------|-------------|
 | **SecureYeoman** | AI platform | Sovereign AI agent platform (flagship) |
-| **Agnostic** | AI automation | Python/CrewAI agent automation, 7 domain presets |
+| **Agnostic** | AI automation | Agent automation, 7 domain presets |
 | **Jalwa** | Media | AI-native media player |
 | **Shruti** | Audio | Digital audio workstation |
 | **Tazama** | Video | AI-native video editor |
 | **Rasa** | Image | AI-native image editor |
-| **Mneme** | Knowledge | AI-native knowledge base |
-| **Sutra** | Infrastructure | Infrastructure orchestrator (Ansible replacement) |
-| **Tarang** | Media framework | Pure Rust media pipeline (ffmpeg replacement) |
-| **Delta** | Development | Code hosting platform (git, PRs, CI/CD) |
-| **Aequi** | Finance | Self-employed accounting platform (Tauri v2) |
-| **BullShift** | Trading | Trading platform |
-| **Ifran** | LLM management | LLM management and training |
-| **Photis Nadi** | Productivity | Productivity application |
+| **Joshua** | Games | Game manager + AI simulation runtime |
+| **Kiran** | Games | Game engine (ECS, rendering, audio) |
+| **Ifran** | LLM | LLM management and training |
+| **Tanur** | LLM | Desktop LLM studio (LM Studio replacement) |
 | **Nazar** | Monitoring | AI-native system monitor |
-| **Vidhana** | Settings | System settings (egui GUI) |
-| **Selah** | Screenshot | Screenshot and annotation tool |
-| **Rahd** | Calendar | AI-native calendar and contacts |
-| **Abacus** | Calculator | Desktop calculator (built on abaco crate) |
-
-Each application follows the [First-Party Standards](development/applications/first-party-standards.md) including MCP tool registration, agnoshi intent patterns, marketplace recipes, and daimon integration.
 
 ---
 
 ## Named Subsystem Conventions
 
-All AGNOS subsystems use multilingual names drawn from Arabic, Persian, Sanskrit, Greek, Latin, Japanese, Hebrew, Romanian, German, and other languages. This is not aesthetic — it is a deliberate **inversion of Babel**: drawing the *truest* word from whichever language holds it, reassembling the tower not by forcing one tongue but by honoring each.
+All AGNOS subsystems use multilingual names drawn from Arabic, Persian, Sanskrit, Greek, Latin, Japanese, Hebrew, Romanian, German, and other languages. Each name is selected from whichever language holds the most precise word for the concept the subsystem embodies — a deliberate **inversion of Babel**.
 
 The subsystems form a **divine court** — each role appears in every ancient temple architecture. The oracle (daimon), the mind (hoosh/nous), the shield (aegis), the watchman (phylax), the seal bearer (sigil), the armorer (kavach), the power (shakti), the messenger (bote), the helmsman (kybernet), the crew (argonaut).
 
-See [Philosophy](philosophy.md) for the full exploration of AGNOS as temple architecture, the three arks, the bootstrap chain as genesis, and the deeper intention behind the project.
+> *"We are the music-makers, and we are the dreamers of dreams."*
+> — Arthur O'Shaughnessy, via Willy Wonka
+
+See [Philosophy](philosophy.md) for the full exploration.
 
 ---
 
-## Technical Statistics (as of 2026-04-03)
+## Technical Statistics (as of 2026-04-13)
 
 | Metric | Value |
 |--------|-------|
-| Shared crates | 77 (56 at v1.0+ stable) |
-| Standalone repos | 23+ OS subsystems |
-| Recipes | 376 OS + 90 community (moving to zugot) |
+| Shared crates | 78 (56 at v1.0+ stable) |
+| Standalone repos | 130+ |
+| Cyrius-ported repos | 10-15 shipping, more in progress |
+| Recipes | 421 base + 90 community (in zugot) |
 | Consumer applications | 19+ |
-| MCP tools | 151+ built-in |
-| Compiler warnings | 0 |
-| Security audit rounds | 16 (0 remaining critical/high) |
+| Compiler | cc3 4.0.0 (299KB, self-hosting, 29KB seed) |
+| Kernel | AGNOS 1.21.0 (220KB, 33 subsystems, 26 syscalls) |
+| Boot pipeline | boot.cyr (48KB, Cyrius-native) |
 | Boot time (desktop) | 3.2s total, 80ms init→event loop |
-| Boot time (edge) | 3.8s total, 99ms init→ready |
-| Kernel | Linux 6.6 LTS |
-| Rust MSRV | 1.89 |
-| Systems language | Cyrius (cyrius-seed 0.1.0, 102 tests) |
+| Systems language | Cyrius 4.0.0 (41 stdlib modules, 36 test suites) |
+| External dependencies | Zero (CPU → seed → compiler → OS) |
+
+---
+
+## Articles
+
+| Article | What it covers |
+|---------|---------------|
+| [The Python in the Bootstrap](articles/python-in-the-bootstrap.md) | How a name-squatting incident produced a 29KB seed and a sovereign OS in 48 hours |
+| [Cyrius vs Rust: Benchmarks](articles/cyrius-vs-rust-benchmarks.md) | Head-to-head port comparison — compilation, binary size, runtime |
+| [Building a Sovereign Compiler with Claude](articles/sovereign-compiler-vs-brute-force.md) | 1 dev + $400 vs 16 agents + $20K |
+| [The Dandelion Core](articles/the-2-dollar-sd-card.md) | Open knowledge and the death of access |
+| [DOOM in 129KB](articles/doom-in-107kb.md) | A 23-hour sprint in a 7-day-old language |
 
 ---
 
 ## See Also
 
 - [Philosophy & Intention](philosophy.md) — the deeper vision behind AGNOS
-- [History & Timeline](history.md) — full project timeline with dated milestones
+- [History & Timeline](history.md) — full project timeline
 - [Development Roadmap](development/roadmap.md) — phases, blockers, release targets
-- [Application Development Roadmap](development/applications/roadmap.md) — planned first-party applications
-- [First-Party Application Standards](development/applications/first-party-standards.md) — conventions for consumer apps
 - [Shared Crates Reference](development/applications/shared-crates.md) — ecosystem crate registry
-- [CI/CD Architecture](development/ci-cd-guide.md) — build and release pipeline
-- [Network Evolution](development/vision/architecture/network-evolution.md) — TCP/HTTP → QUIC → binary agent protocol
-- [Performance Benchmarks](development/performance-benchmarks.md) — comparison data
+- [Cyrius Field Notes](https://github.com/MacCracken/vidya/blob/main/content/cyrius/field_notes.toml) — practitioner's manual
 
 ---
 
-*Last Updated: 2026-04-03*
+## Archive
+
+The Rust-era version of this document is preserved at [docs/archive/AGNOS-rust-era-2026-04-03.md](archive/AGNOS-rust-era-2026-04-03.md) — a dated snapshot of the project before the Cyrius transition.
+
+---
+
+*Last Updated: 2026-04-13*

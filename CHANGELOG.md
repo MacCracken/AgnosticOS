@@ -5,6 +5,42 @@ All notable changes to AGNOS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026.4.13] - 2026-04-13
+
+### Achieved — Kernel 1.21.0 + Cyrius 4.0.0 + Sovereign Boot
+
+- **AGNOS kernel v1.21.0** — 220KB honest binary. 33 subsystems, 26 syscalls, TCP/IP (full SYN/ACK/FIN), FAT16, VirtIO-Net/Blk, SMP, Pipes, signals, epoll, timerfd, ELF loader, 18-command shell, kybernet PID 1. Three hardening passes found 14 undersized buffer overflows ("The 143KB Lie" — the original 143KB binary was only that small because buffers were overwriting each other). 220KB is the honest size. See vidya field notes.
+- **Cyrius 4.0.0** — 299KB self-hosting compiler from 29KB seed. 41 stdlib modules + 5 deps. Shipped 3.5.1 through 4.0.0 in one weekend. Key additions: `cyrius deps` (auto-resolve from cyrius.toml), auto-include on build, `cyrius init --ci`, `#derive(accessors)`, native multi-return, switch blocks, defer on all exit paths, compound assignment (`+=`/`-=`/`*=`), negative literals, undefined function diagnostic, verbose build mode, stage1f→cyrc rename. Roadmap reworked for 4.0→5.0 arc.
+- **Sovereign boot pipeline** — `scripts/src/boot.cyr` (48KB compiled). Boots AGNOS kernel in QEMU, validates serial output, resolves sibling repos for kernel/toolchain/recipes. Written in Cyrius, compiled by cc3. `make boot-test` from genesis repo.
+- **Critical path CLEARED**: libro ✅ → argonaut ✅ → kybernet 1.0.1 ✅ → kernel 1.21.0 ✅ → boot pipeline ✅. All blockers resolved in one session.
+
+### Added — New Crates & Ports
+
+- **hadara** (1.0.0) — Culture as first-class entity (Arabic: حضارة — civilization, presence). 50 cultures across every inhabited continent, 85 practices, 84 art forms, 25 figures, 21 inter-culture relations, BFS graph traversal, evolution tracking, consumer integration (bhava/joshua/natya/jnana), HTTP JSON API. Cyrius-native from day one. 329 assertions, 33 benchmarks. Academic citations throughout.
+- **avatara** (2.3.0) — Ported from Rust, then expanded. 362 archetypes, 24 traditions (added Finnish/Sami + Vodou), affinity system with cross-tradition mapping/similarity/conflict detection. Cached access 2,761× faster than Rust. 195 tests, 39 benchmarks.
+- **hoosh** (2.0.0) — Ported from Rust. 5.1MB → 474KB (10.8×). 22,956→1,361 lines (16.9×). 15s→216ms compile (70×). 40 crates→0 deps.
+- **ai-hwaccel** (2.0.0) — Ported from Rust. 708KB → 217KB (3.3×). 131 crates→0 deps. 518 tests, 6 fuzz, 20 benchmarks. Added safetensors/GGUF detection (new features Rust version didn't have).
+- **kybernet** (1.0.1) — Ported from Rust. 6.7MB → 486KB (14×). 140 tests (was 27), 46 benchmarks (was 3). Native seccomp BPF, Landlock sandboxing, capability dropping. is_mounted() optimized 1,583× via mount cache. klog() optimized to single-write batching.
+- **libro, argonaut, itihas** — Cyrius ports completed, released.
+
+### Changed — Genesis Repo Cleaned
+
+- **CLAUDE.md** rewritten — removed MSRV 1.89, Rust references, old `cargo fmt`/`cargo clippy` workflow. Added Cyrius section with build rules, top-level main() pattern, working-programs reference.
+- **Makefile** rewritten — removed all cargo/rustc/gcc references. Pure Cyrius + QEMU + sibling repos. Targets: `make boot`, `make boot-test`, `make scripts`, `make check`, `make status`, `make version`.
+- **scripts/** — 34 bash scripts archived to `scripts/archive-pre-cyrius/`. New Cyrius project: `scripts/cyrius.toml`, `scripts/src/boot.cyr` (48KB sovereign boot pipeline).
+- **AGNOS.md** rewritten for Cyrius era. Rust-era version archived at `docs/archive/AGNOS-rust-era-2026-04-03.md`.
+- **release-vision.md** — fossil banner added acknowledging pre-April-4 content overtaken by Cyrius kernel.
+- **Roadmap** — Phase 13A blocker status updated (critical path cleared), header updated with current state.
+
+### Added — Articles
+
+- **"The Python in the Bootstrap"** (`docs/articles/python-in-the-bootstrap.md`) — how a name-squatting incident exposed a recursive dependency problem, produced a 29KB seed, and built a sovereign OS in 48 hours.
+- **"Why Do LLMs Need Gigacenters?"** (`docs/articles/why-gigacenters.md`) — outline for the distributed inference thesis (article milestone: when murti + seema demonstrate distributed inference on sovereign nodes).
+
+### Added — Philosophy
+
+- O'Shaughnessy quote added to philosophy.md epigraphs: *"We are the music-makers, and we are the dreamers of dreams"* — via Willy Wonka.
+
 ## [2026.4.4] - 2026-04-04
 
 ### Achieved — Cyrius 1.0 (Self-Hosting Compiler)

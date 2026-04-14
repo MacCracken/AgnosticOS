@@ -171,6 +171,15 @@ Designed, not yet scaffolded.
 | **kshetra** | 0.1.0 | Temporal geography — spatiotemporal database, (lat, lon, time) → state. Geology, climate, vegetation, settlement, political, hydrology layers (Sanskrit: क्षेत्र — field, domain) | itihas, badal, khanij, vanaspati, sangha, falak |
 | **krishi** | 0.1.0 | Agriculture — crop science, soil chemistry, irrigation, seasons, yield modeling, pest dynamics (Sanskrit: कृषि — cultivation). Ma'at #5. | vanaspati, badal, kimiya, kshetra |
 | **prakriti** | 0.1.0 | Ecology — ecosystem modeling, food webs, population dynamics, biodiversity, nutrient cycles, sustainability (Sanskrit: प्रकृति — nature). Ma'at #9. | jantu, vanaspati, badal, jivanu, kimiya |
+| **leela** | 0.1.0 | Sport as divine play — rules, athletes, tournaments, records, venues, history (Sanskrit: लीला — divine play, cosmic game). Links to hadara (culture), itihas (history), avatara (athlete archetypes). | hadara, itihas, avatara, jnana, joshua |
+| **nyaya** | 0.1.0 | Structured legal knowledge — statutes, precedents, constitutional law, IP, trade, international (Sanskrit: न्याय — justice, law, logic). 17 legal domains. | trump_epstein, hadara, itihas, jnana, hoosh, kavach |
+| **cyim** | 0.1.0 | Sovereign text editor — Cyrius-native, no modelines, no internal sandbox (kavach owns security). VIM-inspired keybindings, zero attack surface. | agnoshi, aethersafha, developer workflow |
+
+## Scaffolded (non-library)
+
+| Crate | Version | Description | Key Consumers |
+|-------|---------|-------------|---------------|
+| **trump_epstein** | 0.1.0 | Documented evidence database — court filings, depositions, flight logs, financial records. Both parties. All perps. No victims. Admissible standard. 15 modules: evidence, person, connection, propaganda (game theory), lineage, networks, charges. | nyaya, patra, sigil, libro |
 
 ## Audio I/O (pure Cyrius)
 

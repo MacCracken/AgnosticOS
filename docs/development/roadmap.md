@@ -1,11 +1,12 @@
 # AGNOS Development Roadmap
 
-> **Status**: Pre-Beta | **Last Updated**: 2026-04-11
-> **Monolith fully dismantled** — all subsystems extracted to standalone repos.
-> **Recipes**: 421 recipes in **zugot** (`MacCracken/zugot`). 90 bazaar community recipes.
-> **Shared Crates**: 82+ library crates. Cyrius-native crates: sakshi (0.9.0), bsp (0.7.1), patra (0.12.0), cyrius-doom (0.17.2)
-> **Cyrius**: v3.4.1. Self-hosting compiler, 215KB. Multi-width types, native test/bench/fuzz, dep resolution, min version enforcement, small function inlining. 29KB seed unchanged.
-> **Cyrius Ports**: agnostik, agnosys, argonaut ported. sigil done. shravan 2.0.0 shipped. libro in progress. tarang port started.
+> **Status**: Pre-Beta | **Last Updated**: 2026-04-13
+> **Kernel 1.21.0 shipped** — 220KB, 33 subsystems, 26 syscalls, 3 hardening passes.
+> **Cyrius 4.0.0** — 299KB self-hosting compiler. Boot pipeline in Cyrius (48KB).
+> **Critical path CLEARED**: libro ✅ argonaut ✅ kybernet ✅ kernel ✅ boot pipeline ✅
+> **Shared Crates**: 78 library crates (56 at v1.0+). 10-15 repos shipping in Cyrius.
+> **Recipes**: 421 in zugot + 90 bazaar community.
+> **Next**: Self-hosting validation (Phase 13A) → remaining Cyrius ports → Beta Q4 2026.
 
 ---
 
@@ -100,16 +101,19 @@ Full details: [sprint-history.md](sprint-history.md#monolith-extraction--complet
 
 **This is the single most important remaining work.** Without it, AGNOS is a Debian overlay.
 
-**Current blocker**: kybernet Cyrius port. Dependency chain: Cyrius fixes → libro port → argonaut integrates libro → kybernet consumes both → kernel pulls kybernet as PID 1 → boot.
+**Previous blocker (CLEARED)**: kybernet Cyrius port. Dependency chain completed 2026-04-13: libro ✅ → argonaut ✅ → kybernet 1.0.1 ✅ → kernel 1.21.0 ✅ → boot pipeline (Cyrius, 48KB) ✅.
+
+**Current work**: Sovereign boot pipeline active. Kernel boots in QEMU via `make boot-test`. Remaining items are self-hosting validation (can AGNOS rebuild itself from source without a host distro).
 
 | # | Item | Status | Notes |
 |---|------|--------|-------|
-| 1 | Run bootstrap-toolchain.sh end-to-end | Not started | Build cross-compiler from source tarballs |
-| 2 | Build base system in chroot | Not started | ark-build all 109 base recipes in order |
-| 3 | Build AGNOS userland on target | Not started | Cyrius-compiled binaries inside AGNOS |
-| 4 | Build kernel modules on target | Not started | Compile AGNOS kernel modules without host |
-| 5 | Selfhost-validate passes all phases | Not started | Run `selfhost-validate --phase all` on booted ISO |
-| 6 | CI automation | In progress | GitHub Actions workflows |
+| 1 | Kernel boots in QEMU | **Done** | boot.cyr (48KB Cyrius binary), kernel 1.21.0 (220KB) |
+| 2 | Sovereign boot pipeline | **Done** | `make boot-test` from genesis repo |
+| 3 | Run bootstrap-toolchain.sh end-to-end | Not started | Build cross-compiler from source tarballs (scripts need Cyrius port) |
+| 4 | Build base system in chroot | Not started | ark-build all 109 base recipes in order |
+| 5 | Build AGNOS userland on target | Not started | Cyrius-compiled binaries inside AGNOS |
+| 6 | Selfhost-validate passes all phases | Not started | Run `selfhost-validate --phase all` on booted ISO |
+| 7 | CI automation | In progress | GitHub Actions workflows |
 
 **Target**: May 1, 2026 (Beltane)
 
