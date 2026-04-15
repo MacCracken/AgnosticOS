@@ -2,10 +2,11 @@
 
 > **Status**: Pre-Beta | **Last Updated**: 2026-04-14
 > **Kernel 1.22.0 shipped** — 260KB, 33 subsystems, 26 syscalls, hardened pass.
-> **Cyrius 4.7.0-alpha2** — 353KB self-hosting compiler, 42 stdlib modules. http_server + ws absorbed (v4.5.0); linker + cross-unit DCE in progress (v4.6.x); PIC codegen alpha (v4.7.x).
+> **Cyrius 4.8.5-1** — 353KB self-hosting compiler, 42 stdlib modules. http_server + ws absorbed (v4.5.0); linker + cross-unit DCE (v4.6.x); PIC codegen (v4.7.x); types & codegen (u128, jump tables, math pack) (v4.8.x). Next major: v5.0 platforms (Mach-O, PE/COFF, RISC-V, bare-metal).
 > **Kavach 3.0.0 shipped Cyrius-native** — 344KB (was 2.4MB Rust), 1 dep, 9 CWE fixes, sandbox lifecycle 500× faster.
-> **Cyrius-doom 0.24.3** — plays DOOM, hardened (P(-1), 5 CVEs fixed), 2.66ms/frame (91% tick headroom), BSP 1.0.1 stable dep.
-> **Bote 1.3.0** — MCP pipeline ~5µs/message; v1.4.0 streamable HTTP enabled by v4.5.0 stdlib absorption.
+> **Abaco 2.0.0 shipped Cyrius-native** — 5932→2856 lines (-52%), Miller-Rabin ~12× faster end-to-end via Cyrius 4.8.5 hardware u64_mulmod fast-path. Canonical port-feedback closed-loop instance.
+> **Cyrius-doom 0.24.5** — plays DOOM, hardened (P(-1), 5 CVEs fixed), 2.59ms/frame (-4.7% from jump-table dispatch, 91%+ tick headroom), BSP 1.0.1 stable dep, pinned to Cyrius 4.8.5-1.
+> **Bote 2.5.1** / **T-Ron 2.0.0** shipped — both out of pre-release. Bote MCP pipeline ~5µs/message, streamable HTTP unlocked by v4.5.0 stdlib absorption.
 > **Boot script v2026.3.31** — sovereign Cyrius boot pipeline (56KB), `--status` surfaces full ecosystem snapshot.
 > **Critical path CLEARED**: libro ✅ argonaut ✅ kybernet ✅ kernel ✅ boot pipeline ✅ kavach ✅
 > **Shared ecosystem**: 10-15 repos shipping on the Cyrius toolchain; ports done: agnostik, agnosys, sigil, shravan, argonaut, kybernet, nous, ark, sakshi, majra, bsp, cyrius-doom, mabda, patra, libro, tarang, yukti, avatara, ai-hwaccel, hoosh, hadara (native), kavach. In progress: bhava, hisab. Blocked: vidya MCP (needs bote v1.4.0).

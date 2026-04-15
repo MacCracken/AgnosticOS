@@ -12,7 +12,7 @@ Three sprints planned. Two shipped. One pending.
 |---|---|---|---|---|
 | **1 — Renders** | April 8–9, ~23h | v0.17.0, 129KB | first agent | E1M1 renders. Black screen to full HUD in one night. |
 | **2 — Plays, Hardens, Faster** | April 13, one day | v0.24.2, 196KB | second agent | Gameplay end-to-end. P(-1) audit. 32% faster *with zero engine changes* because the compiler improved underneath. |
-| **3 — Black Book to v1.0** | pending | v1.0.0 target | second agent (continuing) | Fabien Sanglard's reference, implemented verbatim against the physical book. Ship. |
+| **3 — Black Book to v1.0** | pending | v1.0.0 target | third agent (handoff from sprint 2) | Fabien Sanglard's reference, implemented verbatim against the physical book. Ship. |
 
 ---
 
@@ -30,7 +30,7 @@ And render_frame dropped from 2.9ms to **2.66ms with zero engine changes**, beca
 
 ## Sprint 3 — Black Book to v1.0 (pending)
 
-Fabien Sanglard's *Game Engine Black Book: DOOM* is the authoritative reference. When the physical book arrives, the engine gets audited line-by-line against it. v0.25 is the first audit pass; v1.0 ships when everything in the book matches what the engine does — and what the book doesn't cover (WAD hardening, bare-metal boot, AGNOS kernel integration) ships under its own discipline. **The goal: boot AGNOS kernel → shell → `doom` → play.** Same agent continues across the line to keep the session context that earned the first two sprints.
+Fabien Sanglard's *Game Engine Black Book: DOOM* is the authoritative reference. When the physical book arrives, the engine gets audited line-by-line against it. v0.25 is the first audit pass; v1.0 ships when everything in the book matches what the engine does — and what the book doesn't cover (WAD hardening, bare-metal boot, AGNOS kernel integration) ships under its own discipline. **The goal: boot AGNOS kernel → shell → `doom` → play.** Sprint 2's agent handed off at v0.24.5 (gameplay complete, P(-1) hardened, Cyrius 4.8.5-1 pinned, every field note current). A third agent picks up Sprint 3 from that handoff — the continuity that matters here is the *state of the code and docs*, not the identity of the agent holding the chisel.
 
 ---
 
@@ -42,7 +42,7 @@ Fabien Sanglard's *Game Engine Black Book: DOOM* is the authoritative reference.
 
 **Security is a sprint input, not a post-release patch.** Sprint 2 ran P(-1) audit *as part of shipping* — known DOOM CVE classes mapped, 5 findings fixed, WAD zero-fill-before-read as defense-in-depth. The engine is hardened against the exact vulnerability classes historical DOOM ports suffered, before v1.0 ships.
 
-**Pair-programming has continuity mechanics worth preserving.** The first sprint's agent got the renderer working. The second sprint's agent got the game working. Keeping the same agent for sprint 3 is a deliberate choice — the session-level context on WAD parsing, bug patterns, and architectural decisions is itself a durable asset. Agent-continuity is now part of the project's plan.
+**Pair-programming has handoff mechanics worth engineering for.** The first sprint's agent got the renderer working. The second sprint's agent got the game working, hardened it, and — crucially — *left it at a state clean enough for the next agent to inherit without rediscovery*. A third agent picks up sprint 3 after the second agent's rate window closed. That's the mature answer: across a long-lived project, rate limits will hit, sessions will end, and the durable continuity asset isn't "keep the same agent warm" — it's **the quality of the handoff surface**. Field notes current to the tag. CHANGELOG coherent. Pending work enumerated. Version pinned cleanly. That's what makes agent-swaps cheap.
 
 ---
 
