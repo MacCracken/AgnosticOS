@@ -2,6 +2,8 @@
 
 > **Last Updated**: 2026-03-16
 
+> **Fossil notice (2026-04-14):** This guide describes Rust-era CI/CD. Cyrius projects use `cyrius build` and `cyrius test` with ~1 minute pipelines. `cargo fmt`, `cargo clippy`, `cargo audit`, and `cargo deny` references are historical.
+
 ## Overview
 
 AGNOS uses GitHub Actions for continuous integration and delivery. The pipeline

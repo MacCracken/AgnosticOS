@@ -3,6 +3,8 @@
 > Checklist for setting up a Raspberry Pi 4 as a GitHub Actions self-hosted runner
 > for aarch64 AGNOS builds (SD card images, arm64 rootfs, cross-validation).
 
+> **Fossil notice (2026-04-14):** This setup guide references Rust cross-compilation tooling. Cyrius cross-compilation is a Cyrius 5.0 target (multi-platform: Mach-O, PE/COFF, RISC-V, bare-metal).
+
 ---
 
 ## 1. Flash Ubuntu Server to SD Card

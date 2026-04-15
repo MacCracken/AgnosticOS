@@ -1,6 +1,6 @@
 # AGNOS — Project History & Timeline
 
-> **Status**: Active | **Last Updated**: 2026-04-05
+> **Status**: Active | **Last Updated**: 2026-04-14
 
 ---
 
@@ -48,9 +48,9 @@ AGNOS went from initial commit to first bootable ISO in **39 days** (2026-02-11 
 
 From first commit to sovereign self-hosting language with its own kernel in **53 days** (2026-02-11 to 2026-04-04).
 
-The project accumulated **336+ commits** across **19+ tagged releases**, achieving 10,800+ passing tests and ~84.3% code coverage. The shared crate ecosystem grew to **82 crates** (56 at v1.0+ stable), with 19+ consumer applications developed in parallel.
+The Cyrius language went from nothing to a self-hosting compiler with a kernel in **one day** (2026-04-04), and then through 50+ versions to v4.8.5-1 (373KB, 42 stdlib modules) by day 63. The AGNOS kernel hardened from 143KB (with 14 buffer overflows — "The 143KB Lie") to 260KB at v1.22.0. Twenty-two subsystems ported from Rust to Cyrius, each measured against its Rust predecessor.
 
-The Cyrius language went from nothing to a self-hosting compiler with a 58KB kernel in **one day** (2026-04-04), and to a complete ecosystem (stdlib, tools, crate rewrites, dual architecture) in **three days**.
+The shared crate ecosystem grew to **78 crates** (56 at v1.0+ stable), with 19+ consumer applications developed in parallel.
 
 ---
 
@@ -66,8 +66,13 @@ The Cyrius language went from nothing to a self-hosting compiler with a 58KB ker
 | Cyrius self-hosting | 2026-04-04 | 52 |
 | AGNOS kernel (Cyrius) | 2026-04-04 | 52 |
 | Cyrius ecosystem (stdlib, tools, crate rewrites) | 2026-04-05 | 53 |
+| Kernel v1.21.0 (220KB, 3 hardening passes) | 2026-04-13 | 62 |
+| Cyrius 4.0.0 + sovereign boot pipeline | 2026-04-13 | 62 |
+| 22+ Cyrius ports, kavach 3.0, abaco 2.0, bote 2.5.1 | 2026-04-14 | 63 |
+| Kernel v1.22.0 (260KB), Cyrius 4.8.5-1 (373KB) | 2026-04-14 | 63 |
+| Sankoch (compression library) scaffolded | 2026-04-14 | 63 |
 | **Target: Beltane release** | **2026-05-01** | **79** |
 
 ---
 
-*Last Updated: 2026-04-05*
+*Last Updated: 2026-04-14*

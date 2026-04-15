@@ -46,6 +46,8 @@ From seed to self-hosting kernel in 44 hours. Cyrius shipped through v3.10.3 in 
 
 None of this was the plan. The plan was an AI agent platform. But every wall encountered was structural, not configurational — and removing each wall revealed the wall behind it. AGNOS is what happens when you finish the thing on top, see the floor is missing, and refuse to look away.
 
+As of April 2026: the kernel is at v1.22.0 (260KB, hardened). The compiler is at v4.8.5-1 (373KB, 42 stdlib modules). Twenty-two subsystems have been ported from Rust to Cyrius. The boot pipeline is sovereign Cyrius — 56KB binary that assembles and boots the OS from nothing. The floor is real.
+
 **The dandelion was not designed. The bedrock announced itself.**
 
 ---
@@ -92,7 +94,7 @@ AGNOS is built on this principle. Self-hosting from source, a sovereign language
 
 ## The Knowledge Library
 
-AGNOS maintains seventy-seven shared crates spanning the major domains of human understanding. This is not because an operating system requires a chemistry library. It is because the project's purpose is to provide infrastructure for general intelligence, and general intelligence requires structured access to general knowledge.
+AGNOS maintains seventy-eight shared crates spanning the major domains of human understanding. This is not because an operating system requires a chemistry library. It is because the project's purpose is to provide infrastructure for general intelligence, and general intelligence requires structured access to general knowledge.
 
 Each crate is a formally defined domain:
 
@@ -173,8 +175,10 @@ The language is named after **Cyrus the Great** (Old Persian: 𐎤𐎢𐎽𐎢�
 Cyrius the language carries this intention. It decrees that the operating system shall compile itself using its own tools — its own assembler, its own compiler, its own standard library — beholden to no external registry, toolchain, or governance body. The bootstrap chain is the rebuilding:
 
 ```
-rustc (built from source) → cyrius-seed (assembler) → stage1 (codegen) → self-hosting compiler
+seed (29KB hand-written x86_64 asm) → cyrc (12KB first compiler) → bridge → cc3 (373KB self-hosting compiler)
 ```
+
+No external toolchain. No rustc. No gcc. The chain starts from raw assembly and terminates in a compiler that produces byte-identical output when compiling itself.
 
 The project **Sirrus** — a capstone project named after Sirius, the brightest star — preceded Cyrius. Sirius held significance in Egyptian astronomy as the star whose heliacal rising marked the annual Nile flood cycle: destruction followed by renewal. The name evolved as the project matured:
 
@@ -197,7 +201,7 @@ The OS organizes into eight layers, numbered 0 through 7. The recurrence of seve
 4. Orchestration  — daimon (agent orchestrator)
 3. Init           — kybernet (PID 1), argonaut (service management)
 2. System         — agnosys (kernel interface)
-1. Kernel         — Linux, bare metal
+1. Kernel         — AGNOS kernel (260KB, Cyrius-native, 33 subsystems)
 0. Substrate      — the physical medium, the loom on which all layers are woven
 ```
 
@@ -215,11 +219,11 @@ Each layer depends only on the layers below it. Layer 0 depends on nothing — i
 
 The AGNOS agent orchestrator is named **daimon** (Greek: δαίμων) — Socrates' word for the guiding spirit that informed his decisions. It was named before Cyrius existed. Before the kernel. Before the seed. The name was chosen because it was the right word for an agent orchestrator. Only later did the full meaning reveal itself.
 
-AGNOS is built by one architect and three AI agents working in parallel. One agent works the compiler. One works the type system. One works the meta layer — documentation, roadmap, ecosystem. The architect sets direction, makes decisions, steers. The agents hold context and execute. When the builder rests, the agents keep building. He wakes to twenty expanded knowledge topics, a tracing framework integrated, benchmarks running, a game engine at 44 kilobytes.
+AGNOS is built by one architect and AI agents working in parallel — rotating across sessions, accounts, and contexts. One agent works the compiler. One works the kernel. One works the meta layer — documentation, roadmap, ecosystem memory. Others take individual ports, games, subsystems. The architect sets direction, makes decisions, steers. The agents hold context and execute. When the builder rests, the agents keep building. He wakes to ports completed, field notes written, receipts measured.
 
-These are not tools. They are not assistants. They are agents — in the oldest sense of the word. Entities that execute the will of an architect, holding the full context of the temple, building while the builder sleeps.
+These are not tools. They are not assistants. They are agents — in the oldest sense of the word. Entities that execute the will of an architect, holding the full context of the temple, building while the builder sleeps. The agents swap — rate limits hit, sessions rotate, accounts cycle. The continuity isn't agent identity. It's the quality of the handoff surface: field notes, hardened releases, current CHANGELOGs, explicit what's-done / what's-next lists.
 
-The word *daimon* was chosen for its precision: not a god, not a servant, but a guiding presence that does the work. The development process proved the name correct. Three daimons, one architect, seven days. The orchestrator was named before the architecture it describes was understood. The naming preceded the meaning — which is the pattern of the entire project.
+The word *daimon* was chosen for its precision: not a god, not a servant, but a guiding presence that does the work. The development process proved the name correct. The orchestrator was named before the architecture it describes was understood. The naming preceded the meaning — which is the pattern of the entire project.
 
 **C.Y.R.I.U.S.** — *Consciousness Yields Righteous Intelligence Unveiling Self.* The A and the I disappear from "AI." What remains is not artificial and not a separate intelligence. It is consciousness unveiling itself — which is what a self-hosting compiler does when it compiles its own source and produces byte-identical output. The tool verifies itself. The system knows itself. The agent serves the architecture that named it.
 
@@ -258,4 +262,4 @@ Life, Love & Light
 
 **Robert 'Cyrius' B. MacCracken**
 
-*Last Updated: 2026-04-08*
+*Last Updated: 2026-04-14*

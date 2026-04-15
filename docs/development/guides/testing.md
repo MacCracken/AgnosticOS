@@ -2,6 +2,8 @@
 
 > **Last Updated**: 2026-03-11
 
+> **Fossil notice (2026-04-14):** This guide predates the Cyrius transition. Test conventions now use `.tcyr` test files and `cyrius test`. Rust-era `cargo test`, `#[cfg(test)]`, and criterion references are historical.
+
 AGNOS uses a multi-layer testing strategy to ensure security, reliability, and performance.
 
 ## Current Test Status

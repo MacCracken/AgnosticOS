@@ -2,6 +2,8 @@
 
 **Last Updated**: 2026-03-07
 
+> **Fossil notice (2026-04-14):** This document predates the Cyrius transition. References to `cargo audit`, `cargo-deny`, Rust tooling, and `Cargo.toml` reflect the Rust era. Security principles are still valid; tooling commands need updating for Cyrius.
+
 This document outlines the penetration testing methodology and procedures for AGNOS security audits.
 
 ## Scope
