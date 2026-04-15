@@ -1,12 +1,16 @@
 # AGNOS Development Roadmap
 
-> **Status**: Pre-Beta | **Last Updated**: 2026-04-13
-> **Kernel 1.21.0 shipped** — 220KB, 33 subsystems, 26 syscalls, 3 hardening passes.
-> **Cyrius 4.0.0** — 299KB self-hosting compiler. Boot pipeline in Cyrius (48KB).
-> **Critical path CLEARED**: libro ✅ argonaut ✅ kybernet ✅ kernel ✅ boot pipeline ✅
-> **Shared Crates**: 78 library crates (56 at v1.0+). 10-15 repos shipping in Cyrius.
-> **Recipes**: 421 in zugot + 90 bazaar community.
-> **Next**: Self-hosting validation (Phase 13A) → remaining Cyrius ports → Beta Q4 2026.
+> **Status**: Pre-Beta | **Last Updated**: 2026-04-14
+> **Kernel 1.22.0 shipped** — 260KB, 33 subsystems, 26 syscalls, hardened pass.
+> **Cyrius 4.7.0-alpha2** — 353KB self-hosting compiler, 42 stdlib modules. http_server + ws absorbed (v4.5.0); linker + cross-unit DCE in progress (v4.6.x); PIC codegen alpha (v4.7.x).
+> **Kavach 3.0.0 shipped Cyrius-native** — 344KB (was 2.4MB Rust), 1 dep, 9 CWE fixes, sandbox lifecycle 500× faster.
+> **Cyrius-doom 0.24.3** — plays DOOM, hardened (P(-1), 5 CVEs fixed), 2.66ms/frame (91% tick headroom), BSP 1.0.1 stable dep.
+> **Bote 1.3.0** — MCP pipeline ~5µs/message; v1.4.0 streamable HTTP enabled by v4.5.0 stdlib absorption.
+> **Boot script v2026.3.31** — sovereign Cyrius boot pipeline (56KB), `--status` surfaces full ecosystem snapshot.
+> **Critical path CLEARED**: libro ✅ argonaut ✅ kybernet ✅ kernel ✅ boot pipeline ✅ kavach ✅
+> **Shared ecosystem**: 10-15 repos shipping on the Cyrius toolchain; ports done: agnostik, agnosys, sigil, shravan, argonaut, kybernet, nous, ark, sakshi, majra, bsp, cyrius-doom, mabda, patra, libro, tarang, yukti, avatara, ai-hwaccel, hoosh, hadara (native), kavach. In progress: bhava, hisab. Blocked: vidya MCP (needs bote v1.4.0).
+> **Next major**: **Cyrius 5.0 — Multi-Platform** (Mach-O + PE/COFF + RISC-V + bare-metal). 4.x finishes with PIC codegen + types/codegen (u128, defmt, jump tables, regalloc).
+> **Handoff note (2026-04-14)**: base OS stack updates held until Cyrius 5.0 lands; then refresh all sibling repo versions and bump `scripts/src/boot.cyr` to match. Likely continues on a rotated account session.
 
 ---
 
