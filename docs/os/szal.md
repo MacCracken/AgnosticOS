@@ -5,7 +5,7 @@
 | Field | Value |
 |-------|-------|
 | Status | Released |
-| Version | `0.23.4` |
+| Version | `1.1.0` |
 | Repository | `MacCracken/szal` |
 | Runtime | library crate (Rust) |
 | Recipe | `zugot/marketplace/szal.toml` |

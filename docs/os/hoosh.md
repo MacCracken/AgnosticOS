@@ -5,7 +5,7 @@
 | Field | Value |
 |-------|-------|
 | Status | Released |
-| Version | `0.25.3` |
+| Version | `2.0.0` (Cyrius) |
 | Repository | `MacCracken/hoosh` |
 | Runtime | library crate (Rust) |
 | Recipe | `zugot/marketplace/hoosh.toml` |

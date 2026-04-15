@@ -5,7 +5,7 @@
 | Field | Value |
 |-------|-------|
 | Status | Released |
-| Version | `0.23.3` |
+| Version | `2.0.0` (Cyrius) |
 | Repository | `MacCracken/ai-hwaccel` |
 | Runtime | library crate (Rust) |
 | Recipe | `zugot/marketplace/ai-hwaccel.toml` |

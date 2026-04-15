@@ -5,7 +5,7 @@
 | Field | Value |
 |-------|-------|
 | Status | Stable |
-| Version | `1.0.1` |
+| Version | `3.0.0` (Cyrius) |
 | Repository | `MacCracken/kavach` |
 | Runtime | library crate (Rust) |
 | Recipe | `zugot/marketplace/kavach.toml` |

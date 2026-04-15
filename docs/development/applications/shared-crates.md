@@ -1,6 +1,6 @@
 # Shared Crates — Registry & Status
 
-> **Status**: Active | **Last Updated**: 2026-04-03
+> **Status**: Active | **Last Updated**: 2026-04-14
 >
 > **78 crates** — 56 at v1.0+ stable (11 OS, 25 science, 10 media, 5 lang/nav, 5 physics), 21 pre-1.0 (incl. hadara), 1 internal
 >
@@ -19,23 +19,23 @@ Full documentation for each crate: [docs/applications/libs/{crate}.md](../../app
 | Crate | Version | Domain |
 |-------|---------|--------|
 | agnosai | 1.0.2 | AI orchestration |
-| ai-hwaccel | 1.0.0 | GPU detection |
-| hoosh | 1.2.0 | LLM gateway |
+| ai-hwaccel | 2.0.0 | GPU detection |
+| hoosh | 2.0.0 | LLM gateway |
 | ifran | 1.2.0 | LLM inference/training |
-| kavach | 2.0.0 | Sandbox execution |
+| kavach | 3.0.0 | Sandbox execution |
 | majra | 1.0.4 | Queue/pub-sub |
-| sigil | 1.0.0 | Trust verification |
+| sigil | 2.1.2 | Trust verification |
 | stiva | 2.0.0 | Container runtime |
 | szal | 1.0.1 | Workflow engine |
-| mabda | 1.0.0 | GPU foundation |
+| mabda | 2.1.2 | GPU foundation |
 | soorat | 1.0.0 | GPU rendering |
 
 ### Science & Knowledge (25 crates)
 
 | Crate | Version | Domain |
 |-------|---------|--------|
-| abaco | 1.1.0 | Math engine |
-| avatara | 1.0.1 | Divine archetype overlay |
+| abaco | 2.0.0 | Math engine |
+| avatara | 2.3.0 | Divine archetype overlay |
 | badal | 1.1.0 | Weather/atmosphere |
 | bhava | 2.0.0 | Emotion/personality |
 | bijli | 1.1.0 | Electromagnetism |
@@ -46,7 +46,7 @@ Full documentation for each crate: [docs/applications/libs/{crate}.md](../../app
 | hisab | 1.4.0 | Higher math |
 | hisab-mimamsa | 1.0.0 | Theoretical physics |
 | impetus | 1.3.0 | Physics |
-| itihas | 1.0.1 | World history |
+| itihas | 2.2.0 | World history |
 | jantu | 1.1.0 | Ethology/behavior |
 | jivanu | 1.0.0 | Microbiology |
 | jyotish | 1.0.0 | Astronomical computation |
@@ -71,7 +71,7 @@ Full documentation for each crate: [docs/applications/libs/{crate}.md](../../app
 | naad | 1.0.0 | Audio synthesis |
 | nidhi | 1.1.0 | Sample playback |
 | prani | 1.1.0 | Creature vocals |
-| shravan | 1.0.1 | Audio codecs |
+| shravan | 2.1.1 | Audio codecs |
 | svara | 1.1.1 | Vocal synthesis |
 | shabda | 1.1.0 | G2P conversion |
 
@@ -103,13 +103,13 @@ Full documentation for each crate: [docs/applications/libs/{crate}.md](../../app
 
 | Crate | Version | Description | Key Consumers |
 |-------|---------|-------------|---------------|
-| [agnosys](https://github.com/MacCracken/agnosys) | 0.51.0 | Kernel interface — Landlock, seccomp, syscall bindings | daimon, aethersafha, kavach, argonaut |
-| [bote](https://github.com/MacCracken/bote) | 0.92.0 | MCP core — JSON-RPC 2.0, tool registry, host, dispatch | daimon, all MCP providers |
-| [daimon](https://github.com/MacCracken/daimon) | 0.6.0 | Agent orchestrator — HTTP API, supervisor, IPC (port 8090) | all consumer apps |
-| [libro](https://github.com/MacCracken/libro) | 0.92.0 | Cryptographic audit chain — hash-linked event logging (SHA-256, BLAKE3) | daimon, aegis, stiva, sigil, t-ron |
+| [agnosys](https://github.com/MacCracken/agnosys) | 0.97.2 | Kernel interface — Landlock, seccomp, syscall bindings (Cyrius) | daimon, aethersafha, kavach, argonaut |
+| [bote](https://github.com/MacCracken/bote) | 2.5.1 | MCP core — ~5µs/message, streamable HTTP (Cyrius) | daimon, all MCP providers |
+| [daimon](https://github.com/MacCracken/daimon) | 1.1.1 | Agent orchestrator — 144 MCP tools (Cyrius) | all consumer apps |
+| [libro](https://github.com/MacCracken/libro) | 1.0.3 | Cryptographic audit chain — hash-linked event logging (Cyrius) | daimon, aegis, stiva, sigil, t-ron |
 | [nein](https://github.com/MacCracken/nein) | 0.90.0 | Programmatic nftables firewall — policy, NAT, port mapping | stiva, daimon, aegis, kavach |
 | [phylax](https://github.com/MacCracken/phylax) | 0.22.3 | Threat detection — YARA, entropy, magic bytes, ML | daimon, aegis |
-| [t-ron](https://github.com/MacCracken/t-ron) | 0.90.0 | MCP security — tool call auditing, rate limiting, injection detection | daimon, bote |
+| [t-ron](https://github.com/MacCracken/t-ron) | 2.0.0 | MCP security — tool call auditing, rate limiting, injection detection (Cyrius) | daimon, bote |
 | [yukti](https://github.com/MacCracken/yukti) | 0.25.3 | Device abstraction — USB, block devices, udev hotplug | daimon, aethersafha |
 
 ### Graphics & Media
@@ -143,20 +143,20 @@ Full documentation for each crate: [docs/applications/libs/{crate}.md](../../app
 
 | Crate | Version | Description | Key Consumers |
 |-------|---------|-------------|---------------|
-| [hadara](https://github.com/MacCracken/hadara) | 0.1.0 | Culture as first-class entity (Arabic: حضارة — civilization, presence). Cultures with practices, values, art forms, lineage, evolution, diaspora, relationships. | bhava, avatara, joshua, natya, jnana, kshetra, varna, itihas |
+| [hadara](https://github.com/MacCracken/hadara) | 1.0.0 | Culture as first-class entity (Arabic: حضارة — civilization, presence). 50 cultures, Cyrius-native, 329 assertions, 33 benchmarks, HTTP API. | bhava, avatara, joshua, natya, jnana, kshetra, varna, itihas |
 
 ---
 
-## Cyrius-Native (3 crates)
+## Cyrius-Native (4 crates)
 
 New crates designed for Cyrius from the start, not ported from Rust.
 
 | Crate | Version | Description | Key Consumers |
 |-------|---------|-------------|---------------|
 | **sakshi** | 0.9.0 | Tracing, error handling, structured logging — the silent witness (Sanskrit: साक्षी). Zero-alloc hot path, 4 output targets (stderr, file, ring buffer, UDP), `#ref` TOML config. Cyrius stdlib integrated. | Every crate — foundational dependency |
-| **bsp** | 0.7.1 | Binary Space Partitioning — spatial geometry primitives. BSP tree/traversal, AABB, blockmap, frustum culling, ray casting. 74 tests, 13 benchmarks. | cyrius-doom, kiran, aethersafha, phylax |
+| **bsp** | 1.0.1 | Binary Space Partitioning — spatial geometry primitives. BSP tree/traversal, AABB, blockmap, frustum culling, ray casting. 74 tests, 13 benchmarks. Ecosystem's first 1.0. | cyrius-doom, kiran, aethersafha, phylax |
 | **patra** | 0.12.0 | Structured storage and SQL queries — sovereign database (Sanskrit: पत्र — document, record). B+ tree, WAL, transactions, SHA-256 via sigil, 243 tests. | libro, daimon, vidya, agnoshi, mela, hoosh |
-| **cyrius-doom** | 0.17.2 | DOOM engine in Cyrius — 129KB binary (5.4x smaller than original). Full Episode 1, textured walls, sprites, HUD, doors, automap, level transitions. 2.9ms/frame. | Standalone game / kernel demo |
+| **cyrius-doom** | 0.24.5 | DOOM engine in Cyrius — hardened (5 CVEs fixed), 2.59ms/frame, jump-table dispatch, pinned to Cyrius 4.8.5-1. | Standalone game / kernel demo |
 
 ## Planned (7 crates)
 
@@ -221,7 +221,7 @@ Standalone executables — not library crates, but first-party AGNOS binaries tr
 
 | Binary | Version | Description | Depends On |
 |--------|---------|-------------|------------|
-| [kybernet](https://github.com/MacCracken/kybernet) | 0.51.0 | PID 1 init binary (extracted from argonaut) | argonaut |
+| [kybernet](https://github.com/MacCracken/kybernet) | 1.0.1 | PID 1 init binary (486KB, Cyrius, 140 tests) | argonaut |
 | [shakti](https://github.com/MacCracken/shakti) | 0.1.0 | Privilege escalation (`sudo` replacement) | agnosys, sigil |
 
 ---
@@ -230,7 +230,7 @@ Standalone executables — not library crates, but first-party AGNOS binaries tr
 
 | Crate | Version | Description |
 |-------|---------|-------------|
-| [agnostik](https://github.com/MacCracken/agnostik) | 0.90.0 | Shared types and domain primitives for AGNOS |
+| [agnostik](https://github.com/MacCracken/agnostik) | 0.97.1 | Shared types and domain primitives for AGNOS (Cyrius) |
 
 ---
 
@@ -248,4 +248,4 @@ See [k8s-roadmap.md](../vision/architecture/k8s-roadmap.md) for stiva + nein + m
 
 ---
 
-*Last Updated: 2026-04-08*
+*Last Updated: 2026-04-14*

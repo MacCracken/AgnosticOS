@@ -1,6 +1,8 @@
 # Performance Benchmarks
 
 > **Last Updated**: 2026-03-07
+>
+> **Fossil notice (2026-04-14):** These benchmarks are from the Rust era. Cyrius port receipts (with comparative benchmarks) live in each repo's `docs/benchmarks-rust-v-cyrius.md`. See the port receipts in memory/MEMORY.md for the summary ratios.
 
 ## Overview
 

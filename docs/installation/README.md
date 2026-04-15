@@ -1,6 +1,8 @@
 # AGNOS Installation Guide
 
 > **Version:** 2026.3.12 | **Last Updated:** 2026-03-13
+>
+> **Fossil notice (2026-04-14):** This document predates the Cyrius kernel (2026-04-04) and the monolith extraction (2026-04-01). References to `userland/`, `cargo build`, Docker, and Debian-based rootfs reflect the Rust era. The current boot path is: `cd scripts && cyrius build src/boot.cyr build/boot && make boot-test`. A rewrite is pending.
 
 This guide covers installing AGNOS on bare metal hardware and virtual machines.
 

@@ -1,6 +1,6 @@
 # Sigil — Trust Verification & Crypto
 
-- **Version**: 1.0.0 (stable)
+- **Version**: 2.1.2 (Cyrius)
 - **Repo**: [MacCracken/sigil](https://github.com/MacCracken/sigil)
 - **License**: GPL-3.0-only
 - **Tests**: 142

@@ -5,7 +5,7 @@
 | Field | Value |
 |-------|-------|
 | Status | Stable |
-| Version | `1.0.0` |
+| Version | `2.0.0` |
 | Repository | `MacCracken/stiva` |
 | Runtime | library crate (Rust) |
 | Recipe | `zugot/marketplace/stiva.toml` |

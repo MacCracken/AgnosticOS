@@ -5,7 +5,7 @@
 | Field | Value |
 |-------|-------|
 | Status | Released |
-| Version | `0.24.3` |
+| Version | `1.0.0` |
 | Repository | `MacCracken/soorat` |
 | Runtime | library crate (Rust) |
 | Recipe | `zugot/marketplace/soorat.toml` |

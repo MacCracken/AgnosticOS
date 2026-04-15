@@ -338,6 +338,7 @@ When an AGNOS crate wraps an external library, **depend on the AGNOS crate, not 
 | Ancient math systems | `sankhya` | Inline calendar math, custom number systems |
 | Atomic/subatomic physics | `tanmatra` | Inline nuclear formulas, hardcoded particle data |
 | Audio codecs | `shravan` | Inline WAV/FLAC parsers, custom codec implementations |
+| Compression / decompression | `sankoch` | Inline deflate, zlib FFI, shelling to gzip |
 | Navigation/pathfinding | `raasta` | Custom A*, inline pathfinding |
 | Programming references | `vidya` | Hardcoded examples, inline tutorials |
 | Psychology/cognition | `bodh` | Inline cognitive models, ad-hoc psychometrics |

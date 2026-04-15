@@ -5,7 +5,7 @@
 | Field | Value |
 |-------|-------|
 | Status | Released |
-| Version | `0.22.3` |
+| Version | `2.2.0` |
 | Repository | `MacCracken/majra` |
 | Runtime | library crate (Rust) |
 | Recipe | `zugot/marketplace/majra.toml` |

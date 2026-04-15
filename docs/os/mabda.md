@@ -5,7 +5,7 @@
 | Field | Value |
 |-------|-------|
 | Status | Pre-1.0 |
-| Version | `0.1.0` |
+| Version | `2.1.2` (Cyrius) |
 | Repository | `MacCracken/mabda` |
 | Runtime | library crate (Rust) |
 

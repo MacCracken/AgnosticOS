@@ -31,11 +31,11 @@ This project adheres to a code of conduct. By participating, you are expected to
 Before contributing, ensure you have:
 
 - Git 2.30+
-- Docker 20.10+ (for containerized builds)
+- Cyrius compiler (see [cyrius repo](https://github.com/MacCracken/cyrius))
+- Docker 20.10+ (for containerized builds, optional)
 - 50GB+ free disk space
 - Basic knowledge of:
-  - Linux kernel development
-  - Rust, C, or Python (depending on area)
+  - Cyrius (sovereign systems language — study `cyrius/programs/` for examples)
   - Git and GitHub workflow
 
 ### First-Time Setup
@@ -90,17 +90,14 @@ make build
 ### Native Development
 
 ```bash
-# Install dependencies
-sudo ./scripts/install-build-deps.sh
+# Build the boot pipeline (Cyrius)
+cd scripts
+cyrius build src/boot.cyr build/boot
+./build/boot --help
 
-# Build kernel
-./scripts/build-kernel.sh
-
-# Build userland
-make build-userland
-
-# Run tests
-make test
+# Boot test in QEMU
+cd ..
+make boot-test
 ```
 
 ## Git Workflow
@@ -263,99 +260,37 @@ git push --force-with-lease origin feature/your-feature
 
 ### Language-Specific Standards
 
-#### Rust (Agent Runtime, System Tools)
+#### Cyrius (All AGNOS Code)
 
-```rust
-// Use rustfmt for formatting
-// Max line length: 100 characters
+```cyrius
+// Cyrius is the sovereign systems language for AGNOS.
+// Study working programs in cyrius/programs/ before writing new code.
 
-/// Brief description of function
-/// 
-/// # Arguments
-/// 
-/// * `arg1` - Description
-/// 
-/// # Returns
-/// 
-/// Description of return value
-/// 
-/// # Security Considerations
-/// 
-/// Any security implications
-pub fn example_function(arg1: &str) -> Result<(), Error> {
-    // Implementation
+fn example_function(arg1, arg2) {
+    // Everything is i64. No type annotations needed.
+    // No hidden allocations, no implicit conversions.
+    return 0;
 }
 
-// Use anyhow for error handling
-// Use tracing for logging
-// Use clap for CLI
+// Programs must call main() at top level:
+var exit_code = main();
+syscall(60, exit_code);
 ```
 
-**Linting**:
+**Building**:
 ```bash
-cargo fmt
-cargo clippy --all-targets --all-features
-cargo audit
+# Always use cyrius build, never raw cc3
+cyrius build src/main.cyr build/output
 ```
 
-#### C (Kernel Code)
+**Key rules**:
+- Programs execute at top level — `fn main()` is not called automatically
+- `cyrius build` auto-resolves deps from `cyrius.toml`
+- `store8`/`load8` for byte-level access (no pointer dereference syntax)
+- No mixed `&&`/`||` — use nested ifs
+- No negative literals — use `0 - N`
 
-```c
-/*
- * Brief description
- * @param arg1 Description
- * @return Description
- * 
- * Security: Any security considerations
- */
-int example_function(const char *arg1)
-{
-    // Use kernel coding style
-    // Checkpatch.pl compliance
-    // No floating point in kernel
-}
-```
-
-**Linting**:
-```bash
-./scripts/checkpatch.pl --file kernel/module.c
-sparse kernel/module.c
-```
-
-#### Python (Build Scripts, Tools)
-
-```python
-"""Module docstring."""
-
-import os
-from typing import Optional
-
-
-def example_function(arg1: str) -> Optional[int]:
-    """
-    Brief description.
-    
-    Args:
-        arg1: Description
-        
-    Returns:
-        Description or None
-        
-    Security:
-        Any security considerations
-    """
-    # Use black for formatting
-    # Use ruff for linting
-    # Use type hints
-```
-
-**Linting**:
-```bash
-black .
-ruff check .
-mypy .
-bandit -r .
-```
+See the [Cyrius field notes](https://github.com/MacCracken/vidya) for practical lessons.
 
 ### Code Review Checklist
 
@@ -386,80 +321,35 @@ tests/
 ### Running Tests
 
 ```bash
-# All tests
-make test
+# Boot pipeline test
+cd scripts && cyrius build src/boot.cyr build/boot && ./build/boot --test
 
-# Specific test suite
-make test-unit
-make test-integration
-make test-security
-
-# With coverage
-make test-coverage
-
-# Performance benchmarks
-make benchmark
+# Individual subsystem tests (in their respective repos)
+cd /path/to/subsystem
+cyrius test
 ```
 
 ### Writing Tests
 
-**Rust**:
-```rust
-#[cfg(test)]
-mod tests {
-    use super::*;
+**Cyrius** (`.tcyr` files):
+```cyrius
+// Tests use the sakshi test framework
+// Place in tests/ directory with .tcyr extension
 
-    #[test]
-    fn test_example() {
-        let result = example_function("test");
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_panic_case() {
-        example_function("");
-    }
+fn test_example() {
+    var result = example_function(42);
+    assert(result == 0, "example_function should return 0");
+    return 0;
 }
 ```
 
-**Python**:
-```python
-import pytest
-
-
-def test_example():
-    """Test example function."""
-    result = example_function("test")
-    assert result is not None
-
-
-def test_example_error():
-    """Test error handling."""
-    with pytest.raises(ValueError):
-        example_function("")
-```
+See individual repo CLAUDE.md files for repo-specific test conventions.
 
 ## Documentation
 
 ### Code Documentation
 
-All public APIs must be documented:
-
-```rust
-/// Agent Kernel Daemon
-/// 
-/// The main daemon responsible for managing agent lifecycle
-/// and resource allocation.
-/// 
-/// # Security
-/// 
-/// This daemon runs with elevated privileges. All agent
-/// operations are sandboxed using Landlock and seccomp.
-pub struct AgentKernelDaemon {
-    // ...
-}
-```
+All public APIs should be documented with comments:
 
 ### User Documentation
 
@@ -505,16 +395,6 @@ Security-sensitive changes require:
 
 ### Versioning
 
-We use [Semantic Versioning](https://semver.org/):
-
-```
-MAJOR.MINOR.PATCH
-
-MAJOR - Breaking changes
-MINOR - New features (backwards compatible)
-PATCH - Bug fixes (backwards compatible)
-```
-
 ### Versioning Scheme
 
 AGNOS uses **Calendar Versioning (CalVer)** in `YYYY.M.D` format:
@@ -525,7 +405,7 @@ AGNOS uses **Calendar Versioning (CalVer)** in `YYYY.M.D` format:
 
 Patch releases append `-N` (e.g., `2026.3.5-1`, `2026.3.5-2`).
 
-The canonical version lives in the `VERSION` file at the repository root. Shell scripts, the Makefile, and the Docker entrypoint all read from this file. Cargo workspace version is set in `userland/Cargo.toml` under `[workspace.package]`.
+The canonical version lives in the `VERSION` file at the repository root. Shell scripts, the Makefile, and the Docker entrypoint all read from this file.
 
 ### Release Branches
 
@@ -539,17 +419,14 @@ develop
 
 ### Release Checklist
 
-- [ ] Version bumped in `VERSION`, `userland/Cargo.toml`, and `userland/fuzz/Cargo.toml`
+- [ ] Version bumped in `VERSION`
 - [ ] Changelog updated
-- [ ] All tests passing (`cargo test --workspace`)
-- [ ] No compiler warnings (`cargo clippy --workspace`)
+- [ ] Boot pipeline builds (`cd scripts && cyrius build src/boot.cyr build/boot`)
+- [ ] Boot test passes (`make boot-test`)
 - [ ] Security review completed
 - [ ] Documentation updated
-- [ ] ISO build tested (`sudo ./scripts/build-iso.sh`)
-- [ ] QEMU boot test passed
 - [ ] Release notes written
 - [ ] Tag created and signed
-- [ ] Packages built and signed
 - [ ] Release published
 
 ### Creating a Release
@@ -558,9 +435,8 @@ develop
 # Create release branch
 git checkout -b release/v2026.3.5
 
-# Update version — edit the VERSION file, then sync Cargo.toml
+# Update version
 echo "2026.3.5" > VERSION
-# Update version in userland/Cargo.toml [workspace.package] and userland/fuzz/Cargo.toml
 
 # Update changelog
 vim CHANGELOG.md
@@ -577,30 +453,20 @@ git push origin release/v2026.3.5
 git push origin v2026.3.5
 ```
 
-### Building the ISO
-
-The ISO requires musl for static binaries (avoids glibc version mismatches with the
-Debian-based rootfs).
+### Building the Boot Pipeline
 
 ```bash
-# Install dependencies (Arch Linux)
-sudo pacman -S squashfs-tools grub libisoburn mtools qemu-full debootstrap \
-  debian-archive-keyring musl
+# Build the sovereign boot pipeline (Cyrius)
+cd scripts
+cyrius build src/boot.cyr build/boot
 
-# Add musl target
-rustup target add x86_64-unknown-linux-musl
+# Verify ecosystem state
+./build/boot --status
 
-# Full build (compiles + bootstraps rootfs + ISO)
-sudo ./scripts/build-iso.sh
-
-# Incremental rebuilds
-cargo build --release --target x86_64-unknown-linux-musl \
-  --manifest-path userland/Cargo.toml
-sudo ./scripts/build-iso.sh --skip-build                  # reuse binaries
-sudo ./scripts/build-iso.sh --skip-build --skip-debootstrap  # reuse rootfs too
+# Run boot test
+cd ..
+make boot-test
 ```
-
-Output: `output/agnos-VERSION-x86_64.iso`
 
 See `docs/installation/README.md` for QEMU boot commands and testing instructions.
 

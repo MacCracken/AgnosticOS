@@ -174,20 +174,13 @@ table inet filter {
 ### Automated Testing
 
 ```bash
-# Run all security tests
-make test-security
+# Boot pipeline security checks
+cd scripts && ./build/boot --test --kernel /path/to/agnos
 
-# Static analysis
-cargo audit              # Rust dependencies
-bandit -r .              # Python code
-semgrep --config auto .  # Multi-language
-
-# Fuzzing
-./scripts/fuzz-kernel-module.sh
-./scripts/fuzz-agent-runtime.sh
-
-# Penetration testing
-./scripts/run-pentest.sh
+# Subsystem security tests (in respective repos)
+cd /path/to/subsystem
+cyrius test   # .tcyr test suites
+cyrius fuzz   # .fcyr fuzz harnesses (e.g., kavach: 9 CWE fixes found via fuzz)
 ```
 
 ### Manual Testing
@@ -292,6 +285,6 @@ We thank the security researchers who have responsibly disclosed vulnerabilities
 
 ---
 
-**Last Updated**: 2026-03-07
-**Version**: 2026.3.7
-**Next Review**: 2026-06-07
+**Last Updated**: 2026-04-14
+**Version**: 2026.4.14
+**Next Review**: 2026-07-14

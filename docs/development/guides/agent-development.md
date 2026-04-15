@@ -1,6 +1,8 @@
 # Agent Development Guide
 
 > **Last Updated**: 2026-03-07
+>
+> **Fossil notice (2026-04-14):** This guide predates the Cyrius port. daimon is now at v1.1.1 (Cyrius). References to `agent-runtime/`, Rust code, and `cargo` commands reflect the pre-extraction monolith. See `daimon/CLAUDE.md` for current agent development.
 
 This guide walks you through creating custom agents for AGNOS.
 
