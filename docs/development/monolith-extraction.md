@@ -1,10 +1,11 @@
 # Monolith Extraction Roadmap
 
-> **Status**: COMPLETE | **Last Updated**: 2026-04-03
+> **Status**: Code extraction complete, ISO reassembly in progress | **Last Updated**: 2026-04-15
 >
 > All AGNOS core subsystems have been extracted from the monolithic userland workspace
-> into independently buildable, updatable binaries with their own repos and ark packages.
-> The monolith is fully dismantled as of 2026-04-01.
+> into independently buildable standalone repos. The monolith is fully dismantled
+> as of 2026-04-01. The extraction is not finished until the genesis repo can
+> reassemble all components into a bootable ISO — see [iso-pipeline.md](iso-pipeline.md).
 
 ---
 
@@ -108,18 +109,21 @@ First wave — library crates with no HTTP server or service lifecycle:
 
 ---
 
-## Current State (2026-04-03)
+## Current State (2026-04-15)
 
-**Monolith is fully dismantled.** All userland code lives in standalone repos under `/home/macro/Repos/{name}/`.
+**Monolith is fully dismantled.** All code lives in standalone repos under `/home/macro/Repos/{name}/`. 28+ repos ported from Rust to Cyrius. No Cargo workspace remains.
 
-**Remaining in workspace**: `examples/` only (agent SDK examples, depends on agnostik + agnosys via git deps).
+**What's left for the extraction to be complete:**
+- ISO reassembly pipeline (`make boot-iso`) — Stage 0 (component verification) implemented, Stages 1-4 pending
+- ark and nous need Cyrius ports (tonight)
+- See [iso-pipeline.md](iso-pipeline.md) for the full plan
 
 **Update flow** (the whole point of the extraction):
 ```
 User or agent runs:  ark upgrade daimon
                          │
                          ▼
-ark downloads:       daimon-2026.3.25-x86_64.ark
+ark downloads:       daimon-2026.4.15-x86_64.ark
                          │
                          ▼
 argonaut restarts:   daimon.service
@@ -217,4 +221,4 @@ The OS provides the **runtime** (daimon). The **domain primitives** (agnosai, ho
 
 ---
 
-*Last Updated: 2026-04-03*
+*Last Updated: 2026-04-15*

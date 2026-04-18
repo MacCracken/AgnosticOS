@@ -1,5 +1,5 @@
-name = "llm-gateway"
-exec_start = "/usr/bin/llm-gateway"
+name = "hoosh"
+exec_start = "/usr/bin/hoosh"
 description = "AGNOS LLM Gateway (OpenAI-compatible API on :8088)"
 service_type = "notify"
 restart = "always"

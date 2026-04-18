@@ -23,7 +23,7 @@ YELLOW := \033[33m
 RED := \033[31m
 NC := \033[0m
 
-.PHONY: all help check boot boot-test boot-iso scripts clean version
+.PHONY: all help check boot boot-test boot-iso iso-check scripts clean version
 
 all: help
 
@@ -33,7 +33,8 @@ help:
 	@echo "$(GREEN)Boot targets:$(NC)"
 	@echo "  $(YELLOW)boot$(NC)          - Direct boot AGNOS kernel in QEMU"
 	@echo "  $(YELLOW)boot-test$(NC)     - Boot + validate serial output"
-	@echo "  $(YELLOW)boot-iso$(NC)      - Build bootable ISO"
+	@echo "  $(YELLOW)iso-check$(NC)     - Verify all ISO components are present"
+	@echo "  $(YELLOW)boot-iso$(NC)      - Build bootable ISO (not yet implemented)"
 	@echo ""
 	@echo "$(GREEN)Build targets:$(NC)"
 	@echo "  $(YELLOW)scripts$(NC)       - Build Cyrius boot scripts"
@@ -72,10 +73,14 @@ boot-test: scripts
 	@echo "$(BLUE)Boot + validate...$(NC)"
 	cd scripts && ./build/boot --test --kernel $(CURDIR)/$(AGNOS_REPO)/build/agnos
 
-boot-iso: scripts
-	@echo "$(BLUE)Building ISO...$(NC)"
-	cd scripts && ./build/boot --iso-only --kernel $(CURDIR)/$(AGNOS_REPO)/build/agnos
-	@echo "$(GREEN)ISO built$(NC)"
+iso-check: scripts
+	@echo "$(BLUE)Checking ISO components...$(NC)"
+	cd scripts && ./build/boot --iso-check
+
+boot-iso: iso-check
+	@echo "$(RED)ISO assembly not yet implemented$(NC)"
+	@echo "Run 'make iso-check' to see component readiness."
+	@exit 1
 
 # Version info
 version:

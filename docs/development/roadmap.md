@@ -1,17 +1,16 @@
 # AGNOS Development Roadmap
 
-> **Status**: Pre-Beta | **Last Updated**: 2026-04-14
+> **Status**: Pre-Beta | **Last Updated**: 2026-04-15
 > **Kernel 1.22.0 shipped** — 260KB, 33 subsystems, 26 syscalls, hardened pass.
-> **Cyrius 4.8.5-1** — 373KB self-hosting compiler, 42 stdlib modules. http_server + ws absorbed (v4.5.0); linker + cross-unit DCE (v4.6.x); PIC codegen (v4.7.x); types & codegen (u128, jump tables, math pack) (v4.8.x). Next major: v5.0 platforms (Mach-O, PE/COFF, RISC-V, bare-metal).
+> **Cyrius 5.0.3 shipped** — platform release landed (Mach-O, PE/COFF, RISC-V, bare-metal). Self-hosting from 29KB seed.
+> **ISO pipeline started** — Stage 0 (component verification) implemented: `make iso-check`. See `docs/development/iso-pipeline.md`.
 > **Kavach 3.0.0 shipped Cyrius-native** — 344KB (was 2.4MB Rust), 1 dep, 9 CWE fixes, sandbox lifecycle 500× faster.
-> **Abaco 2.0.0 shipped Cyrius-native** — 5932→2856 lines (-52%), Miller-Rabin ~12× faster end-to-end via Cyrius 4.8.5 hardware u64_mulmod fast-path. Canonical port-feedback closed-loop instance.
-> **Cyrius-doom 0.24.5** — plays DOOM, hardened (P(-1), 5 CVEs fixed), 2.59ms/frame (-4.7% from jump-table dispatch, 91%+ tick headroom), BSP 1.0.1 stable dep, pinned to Cyrius 4.8.5-1.
-> **Bote 2.5.1** / **T-Ron 2.0.0** shipped — both out of pre-release. Bote MCP pipeline ~5µs/message, streamable HTTP unlocked by v4.5.0 stdlib absorption.
-> **Boot script v2026.3.31** — sovereign Cyrius boot pipeline (56KB), `--status` surfaces full ecosystem snapshot.
+> **Sankoch 1.2.0 shipped** — lossless compression (LZ4, DEFLATE, zlib, gzip). stdlib fold pending.
+> **Abaco 2.1.0** — Miller-Rabin ~12× faster end-to-end via Cyrius hardware u64_mulmod fast-path.
+> **Bote 2.5.1** / **T-Ron 2.0.0** shipped — both out of pre-release. Bote MCP pipeline ~5µs/message.
 > **Critical path CLEARED**: libro ✅ argonaut ✅ kybernet ✅ kernel ✅ boot pipeline ✅ kavach ✅
-> **Shared ecosystem**: 10-15 repos shipping on the Cyrius toolchain; ports done: agnostik, agnosys, sigil, shravan, argonaut, kybernet, nous, ark, sakshi, majra, bsp, cyrius-doom, mabda, patra, libro, tarang, yukti, avatara, ai-hwaccel, hoosh, hadara (native), kavach. In progress: bhava, hisab. Blocked: vidya MCP (needs bote v1.4.0).
-> **Next major**: **Cyrius 5.0 — Multi-Platform** (Mach-O + PE/COFF + RISC-V + bare-metal). 4.x finishes with PIC codegen + types/codegen (u128, defmt, jump tables, regalloc).
-> **Handoff note (2026-04-14)**: base OS stack updates held until Cyrius 5.0 lands; then refresh all sibling repo versions and bump `scripts/src/boot.cyr` to match. Likely continues on a rotated account session.
+> **Shared ecosystem**: 28+ repos ported to Cyrius. Ports pending: ark, nous (tonight), bhava. Pending Cyrius port: takumi, aegis, shakti, aethersafha, phylax.
+> **Next milestone**: Bootable ISO (Phase 1). ark/nous ports → `make iso-check` passes → Stage 1-4 implementation.
 
 ---
 
@@ -51,6 +50,7 @@ Phase 13A (self-hosting boot) ──→ Phase 16 (desktop) ──→ Phase 13C (
 - [ ] 6 months of beta testing with no critical bugs
 
 Long-term vision (v2.0 kernel, v3.0 Cyrius, v4.0 conscious objects, Foundation): [vision/release-vision.md](vision/release-vision.md)
+Creator economy (sovereign distribution, bootable USB media): [vision/creator-economy.md](vision/creator-economy.md)
 
 ---
 

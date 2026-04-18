@@ -1,5 +1,5 @@
-name = "desktop-environment"
-exec_start = "/usr/bin/agnos-desktop"
+name = "aethersafha"
+exec_start = "/usr/bin/aethersafha"
 description = "AGNOS Desktop Environment (Wayland compositor)"
 service_type = "notify"
 restart = "onfailure"
@@ -7,7 +7,7 @@ restart_delay_secs = 3
 max_restarts = 3
 user = "agnos"
 group = "agnos"
-after = ["agent-runtime", "llm-gateway"]
+after = ["daimon", "hoosh"]
 enabled = false
 
 [resources]

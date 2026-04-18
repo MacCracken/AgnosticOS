@@ -8,6 +8,7 @@
 #   ./build/boot                  # direct boot (fastest)
 #   ./build/boot --test           # boot + validate serial output
 #   ./build/boot --status         # show component versions + sizes
+#   ./build/boot --iso-check      # verify all ISO components are present
 #   ./build/boot --kernel PATH    # custom kernel path
 #   ./build/boot -v               # verbose
 
@@ -27,6 +28,7 @@ var verbose = 0;
 # 0 = interactive boot
 # 1 = test (validate serial output)
 # 2 = status (show component info)
+# 3 = iso-check (verify ISO components)
 
 # --- file helpers ---
 
@@ -87,6 +89,293 @@ fn resolve_kernel() {
     println("  Use --kernel /path/to/agnos");
     sys_exit(1);
     return 0;
+}
+
+# --- ISO component verification ---
+
+# Check a single component for ISO readiness.
+# required: 1 = must exist, 0 = optional
+# Returns 1 if OK (present or optional-missing), 0 if required-missing.
+fn check_component(name, version_path, binary_path, required) {
+    var ok = 1;
+    var has_version = file_exists(version_path);
+    var has_binary = 0;
+    if (binary_path != 0) {
+        has_binary = file_exists(binary_path);
+    }
+
+    # Determine status
+    if (required == 1) {
+        if (binary_path != 0) {
+            if (has_binary == 0) { ok = 0; }
+        }
+        elif (has_version == 0) { ok = 0; }
+    }
+
+    # Print status line
+    if (ok == 1) {
+        if (has_version == 1) {
+            prints("  READY  ");
+        } else {
+            prints("  SKIP   ");
+        }
+    } else {
+        prints("  MISS   ");
+    }
+
+    prints(name);
+    var nlen = strlen(name);
+    var pad = 14 - nlen;
+    while (pad > 0) {
+        prints(" ");
+        pad = pad - 1;
+    }
+
+    if (has_version == 1) {
+        var ver = read_version(version_path);
+        prints("v");
+        prints(str_data(ver));
+    }
+
+    if (binary_path != 0) {
+        if (has_binary == 1) {
+            var bpath = str_from(binary_path);
+            var sz = file_size(bpath);
+            if (sz > 0) {
+                prints("  (");
+                print_int(sz);
+                prints(" bytes)");
+            }
+        } else {
+            prints("  [no build artifact]");
+        }
+    }
+
+    if (required == 0) {
+        if (has_version == 0) {
+            prints("  (optional)");
+        }
+    }
+
+    prints("\n");
+    return ok;
+}
+
+fn iso_check() {
+    println("");
+    println("=== AGNOS ISO Component Check ===");
+    println("");
+    println("Verifying all components required for bootable ISO assembly.");
+    println("Components are resolved from sibling repos (../../<name>/).");
+    println("");
+
+    var total = 0;
+    var ready = 0;
+    var missing = 0;
+    var optional_missing = 0;
+    var r = 0;
+
+    # --- Boot chain (all required) ---
+    println("--- Boot Chain (required) ---");
+
+    total = total + 1;
+    r = check_component("kernel",   "../../agnos/VERSION",    "../../agnos/build/agnos", 1);
+    if (r == 1) { ready = ready + 1; } else { missing = missing + 1; }
+
+    total = total + 1;
+    r = check_component("kybernet", "../../kybernet/VERSION", "../../kybernet/build/kybernet", 1);
+    if (r == 1) { ready = ready + 1; } else { missing = missing + 1; }
+
+    total = total + 1;
+    r = check_component("cyrius",   "../../cyrius/VERSION",   "../../cyrius/build/cc3", 1);
+    if (r == 1) { ready = ready + 1; } else { missing = missing + 1; }
+
+    total = total + 1;
+    r = check_component("ark",      "../../ark/VERSION",      "../../ark/build/ark", 1);
+    if (r == 1) { ready = ready + 1; } else { missing = missing + 1; }
+
+    total = total + 1;
+    r = check_component("nous",     "../../nous/VERSION",     "../../nous/build/nous", 1);
+    if (r == 1) { ready = ready + 1; } else { missing = missing + 1; }
+
+    println("");
+
+    # --- Security (required) ---
+    println("--- Security (required) ---");
+
+    total = total + 1;
+    r = check_component("sigil",    "../../sigil/VERSION",    "../../sigil/build/sigil", 1);
+    if (r == 1) { ready = ready + 1; } else { missing = missing + 1; }
+
+    total = total + 1;
+    r = check_component("kavach",   "../../kavach/VERSION",   "../../kavach/build/kavach", 1);
+    if (r == 1) { ready = ready + 1; } else { missing = missing + 1; }
+
+    println("");
+
+    # --- Agent layer (required for minimal profile) ---
+    println("--- Agent Layer (required) ---");
+
+    total = total + 1;
+    r = check_component("daimon",   "../../daimon/VERSION",   "../../daimon/build/daimon", 1);
+    if (r == 1) { ready = ready + 1; } else { missing = missing + 1; }
+
+    total = total + 1;
+    r = check_component("hoosh",    "../../hoosh/VERSION",    "../../hoosh/build/hoosh", 1);
+    if (r == 1) { ready = ready + 1; } else { missing = missing + 1; }
+
+    total = total + 1;
+    r = check_component("agnoshi",  "../../agnoshi/VERSION",  "../../agnoshi/build/agnoshi", 1);
+    if (r == 1) { ready = ready + 1; } else { missing = missing + 1; }
+
+    total = total + 1;
+    r = check_component("bote",     "../../bote/VERSION",     "../../bote/build/bote", 1);
+    if (r == 1) { ready = ready + 1; } else { missing = missing + 1; }
+
+    total = total + 1;
+    r = check_component("t-ron",    "../../t-ron/VERSION",    "../../t-ron/build/t-ron", 1);
+    if (r == 1) { ready = ready + 1; } else { missing = missing + 1; }
+
+    println("");
+
+    # --- Infrastructure libraries (required) ---
+    println("--- Infrastructure (required) ---");
+
+    total = total + 1;
+    r = check_component("agnostik", "../../agnostik/VERSION", "../../agnostik/build/agnostik", 1);
+    if (r == 1) { ready = ready + 1; } else { missing = missing + 1; }
+
+    total = total + 1;
+    r = check_component("agnosys",  "../../agnosys/VERSION",  "../../agnosys/build/agnosys", 1);
+    if (r == 1) { ready = ready + 1; } else { missing = missing + 1; }
+
+    total = total + 1;
+    r = check_component("argonaut", "../../argonaut/VERSION", "../../argonaut/build/argonaut", 1);
+    if (r == 1) { ready = ready + 1; } else { missing = missing + 1; }
+
+    total = total + 1;
+    r = check_component("libro",    "../../libro/VERSION",    "../../libro/build/libro", 1);
+    if (r == 1) { ready = ready + 1; } else { missing = missing + 1; }
+
+    total = total + 1;
+    r = check_component("itihas",   "../../itihas/VERSION",   "../../itihas/build/itihas", 1);
+    if (r == 1) { ready = ready + 1; } else { missing = missing + 1; }
+
+    total = total + 1;
+    r = check_component("sankoch",  "../../sankoch/VERSION",  "../../sankoch/build/sankoch", 1);
+    if (r == 1) { ready = ready + 1; } else { missing = missing + 1; }
+
+    println("");
+
+    # --- Recipes ---
+    println("--- Recipes ---");
+
+    total = total + 1;
+    var zugot_ok = file_exists("../../zugot/build-order.txt");
+    if (zugot_ok == 1) {
+        prints("  READY  zugot         build-order.txt present\n");
+        ready = ready + 1;
+    } else {
+        prints("  MISS   zugot         build-order.txt not found\n");
+        missing = missing + 1;
+    }
+
+    println("");
+
+    # --- Optional components ---
+    println("--- Optional ---");
+
+    total = total + 1;
+    r = check_component("shravan",  "../../shravan/VERSION",  "../../shravan/build/shravan", 0);
+    if (r == 1) { ready = ready + 1; } else { optional_missing = optional_missing + 1; }
+
+    total = total + 1;
+    r = check_component("hadara",   "../../hadara/VERSION",   "../../hadara/build/hadara", 0);
+    if (r == 1) { ready = ready + 1; } else { optional_missing = optional_missing + 1; }
+
+    total = total + 1;
+    r = check_component("avatara",  "../../avatara/VERSION",  "../../avatara/build/avatara", 0);
+    if (r == 1) { ready = ready + 1; } else { optional_missing = optional_missing + 1; }
+
+    total = total + 1;
+    r = check_component("ai-hwaccel","../../ai-hwaccel/VERSION","../../ai-hwaccel/build/ai-hwaccel", 0);
+    if (r == 1) { ready = ready + 1; } else { optional_missing = optional_missing + 1; }
+
+    total = total + 1;
+    r = check_component("abaco",    "../../abaco/VERSION",    "../../abaco/build/abaco", 0);
+    if (r == 1) { ready = ready + 1; } else { optional_missing = optional_missing + 1; }
+
+    total = total + 1;
+    r = check_component("bsp",      "../../bsp/VERSION",      "../../bsp/build/bsp", 0);
+    if (r == 1) { ready = ready + 1; } else { optional_missing = optional_missing + 1; }
+
+    total = total + 1;
+    r = check_component("mabda",    "../../mabda/VERSION",    0, 0);
+    if (r == 1) { ready = ready + 1; } else { optional_missing = optional_missing + 1; }
+
+    println("");
+
+    # --- Host tools ---
+    println("--- Host Tools ---");
+
+    var tbuf = alloc(256);
+
+    var tn = exec_capture(vec_from("/usr/bin/env", "qemu-system-x86_64", "--version"), tbuf, 256);
+    if (tn > 0) {
+        prints("  READY  qemu\n");
+    } else {
+        prints("  MISS   qemu          (needed for ISO validation)\n");
+    }
+
+    tn = exec_capture(vec_from("/usr/bin/env", "grub-mkrescue", "--version"), tbuf, 256);
+    if (tn > 0) {
+        prints("  READY  grub-mkrescue\n");
+    } else {
+        prints("  MISS   grub-mkrescue (needed for ISO creation)\n");
+    }
+
+    tn = exec_capture(vec_from("/usr/bin/env", "mksquashfs", 0), tbuf, 256);
+    if (tn > 0) {
+        prints("  READY  mksquashfs\n");
+    } else {
+        prints("  MISS   mksquashfs    (needed for rootfs compression)\n");
+    }
+
+    tn = exec_capture(vec_from("/usr/bin/env", "xorriso", "--version"), tbuf, 256);
+    if (tn > 0) {
+        prints("  READY  xorriso\n");
+    } else {
+        prints("  MISS   xorriso       (needed for ISO creation)\n");
+    }
+
+    println("");
+
+    # --- Summary ---
+    println("=== Summary ===");
+    prints("  Total:    ");
+    print_int(total);
+    prints("\n");
+    prints("  Ready:    ");
+    print_int(ready);
+    prints("\n");
+    prints("  Missing:  ");
+    print_int(missing);
+    prints(" required");
+    if (optional_missing > 0) {
+        prints(", ");
+        print_int(optional_missing);
+        prints(" optional");
+    }
+    prints("\n");
+    println("");
+
+    if (missing == 0) {
+        println("PASS: All required ISO components present.");
+        return 0;
+    } else {
+        println("FAIL: Required components missing. ISO assembly blocked.");
+        return 1;
+    }
 }
 
 # --- component status ---
@@ -308,6 +597,7 @@ fn parse_args() {
             println("Options:");
             println("  --test           Boot + validate AGNOS banner in serial output");
             println("  --status         Show component versions and sizes");
+            println("  --iso-check      Verify all ISO components are present");
             println("  --kernel PATH    Path to AGNOS kernel binary");
             println("  -v, --verbose    Verbose output");
             println("  -h, --help       Show this help");
@@ -316,11 +606,12 @@ fn parse_args() {
             sys_exit(0);
         }
         elif (streq(arg, "-h") == 1) {
-            println("Usage: boot [--test] [--status] [--kernel PATH] [-v]");
+            println("Usage: boot [--test] [--status] [--iso-check] [--kernel PATH] [-v]");
             sys_exit(0);
         }
         elif (streq(arg, "--test") == 1) { mode = 1; }
         elif (streq(arg, "--status") == 1) { mode = 2; }
+        elif (streq(arg, "--iso-check") == 1) { mode = 3; }
         elif (streq(arg, "-v") == 1) { verbose = 1; }
         elif (streq(arg, "--verbose") == 1) { verbose = 1; }
         elif (streq(arg, "--kernel") == 1) {
@@ -345,6 +636,11 @@ fn main() {
     if (mode == 2) {
         show_status();
         return 0;
+    }
+
+    if (mode == 3) {
+        var rc = iso_check();
+        return rc;
     }
 
     if (mode == 1) {
