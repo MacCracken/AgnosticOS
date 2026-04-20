@@ -47,6 +47,8 @@ Hardware (commodity x86_64 / ARM / repurposed ASIC)
 
 Three layers instead of eight. 260KB OS instead of 4GB. Boot in 100ms instead of 30 seconds. **Every byte the model doesn't load, decompress, or page-fault through is compute freed for actual thinking.**
 
+**The language layer is part of the fat stack.** Minimum-viable `exit(42)` per language, measured in bytes: C stripped 14 KB (libc startup tax), Rust stripped **345 KB** (runtime + allocator + panic handler), Go stripped **1.4 MB** (scheduler + garbage collector), Cyrius **152 B** (syscall + exit, talking directly to the kernel). Cross-platform table: [cyrius/docs/size-comparisons.md](https://github.com/MacCracken/cyrius/blob/main/docs/size-comparisons.md). Same functionality, 2,269× the overhead. The fat stack isn't just OS layers — it's every layer, including the language the "user code" runs in.
+
 ---
 
 ## 3. The Token Waste Problem

@@ -47,9 +47,9 @@ Future architecture, theoretical exploration, and long-range planning.
 | [vision/release-vision.md](vision/release-vision.md) | Release milestones v2-v4 (fossil — pre-Cyrius kernel) |
 | [vision/maat-42.md](vision/maat-42.md) | Ma'at 42 Confessions mapped to AGNOS crates |
 | **vision/architecture/** | |
-| [kernel-layers.md](vision/architecture/kernel-layers.md) | Cyrius kernel roadmap — 5 layers |
 | [k8s-roadmap.md](vision/architecture/k8s-roadmap.md) | Kubernetes-equivalent orchestration |
 | [network-evolution.md](vision/architecture/network-evolution.md) | TCP → QUIC → binary agent protocol |
+| *kernel-layers moved* → | [../architecture/kernel-layers.md](../architecture/kernel-layers.md) (shipped, no longer vision) |
 | **vision/applications/** | |
 | [holodeck.md](vision/applications/holodeck.md) | Immersive simulation architecture |
 | [time-machine.md](vision/applications/time-machine.md) | Temporal simulation engine |

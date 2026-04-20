@@ -237,4 +237,4 @@ The foundation owns the commons. Commercial projects build on top. Clean separat
 
 ---
 
-*See also: [holodeck](applications/holodeck.md), [theoretical](research/theoretical.md), [time-machine](applications/time-machine.md), [kernel-layers](architecture/kernel-layers.md)*
+*See also: [holodeck](applications/holodeck.md), [theoretical](research/theoretical.md), [time-machine](applications/time-machine.md), [kernel-layers](../../architecture/kernel-layers.md) (now in docs/architecture/ — shipped)*

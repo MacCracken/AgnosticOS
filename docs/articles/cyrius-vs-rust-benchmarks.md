@@ -14,6 +14,8 @@
 - **SIMD 3.2× faster** on batch DSP — explicit SSE2 intrinsics beat LLVM auto-vectorization
 - **Nuanced: Rust still wins on micro-ops** — zero-copy borrows (serde, `Vec::push`) beat bump + `str_builder` when the win is a single allocation; Cyrius wins wherever the hot path allocates + formats + frees
 
+> **Language baseline (separate dataset):** the numbers below are real-world port receipts. For minimum-viable `exit42` binaries across Cyrius/Zig/C/Rust/Go on Linux ELF + Windows PE32+, see [cyrius/docs/size-comparisons.md](https://github.com/MacCracken/cyrius/blob/main/docs/size-comparisons.md). That table measures the floor — what every binary pays before running user code (Cyrius **152 B**, C stripped 14 KB, Rust stripped **345 KB**, Go stripped **1.4 MB**). The port wins below are savings on top of that floor.
+
 ---
 
 ## Crates Tested (deep-dive)

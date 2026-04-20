@@ -40,6 +40,8 @@ AGNOS replaces the dependency chain with ownership:
 | Dependencies | 40+ crates for hoosh (Rust) | 0 for hoosh (Cyrius) |
 | Boot | 3.9MB PID 1 | 486KB PID 1, 2ns signal dispatch |
 
+> **Per-language baselines:** the rows above are real-world port receipts. For minimum-viable `exit42` across Cyrius/C/Rust/Go/Zig on Linux ELF + Windows PE32+ (Cyrius 152 B, Rust stripped 345 KB, Go stripped 1.4 MB), see [cyrius/docs/size-comparisons.md](https://github.com/MacCracken/cyrius/blob/main/docs/size-comparisons.md). Same functionality, measured in bytes — the 2,269× Rust→Cyrius floor is the structural overhead every traditional binary pays before doing any work.
+
 ---
 
 ## History
