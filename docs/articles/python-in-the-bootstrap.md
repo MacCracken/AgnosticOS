@@ -141,7 +141,7 @@ Three things, in increasing order of importance.
 
 This article is about a pivot moment and a 48-hour window. It is not an argument that Cyrius is finished, optimal, or suitable for every use case.
 
-The current compiler has a single-pass emitter, no constant folding, no function inlining, no register allocation. Branch-heavy pure compute shows 2-42x overhead versus Rust + LLVM -O3. There is no u128 type, which bottlenecks number theory benchmarks. There is no borrow checker — memory safety comes from testing and auditing, not the type system. These are all documented optimization targets, and they will close over the next several versions.
+The compiler at the time of this writing was a single-pass emitter with no constant folding, no function inlining, and no register allocation. Branch-heavy pure compute showed 2–42× overhead versus Rust + LLVM -O3. There was no u128 type, which bottlenecked number theory benchmarks. There is no borrow checker — memory safety comes from testing, auditing, and a stdlib designed for the absence of hidden aliasing, not a type-system proof. That last item is a design stance, not a pending feature. The first three are scheduled: **u128 shipped in v4.7–v4.8.x; the `u64_mulmod` hardware fast-path shipped in v4.8.5 (collapsing the number-theory gap ~12× end-to-end on abaco's Miller-Rabin); and the compiler-optimization arc is v5.6.x (O1–O6).**
 
 The honest ledger also shows where Cyrius already wins: compilation is 1,462x faster than Rust. Binaries are 59-81x smaller. Syscall hot paths match or beat Rust. SIMD batch DSP is 3.2x faster through explicit intrinsics. Integration benchmarks — the real-world objects that flow through the system at runtime — win more often than not.
 

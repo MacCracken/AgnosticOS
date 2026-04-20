@@ -125,9 +125,9 @@ Three things, in increasing order of significance:
 ## 7. The Stack Underneath
 
 ```
-AGNOS kernel (220KB)        — the OS
-cyrius compiler (~320KB)    — the language, currently v4.4.5
-kybernet (PID 1, 486KB)     — init
+AGNOS kernel (260KB)        — the OS, v1.22.0, 33 subsystems, 26 syscalls
+cyrius compiler (~482KB)    — the language, currently v5.5.4, self-hosting from 29KB seed
+kybernet (486KB, v1.0.1)    — PID 1 init, 140 tests, 46 benchmarks
 kavach (344KB, 1 dep)       — sandboxed execution (3.06ms → 6µs lifecycle vs Rust+tokio)
 daimon                      — agent orchestration, 144 MCP tools
 bote (~5µs/message)         — MCP core + host registry
@@ -138,8 +138,8 @@ bhava                       — emotional modulation + consciousness substrate
 joshua                      — simulation runtime, deterministic replay
 libro                       — HMAC-SHA256 audit chain (every decision logged)
 T-Ron                       — tool call security, rate limiting, referee
-cyrius-doom v0.24.2 (196KB) — rendering + spatial query, 2.66ms/frame
-bsp 1.0.0 (821 lines)       — all spatial queries sub-microsecond
+cyrius-doom (v0.26.1)       — rendering + spatial query, 2.59ms/frame
+bsp 1.1.2                   — all spatial queries sub-microsecond
 SY                          — orchestrator, configures agents and runs scenarios
 ```
 
@@ -167,7 +167,7 @@ Four communities seeing four different meaningful things in the same replay vide
 This article is about an outline and a thesis, not a shipped demonstration.
 
 **What works today**:
-- **cyrius-doom v0.24.2** — *plays* DOOM (not just renders): all 9 shareware maps, gameplay (ammo, hitscan, death/respawn, keys, armor), WAD-accurate lighting, masked midtextures, intermission screen, P(-1) hardening pass (5 CVE-class findings fixed, WAD zero-fill-before-read, termios bitmask fix). **2.66ms/frame, 91% tick headroom.**
+- **cyrius-doom v0.26.1** — *plays* DOOM (not just renders): all 9 shareware maps, gameplay (ammo, hitscan, death/respawn, keys, armor), WAD-accurate lighting, masked midtextures, intermission screen, P(-1) hardening pass (5 CVE-class findings fixed, WAD zero-fill-before-read, termios bitmask fix). **2.59ms/frame, 91% tick headroom.** Waiting on Cyrius v5.6.x optimization arc for the next render-path pass.
 - **bsp 1.0.0** — first 1.0 in the Cyrius ecosystem. 821 lines, 74 tests, all spatial queries sub-microsecond. API stable.
 - **kavach v3.0.0** — sandboxed execution at 344KB, 1 dep (sigil), 0.64s build, sandbox_full_lifecycle 500× faster than Rust+tokio (3.06ms → 6µs), 9 CWE-class findings fixed in-tree during the port
 - SecureYeoman ships **21 personalities** (Entity, Skynet, Friday, Jarvis, TARS, KITT, HAL-9000, SHODAN, GLaDOS, WOPR, HK-47, and more) as portable YAML+markdown files — forkable, customizable, brand-your-own
@@ -189,7 +189,7 @@ This article is about an outline and a thesis, not a shipped demonstration.
 - Side-by-side replay rendering (two frames synchronized)
 - Configuration UI for Entity vs Skynet selection (SY frontend — personalities already in the registry)
 
-**Estimated**: post-AGNOS v1.0 beta. Post-Cyrius 5.0. After the core platform ships and the flock begins arriving. The alignment demo is the **second wave** — the content that lands after the stack is established, specifically designed to capture researcher and public attention simultaneously.
+**Estimated**: post-AGNOS v1.0 beta. Post–Cyrius v5.6.x optimization arc and RISC-V. After the core platform ships and the flock begins arriving. The alignment demo is the **second wave** — the content that lands after the stack is established, specifically designed to capture researcher and public attention simultaneously.
 
 ---
 

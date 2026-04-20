@@ -1,312 +1,206 @@
-# Troubleshooting Guide
+# AGNOS Troubleshooting
 
-This guide covers common issues you may encounter when using AGNOS and how to resolve them.
+> Last Updated: 2026-04-20
+>
+> **Pre-Beta note:** AGNOS is not yet a running end-user OS. This guide covers what is testable today — the sovereign boot pipeline, the Cyrius toolchain, per-subsystem builds, and the QEMU kernel boot test. Full system-level troubleshooting (services, networking, desktop) arrives with **Phase 13A** and the `agnova` installer.
+
+---
 
 ## Table of Contents
 
-1. [Installation Issues](#installation-issues)
-2. [Boot Problems](#boot-problems)
-3. [AI Shell Issues](#ai-shell-issues)
-4. [Agent Runtime Issues](#agent-runtime-issues)
-5. [LLM Gateway Issues](#llm-gateway-issues)
-6. [Desktop Environment Issues](#desktop-environment-issues)
-7. [Security Issues](#security-issues)
-8. [Performance Issues](#performance-issues)
+1. [Cyrius Toolchain](#cyrius-toolchain)
+2. [Sovereign Boot Pipeline](#sovereign-boot-pipeline)
+3. [Component Verification](#component-verification)
+4. [QEMU Kernel Boot Test](#qemu-kernel-boot-test)
+5. [Per-Subsystem Builds](#per-subsystem-builds)
+6. [Getting Help](#getting-help)
 
 ---
 
-## Installation Issues
+## Cyrius Toolchain
 
-### ISO Won't Boot
+### `cyrius: command not found`
 
-**Symptoms:** System doesn't boot from USB/installer
-
-**Solutions:**
-- Verify ISO integrity: `sha256sum -c agnos-*.sha256`
-- Disable Secure Boot in UEFI settings
-- Use Ventoy or Etcher for USB creation
-- Ensure virtualization is enabled in BIOS
-
-### Installation Freezes
-
-**Symptoms:** Installer hangs at "Loading..."
-
-**Solutions:**
-- Try adding kernel parameters: `nomodeset` or `noapic`
-- Check for incompatible hardware
-- Try running from different USB port
-
----
-
-## Boot Problems
-
-### Kernel Panic on Boot
-
-**Symptoms:** "Kernel panic - not syncing" error
-
-**Solutions:**
-- Check kernel parameters match your hardware
-- Verify memory (RAM) is not faulty
-- Disable problematic kernel modules
-
-### System Won't Boot After Update
-
-**Symptoms:** System fails to start after package update
-
-**Solutions:**
-- Select previous kernel from GRUB menu
-- Boot into recovery mode
-- Roll back packages: `ark downgrade <package>`
-
----
-
-## AI Shell Issues
-
-### Shell Doesn't Respond
-
-**Symptoms:** agnsh prompt appears but commands fail
-
-**Solutions:**
-```bash
-# Check shell is running
-ps aux | grep agnsh
-
-# Restart shell
-pkill agnsh
-agnsh
+```sh
+which cyrius
+ls ~/.cyrius/bin/
 ```
 
-### Natural Language Processing Fails
+Install options:
+- Release tarball: see `cyrius` repo's `docs/development/roadmap.md` for download steps
+- Source build: `cd /home/macro/Repos/cyrius && sh scripts/bootstrap.sh`
 
-**Symptoms:** "Unable to understand command"
+### Toolchain version mismatch
 
-**Solutions:**
-- Ensure LLM gateway is running: `systemctl status llm-gateway`
-- Check model is loaded: `agnsh> status`
-- Switch to simpler commands first
-- Check logs: `journalctl -u llm-gateway`
+Every Cyrius project pins a version in `.cyrius-toolchain`:
 
----
-
-## Agent Runtime Issues
-
-### Agent Won't Start
-
-**Symptoms:** `daimon` shows agent in "Failed" state
-
-**Solutions:**
-```bash
-# Check agent daemon status
-systemctl status daimon
-
-# View agent logs
-journalctl -u daimon -n 100
-
-# Restart daemon
-systemctl restart daimon
+```sh
+cat /home/macro/Repos/agnosticos/scripts/.cyrius-toolchain
+cyrius --version
 ```
 
-### Agent Sandbox Violations
+If they disagree, install the pinned version (`cyriusly install <version>`) or rebuild the toolchain from source.
 
-**Symptoms:** "Sandbox violation" errors in logs
+### `stdout` or `println` doesn't print
 
-**Solutions:**
-- Review agent permissions in Security UI
-- Check Landlock rules: `ls -la /proc/self/attr/`
-- Adjust sandbox configuration in agent config
+You are calling raw `cc3` instead of `cyrius build`. Raw `cc3` does not auto-prepend stdlib includes. Always use:
 
-### IPC Communication Fails
-
-**Symptoms:** Agents can't communicate
-
-**Solutions:**
-- Verify agent-runtime is running: `systemctl status agent-runtime`
-- Check Unix sockets exist: `ls /run/agnos/agents/`
-- Review IPC logs: `journalctl -u agent-runtime | grep IPC`
-
----
-
-## LLM Gateway Issues
-
-### No Models Available
-
-**Symptoms:** "No models loaded" error
-
-**Solutions:**
-```bash
-# List available models
-llm-gateway-cli list
-
-# Pull a model
-llm-gateway-cli pull llama2
-
-# Check gateway status
-systemctl status llm-gateway
+```sh
+cyrius build <source.cyr> <output>
 ```
 
-### Inference Timeout
+### `main()` runs but the program exits 0 with no output
 
-**Symptoms:** Requests hang or timeout
+Cyrius executes top-level code, not `fn main()` automatically. Programs must call `main()` at the top level:
 
-**Solutions:**
-- Increase timeout in config: `/etc/agnos/llm-gateway.yaml`
-- Check system resources: `top`, `free -h`
-- Use smaller models for faster inference
-- Check network if using cloud provider
-
-### Out of Memory
-
-**Symptoms:** OOM killer activates during inference
-
-**Solutions:**
-- Reduce model size
-- Adjust `max_concurrent_requests`
-- Add more RAM or swap
-- Enable model quantization
-
----
-
-## Desktop Environment Issues
-
-### Wayland Compositor Crashes
-
-**Symptoms:** Desktop won't start or shows blank screen
-
-**Solutions:**
-```bash
-# Switch to console
-Ctrl+Alt+F3
-
-# Restart desktop
-systemctl restart agnos-desktop
-
-# Check logs
-journalctl -u agnos-desktop -n 50
+```cyrius
+fn main() { ... return 0; }
+var exit_code = main();
+syscall(60, exit_code);
 ```
 
-### Applications Won't Open
-
-**Symptoms:** Clicking apps does nothing
-
-**Solutions:**
-- Check display server: `echo $XDG_SESSION_TYPE`
-- Verify GPU drivers installed
-- Try starting app from terminal to see errors
-- Check file permissions on app binaries
-
-### AI Features Not Working
-
-**Suggestions don't appear or are wrong**
-
-**Solutions:**
-- Ensure LLM gateway is running
-- Check context detection: `journalctl | grep context`
-- Verify model has enough context window
-- Adjust AI feature sensitivity in settings
+Study working programs in `/home/macro/Repos/cyrius/programs/*.cyr` (46 examples).
 
 ---
 
-## Security Issues
+## Sovereign Boot Pipeline
 
-### Permission Denied Errors
+### `cyrius build src/boot.cyr build/boot` fails
 
-**Symptoms:** Agent can't access resources
-
-**Solutions:**
-1. Open Security UI (system tray icon)
-2. Navigate to Agent Permissions
-3. Add required permissions for agent
-4. Save and restart agent
-
-### Audit Log Shows Unauthorized Access
-
-**Symptoms:** Security alerts for unknown actions
-
-**Solutions:**
-- Review audit log: `audit-viewer`
-- Check for compromised credentials
-- Enable stricter sandboxing
-- Review security policies
-
-### Emergency Kill Switch
-
-**System feels compromised**
-
-**Solutions:**
-- Use keyboard shortcut: `Ctrl+Alt+Shift+K`
-- Run: `agnos-ctl emergency-stop`
-- Physical power button (5 seconds for hard shutdown)
-
----
-
-## Performance Issues
-
-### High CPU Usage
-
-**System feels sluggish**
-
-**Solutions:**
-```bash
-# Check CPU usage
-top
-
-# Identify processes
-ps aux --sort=-%cpu | head
-
-# Limit agent CPU via resource manager
-daimon-cli set-limits --cpu=50%
+```sh
+cd /home/macro/Repos/agnosticos/scripts
+cyrius build src/boot.cyr build/boot
 ```
 
-### High Memory Usage
+Common causes:
 
-**System runs out of memory**
+| Error | Cause | Fix |
+|-------|-------|-----|
+| Missing stdlib symbols | `cyrius.toml` deps stale | `cd scripts && cyrius deps` |
+| Include not found | Local source file path wrong | Paths in `src/boot.cyr` are relative to `scripts/` |
+| Linker error on `syscall` | Toolchain mismatch | Check `.cyrius-toolchain` matches installed `cyrius --version` |
 
-**Solutions:**
-- Check memory: `free -h`
-- Kill unnecessary agents: `daimon-cli list` then `daimon-cli terminate <id>`
-- Reduce model sizes
-- Enable swap: `swapon /dev/sdXN`
+### `./build/boot --help` prints nothing
 
-### Slow Boot Time
+The binary built but wasn't linked with stdlib. Re-run via `cyrius build` (not raw `cc3`).
 
-**System takes too long to start**
+### `make boot` fails
 
-**Solutions:**
-- Disable unnecessary services: `systemctl list-unit-files | grep enabled`
-- Check fsck on boot: `systemd-analyze critical-chain`
-- Review startup services: `systemd-analyze blame`
-- **Note:** AGNOS uses the argonaut init system by default. If booting with argonaut, use `argonaut status` and `argonaut list` instead of systemd commands. Argonaut targets <3 second boot from kernel handoff to agent-runtime ready.
+```sh
+make boot
+```
+
+Runs `cyrius build` under the hood. If it fails, `cd scripts && cyrius build src/boot.cyr build/boot` directly to see the raw error.
+
+---
+
+## Component Verification
+
+### `make iso-check` reports stale artifact
+
+```
+STALE: ../kybernet/build/kybernet (expected 1.0.1, found none)
+```
+
+The sibling repo hasn't been built. Fix:
+
+```sh
+cd /home/macro/Repos/kybernet
+cyrius build src/main.cyr build/kybernet
+cd /home/macro/Repos/agnosticos
+make iso-check
+```
+
+### `make iso-check` reports missing repo
+
+A sibling repo path in `scripts/src/boot.cyr` or the Makefile points to a repo that isn't cloned locally. Check `docs/architecture.md` for the canonical repo list.
+
+### Version drift
+
+The version each sibling reports comes from that repo's `VERSION` file. If a sibling was upgraded but `iso-check` still sees the old version, rebuild from source.
+
+---
+
+## QEMU Kernel Boot Test
+
+### `make boot-test` hangs on black screen
+
+QEMU serial is not being forwarded. Run the boot binary directly with `--serial`:
+
+```sh
+./scripts/build/boot --test --kernel ../agnos/build/agnos --serial
+```
+
+To exit QEMU: `Ctrl-a x`.
+
+### `make boot-test` reports "kernel not found"
+
+The AGNOS kernel isn't built. Fix:
+
+```sh
+cd /home/macro/Repos/agnos
+sh scripts/build.sh
+cd /home/macro/Repos/agnosticos
+make boot-test
+```
+
+### Kernel boots but panics on first syscall
+
+Most common cause: `agnos` and `agnosys` versions are out of sync. Rebuild both from current sources.
+
+### QEMU version too old
+
+```sh
+qemu-system-x86_64 --version  # requires ≥ 7.0
+```
+
+Upgrade via your host package manager.
+
+---
+
+## Per-Subsystem Builds
+
+Every subsystem builds standalone. Pattern:
+
+```sh
+cd /home/macro/Repos/<name>
+cyrius build src/main.cyr build/<name>
+./build/<name> --help
+```
+
+### Build fails with "dep not resolved"
+
+```sh
+cd /home/macro/Repos/<name>
+cat cyrius.toml  # check [dependencies] section
+cyrius deps      # resolve
+```
+
+If a dep points to a sibling repo that isn't cloned, clone it from `MacCracken/<name>`.
+
+### Tests fail after rebase
+
+Each repo has its own test suite. Run from that repo:
+
+```sh
+cd /home/macro/Repos/<name>
+cyrius test
+```
+
+Don't mix test runs across repos — each one pins its own toolchain and deps.
 
 ---
 
 ## Getting Help
 
-### Collect Debug Information
+- **Issue tracker**: https://github.com/MacCracken/agnosticos/issues
+- **Per-subsystem issues**: file against the specific repo (`MacCracken/<name>/issues`)
+- **Security issues**: see [/SECURITY.md](/SECURITY.md) for private disclosure
+- **Roadmap**: [../development/roadmap.md](../development/roadmap.md)
+- **Phase 13A (Beta blocker)**: tracks the ISO work that closes the "is AGNOS installable?" gap
 
-```bash
-# System info
-uname -a > debug.txt
-systemctl list-units --failed >> debug.txt
+---
 
-# Logs
-journalctl -b -0 --no-pager >> debug.txt
+## Historical Note
 
-# AGNOS-specific
-agnos-ctl status >> debug.txt
-```
-
-### Community Support
-
-- **Matrix**: #agnos:matrix.org
-- **Discord**: discord.gg/agnos
-- **Forum**: discourse.agnos.io
-
-### Reporting Bugs
-
-See [SECURITY.md](../SECURITY.md) for security-related issues.
-
-For general bugs, include:
-- Steps to reproduce
-- Expected vs actual behavior
-- Debug information above
-- Hardware/software specifications
+Prior versions of this document covered `systemctl`, `agent-runtime`, `llm-gateway`, `journalctl`, and desktop-environment issues. Those refer to a Rust-era AGNOS built on a Debian base that was retired 2026-04-01 (monolith extraction) / 2026-04-04 (Cyrius pivot). That content returns — against the sovereign stack — when `agnova` and the Phase 13A ISO ship.

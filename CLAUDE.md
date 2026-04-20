@@ -24,7 +24,7 @@ This repo is the **genesis layer** — meta, narrative, and the infrastructure t
 
 **Does NOT own (extracted):**
 - **AGNOS kernel** → `agnos` repo (v1.22.0, 260KB, Cyrius-native)
-- **Cyrius compiler** → `cyrius` repo (v5.5.0, self-hosting from 29KB seed)
+- **Cyrius compiler** → `cyrius` repo (v5.5.4, self-hosting from 29KB seed)
 - **Recipes** → `zugot` repo (421 base + 90 bazaar recipes)
 - **Production code** → 130+ standalone repos under `/home/macro/Repos/{name}/`
 - **Old userland/** — monolith fully dismantled 2026-04-01. No Cargo workspace remains.
@@ -34,7 +34,7 @@ This repo is the **genesis layer** — meta, narrative, and the infrastructure t
 | Subsystem | Version | Role | Port Status |
 |-----------|---------|------|-------------|
 | **agnos** | 1.22.0 | AGNOS kernel (260KB, 33 subsystems, 26 syscalls) | **Native** |
-| **cyrius** | 5.5.0 | Sovereign compiler + stdlib + toolchain | **Native** |
+| **cyrius** | 5.5.4 | Sovereign compiler + stdlib + toolchain | **Native** |
 | **zugot** | — | Recipe repository (all takumi build recipes) | — |
 | **agnostik** | 0.97.1 | Shared types, domain primitives | **Ported** |
 | **agnosys** | 1.0.0 | Kernel interface (Landlock, seccomp, syscalls) | **Ported** |
@@ -62,8 +62,8 @@ This repo is the **genesis layer** — meta, narrative, and the infrastructure t
 | **phylax** | 1.0.0 | Threat detection | **Ported** |
 | **abaco** | 2.1.0 | Math/number theory library | **Ported** |
 | **itihas** | 2.2.0 | History/versioning | **Ported** |
-| **bsp** | 1.1.2 | BSP geometry library (waiting on Cyrius 5.5.x pillar optimizations) | **Ported** |
-| **cyrius-doom** | 0.26.1 | DOOM engine in Cyrius (waiting on Cyrius 5.5.x pillar optimizations) | **Native** |
+| **bsp** | 1.1.2 | BSP geometry library (waiting on Cyrius 5.6.x optimization arc) | **Ported** |
+| **cyrius-doom** | 0.26.1 | DOOM engine in Cyrius (waiting on Cyrius 5.6.x optimization arc) | **Native** |
 | **sankoch** | 2.0.0 | Lossless compression (LZ4, DEFLATE, zlib, gzip) | **Ported** |
 | **bhava** | 2.0.0 | Emotion/sentiment modeling | Pending port |
 | **hisab** | 2.2.0 | Accounting/calculation | **Ported** |

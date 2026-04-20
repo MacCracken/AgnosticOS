@@ -45,7 +45,7 @@ The AGNOS kernel has zero lines of C. This eliminates vulnerability categories t
 | Integer promotion overflow | Implicit type widening | Eliminated — single type (i64) |
 | Double free | Manual memory management | Eliminated — slab fixed-size classes |
 
-This does not mean AGNOS is bug-free — logic errors, race conditions, and design flaws remain possible. Cyrius has no borrow checker today (planned for v1.3), so memory safety comes from testing and auditing, not the type system. But the largest single category of kernel vulnerabilities is eliminated at the language level.
+This does not mean AGNOS is bug-free — logic errors, race conditions, and design flaws remain possible. Cyrius has no borrow checker, and does not plan to add one: memory safety comes from testing, auditing, and a stdlib designed for the absence of hidden aliasing. Design stance, not a pending feature. But the largest single category of kernel vulnerabilities is eliminated at the language level.
 
 ### Prior Art
 
@@ -145,7 +145,11 @@ The 178-cycle getpid is within the range of Linux on native hardware (100-200 cy
 
 For context: GCC is ~100MB, Clang/LLVM is ~500MB.
 
-Head-to-head Cyrius vs Rust benchmarks on real crate conversions: [Cyrius vs Rust Benchmarks](cyrius-vs-rust-benchmarks.md).
+### Since This Was Written
+
+The trajectory continued. The numbers in this article are the Day-4 cut (April 2026). As of April 20, 2026: **Cyrius v5.5.4** (482 KB self-hosting compiler, still bootstrapping byte-identically from the same 29 KB seed, now with Mach-O self-host on Apple Silicon and PE32+ Win64 ABI call-site complete on Windows 11), **AGNOS kernel v1.22.0** (260 KB, 33 subsystems, 26 syscalls, hardened pass). The compiler-optimization arc (**v5.6.x** — O1 through O6 phases) is next, then **v5.7.0 RISC-V**, then **v5.8.0 bare-metal**. The "young language" framing in this article is the honest one; the sprint that closes the remaining compute gaps is scheduled and named.
+
+Full head-to-head benchmarks on real crate conversions: [Cyrius vs Rust Benchmarks](cyrius-vs-rust-benchmarks.md). The 10-port ledger: [Port Ledger Volume 1](port-ledger-volume-1.md).
 
 ---
 
@@ -157,7 +161,7 @@ Head-to-head Cyrius vs Rust benchmarks on real crate conversions: [Cyrius vs Rus
 
 **Project A cannot self-host.** It depends on external toolchains but compiles real-world C codebases today.
 
-**Cyrius has no borrow checker.** Ownership and borrow checking are planned for v1.3.
+**Cyrius has no borrow checker.** Design stance, not a pending feature — memory safety comes from testing, auditing, and a stdlib built to avoid hidden aliasing by construction.
 
 Both projects represent genuine engineering achievements with different trade-offs.
 

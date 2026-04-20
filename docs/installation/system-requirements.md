@@ -1,7 +1,9 @@
 # AGNOS System Requirements
 
 > Minimum and recommended hardware for running AGNOS across all profiles.
-> Last Updated: 2026-03-14
+> Last Updated: 2026-04-20
+>
+> **Pre-Beta note:** AGNOS is not yet installable as an end-user OS. These figures are the **targets** for the Phase 13A ISO. For what is buildable and testable today, see [README.md](README.md).
 
 ---
 
@@ -36,9 +38,9 @@ No GPU, no Wayland, no desktop packages.
 | Network | Internet for setup + updates | Agents operate locally after install |
 
 **Service memory budgets** (configurable):
-- `agent-runtime` (daimon): 512 MB
-- `llm-gateway` (hoosh): 8 GB (scales with model size)
-- `agnos-audit`: 128 MB
+- `daimon` (agent orchestrator): 512 MB
+- `hoosh` (LLM inference gateway): 8 GB (scales with model size)
+- `libro` (audit chain): 128 MB
 
 ### Desktop Profile
 
@@ -92,11 +94,14 @@ Minimal footprint for embedded devices — fleet management, OTA updates, teleme
 
 | Architecture | Status | Notes |
 |--------------|--------|-------|
-| x86_64 (AMD64) | Full support | Primary development target |
-| ARM64 (AArch64) | Full support | Cross-compilation via Cross.toml |
+| x86_64 (AMD64) | Full support | Primary development target; Cyrius self-hosts byte-identical |
+| ARM64 (AArch64) | Full support | Cyrius cross-compiler + native Pi self-host byte-identical (v5.3.15+) |
+| Apple Silicon (Mach-O) | Compiler toolchain only | Cyrius self-hosts byte-identically on M-series (v5.3.13); AGNOS kernel targets Linux ABI |
+| Windows PE32+ | Compiler toolchain only | Cyrius Win64 ABI call-site complete (v5.5.4); native self-host v5.5.6 |
+| RISC-V (rv64) | Queued | Cyrius v5.7.0 — see [development/roadmap.md](../development/roadmap.md) |
+| Bare-metal (no host OS) | Queued | Cyrius v5.8.0 |
 | x86 (32-bit) | Not supported | No kernel configs, no recipes |
-| ARM (32-bit) | Not supported | Cross-compilation stubs exist but untested |
-| RISC-V | Not supported | Future consideration |
+| ARM (32-bit) | Not supported | Out of scope |
 
 ---
 
@@ -116,7 +121,19 @@ Minimal footprint for embedded devices — fleet management, OTA updates, teleme
 
 ## Kernel
 
+AGNOS uses **two kernels** depending on profile — the AGNOS kernel is primary; a Linux kernel is retained for host bootstrap and driver coverage during the transition to full sovereignty.
+
+### AGNOS Kernel (sovereign, primary)
+
+- **Version**: 1.22.0 — 260KB, Cyrius-native, 33 subsystems, 26 syscalls
+- **Repo**: `MacCracken/agnos`
+- **Multi-arch split** (v1.1.0): `kernel/arch/x86_64/`, `kernel/arch/aarch64/`, `kernel/core/`, `kernel/user/`
+- **Boot**: multiboot1; boots in QEMU via `make boot-test` from the genesis repo
+
+### Linux Kernel (host bootstrap, transitional)
+
 - **Version**: Linux 6.6 LTS (6.6.80)
+- **Role**: used during early ISO builds for broad driver coverage while sovereign stack gaps close
 - **Security**: Landlock, seccomp, AppArmor/SELinux, kernel lockdown LSM
 - **Filesystems**: ext4, btrfs, xfs, vfat, squashfs, overlayfs, FUSE
 - **Networking**: namespaces, nftables, WireGuard, bridging
@@ -164,14 +181,11 @@ The oldest hardware that can run AGNOS, by profile:
 ## Software Dependencies (Host Build)
 
 Building AGNOS from source requires:
-- Rust toolchain (stable, latest)
-- GCC 12+ or Clang 15+
-- GNU Make, CMake, Meson, Ninja
-- OpenSSL 3.x headers
-- SQLite 3.x headers
-- pkg-config
-- Python 3.10+ (for build scripts)
-- Docker/Podman (for container builds and ISO generation)
+- **Cyrius toolchain** — version pinned in `scripts/.cyrius-toolchain`; install from release tarball or build from source (`cyrius` repo)
+- **QEMU** — `qemu-system-x86_64` (≥ 7.0) for `make boot-test`
+- **GNU Make** — `make boot`, `make iso-check`, `make boot-test`
+
+The Rust / GCC / Python / Docker toolchain was retired during the Cyrius pivot (2026-04-04). Pre-Cyrius scripts live in `scripts/archive-pre-cyrius/` for reference only.
 
 ---
 

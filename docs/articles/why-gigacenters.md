@@ -40,12 +40,12 @@ What if the stack looked like this:
 
 ```
 Hardware (commodity x86_64 / ARM / repurposed ASIC)
-  → AGNOS kernel (48KB, boots in <100ms)
+  → AGNOS kernel (260KB, v1.22.0, boots in <100ms)
     → murti (sovereign model runtime, local inference)
       → Inference
 ```
 
-Three layers instead of eight. 48KB OS instead of 4GB. Boot in 100ms instead of 30 seconds. **Every byte the model doesn't load, decompress, or page-fault through is compute freed for actual thinking.**
+Three layers instead of eight. 260KB OS instead of 4GB. Boot in 100ms instead of 30 seconds. **Every byte the model doesn't load, decompress, or page-fault through is compute freed for actual thinking.**
 
 ---
 

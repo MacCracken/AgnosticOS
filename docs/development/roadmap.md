@@ -2,7 +2,7 @@
 
 > **Status**: Pre-Beta | **Last Updated**: 2026-04-20
 > **Kernel 1.22.0 shipped** — 260KB, 33 subsystems, 26 syscalls, hardened pass.
-> **Cyrius 5.5.0 shipped** — self-hosting from 29KB seed. Apple Silicon Mach-O self-hosts byte-identically on M-series (v5.3.13). Windows PE32+ runs `hello\n` end-to-end (v5.4.8); general Win64 ABI + remaining syscalls queued v5.4.12+. aarch64 cross-compiler + native Pi self-host byte-identical (v5.3.15+).
+> **Cyrius 5.5.4 shipped** — self-hosting from 29KB seed. Apple Silicon Mach-O self-hosts byte-identically on M-series (v5.3.13). Windows PE32+ Win64 ABI ≤4-arg (v5.5.3) + >4-arg cyrius-to-cyrius call-site (v5.5.4) produce correct code on real Windows 11; `lib/fnptr.cyr` indirect calls queued v5.5.5, native Windows self-host at v5.5.6. aarch64 cross-compiler + native Pi self-host byte-identical (v5.3.15+). v5.6.x compiler-optimization arc → v5.7.0 RISC-V → v5.8.0 bare-metal queued.
 > **ISO pipeline started** — Stage 0 (component verification) implemented: `make iso-check`. See `docs/development/iso-pipeline.md`.
 > **Kavach 3.0.0 shipped Cyrius-native** — 344KB (was 2.4MB Rust), 1 dep, 9 CWE fixes, sandbox lifecycle 500× faster.
 > **Sankoch 2.0.0 shipped** — lossless compression (LZ4, DEFLATE, zlib, gzip). stdlib fold pending.
@@ -12,7 +12,7 @@
 > **Phylax 1.0.0** / **Shakti 0.2.2** — threat detection + privilege escalation ported to Cyrius.
 > **Critical path CLEARED**: libro ✅ argonaut ✅ kybernet ✅ kernel ✅ boot pipeline ✅ kavach ✅ ark ✅ nous ✅
 > **Shared ecosystem**: 30+ repos ported to Cyrius. Pending port: bhava, takumi, aegis, aethersafha.
-> **Cyrius platform cleanup**: Apple Silicon (done), Windows PE32+ (hello runs, general Win64 ABI queued v5.4.12+), RISC-V (pending).
+> **Cyrius platform cleanup**: Apple Silicon (done), aarch64 (done), Windows PE32+ (Win64 ABI call-site complete v5.5.4; fnptr v5.5.5, native self-host v5.5.6), RISC-V (v5.7.0 queued), bare-metal (v5.8.0 queued).
 > **Next milestone**: Bootable ISO (Phase 1). `make iso-check` passes → Stage 1-4 implementation.
 
 ---
@@ -59,7 +59,7 @@ Creator economy (sovereign distribution, bootable USB media): [vision/creator-ec
 
 ## Status
 
-### Cyrius Language — v5.5.0
+### Cyrius Language — v5.5.4
 
 Full milestone history lives in `cyrius/CLAUDE.md` + `cyrius/CHANGELOG.md`. Headline status for AGNOS:
 
@@ -76,9 +76,15 @@ Full milestone history lives in `cyrius/CLAUDE.md` + `cyrius/CHANGELOG.md`. Head
 | aarch64 cross-compiler + native Pi self-host (byte-identical) | **Done** (v5.3.15+) |
 | Apple Silicon Mach-O (self-hosts byte-identically on M-series) | **Done** (v5.3.13) |
 | Windows PE32+ — `hello\n` runs end-to-end on real hardware | **Done** (v5.4.8) |
-| Windows general Win64 ABI at `fncall*` + remaining syscalls | In flight — v5.4.12+ |
-| RISC-V codegen | Pending |
-| Bare-metal target | Pending |
+| Windows Win64 ABI ≤4-arg (call-site + register mapping) | **Done** (v5.5.3) |
+| Windows Win64 ABI >4-arg cyrius-to-cyrius call-site | **Done** (v5.5.4) |
+| Windows `lib/fnptr.cyr` indirect fn-pointer Win64 calls | Queued — v5.5.5 |
+| Windows native self-host (`cc5_win` compiling itself on `windows-latest`) | Queued — v5.5.6 |
+| NSS/PAM end-to-end (shakti 0.2.x downstream blocker) | Queued — v5.5.10 |
+| v5.5.x closeout | Queued — v5.5.16 |
+| Compiler optimization arc (O1–O6: peephole, IR passes, regalloc, maximal-munch, slab) | Queued — v5.6.0–v5.6.6 |
+| RISC-V rv64 codegen | Queued — v5.7.0 |
+| Bare-metal / AGNOS kernel target | Queued — v5.8.0 |
 
 ### Cyrius Ports — Dependency Chain to Boot
 
@@ -125,7 +131,7 @@ Full details: [sprint-history.md](sprint-history.md#monolith-extraction--complet
 |--------|--------|---------|--------|
 | Boot Time | <10s | **3.2s** (kernel+init), **~80ms** init→event loop | **Achieved** |
 | OS Independence | Yes | Pending | Phase 13A — critical path cleared, self-hosting validation remaining |
-| DOOM | Playable | **2.59ms/frame**, cyrius-doom 0.26.1, hardened (5 CVEs fixed) | Waiting on Cyrius 5.5.x pillar optimizations |
+| DOOM | Playable | **2.59ms/frame**, cyrius-doom 0.26.1, hardened (5 CVEs fixed) | Waiting on Cyrius 5.6.x optimization arc |
 
 ---
 
@@ -183,6 +189,28 @@ Repo-specific backlog items tracked in their respective repos.
 
 ## Pre-Beta
 
+### Phase 13B — Arch-Neutral Boot Pipeline
+
+**Gate**: opens on Cyrius v5.6.x compiler-optimization arc closeout (v5.6.5 or v5.6.6).
+**Precedes**: Cyrius v5.7.0 RISC-V rv64 — this work lands *between* v5.6.x and v5.7.0.
+**Rationale**: Cyrius locks the sequencing v5.6.x (optimization) → v5.7.0 (RISC-V) → v5.8.0 (bare-metal). Agnos already did the multi-arch split at v1.1.0 (`kernel/arch/x86_64/`, `kernel/arch/aarch64/`, `kernel/core/`, `kernel/user/`). The gap is that everything downstream of boot still carries x86_64/aarch64-shaped assumptions. Neutralizing now means v5.7.0 RISC-V and v5.8.0 bare-metal slot in as "add a target," not "rewrite the pipeline."
+
+**Genesis-repo items (owned here):**
+
+| # | Item | Notes |
+|---|------|-------|
+| 1 | `scripts/boot.cyr` arch detection + per-arch branch tables | Cross-compilation flag routing |
+| 2 | ISO pipeline Stages 1–4 arch-aware | Stage output keyed on target triple |
+| 3 | `bootstrap-toolchain.sh` cross-arch | x86_64 / aarch64 / riscv64 / bare-metal source tarball builds |
+| 4 | `build-order.txt` per-arch gates | Failing arch doesn't block others |
+
+**Downstream sweep (tracked in respective repos):**
+- **Must-touch (boot path)**: agnos, kybernet, argonaut, agnosys, sigil
+- **Should-touch (build/packaging)**: ark, nous, zugot, agnova, takumi
+- **May-touch**: phylax, shakti, ai-hwaccel, seema
+
+**Target**: complete before Cyrius v5.7.0 ships. Don't scope-creep before v5.6.x closeout — let the optimization arc re-baseline benchmarks first.
+
 ### Phase 13C — Community & Documentation
 
 | # | Item | Status | Notes |
@@ -234,7 +262,7 @@ All subsystems are standalone repos at `/home/macro/Repos/{name}/`.
 | Name | Role | Repo | Version | Cyrius Port |
 |------|------|------|---------|-------------|
 | **agnos** | AGNOS kernel | `MacCracken/agnos` | 1.22.0 | **Native** |
-| **cyrius** | Sovereign compiler | `MacCracken/cyrius` | 5.5.0 | **Native** |
+| **cyrius** | Sovereign compiler | `MacCracken/cyrius` | 5.5.4 | **Native** |
 | **kybernet** | PID 1 binary | `MacCracken/kybernet` | 1.0.1 | **Done** |
 | **argonaut** | Init system (library) | `MacCracken/argonaut` | 1.2.0 | **Done** |
 | **agnosys** | Kernel interface | `MacCracken/agnosys` | 1.0.0 | **Done** |
@@ -255,8 +283,8 @@ All subsystems are standalone repos at `/home/macro/Repos/{name}/`.
 | **mabda** | GPU foundation | `MacCracken/mabda` | 2.4.1 | **Done** |
 | **sankoch** | Lossless compression | `MacCracken/sankoch` | 2.0.0 | **Done** |
 | **itihas** | History/versioning | `MacCracken/itihas` | 2.2.0 | **Done** |
-| **bsp** | BSP geometry library | `MacCracken/bsp` | 1.1.2 | **Done** (waiting on Cyrius 5.5.x pillar optimizations) |
-| **cyrius-doom** | DOOM engine | `MacCracken/cyrius-doom` | 0.26.1 | **Native** (waiting on Cyrius 5.5.x pillar optimizations) |
+| **bsp** | BSP geometry library | `MacCracken/bsp` | 1.1.2 | **Done** (waiting on Cyrius 5.6.x optimization arc) |
+| **cyrius-doom** | DOOM engine | `MacCracken/cyrius-doom` | 0.26.1 | **Native** (waiting on Cyrius 5.6.x optimization arc) |
 | **ark** | Unified package manager | `MacCracken/ark` | 0.8.0 | **Done** |
 | **nous** | Package resolver | `MacCracken/nous` | 1.1.1 | **Done** |
 | **phylax** | Threat detection engine | `MacCracken/phylax` | 1.0.0 | **Done** |

@@ -6,27 +6,50 @@
 
 ## Key Findings
 
-- **1,462x faster compilation** — Cyrius compiles agnosys in 8ms vs Rust's 11.7s
-- **59-81x smaller binaries** — no libc, no LLVM, no stdlib, no panic machinery
-- **Syscall hot paths at parity or better** — the operations that dominate production throughput
-- **2x faster boot** — kybernet (PID 1) reaches event loop in 66ms vs Rust's 120-140ms
-- **Pure compute gaps remain** — Rust + LLVM -O3 wins on branch-heavy operations (2-42x) due to constant folding and inlining that Cyrius does not yet perform
-- **SIMD: Cyrius 3.2x faster** — explicit SSE2 intrinsics beat LLVM auto-vectorization on batch DSP
+- **3–59× smaller binaries** across 10 production ports — no libc, no LLVM, no stdlib, no panic machinery
+- **40–1,462× faster compilation** — agnosys 11.7s → 8ms (1,462×), hoosh 15s → 216ms (70×), ark 4.2s → <0.1s (40×)
+- **Runtime wins on full-operation paths** — avatara cached access 2,761× faster, kavach sandbox lifecycle 500× faster (3.06ms → 6µs), kybernet `is_mounted` 1,583× faster, abaco Miller-Rabin 12× faster end-to-end
+- **Closed-loop compiler feedback** — abaco's Miller-Rabin bottleneck specified a Cyrius `u64_mulmod` hardware fast-path (shipped v4.8.5); abaco then re-measured 12× faster. Canonical downstream-drives-compiler example
+- **Syscall hot paths at parity or better** — the kernel does identical work; Cyrius's packed error encoding beats Rust's `Result<T, E>` stack enum
+- **SIMD 3.2× faster** on batch DSP — explicit SSE2 intrinsics beat LLVM auto-vectorization
+- **Nuanced: Rust still wins on micro-ops** — zero-copy borrows (serde, `Vec::push`) beat bump + `str_builder` when the win is a single allocation; Cyrius wins wherever the hot path allocates + formats + frees
 
 ---
 
-## Crates Tested
+## Crates Tested (deep-dive)
 
 **agnosys** (kernel interface) — Rust bindings for Linux syscalls, Landlock, seccomp. Syscall-heavy I/O.
-Rust v0.51.0 (136 transitive dependencies) vs Cyrius v0.90.0 (zero dependencies).
+Rust v0.51.0 (136 transitive dependencies) vs Cyrius v0.90.0 (zero dependencies, now v1.0.0 stable).
 
 **kybernet** (PID 1 init system) — service management, signal handling, system boot. Mix of syscalls, compute, and allocation.
-Rust v0.51.0 vs Cyrius v1.7.1.
+Rust v0.51.0 vs Cyrius v1.0.1 (production, 486KB, 140 tests, 46 benchmarks).
 
 **agnostik** (shared domain types) — agent IDs, trace contexts, sandbox configs, inference requests, audit entries. Object construction and serialization.
-Rust v0.90.0 (10 feature gates) vs Cyrius.
+Rust v0.90.0 (10 feature gates) vs Cyrius v0.97.1.
 
 **abaco** (math/DSP primitives) — number theory, DSP, SIMD. Pure compute against LLVM -O3.
+Rust baseline vs Cyrius v2.1.0 (post-u128, post-`u64_mulmod` fast-path).
+
+---
+
+## Ports Ledger — 10 Production Ports
+
+Full receipts (Rust tags + CSVs) preserved in each repo. This article deep-dives the first four; the rest are summarized here.
+
+| Port | Role | Rust → Cyrius (size) | Compile | Headline result |
+|------|------|----------------------|---------|-----------------|
+| **agnosys** | Kernel interface | 6.9MB → 117KB (**59×**) | 11.7s → 8ms (**1,462×**) | Syscall hot paths at parity or better; stable 1.0.0 |
+| **kybernet** | PID 1 init | 6.7MB → 486KB (**14×**) | — | Boot 2× faster; `is_mounted` **1,583× faster** |
+| **agnostik** | Shared types | — | — | Cyrius wins 6/9 domain-object benchmarks |
+| **abaco** | Math/DSP | — (lines −52%) | — | Miller-Rabin **12× end-to-end** via Cyrius `u64_mulmod` fast-path — canonical closed-loop port feedback |
+| **hoosh** | LLM inference gateway | 5.1MB → 474KB (**10.8×**) | 15s → 216ms (**70×**) | 22,956 → 1,361 lines (**16.9×**); **40 crates → 0** |
+| **ai-hwaccel** | GPU detection | 708KB → 217KB (**3.3×**) | — | **131 crates → 0**; 518 tests, 6 fuzz harnesses |
+| **avatara** | Archetype overlay | — | — | **Cached access 2,761× faster**, lookup 53× faster |
+| **kavach** | Sandbox execution | 2.4MB → 344KB (**7×**) | 45s → 0.64s (**70×**) | **Sandbox lifecycle 500× faster** (3.06ms → 6µs); **9 CWE fixes** in-port |
+| **ark** | Package manager | 2.1MB → 532KB (**4×**) | 4.2s → <0.1s (**40×**) | Full op paths 2–5× faster; Rust wins micro-ops via zero-copy |
+| **nous** | Package resolver | — | — | v1.1.1 stable, Cyrius-native resolution |
+
+Dependency-count collapse is the structural story: **hoosh 40 → 0**, **ai-hwaccel 131 → 0**, **kavach 448 → 1**. These aren't compiler tricks — they're the result of writing in a language whose stdlib is zero-dep by construction.
 
 ---
 
@@ -95,13 +118,14 @@ Rust's 1ns results are likely compile-time constants — LLVM constant-folds the
 
 ### Boot performance
 
-| Metric | Cyrius | Rust | Ratio |
-|--------|--------|------|-------|
-| Init-to-event-loop | 66 ms | 120-140 ms | **2x faster** |
-| Binary size | 48 KB | 3,922 KB | **81x smaller** |
-| Initramfs | 308 KB | 2.4 MB | **7.8x smaller** |
+| Metric | Cyrius (early port) | Cyrius (v1.0.1 production) | Rust | Ratio (production) |
+|--------|--------------------|-----------------------------|------|--------------------|
+| Init-to-event-loop | 66 ms | ~80 ms | 120-140 ms | **~1.5–2× faster** |
+| Binary size | 48 KB | 486 KB | 6.7 MB | **14× smaller** |
+| Initramfs | 308 KB | — | 2.4 MB | **7.8× smaller** |
+| `is_mounted` | — | — | — | **1,583× faster** |
 
-The init system that is 81x smaller boots 2x faster. Smaller binary = less to load, decompress, and page-fault. For a PID 1 that spends 99% of its time in epoll_wait, binary size and boot speed are the deciding metrics.
+The 48 KB figure is the early-port prototype before the full feature surface (140 tests, 46 benchmarks) landed. The v1.0.1 production binary is 486 KB — still 14× smaller than the Rust equivalent. The init system boots in the same envelope regardless. For a PID 1 that spends 99% of its time in `epoll_wait`, binary size and boot speed remain the deciding metrics, and the ratio holds once production features are in.
 
 ---
 
@@ -133,15 +157,15 @@ Cyrius wins 6 of 9 benchmarks. The three Rust wins are string serialization (ser
 | DSP scalar ops | 0.6-1.6 ns | ~400 ns | **Rust (300-700x)** |
 | **SIMD batch (4096 f64)** | **~3,200 ns** | **1,000 ns** | **Cyrius (3.2x)** |
 
-Pure compute is where Cyrius shows its current codegen ceiling. Three distinct gaps:
+Pure compute is where Cyrius showed its early codegen ceiling. Three distinct gaps — the first two have since closed:
 
-**Near parity** — `factor_large` at 1.03x. Same algorithm, same machine code, same speed.
+**Near parity** — `factor_large` at 1.03×. Same algorithm, same machine code, same speed.
 
-**Algorithm gap (7-42x)** — Number theory uses `mod_mul` with 64 additions per multiply because Cyrius has no u128 type. Rust uses native 128-bit multiplication. Adding u128 would collapse these gaps to an estimated 2-3x.
+**Algorithm gap (7-42×) — closed.** Number theory originally used `mod_mul` with 64 additions per multiply because Cyrius had no u128 type. **u128 shipped in Cyrius v4.7–v4.8.x.** Abaco then specified a hardware `u64_mulmod` fast-path; **Cyrius v4.8.5 shipped it**. Abaco re-measured: **Miller-Rabin end-to-end ~12× faster** than the original Cyrius port. This is the canonical closed-loop example — a downstream port drove a compiler feature, the compiler shipped it, the port then measured the result. Benchmarks here predate that cycle; the newer abaco numbers live in `abaco/benches/` and the [port feedback loop memory](../../CLAUDE.md).
 
-**Inlining gap (300-700x)** — DSP scalar sub-nanosecond times mean LLVM inlined the entire function. Cyrius ~400ns is function call overhead through the benchmark harness, not computation time. The batch numbers (sanitize_4096 at 4.4x, poly_blep at 9.6x) reflect the real gap without SIMD.
+**Inlining gap (300-700×)** — DSP scalar sub-nanosecond times mean LLVM inlined the entire function. Cyrius ~400ns is function call overhead through the benchmark harness, not computation time. The batch numbers (`sanitize_4096` at 4.4×, `poly_blep` at 9.6×) reflect the real gap without SIMD. **Targeted by the Cyrius v5.6.x compiler-optimization arc** (O1–O6: instrumentation, peephole, IR-driven passes, linear-scan regalloc, maximal-munch, slab allocator).
 
-**SIMD wins (3.2x)** — Explicit SSE2 intrinsics (`addpd`/`mulpd`/`subpd`) beat Rust's auto-vectorization on 4,096-element f64 arrays. Cyrius emits direct packed double instructions with no loop analysis overhead. Intent beats inference.
+**SIMD wins (3.2×)** — Explicit SSE2 intrinsics (`addpd`/`mulpd`/`subpd`) beat Rust's auto-vectorization on 4,096-element f64 arrays. Cyrius emits direct packed double instructions with no loop analysis overhead. Intent beats inference.
 
 ---
 
@@ -162,19 +186,22 @@ The trajectory is one-directional — each pass closes gaps, none has opened new
 
 ## Known Limitations
 
-**Function table limit**: Programs exceeding ~1,024 functions produce a compile-time error. Proper fix: multi-file compilation with object linking.
+**Pure compute gap**: Branch-heavy operations show 2–42× overhead vs LLVM -O3. Compiler-optimization targets (constant folding, inlining, regalloc, maximal-munch instruction selection) — **Cyrius v5.6.x optimization arc** lands these as O1–O6 phases before v5.7.0 RISC-V.
 
-**Pure compute gap**: Branch-heavy operations show 2-42x overhead vs LLVM -O3. This is a compiler optimization target (constant folding, inlining), not a language limitation.
+**No borrow checker**: Memory safety comes from testing, auditing, and a stdlib designed for the absence of hidden aliasing — not a type-system proof. Design stance, not a pending feature.
 
-**No borrow checker**: Memory safety comes from testing and auditing, not the type system. Planned for v1.3.
-
-**No u128 type**: Number theory benchmarks are bottlenecked on 64-bit mod_mul emulation.
+**Resolved since this article was first written:**
+- ~~Function table limit (~1,024)~~ → raised to 4,096 in Cyrius v4.7.1
+- ~~No u128 type~~ → shipped v4.7–v4.8.x
+- ~~Number theory bottleneck on 64-bit `mod_mul`~~ → `u64_mulmod` hardware fast-path shipped v4.8.5; abaco's Miller-Rabin ~12× faster end-to-end
 
 ---
 
 ## Methodology
 
-All benchmarks on the same x86_64 Linux host. Rust: `cargo build --release` (opt-level 3, LTO). Cyrius: cc2 (direct x86_64 emission). Each operation measured over 10,000+ iterations with `clock_gettime(CLOCK_MONOTONIC_RAW)`. Results are median values.
+All benchmarks on the same x86_64 Linux host. Rust: `cargo build --release` (opt-level 3, LTO). Cyrius: `cc5` (direct x86_64 emission; `cc2` was the compiler at the time this article was first written — the bootstrap chain is now seed → cyrc → bridge → **cc5**). Each operation measured over 10,000+ iterations with `clock_gettime(CLOCK_MONOTONIC_RAW)`. Results are median values.
+
+The deep-dive sections (agnosys, kybernet, agnostik, abaco) were measured during their respective initial ports. The Ports Ledger numbers are pulled from each repo's current `bench-history.csv` and are re-run per release. Receipts (Rust git tags + benchmark CSVs) are preserved in every ported repo so the comparison is reproducible.
 
 ---
 

@@ -30,7 +30,7 @@ The conventional response to a bad toolchain is to build a better toolchain on t
 
 Cyrius went the other direction. Not a better C. Not a better Rust. Start from assembly — raw `syscall` instructions, direct register manipulation, ELF headers written by hand — and build upward. No libc. No LLVM. No C anywhere in the chain. The 29KB seed is what a compiler looks like when you strip away every abstraction that exists to work around C's mistakes.
 
-The size differences aren't incremental. kybernet: 48KB vs 3.9MB. That's not optimization — that's the weight of C's legacy removed entirely. Every byte in the Rust binary that isn't kybernet's logic is machinery for managing problems that don't exist when you build from assembly up.
+The size differences aren't incremental. kybernet v1.0.1 (production, with 140 tests and 46 benchmarks): 486KB vs Rust's 6.7MB. 14× smaller. That's not optimization — that's the weight of C's legacy removed entirely. Every byte in the Rust binary that isn't kybernet's logic is machinery for managing problems that don't exist when you build from assembly up.
 
 ## The Dandelion
 
@@ -45,18 +45,18 @@ Moonshots are expensive, centralized, and fragile. This is a dandelion. The seed
 ## What We Know vs What We Don't
 
 **Proven today:**
-- The bootstrap chain (seed → compiler → assembler → kernel) is **204KB**
-- Cyrius-compiled `kybernet` (PID 1) is **48KB** vs Rust's 3.9MB (81x smaller)
-- The compiler self-hosts in **11ms** from a **29KB seed** with byte-exact verification
-- Syscall hot paths match or beat Rust + LLVM -O3 on production crates
-- The kernel boots to an interactive shell in **<100ms** with networking
+- The bootstrap chain (seed → cyrc → bridge → cc5) is under **600KB** total; the seed is **29KB** hand-auditable x86_64 assembly
+- Cyrius-compiled `kybernet` (PID 1, production v1.0.1) is **486KB** vs Rust's **6.7MB** — 14× smaller, with 140 tests and 46 benchmarks (the early-port prototype was 48KB / 81× — production carries the full feature surface)
+- The compiler self-hosts byte-identically from 29KB on x86_64 Linux, aarch64 Pi, and Apple Silicon Mach-O
+- Ten production ports ship with full receipts — Rust git tag + benchmark CSV preserved in every repo ([Port Ledger Volume 1](port-ledger-volume-1.md))
+- AGNOS kernel v1.22.0 boots — 260KB, 33 subsystems, 26 syscalls, hardened pass
 
 **Not yet proven:**
-- The final compiled size of 82 crates, 19 applications, and a full desktop under Cyrius
-- The OS rebuilding itself entirely from source (Phase 13A — the beta blocker)
-- Whether the early size ratios (59-81x smaller) hold across the full ecosystem
+- The full desktop stack (aethersafha compositor, creative apps) under Cyrius
+- The OS rebuilding itself entirely from source (Phase 13A — the beta blocker; ISO pipeline Stage 0 shipped, Stages 1–4 in flight)
+- Whether the ratios across the ten-port ledger (3–59× binaries, 40–1,462× compile) hold across the full ecosystem
 
-The early ratios suggest the complete system could fit in megabytes rather than gigabytes. That's a hypothesis to prove, not a fact to claim.
+The ten-port ledger shows the young language — pre-v5.6.x optimization sprint — at near-parity or ahead on full-operation paths. Where Rust still wins (zero-copy micro-ops, constant folding) is enumerated and scheduled against specific Cyrius patches. That's a hypothesis with patch numbers, not a fact to claim and not a gap to hide.
 
 ---
 
