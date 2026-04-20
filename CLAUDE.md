@@ -24,7 +24,7 @@ This repo is the **genesis layer** — meta, narrative, and the infrastructure t
 
 **Does NOT own (extracted):**
 - **AGNOS kernel** → `agnos` repo (v1.22.0, 260KB, Cyrius-native)
-- **Cyrius compiler** → `cyrius` repo (v5.5.4, self-hosting from 29KB seed)
+- **Cyrius compiler** → `cyrius` repo (v5.5.11, self-hosting from 29KB seed)
 - **Recipes** → `zugot` repo (421 base + 90 bazaar recipes)
 - **Production code** → 130+ standalone repos under `/home/macro/Repos/{name}/`
 - **Old userland/** — monolith fully dismantled 2026-04-01. No Cargo workspace remains.
@@ -34,7 +34,7 @@ This repo is the **genesis layer** — meta, narrative, and the infrastructure t
 | Subsystem | Version | Role | Port Status |
 |-----------|---------|------|-------------|
 | **agnos** | 1.22.0 | AGNOS kernel (260KB, 33 subsystems, 26 syscalls) | **Native** |
-| **cyrius** | 5.5.4 | Sovereign compiler + stdlib + toolchain | **Native** |
+| **cyrius** | 5.5.11 | Sovereign compiler + stdlib + toolchain | **Native** |
 | **zugot** | — | Recipe repository (all takumi build recipes) | — |
 | **agnostik** | 0.97.1 | Shared types, domain primitives | **Ported** |
 | **agnosys** | 1.0.0 | Kernel interface (Landlock, seccomp, syscalls) | **Ported** |
@@ -96,17 +96,18 @@ The `scripts/` directory is a **Cyrius project** — the sovereign boot pipeline
 Cyrius is the AGNOS systems language. It has its own build tool and dep system.
 
 **Rules:**
-- **NEVER use raw `cat file | cc3`** — always `cyrius build`
+- **NEVER use raw `cat file | cc5`** — always `cyrius build`
 - `cyrius build` auto-resolves deps from `scripts/cyrius.toml` and auto-prepends includes
 - Toolchain version pinned in `scripts/.cyrius-toolchain`
-- If stdout/println doesn't work, you're missing includes — use `cyrius build`, not raw cc3
+- If stdout/println doesn't work, you're missing includes — use `cyrius build`, not raw cc5
 - **Programs must call main() at top level** — Cyrius executes top-level code, not fn main() automatically:
   ```cyrius
   fn main() { ... return 0; }
   var exit_code = main();
   syscall(60, exit_code);
   ```
-- **Study working programs** before writing new code — see `cyrius/programs/*.cyr` (46 examples)
+- **Study working programs** before writing new code — see `cyrius/programs/*.cyr` (65+ examples)
+- **Heads-up:** cc5 → `cyc` rename is queued for v6.0 (single one-and-done cleanup so the binary name decouples from the version). Until then, `cc5` is current.
 
 **Build:**
 ```sh
@@ -128,9 +129,14 @@ Root files (required):
   README.md, CHANGELOG.md, CLAUDE.md, CONTRIBUTING.md, SECURITY.md, CODE_OF_CONDUCT.md, LICENSE
 
 docs/ (required):
-  architecture/overview.md — module map, data flow, consumers
+  architecture.md — system architecture overview (module map, data flow, tech stack)
+  architecture/kernel-layers.md — kernel layer decomposition (v1.22.0, 33 subsystems)
+  design-patterns.md — recurring cognitive patterns across AGNOS decisions (through-line layer; accretion doc, becomes GA retrospective spine)
+  philosophy.md — ideological basis (sovereignty, Temple, Hermetic role)
+  history.md, timeline.md — project history and dated milestones
   development/roadmap.md — completed, backlog, future, v1.0 criteria
-  development/applications/shared-crates.md — 78-crate registry
+  development/applications/shared-crates.md — crate registry
+  articles/ — thematic engineering articles (port sequencing, sovereign compiler, etc.)
 
 docs/ (when earned):
   adr/ — architectural decision records
@@ -142,6 +148,15 @@ scripts/ (Cyrius project):
   tests/ — test suites
   archive-pre-cyrius/ — 34 archived bash scripts (Rust era, reference only)
 ```
+
+**Doc-layer map** (if you're reasoning about where something belongs):
+- `philosophy.md` = why AGNOS exists at all (ideology)
+- `design-patterns.md` = why the decisions fit together as a system (through-lines)
+- ADRs = why *this specific* choice (per-decision)
+- `history.md` / `timeline.md` = what happened when (events)
+- `articles/` = specific thematic arguments (deep-dives on particular patterns)
+- `CHANGELOG.md` per repo = what changed in v-N
+- Memory files = cross-session agent behavioral directives
 
 ## CHANGELOG Format
 

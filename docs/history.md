@@ -75,4 +75,20 @@ The shared crate ecosystem grew to **78 crates** (56 at v1.0+ stable), with 19+ 
 
 ---
 
-*Last Updated: 2026-04-14*
+## Compiler Binary Naming
+
+The Cyrius compiler binary has been renamed four times over the language's evolution. Each rename created drift across scripts, CI, install paths, and docs — which motivates the final rename to `cyc` at v6.0 to end the treadmill by decoupling binary name from language version.
+
+| Binary | Cyrius era | Notes |
+|--------|------------|-------|
+| `cc` | v1.x | Initial self-hosting compiler (2026-04-04) |
+| `cc2` | v2.x | First rename (v2.0, ~2026-04-08) |
+| `cc3` | v3.x and v4.x | Stayed across both major versions (v3.0 shipped ~2026-04-09; persisted through v4.8.x on 2026-04-14) |
+| `cc5` | v5.x (current) | `cc3` → `cc5` at v5.0.0 (2026-04-15) — **cc4 was never shipped**; that binary name/version was skipped |
+| `cyc` | v6.x (queued) | Final rename — binary name becomes version-neutral, ending the rename cycle permanently |
+
+Four renames total across four language-major transitions. The `cc5` → `cyc` event at v6.0 is the one-and-done cleanup that future major versions inherit without further renaming.
+
+---
+
+*Last Updated: 2026-04-20*
