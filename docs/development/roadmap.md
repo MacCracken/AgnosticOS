@@ -1,16 +1,19 @@
 # AGNOS Development Roadmap
 
-> **Status**: Pre-Beta | **Last Updated**: 2026-04-15
+> **Status**: Pre-Beta | **Last Updated**: 2026-04-20
 > **Kernel 1.22.0 shipped** — 260KB, 33 subsystems, 26 syscalls, hardened pass.
-> **Cyrius 5.0.3 shipped** — platform release landed (Mach-O, PE/COFF, RISC-V, bare-metal). Self-hosting from 29KB seed.
+> **Cyrius 5.5.0 shipped** — self-hosting from 29KB seed. Apple Silicon Mach-O self-hosts byte-identically on M-series (v5.3.13). Windows PE32+ runs `hello\n` end-to-end (v5.4.8); general Win64 ABI + remaining syscalls queued v5.4.12+. aarch64 cross-compiler + native Pi self-host byte-identical (v5.3.15+).
 > **ISO pipeline started** — Stage 0 (component verification) implemented: `make iso-check`. See `docs/development/iso-pipeline.md`.
 > **Kavach 3.0.0 shipped Cyrius-native** — 344KB (was 2.4MB Rust), 1 dep, 9 CWE fixes, sandbox lifecycle 500× faster.
-> **Sankoch 1.2.0 shipped** — lossless compression (LZ4, DEFLATE, zlib, gzip). stdlib fold pending.
+> **Sankoch 2.0.0 shipped** — lossless compression (LZ4, DEFLATE, zlib, gzip). stdlib fold pending.
 > **Abaco 2.1.0** — Miller-Rabin ~12× faster end-to-end via Cyrius hardware u64_mulmod fast-path.
 > **Bote 2.5.1** / **T-Ron 2.0.0** shipped — both out of pre-release. Bote MCP pipeline ~5µs/message.
-> **Critical path CLEARED**: libro ✅ argonaut ✅ kybernet ✅ kernel ✅ boot pipeline ✅ kavach ✅
-> **Shared ecosystem**: 28+ repos ported to Cyrius. Ports pending: ark, nous (tonight), bhava. Pending Cyrius port: takumi, aegis, shakti, aethersafha, phylax.
-> **Next milestone**: Bootable ISO (Phase 1). ark/nous ports → `make iso-check` passes → Stage 1-4 implementation.
+> **Ark 0.8.0** / **Nous 1.1.1** — package manager + resolver ported to Cyrius.
+> **Phylax 1.0.0** / **Shakti 0.2.2** — threat detection + privilege escalation ported to Cyrius.
+> **Critical path CLEARED**: libro ✅ argonaut ✅ kybernet ✅ kernel ✅ boot pipeline ✅ kavach ✅ ark ✅ nous ✅
+> **Shared ecosystem**: 30+ repos ported to Cyrius. Pending port: bhava, takumi, aegis, aethersafha.
+> **Cyrius platform cleanup**: Apple Silicon (done), Windows PE32+ (hello runs, general Win64 ABI queued v5.4.12+), RISC-V (pending).
+> **Next milestone**: Bootable ISO (Phase 1). `make iso-check` passes → Stage 1-4 implementation.
 
 ---
 
@@ -56,36 +59,36 @@ Creator economy (sovereign distribution, bootable USB media): [vision/creator-ec
 
 ## Status
 
-### Cyrius Language — v4.8.5-1
+### Cyrius Language — v5.5.0
+
+Full milestone history lives in `cyrius/CLAUDE.md` + `cyrius/CHANGELOG.md`. Headline status for AGNOS:
 
 | Milestone | Status |
 |-----------|--------|
-| Self-hosting compiler | **Done** (29KB seed, 373KB compiler, self-compile) |
-| Multi-width types (i8/i16/i32) | **Done** (v2.0) |
-| Native .tcyr/.bcyr/.fcyr | **Done** (test/bench/fuzz) |
-| Dependency resolution (cyrius.toml) | **Done** |
-| Min version enforcement | **Done** (v3.3.0) |
-| Small function inlining | **Done** (v3.3.5) |
-| `#if`/`#define` preprocessor | **Done** |
-| 3-tier benchmarking (cyrb bench) | **Done** |
-| tok_names expanded (bug #32) | **Done** (v3.4.0, 32KB→64KB) |
+| Self-hosting compiler | **Done** (29KB seed, 467KB compiler, self-compile) |
+| Multi-width types, unions, bitfields, defer | **Done** |
+| Dependency resolution (cyrius.cyml, falls back to cyrius.toml) | **Done** |
 | http_server + ws stdlib absorption | **Done** (v4.5.0) |
 | Multi-file linker + cross-unit DCE | **Done** (v4.6.x) |
-| PIC codegen | **Done** (v4.7.x) |
-| u128 types | **Done** (v4.8.x) |
+| PIC codegen, u128 types | **Done** (v4.7-4.8.x) |
 | Jump tables + register allocation | **Done** (v4.8.4) |
-| Math pack (u64_mulmod fast-path) | **Done** (v4.8.5) |
-| Multi-platform (Mach-O, PE, RISC-V) | Next — v5.0 |
+| Math pack (u64_mulmod fast-path, 12× Miller-Rabin end-to-end) | **Done** (v4.8.5) |
+| aarch64 cross-compiler + native Pi self-host (byte-identical) | **Done** (v5.3.15+) |
+| Apple Silicon Mach-O (self-hosts byte-identically on M-series) | **Done** (v5.3.13) |
+| Windows PE32+ — `hello\n` runs end-to-end on real hardware | **Done** (v5.4.8) |
+| Windows general Win64 ABI at `fncall*` + remaining syscalls | In flight — v5.4.12+ |
+| RISC-V codegen | Pending |
+| Bare-metal target | Pending |
 
 ### Cyrius Ports — Dependency Chain to Boot
 
 | Crate | Rust → Cyrius | Status | Notes |
 |-------|--------------|--------|-------|
 | agnostik | 0.90.0 → 0.97.1 | **Done** | Shared types |
-| agnosys | 0.51.0 → 0.97.2 | **Done** | Syscall wrappers (59× smaller) |
-| sigil | 1.0.0 → 2.1.2 | **Done** | Crypto boundary |
-| shravan | 1.1.0 → 2.1.1 | **Done** | Audio codecs |
-| libro | 0.92.0 → 1.0.3 | **Done** | Audit chain |
+| agnosys | 0.51.0 → 1.0.0 | **Done** | Syscall wrappers (59× smaller) |
+| sigil | 1.0.0 → 2.9.0 | **Done** | Crypto boundary |
+| shravan | 1.1.0 → 2.3.2 | **Done** | Audio codecs |
+| libro | 0.92.0 → 2.0.5 | **Done** | Audit chain |
 | argonaut | 0.90.0 → 1.2.0 | **Done** | Init system library |
 | kybernet | 0.51.0 → 1.0.1 | **Done** | PID 1 (14× smaller, 486KB) |
 | AGNOS kernel | — → 1.22.0 | **Done** | 260KB, 33 subsystems, Cyrius-native |
@@ -93,16 +96,24 @@ Creator economy (sovereign distribution, bootable USB media): [vision/creator-ec
 | ai-hwaccel | 1.0.0 → 2.0.0 | **Done** | GPU detection (3.3× smaller) |
 | avatara | 1.0.1 → 2.3.0 | **Done** | Archetype overlay (2,761× faster cached) |
 | kavach | 2.0.0 → 3.0.0 | **Done** | Sandbox (500× faster lifecycle) |
-| abaco | — → 2.0.0 | **Done** | Math/number theory (-52% lines) |
+| abaco | — → 2.1.0 | **Done** | Math/number theory (-52% lines, 12× Miller-Rabin) |
 | bote | 0.92.0 → 2.5.1 | **Done** | MCP core (~5µs/message) |
 | t-ron | 0.90.0 → 2.0.0 | **Done** | MCP security |
 | daimon | 0.6.0 → 1.1.1 | **Done** | Agent orchestrator |
 | agnoshi | 0.90.0 → 1.0.0 | **Done** | AI shell |
 | itihas | 1.0.1 → 2.2.0 | **Done** | History/versioning |
 | hadara | — → 1.0.0 | **Native** | Culture modeling (Cyrius-native) |
-| mabda | 1.0.0 → 2.1.2 | **Done** | GPU foundation |
+| mabda | 1.0.0 → 2.4.1 | **Done** | GPU foundation |
+| sankoch | — → 2.0.0 | **Done** | Lossless compression (LZ4, DEFLATE, zlib, gzip) |
+| ark | — → 0.8.0 | **Done** | Package manager (4× smaller, 40× faster) |
+| nous | — → 1.1.1 | **Done** | Package resolver |
+| phylax | — → 1.0.0 | **Done** | Threat detection |
+| shakti | — → 0.2.2 | **Done** | Privilege escalation |
+| hisab | — → 2.2.0 | **Done** | Higher math |
 | bhava | — → 2.0.0 | Pending | Emotion/sentiment (has Cargo.toml) |
-| hisab | — → 1.4.0 | Pending | Accounting (has Cargo.toml) |
+| takumi | — → 0.1.0 | Pending | Package build system |
+| aegis | — → 0.1.0 | Pending | System security daemon |
+| aethersafha | — → 0.1.0 | Pending | Wayland compositor |
 
 ### Monolith Extraction — Complete
 
@@ -114,7 +125,7 @@ Full details: [sprint-history.md](sprint-history.md#monolith-extraction--complet
 |--------|--------|---------|--------|
 | Boot Time | <10s | **3.2s** (kernel+init), **~80ms** init→event loop | **Achieved** |
 | OS Independence | Yes | Pending | Phase 13A — critical path cleared, self-hosting validation remaining |
-| DOOM | Playable | **2.59ms/frame**, cyrius-doom 0.24.5, hardened (5 CVEs fixed) | Sprint 3 pending (Black Book → v1.0) |
+| DOOM | Playable | **2.59ms/frame**, cyrius-doom 0.26.1, hardened (5 CVEs fixed) | Waiting on Cyrius 5.5.x pillar optimizations |
 
 ---
 
@@ -216,44 +227,45 @@ Detailed items tracked in respective repos:
 
 ## Ecosystem
 
-### Named Subsystems (25+)
+### Named Subsystems (30+)
 
 All subsystems are standalone repos at `/home/macro/Repos/{name}/`.
 
 | Name | Role | Repo | Version | Cyrius Port |
 |------|------|------|---------|-------------|
 | **agnos** | AGNOS kernel | `MacCracken/agnos` | 1.22.0 | **Native** |
-| **cyrius** | Sovereign compiler | `MacCracken/cyrius` | 4.8.5-1 | **Native** |
+| **cyrius** | Sovereign compiler | `MacCracken/cyrius` | 5.5.0 | **Native** |
 | **kybernet** | PID 1 binary | `MacCracken/kybernet` | 1.0.1 | **Done** |
 | **argonaut** | Init system (library) | `MacCracken/argonaut` | 1.2.0 | **Done** |
-| **agnosys** | Kernel interface | `MacCracken/agnosys` | 0.97.2 | **Done** |
+| **agnosys** | Kernel interface | `MacCracken/agnosys` | 1.0.0 | **Done** |
 | **agnostik** | Shared types library | `MacCracken/agnostik` | 0.97.1 | **Done** |
-| **sigil** | Trust verification & crypto | `MacCracken/sigil` | 2.1.2 | **Done** |
-| **libro** | Audit chain | `MacCracken/libro` | 1.0.3 | **Done** |
+| **sigil** | Trust verification & crypto | `MacCracken/sigil` | 2.9.0 | **Done** |
+| **libro** | Audit chain | `MacCracken/libro` | 2.0.5 | **Done** |
 | **hoosh** | LLM inference gateway | `MacCracken/hoosh` | 2.0.0 | **Done** |
 | **avatara** | Divine archetype overlay | `MacCracken/avatara` | 2.3.0 | **Done** |
 | **ai-hwaccel** | GPU detection | `MacCracken/ai-hwaccel` | 2.0.0 | **Done** |
 | **kavach** | Sandbox execution | `MacCracken/kavach` | 3.0.0 | **Done** |
-| **abaco** | Math/number theory | `MacCracken/abaco` | 2.0.0 | **Done** |
+| **abaco** | Math/number theory | `MacCracken/abaco` | 2.1.0 | **Done** |
 | **bote** | MCP core | `MacCracken/bote` | 2.5.1 | **Done** |
 | **t-ron** | MCP security monitor | `MacCracken/t-ron` | 2.0.0 | **Done** |
 | **daimon** | Agent orchestrator | `MacCracken/daimon` | 1.1.1 | **Done** |
 | **agnoshi** | AI shell | `MacCracken/agnoshi` | 1.0.0 | **Done** |
 | **hadara** | Culture modeling | `MacCracken/hadara` | 1.0.0 | **Native** |
-| **shravan** | Audio codecs | `MacCracken/shravan` | 2.1.1 | **Done** |
-| **mabda** | GPU foundation | `MacCracken/mabda` | 2.1.2 | **Done** |
+| **shravan** | Audio codecs | `MacCracken/shravan` | 2.3.2 | **Done** |
+| **mabda** | GPU foundation | `MacCracken/mabda` | 2.4.1 | **Done** |
+| **sankoch** | Lossless compression | `MacCracken/sankoch` | 2.0.0 | **Done** |
 | **itihas** | History/versioning | `MacCracken/itihas` | 2.2.0 | **Done** |
-| **bsp** | BSP geometry library | `MacCracken/bsp` | 1.0.1 | **Done** |
-| **cyrius-doom** | DOOM engine | `MacCracken/cyrius-doom` | 0.24.5 | **Native** |
-| **ark** | Unified package manager | `MacCracken/ark` | 0.1.0 | **Done** |
-| **nous** | Package resolver | `MacCracken/nous` | 0.1.0 | **Done** |
+| **bsp** | BSP geometry library | `MacCracken/bsp` | 1.1.2 | **Done** (waiting on Cyrius 5.5.x pillar optimizations) |
+| **cyrius-doom** | DOOM engine | `MacCracken/cyrius-doom` | 0.26.1 | **Native** (waiting on Cyrius 5.5.x pillar optimizations) |
+| **ark** | Unified package manager | `MacCracken/ark` | 0.8.0 | **Done** |
+| **nous** | Package resolver | `MacCracken/nous` | 1.1.1 | **Done** |
+| **phylax** | Threat detection engine | `MacCracken/phylax` | 1.0.0 | **Done** |
+| **shakti** | Privilege escalation | `MacCracken/shakti` | 0.2.2 | **Done** |
+| **hisab** | Higher math | `MacCracken/hisab` | 2.2.0 | **Done** |
 | **bhava** | Emotion/sentiment | `MacCracken/bhava` | 2.0.0 | Pending |
-| **hisab** | Higher math | `MacCracken/hisab` | 1.4.0 | Pending |
-| **shakti** | Privilege escalation | `MacCracken/shakti` | 0.1.0 | Pending |
-| **aethersafha** | Desktop compositor | `MacCracken/aethersafha` | 0.1.0 | Pending |
 | **takumi** | Package build system | `MacCracken/takumi` | 0.1.0 | Pending |
 | **aegis** | System security daemon | `MacCracken/aegis` | 0.1.0 | Pending |
-| **phylax** | Threat detection engine | `MacCracken/phylax` | 0.22.3 | Pending |
+| **aethersafha** | Desktop compositor | `MacCracken/aethersafha` | 0.1.0 | Pending |
 | **mela** | Agent marketplace | `MacCracken/mela` | 0.1.0 | Pending |
 | **agnova** | OS installer | `MacCracken/agnova` | 0.1.0 | Pending |
 | **seema** | Edge fleet management | `MacCracken/seema` | 0.1.0 | Pending |
@@ -306,4 +318,4 @@ Unified Consciousness Model paper and bhava roadmap tracked in `MacCracken/bhava
 
 ---
 
-*Last Updated: 2026-04-14 | Next Review: 2026-04-21*
+*Last Updated: 2026-04-20 | Next Review: 2026-04-27*

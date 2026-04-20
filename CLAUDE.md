@@ -24,7 +24,7 @@ This repo is the **genesis layer** — meta, narrative, and the infrastructure t
 
 **Does NOT own (extracted):**
 - **AGNOS kernel** → `agnos` repo (v1.22.0, 260KB, Cyrius-native)
-- **Cyrius compiler** → `cyrius` repo (v5.0.3, self-hosting from 29KB seed)
+- **Cyrius compiler** → `cyrius` repo (v5.5.0, self-hosting from 29KB seed)
 - **Recipes** → `zugot` repo (421 base + 90 bazaar recipes)
 - **Production code** → 130+ standalone repos under `/home/macro/Repos/{name}/`
 - **Old userland/** — monolith fully dismantled 2026-04-01. No Cargo workspace remains.
@@ -34,37 +34,37 @@ This repo is the **genesis layer** — meta, narrative, and the infrastructure t
 | Subsystem | Version | Role | Port Status |
 |-----------|---------|------|-------------|
 | **agnos** | 1.22.0 | AGNOS kernel (260KB, 33 subsystems, 26 syscalls) | **Native** |
-| **cyrius** | 5.0.3 | Sovereign compiler + stdlib + toolchain | **Native** |
+| **cyrius** | 5.5.0 | Sovereign compiler + stdlib + toolchain | **Native** |
 | **zugot** | — | Recipe repository (all takumi build recipes) | — |
 | **agnostik** | 0.97.1 | Shared types, domain primitives | **Ported** |
 | **agnosys** | 1.0.0 | Kernel interface (Landlock, seccomp, syscalls) | **Ported** |
 | **kybernet** | 1.0.1 | PID 1 binary (486KB, 140 tests, 46 benchmarks) | **Ported** |
 | **argonaut** | 1.2.0 | Init system library | **Ported** |
-| **sigil** | 2.3.0 | Trust/crypto boundary | **Ported** |
-| **libro** | 1.0.3 | Cryptographic audit chain | **Ported** |
+| **sigil** | 2.9.0 | Trust/crypto boundary | **Ported** |
+| **libro** | 2.0.5 | Cryptographic audit chain | **Ported** |
 | **hoosh** | 2.0.0 | LLM inference gateway (474KB, 15 providers) | **Ported** |
 | **avatara** | 2.3.0 | Divine archetype overlay (2,761× faster cached) | **Ported** |
 | **ai-hwaccel** | 2.0.0 | GPU detection (217KB, 518 tests) | **Ported** |
 | **hadara** | 1.0.0 | Culture modeling (50 cultures, Cyrius-native) | **Native** |
 | **shravan** | 2.3.2 | Audio codecs | **Ported** |
-| **mabda** | 2.1.2 | GPU foundation (folded into Cyrius stdlib) | **Ported** |
+| **mabda** | 2.4.1 | GPU foundation (folded into Cyrius stdlib) | **Ported** |
 | **daimon** | 1.1.1 | Agent orchestrator, 144 MCP tools | **Ported** |
 | **agnoshi** | 1.0.0 | AI shell | **Ported** |
 | **aethersafha** | 0.1.0 | Wayland compositor | Pending |
-| **ark** | 0.1.0 | Package manager (532KB, 4× smaller than Rust) | **Ported** |
-| **nous** | 0.1.0 | Package resolver | Pending port |
+| **ark** | 0.8.0 | Package manager (532KB, 4× smaller than Rust) | **Ported** |
+| **nous** | 1.1.1 | Package resolver | **Ported** |
 | **takumi** | 0.1.0 | Build system | Pending |
 | **aegis** | 0.1.0 | Security daemon | Pending |
-| **shakti** | 0.1.0 | Privilege escalation | Pending |
+| **shakti** | 0.2.2 | Privilege escalation | **Ported** |
 | **kavach** | 3.0.0 | Sandbox execution | **Ported** |
 | **bote** | 2.5.1 | MCP core + host registry | **Ported** |
 | **t-ron** | 2.0.0 | MCP security | **Ported** |
 | **phylax** | 1.0.0 | Threat detection | **Ported** |
 | **abaco** | 2.1.0 | Math/number theory library | **Ported** |
 | **itihas** | 2.2.0 | History/versioning | **Ported** |
-| **bsp** | 1.0.1 | BSP geometry library | **Ported** |
-| **cyrius-doom** | 0.24.5 | DOOM engine in Cyrius | **Native** |
-| **sankoch** | 1.2.0 | Lossless compression (LZ4, DEFLATE, zlib, gzip) | **Ported** |
+| **bsp** | 1.1.2 | BSP geometry library (waiting on Cyrius 5.5.x pillar optimizations) | **Ported** |
+| **cyrius-doom** | 0.26.1 | DOOM engine in Cyrius (waiting on Cyrius 5.5.x pillar optimizations) | **Native** |
+| **sankoch** | 2.0.0 | Lossless compression (LZ4, DEFLATE, zlib, gzip) | **Ported** |
 | **bhava** | 2.0.0 | Emotion/sentiment modeling | Pending port |
 | **hisab** | 2.2.0 | Accounting/calculation | **Ported** |
 
