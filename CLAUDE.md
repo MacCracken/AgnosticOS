@@ -24,7 +24,7 @@ This repo is the **genesis layer** — meta, narrative, and the infrastructure t
 
 **Does NOT own (extracted):**
 - **AGNOS kernel** → `agnos` repo (v1.22.0, 260KB, Cyrius-native)
-- **Cyrius compiler** → `cyrius` repo (v5.5.11, self-hosting from 29KB seed)
+- **Cyrius compiler** → `cyrius` repo (v5.5.27, self-hosting from 29KB seed)
 - **Recipes** → `zugot` repo (421 base + 90 bazaar recipes)
 - **Production code** → 130+ standalone repos under `/home/macro/Repos/{name}/`
 - **Old userland/** — monolith fully dismantled 2026-04-01. No Cargo workspace remains.
@@ -34,7 +34,7 @@ This repo is the **genesis layer** — meta, narrative, and the infrastructure t
 | Subsystem | Version | Role | Port Status |
 |-----------|---------|------|-------------|
 | **agnos** | 1.22.0 | AGNOS kernel (260KB, 33 subsystems, 26 syscalls) | **Native** |
-| **cyrius** | 5.5.11 | Sovereign compiler + stdlib + toolchain | **Native** |
+| **cyrius** | 5.5.27 | Sovereign compiler + stdlib + toolchain | **Native** |
 | **zugot** | — | Recipe repository (all takumi build recipes) | — |
 | **agnostik** | 0.97.1 | Shared types, domain primitives | **Ported** |
 | **agnosys** | 1.0.0 | Kernel interface (Landlock, seccomp, syscalls) | **Ported** |
@@ -97,8 +97,8 @@ Cyrius is the AGNOS systems language. It has its own build tool and dep system.
 
 **Rules:**
 - **NEVER use raw `cat file | cc5`** — always `cyrius build`
-- `cyrius build` auto-resolves deps from `scripts/cyrius.toml` and auto-prepends includes
-- Toolchain version pinned in `scripts/.cyrius-toolchain`
+- `cyrius build` auto-resolves deps from `scripts/cyrius.cyml` and auto-prepends includes
+- Toolchain version pinned in `scripts/cyrius.cyml` via the `cyrius = "<version>"` field
 - If stdout/println doesn't work, you're missing includes — use `cyrius build`, not raw cc5
 - **Programs must call main() at top level** — Cyrius executes top-level code, not fn main() automatically:
   ```cyrius
@@ -117,10 +117,10 @@ cyrius build src/boot.cyr build/boot
 ./build/boot --test --kernel /path/to/agnos
 ```
 
-**Deps are declared in `scripts/cyrius.toml`** — do NOT manually include stdlib.
+**Deps are declared in `scripts/cyrius.cyml`** — do NOT manually include stdlib.
 Source files only need project includes (`src/types.cyr` etc.).
 
-**Current toolchain:** 3.10.2 — see `.cyrius-toolchain`
+**Current Cyrius release:** 5.5.27 (see `cyrius/VERSION`). Toolchain pinned in `scripts/cyrius.cyml` `cyrius = "5.5.27"` — manifest is single source of truth (no separate `.cyrius-toolchain` file).
 
 ## Documentation Structure
 
@@ -143,7 +143,7 @@ docs/ (when earned):
   guides/usage.md — patterns and examples
 
 scripts/ (Cyrius project):
-  cyrius.toml — build manifest + deps
+  cyrius.cyml — build manifest + deps (modern CYML format)
   src/boot.cyr — sovereign boot pipeline (48KB compiled)
   tests/ — test suites
   archive-pre-cyrius/ — 34 archived bash scripts (Rust era, reference only)

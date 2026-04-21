@@ -285,7 +285,7 @@ cyrius build src/main.cyr build/output
 
 **Key rules**:
 - Programs execute at top level — `fn main()` is not called automatically
-- `cyrius build` auto-resolves deps from `cyrius.toml`
+- `cyrius build` auto-resolves deps from `cyrius.cyml`
 - `store8`/`load8` for byte-level access (no pointer dereference syntax)
 - No mixed `&&`/`||` — use nested ifs
 - No negative literals — use `0 - N`

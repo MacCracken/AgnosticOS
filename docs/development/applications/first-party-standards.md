@@ -25,9 +25,9 @@ cyrius deps
 cyrius build src/main.cyr build/myproject
 ```
 
-`cyrius init` creates: `cyrius.toml`, `src/main.cyr`, `src/test.cyr`, `lib/` (vendored stdlib), `scripts/`, `docs/`, CI workflows, VERSION, LICENSE, README, CHANGELOG, .gitignore. Everything aligned with first-party standards from the first commit.
+`cyrius init` creates: `cyrius.cyml`, `src/main.cyr`, `src/test.cyr`, `lib/` (vendored stdlib), `scripts/`, `docs/`, CI workflows, VERSION, LICENSE, README, CHANGELOG, .gitignore. Everything aligned with first-party standards from the first commit.
 
-Use `cyrius init --ci` to also generate `.cyrius-toolchain` and CI/release workflows.
+Use `cyrius init --ci` to also generate CI/release workflows (the toolchain version is pinned in `cyrius.cyml` via the `cyrius = "<version>"` field — no separate `.cyrius-toolchain` file).
 
 Use `cyrius init --dry-run myproject` to see what would be created without writing files.
 
@@ -77,8 +77,7 @@ Every project must run a security audit pass before release. This was added afte
 ```
 {project}/
 ├── VERSION                          # Single source of truth (SemVer)
-├── cyrius.toml                      # Build manifest + dependencies
-├── .cyrius-toolchain                # Pinned compiler version
+├── cyrius.cyml                      # Build manifest + dependencies + toolchain pin
 ├── CLAUDE.md                        # Claude Code project instructions (see example_claude.md)
 ├── README.md                        # Architecture, quick start, usage examples
 ├── CHANGELOG.md                     # Keep a Changelog format
@@ -87,7 +86,7 @@ Every project must run a security audit pass before release. This was added afte
 ├── SECURITY.md                      # Security policy and reporting
 ├── LICENSE                          # GPL-3.0-only
 ├── scripts/
-│   └── version-bump.sh              # Updates VERSION + cyrius.toml
+│   └── version-bump.sh              # Updates VERSION + cyrius.cyml
 ├── docs/
 │   ├── development/roadmap.md       # Versioned milestones through v1.0
 │   ├── audit/                       # Security audit reports (YYYY-MM-DD-audit.md)
@@ -195,7 +194,7 @@ Projects written in or ported to Cyrius follow a parallel structure. The Rust ve
 ```
 {project}/
 ├── VERSION
-├── cyrius.toml                      # Cyrius manifest (deps, build config)
+├── cyrius.cyml                      # Cyrius manifest (deps, build config, toolchain pin)
 ├── CLAUDE.md
 ├── Makefile
 ├── README.md / CHANGELOG.md / LICENSE / CONTRIBUTING.md / SECURITY.md / CODE_OF_CONDUCT.md
@@ -219,7 +218,7 @@ Projects written in or ported to Cyrius follow a parallel structure. The Rust ve
 ```
 
 **Key differences from Rust:**
-- `cyrius.toml` replaces `Cargo.toml` — dependency resolution, build config
+- `cyrius.cyml` replaces `Cargo.toml` — dependency resolution, build config, toolchain pin (`.toml` also supported as fallback)
 - No `Cargo.lock` — zero transitive dependencies means no lockfile needed
 - `.tcyr` / `.bcyr` replace criterion and `#[test]` — native test/bench format (v2.0)
 - `lib/` directory for shared stdlib modules (string, alloc, vec, etc.)

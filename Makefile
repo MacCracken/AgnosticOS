@@ -6,10 +6,11 @@ ARCH := $(shell uname -m)
 BUILD_DIR := build
 DIST_DIR := dist
 
-# Cyrius toolchain
+# Cyrius toolchain — always invoke via the `cyrius` wrapper so this
+# Makefile doesn't couple to the compiler binary name (cc5 today,
+# cyc after v6.0.0).
 CYRIUS_HOME := $(HOME)/.cyrius
 CYRIUS := $(CYRIUS_HOME)/bin/cyrius
-CC3 := $(CYRIUS_HOME)/bin/cc3
 
 # Sibling repos
 AGNOS_REPO := ../agnos
@@ -46,15 +47,15 @@ help:
 	@echo "  $(YELLOW)status$(NC)        - Show component status"
 	@echo ""
 	@echo "$(GREEN)Kernel:$(NC)  $(AGNOS_REPO)/build/agnos (built by agnos repo)"
-	@echo "$(GREEN)Cyrius:$(NC) $(shell $(CC3) --version 2>/dev/null || echo 'not installed')"
+	@echo "$(GREEN)Cyrius:$(NC) $(shell $(CYRIUS) --version 2>/dev/null || echo 'not installed')"
 
 # Check build environment
 check:
 	@echo "$(BLUE)Checking build environment...$(NC)"
-	@which $(CC3) > /dev/null 2>&1 || (echo "$(RED)Error: Cyrius toolchain not found at $(CYRIUS_HOME)$(NC)" && exit 1)
+	@which $(CYRIUS) > /dev/null 2>&1 || (echo "$(RED)Error: Cyrius toolchain not found at $(CYRIUS_HOME)$(NC)" && exit 1)
 	@which qemu-system-x86_64 > /dev/null 2>&1 || (echo "$(RED)Error: qemu-system-x86_64 not found$(NC)" && exit 1)
 	@echo "$(GREEN)Build environment OK$(NC)"
-	@echo "  Cyrius:  $(shell $(CC3) --version 2>/dev/null)"
+	@echo "  Cyrius:  $(shell $(CYRIUS) --version 2>/dev/null)"
 	@echo "  QEMU:    $(shell qemu-system-x86_64 --version 2>/dev/null | head -1)"
 	@test -f $(AGNOS_REPO)/build/agnos && echo "  Kernel:  $(shell wc -c < $(AGNOS_REPO)/build/agnos) bytes" || echo "  Kernel:  $(RED)not found at $(AGNOS_REPO)/build/agnos$(NC)"
 
@@ -85,9 +86,9 @@ boot-iso: iso-check
 # Version info
 version:
 	@echo "AGNOS $(VERSION)"
-	@echo "  Cyrius:    $(shell $(CC3) --version 2>/dev/null || echo 'not installed')"
+	@echo "  Cyrius:    $(shell $(CYRIUS) --version 2>/dev/null || echo 'not installed')"
 	@echo "  Kernel:    $(shell cat $(AGNOS_REPO)/VERSION 2>/dev/null || echo 'unknown')"
-	@echo "  Toolchain: $(shell cat scripts/.cyrius-toolchain 2>/dev/null || echo 'unknown')"
+	@echo "  Toolchain: $(shell grep -oP '(?<=^cyrius = ")[^"]+' scripts/cyrius.cyml 2>/dev/null || echo 'unknown')"
 
 # Component status
 status:
@@ -95,7 +96,7 @@ status:
 	@echo ""
 	@test -f $(AGNOS_REPO)/build/agnos && echo "  $(GREEN)kernel$(NC)    $(shell wc -c < $(AGNOS_REPO)/build/agnos) bytes (v$(shell cat $(AGNOS_REPO)/VERSION 2>/dev/null))" || echo "  $(RED)kernel$(NC)    not built"
 	@test -f scripts/build/boot && echo "  $(GREEN)boot$(NC)      $(shell wc -c < scripts/build/boot) bytes" || echo "  $(RED)boot$(NC)      not built (run: make scripts)"
-	@test -x $(CC3) && echo "  $(GREEN)cyrius$(NC)    $(shell $(CC3) --version)" || echo "  $(RED)cyrius$(NC)    not installed"
+	@test -x $(CYRIUS) && echo "  $(GREEN)cyrius$(NC)    $(shell $(CYRIUS) --version)" || echo "  $(RED)cyrius$(NC)    not installed"
 	@test -d $(ZUGOT_REPO) && echo "  $(GREEN)zugot$(NC)     $(shell ls $(ZUGOT_REPO)/base/*.toml 2>/dev/null | wc -l) base recipes" || echo "  $(YELLOW)zugot$(NC)     not found at $(ZUGOT_REPO)"
 
 # Clean

@@ -1,7 +1,7 @@
 # boot.cyr — AGNOS sovereign boot pipeline
 #
 # Assembles and boots AGNOS from sibling repo components.
-# No manual includes — cyrius build auto-resolves from cyrius.toml.
+# No manual includes — cyrius build auto-resolves from cyrius.cyml.
 #
 # Usage:
 #   cyrius build src/boot.cyr build/boot
@@ -187,7 +187,7 @@ fn iso_check() {
     if (r == 1) { ready = ready + 1; } else { missing = missing + 1; }
 
     total = total + 1;
-    r = check_component("cyrius",   "../../cyrius/VERSION",   "../../cyrius/build/cc3", 1);
+    r = check_component("cyrius",   "../../cyrius/VERSION",   "../../cyrius/build/cc5", 1);
     if (r == 1) { ready = ready + 1; } else { missing = missing + 1; }
 
     total = total + 1;
@@ -424,7 +424,7 @@ fn show_status() {
     # Core chain
     println("--- Boot Chain ---");
     show_component("kernel",    "../../agnos/VERSION",     "../../agnos/build/agnos");
-    show_component("cyrius",    "../../cyrius/VERSION",    "../../cyrius/build/cc3");
+    show_component("cyrius",    "../../cyrius/VERSION",    "../../cyrius/build/cc5");
     show_component("kybernet",  "../../kybernet/VERSION",  0);
     show_component("argonaut",  "../../argonaut/VERSION",  0);
     show_component("ark",       "../../ark/VERSION",       0);
@@ -440,13 +440,20 @@ fn show_status() {
     show_component("agnoshi",   "../../agnoshi/VERSION",   0);
     println("");
 
+    # Security
+    println("--- Security ---");
+    show_component("sigil",     "../../sigil/VERSION",     0);
+    show_component("kavach",    "../../kavach/VERSION",    0);
+    show_component("phylax",    "../../phylax/VERSION",    0);
+    show_component("shakti",    "../../shakti/VERSION",    0);
+    println("");
+
     # Infrastructure
     println("--- Infrastructure ---");
-    show_component("sigil",     "../../sigil/VERSION",     0);
     show_component("libro",     "../../libro/VERSION",     0);
-    show_component("kavach",    "../../kavach/VERSION",    0);
     show_component("agnostik",  "../../agnostik/VERSION",  0);
     show_component("agnosys",   "../../agnosys/VERSION",   0);
+    show_component("sankoch",   "../../sankoch/VERSION",   0);
     show_component("bsp",       "../../bsp/VERSION",       0);
     println("");
 
@@ -457,6 +464,8 @@ fn show_status() {
     show_component("bhava",     "../../bhava/VERSION",     0);
     show_component("itihas",    "../../itihas/VERSION",    0);
     show_component("hisab",     "../../hisab/VERSION",     0);
+    show_component("abaco",     "../../abaco/VERSION",     0);
+    show_component("mabda",     "../../mabda/VERSION",     0);
     show_component("ai-hwaccel","../../ai-hwaccel/VERSION",0);
     show_component("shravan",   "../../shravan/VERSION",   0);
     println("");
@@ -464,6 +473,15 @@ fn show_status() {
     # Applications
     println("--- Applications ---");
     show_component("cyrius-doom","../../cyrius-doom/VERSION",0);
+    println("");
+
+    # Recipes
+    println("--- Recipes ---");
+    if (file_exists("../../zugot/build-order.txt") == 1) {
+        prints("  zugot         build-order.txt present\n");
+    } else {
+        prints("  zugot         not found at ../../zugot/\n");
+    }
     println("");
 
     # Boot pipeline
@@ -475,7 +493,7 @@ fn show_status() {
     prints("  toolchain:    ");
     var tbuf = alloc(256);
     var tn = exec_capture(
-        vec_from("/usr/bin/env", "cc3", "--version"),
+        vec_from("/usr/bin/env", "cc5", "--version"),
         tbuf, 256
     );
     if (tn > 0) {

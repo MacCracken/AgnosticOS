@@ -97,7 +97,7 @@ Minimal footprint for embedded devices — fleet management, OTA updates, teleme
 | x86_64 (AMD64) | Full support | Primary development target; Cyrius self-hosts byte-identical |
 | ARM64 (AArch64) | Full support | Cyrius cross-compiler + native Pi self-host byte-identical (v5.3.15+) |
 | Apple Silicon (Mach-O) | Compiler toolchain only | Cyrius self-hosts byte-identically on M-series (v5.3.13); AGNOS kernel targets Linux ABI |
-| Windows PE32+ | Compiler toolchain only | Cyrius Win64 ABI call-site complete (v5.5.4); native self-host v5.5.6 |
+| Windows PE32+ | Compiler toolchain only | Cyrius native self-host byte-identical on real Windows 11 (v5.5.10) |
 | RISC-V (rv64) | Queued | Cyrius v5.7.0 — see [development/roadmap.md](../development/roadmap.md) |
 | Bare-metal (no host OS) | Queued | Cyrius v5.8.0 |
 | x86 (32-bit) | Not supported | No kernel configs, no recipes |

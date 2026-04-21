@@ -76,9 +76,9 @@ Common causes:
 
 | Error | Cause | Fix |
 |-------|-------|-----|
-| Missing stdlib symbols | `cyrius.toml` deps stale | `cd scripts && cyrius deps` |
+| Missing stdlib symbols | `cyrius.cyml` deps stale | `cd scripts && cyrius deps` |
 | Include not found | Local source file path wrong | Paths in `src/boot.cyr` are relative to `scripts/` |
-| Linker error on `syscall` | Toolchain mismatch | Check `.cyrius-toolchain` matches installed `cyrius --version` |
+| Linker error on `syscall` | Toolchain mismatch | Check `cyrius = "<version>"` in `scripts/cyrius.cyml` matches installed `cyrius --version` |
 
 ### `./build/boot --help` prints nothing
 
@@ -172,7 +172,7 @@ cyrius build src/main.cyr build/<name>
 
 ```sh
 cd /home/macro/Repos/<name>
-cat cyrius.toml  # check [dependencies] section
+cat cyrius.cyml  # check [deps.*] blocks
 cyrius deps      # resolve
 ```
 

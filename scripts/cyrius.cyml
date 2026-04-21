@@ -4,13 +4,8 @@ version = "0.1.0"
 description = "AGNOS genesis build scripts — sovereign boot pipeline in Cyrius"
 license = "GPL-3.0-only"
 repository = "https://github.com/MacCracken/agnosticos"
-cyrius = "3.10.3"
+cyrius = "5.5.27"
 
-[[programs]]
-name = "boot"
+[build]
 src = "src/boot.cyr"
 output = "build/boot"
-description = "Assemble and boot AGNOS from components"
-
-[deps]
-stdlib = ["string", "fmt", "alloc", "io", "vec", "str", "args", "syscalls", "tagged", "process", "fs"]

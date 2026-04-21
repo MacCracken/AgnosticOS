@@ -1,8 +1,8 @@
 # AGNOS Development Roadmap
 
-> **Status**: Pre-Beta | **Last Updated**: 2026-04-20
+> **Status**: Pre-Beta | **Last Updated**: 2026-04-21
 > **Kernel 1.22.0 shipped** — 260KB, 33 subsystems, 26 syscalls, hardened pass.
-> **Cyrius 5.5.4 shipped** — self-hosting from 29KB seed. Apple Silicon Mach-O self-hosts byte-identically on M-series (v5.3.13). Windows PE32+ Win64 ABI ≤4-arg (v5.5.3) + >4-arg cyrius-to-cyrius call-site (v5.5.4) produce correct code on real Windows 11; `lib/fnptr.cyr` indirect calls queued v5.5.5, native Windows self-host at v5.5.6. aarch64 cross-compiler + native Pi self-host byte-identical (v5.3.15+). v5.6.x compiler-optimization arc → v5.7.0 RISC-V → v5.8.0 bare-metal queued.
+> **Cyrius 5.5.27 shipped** — self-hosting from 29KB seed. x86_64 Linux byte-identical; aarch64 Linux byte-identical on real Pi (v5.3.15+, stdlib shakedown v5.5.18); Apple Silicon Mach-O target closed (self-host v5.3.13; libSystem + `__got` bind v5.5.12–v5.5.17). Windows PE32+ native self-host byte-identical on real Windows 11 (v5.5.10). u64-hashmap (v5.5.20), AES-NI 16-B alignment fix (v5.5.21), `cyrfmt --write` (v5.5.22). NSS/PAM real-fix arc shipping v5.5.23–v5.5.27 (locale/environ/auxv, musl-style `lib/pwd.cyr` + `lib/grp.cyr` + `lib/shadow.cyr`, PAM via unix_chkpwd); `lib/fdlopen.cyr` queued v5.5.28; closeout v5.5.34. v5.6.x compiler-optimization arc → v5.7.0 RISC-V → v5.8.0 bare-metal queued.
 > **ISO pipeline started** — Stage 0 (component verification) implemented: `make iso-check`. See `docs/development/iso-pipeline.md`.
 > **Kavach 3.0.0 shipped Cyrius-native** — 344KB (was 2.4MB Rust), 1 dep, 9 CWE fixes, sandbox lifecycle 500× faster.
 > **Sankoch 2.0.0 shipped** — lossless compression (LZ4, DEFLATE, zlib, gzip). stdlib fold pending.
@@ -12,7 +12,7 @@
 > **Phylax 1.0.0** / **Shakti 0.2.2** — threat detection + privilege escalation ported to Cyrius.
 > **Critical path CLEARED**: libro ✅ argonaut ✅ kybernet ✅ kernel ✅ boot pipeline ✅ kavach ✅ ark ✅ nous ✅
 > **Shared ecosystem**: 30+ repos ported to Cyrius. Pending port: bhava, takumi, aegis, aethersafha.
-> **Cyrius platform cleanup**: Apple Silicon (done), aarch64 (done), Windows PE32+ (Win64 ABI call-site complete v5.5.4; fnptr v5.5.5, native self-host v5.5.6), RISC-V (v5.7.0 queued), bare-metal (v5.8.0 queued).
+> **Cyrius platform cleanup**: Apple Silicon (closed v5.5.17), aarch64 Linux (stdlib shakedown v5.5.18), Windows PE32+ (native self-host byte-identical v5.5.10), RISC-V (v5.7.0 queued), bare-metal (v5.8.0 queued).
 > **Next milestone**: Bootable ISO (Phase 1). `make iso-check` passes → Stage 1-4 implementation.
 
 ---
@@ -59,7 +59,7 @@ Creator economy (sovereign distribution, bootable USB media): [vision/creator-ec
 
 ## Status
 
-### Cyrius Language — v5.5.4
+### Cyrius Language — v5.5.27
 
 Full milestone history lives in `cyrius/CLAUDE.md` + `cyrius/CHANGELOG.md`. Headline status for AGNOS:
 
@@ -78,10 +78,16 @@ Full milestone history lives in `cyrius/CLAUDE.md` + `cyrius/CHANGELOG.md`. Head
 | Windows PE32+ — `hello\n` runs end-to-end on real hardware | **Done** (v5.4.8) |
 | Windows Win64 ABI ≤4-arg (call-site + register mapping) | **Done** (v5.5.3) |
 | Windows Win64 ABI >4-arg cyrius-to-cyrius call-site | **Done** (v5.5.4) |
-| Windows `lib/fnptr.cyr` indirect fn-pointer Win64 calls | Queued — v5.5.5 |
-| Windows native self-host (`cc5_win` compiling itself on `windows-latest`) | Queued — v5.5.6 |
-| NSS/PAM end-to-end (shakti 0.2.x downstream blocker) | Queued — v5.5.10 |
-| v5.5.x closeout | Queued — v5.5.16 |
+| Windows `lib/fnptr.cyr` indirect fn-pointer Win64 calls | **Done** (v5.5.5–v5.5.7) |
+| Windows native self-host (`cc5_win` compiling itself byte-identical) | **Done** (v5.5.10) |
+| macOS aarch64 target closed (argv + Mach-O entry prologue) | **Done** (v5.5.17) |
+| aarch64 Linux stdlib shakedown (4-thread mutex on Pi 4) | **Done** (v5.5.18) |
+| u64-hashmap (SplitMix64, zero-alloc hot path) | **Done** (v5.5.20) |
+| AES-NI 16-B array alignment fix (sigil 2.9.1 unblock) | **Done** (v5.5.21) |
+| `cyrfmt --write` in-place rewrite | **Done** (v5.5.22) |
+| NSS/PAM real-fix arc (pwd/grp/shadow/PAM via unix_chkpwd) | **Done** (v5.5.23–v5.5.27) |
+| `lib/fdlopen.cyr` foreign-dlopen (Cosmopolitan pattern) | Queued — v5.5.28 |
+| v5.5.x closeout | Queued — v5.5.34 |
 | Compiler optimization arc (O1–O6: peephole, IR passes, regalloc, maximal-munch, slab) | Queued — v5.6.0–v5.6.6 |
 | RISC-V rv64 codegen | Queued — v5.7.0 |
 | Bare-metal / AGNOS kernel target | Queued — v5.8.0 |
@@ -160,7 +166,7 @@ Full details: [sprint-history.md](sprint-history.md#monolith-extraction--complet
 ### P0 — Other Active Blockers
 
 **Cyrius as Base Toolchain (CI/Release)**
-- [ ] Add `zugot/base/cyrius.toml` recipe
+- [ ] Add `zugot/base/cyrius.cyml` recipe
 - [ ] CI builds use Cyrius for AGNOS-native components
 - [ ] Release pipeline: Cyrius-compiled binaries as first-class artifacts
 - [ ] `build-order.txt` updated — Cyrius inserted after Rust in toolchain stage
@@ -262,7 +268,7 @@ All subsystems are standalone repos at `/home/macro/Repos/{name}/`.
 | Name | Role | Repo | Version | Cyrius Port |
 |------|------|------|---------|-------------|
 | **agnos** | AGNOS kernel | `MacCracken/agnos` | 1.22.0 | **Native** |
-| **cyrius** | Sovereign compiler | `MacCracken/cyrius` | 5.5.4 | **Native** |
+| **cyrius** | Sovereign compiler | `MacCracken/cyrius` | 5.5.27 | **Native** |
 | **kybernet** | PID 1 binary | `MacCracken/kybernet` | 1.0.1 | **Done** |
 | **argonaut** | Init system (library) | `MacCracken/argonaut` | 1.2.0 | **Done** |
 | **agnosys** | Kernel interface | `MacCracken/agnosys` | 1.0.0 | **Done** |

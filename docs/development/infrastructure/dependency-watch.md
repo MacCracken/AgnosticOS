@@ -3,7 +3,7 @@
 > Known vulnerabilities, unmaintained transitive dependencies, and upgrade blockers.
 > Updated when `cargo audit` findings change.
 
-> **Fossil notice (2026-04-14):** Cyrius projects have zero transitive dependencies. `cargo audit` and `cargo outdated` are Rust-era tools. Cyrius deps are declared in `cyrius.toml` with no lockfile needed.
+> **Fossil notice (2026-04-14):** Cyrius projects have zero transitive dependencies. `cargo audit` and `cargo outdated` are Rust-era tools. Cyrius deps are declared in `cyrius.cyml` with no lockfile needed.
 
 ---
 

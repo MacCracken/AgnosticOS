@@ -147,7 +147,7 @@ Sovereign systems language. Named after **Cyrus the Great** — the king who dec
 - **29KB seed** — first hand-auditable sovereign seed that produces a self-hosting systems language and a working OS. No prior modern occupant of this category.
 - **Zero dependencies** — CPU → seed → compiler → everything. Four items. Every other modern compiler has a bootstrap graph (rustc needs Python + LLVM + C++ + libc).
 
-**Compiler:** cc3 v4.8.5-1, 373KB, self-hosting from 29KB seed. Byte-exact reproducibility. `cyrius build` with auto-include and dep resolution from `cyrius.toml`. Register allocation, jump tables, PIC codegen, u128, cross-unit DCE.
+**Compiler:** cc3 v4.8.5-1, 373KB, self-hosting from 29KB seed. Byte-exact reproducibility. `cyrius build` with auto-include and dep resolution from `cyrius.cyml` (falls back to `cyrius.toml`). Register allocation, jump tables, PIC codegen, u128, cross-unit DCE.
 
 **Stdlib:** 42 modules — string, alloc, io, fmt, vec, str, args, syscalls, process, fs, toml, json, csv, net, http, http_server, ws, tls, thread, async, math, regex, hashmap, bench, tagged unions, mmap, cffi, u128, and more. All built from scratch in Cyrius.
 

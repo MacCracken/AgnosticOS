@@ -1,0 +1,116 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_call:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: scripts
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Cyrius toolchain
+        working-directory: .
+        run: |
+          CYRIUS_VERSION="${CYRIUS_VERSION:-$(grep -oP '(?<=^cyrius = ")[^"]+' scripts/cyrius.cyml)}"
+          echo "Installing Cyrius $CYRIUS_VERSION"
+          curl -sLO "https://github.com/MacCracken/cyrius/releases/download/$CYRIUS_VERSION/cyrius-$CYRIUS_VERSION-x86_64-linux.tar.gz"
+          tar xzf "cyrius-$CYRIUS_VERSION-x86_64-linux.tar.gz"
+          CYRIUS_DIR="cyrius-$CYRIUS_VERSION-x86_64-linux"
+          mkdir -p "$HOME/.cyrius/bin" "$HOME/.cyrius/lib"
+          cp "$CYRIUS_DIR/bin/"* "$HOME/.cyrius/bin/" 2>/dev/null || true
+          cp -r "$CYRIUS_DIR/lib/"* "$HOME/.cyrius/lib/" 2>/dev/null || true
+          chmod +x "$HOME/.cyrius/bin/"* 2>/dev/null || true
+          echo "$HOME/.cyrius/bin" >> $GITHUB_PATH
+          echo "CYRIUS_HOME=$HOME/.cyrius" >> $GITHUB_ENV
+
+      - name: Resolve dependencies
+        run: cyrius deps
+
+      - name: Lint
+        # Auto-discover so new modules are covered without editing CI.
+        # Treat any warning as a failure (fail on any cyrlint "  warn " line).
+        run: |
+          fail=0
+          for f in src/*.cyr tests/*.tcyr; do
+            [ -f "$f" ] || continue
+            out=$(cyrius lint "$f" 2>&1)
+            echo "$out"
+            if echo "$out" | grep -qE '^\s*warn '; then
+              fail=1
+            fi
+          done
+          [ $fail -eq 0 ] || { echo "lint: warnings present"; exit 1; }
+
+      - name: Format check
+        # cyrius fmt --check emits the formatted source; diff against the
+        # committed file to enforce no drift.
+        run: |
+          fail=0
+          for f in src/*.cyr tests/*.tcyr; do
+            [ -f "$f" ] || continue
+            if ! diff -q <(cyrius fmt "$f" --check 2>/dev/null) "$f" > /dev/null; then
+              echo "needs fmt: $f"
+              fail=1
+            fi
+          done
+          [ $fail -eq 0 ] || { echo "fmt: drift detected"; exit 1; }
+
+      - name: Vet
+        run: cyrius vet src/boot.cyr
+
+      - name: Build boot pipeline
+        run: |
+          mkdir -p build
+          cyrius build src/boot.cyr build/boot
+          echo "boot: $(wc -c < build/boot) bytes"
+
+      - name: Verify ELF
+        run: xxd -l 4 build/boot | grep -q "7f45 4c46"
+
+      - name: Verify --help renders
+        # The boot pipeline is build infrastructure — smoke-test that
+        # the binary runs and its CLI parser is wired up. Full boot
+        # requires the agnos sibling repo, which CI does not have.
+        run: ./build/boot --help 2>&1 | head -20
+
+      - name: Test
+        run: cyrius test tests/boot.tcyr
+
+  docs:
+    name: Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check required files
+        run: |
+          MISSING=0
+          for f in README.md CHANGELOG.md CLAUDE.md CONTRIBUTING.md SECURITY.md \
+                   CODE_OF_CONDUCT.md LICENSE VERSION Makefile \
+                   scripts/cyrius.cyml scripts/src/boot.cyr \
+                   docs/architecture.md docs/philosophy.md \
+                   docs/development/roadmap.md; do
+            if [ -f "$f" ]; then echo "  OK: $f"
+            else echo "  MISSING: $f"; MISSING=1; fi
+          done
+          exit $MISSING
+
+      - name: Verify version consistency
+        run: |
+          VERSION=$(cat VERSION | tr -d '[:space:]')
+          echo "VERSION file: $VERSION"
+          grep -q "\[${VERSION}\]" CHANGELOG.md || {
+            echo "FAIL: [${VERSION}] section not in CHANGELOG.md"; exit 1; }
+          echo "Version consistent: $VERSION"

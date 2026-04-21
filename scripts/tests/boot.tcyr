@@ -2,14 +2,9 @@
 #
 # Tests path resolution, ISO assembly logic, and CLI parsing.
 # Does NOT boot QEMU (that's an integration test).
-
-include "lib/string.cyr"
-include "lib/alloc.cyr"
-include "lib/fmt.cyr"
-include "lib/assert.cyr"
-include "lib/str.cyr"
-include "lib/vec.cyr"
-include "lib/fs.cyr"
+#
+# No manual includes — cyrius test auto-resolves from cyrius.cyml
+# and auto-prepends the installed stdlib at $CYRIUS_HOME/lib.
 
 fn main() {
     alloc_init();
@@ -21,10 +16,10 @@ fn main() {
     var p2 = path_join(str_from("/boot/"), str_from("agnos"));
     assert_eq(str_eq(p2, str_from("/boot/agnos")), 1, "path_join trailing slash");
 
-    var b1 = path_basename(str_from("/usr/lib/cyrius/bin/cc3"));
-    assert_eq(str_eq(b1, str_from("cc3")), 1, "basename");
+    var b1 = path_basename(str_from("/usr/lib/cyrius/bin/cc5"));
+    assert_eq(str_eq(b1, str_from("cc5")), 1, "basename");
 
-    var d1 = path_dirname(str_from("/usr/lib/cyrius/bin/cc3"));
+    var d1 = path_dirname(str_from("/usr/lib/cyrius/bin/cc5"));
     assert_eq(str_eq(d1, str_from("/usr/lib/cyrius/bin")), 1, "dirname");
 
     # --- File existence check pattern ---
@@ -46,7 +41,7 @@ fn main() {
     assert_eq(str_eq(first, str_from("qemu-system-x86_64")), 1, "first arg is qemu");
 
     # --- String search pattern (AGNOS banner detection) ---
-    var output = str_from("...boot complete... AGNOS v1.21.0 ...");
+    var output = str_from("...boot complete... AGNOS v1.22.0 ...");
     var sd = str_data(output);
     var slen = str_len(output);
     var found = 0;
