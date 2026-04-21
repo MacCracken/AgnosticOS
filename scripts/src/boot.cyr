@@ -1,7 +1,6 @@
 # boot.cyr — AGNOS sovereign boot pipeline
 #
 # Assembles and boots AGNOS from sibling repo components.
-# No manual includes — cyrius build auto-resolves from cyrius.cyml.
 #
 # Usage:
 #   cyrius build src/boot.cyr build/boot
@@ -11,6 +10,17 @@
 #   ./build/boot --iso-check      # verify all ISO components are present
 #   ./build/boot --kernel PATH    # custom kernel path
 #   ./build/boot -v               # verbose
+
+include "lib/string.cyr"
+include "lib/alloc.cyr"
+include "lib/fmt.cyr"
+include "lib/vec.cyr"
+include "lib/str.cyr"
+include "lib/syscalls.cyr"
+include "lib/fs.cyr"
+include "lib/args.cyr"
+include "lib/tagged.cyr"
+include "lib/process.cyr"
 
 # --- helpers ---
 

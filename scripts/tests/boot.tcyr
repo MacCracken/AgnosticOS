@@ -2,9 +2,17 @@
 #
 # Tests path resolution, ISO assembly logic, and CLI parsing.
 # Does NOT boot QEMU (that's an integration test).
-#
-# No manual includes — cyrius test auto-resolves from cyrius.cyml
-# and auto-prepends the installed stdlib at $CYRIUS_HOME/lib.
+
+include "lib/string.cyr"
+include "lib/alloc.cyr"
+include "lib/fmt.cyr"
+include "lib/vec.cyr"
+include "lib/str.cyr"
+include "lib/syscalls.cyr"
+include "lib/fs.cyr"
+include "lib/assert.cyr"
+
+fn prints(s) { syscall(1, 1, s, strlen(s)); }
 
 fn main() {
     alloc_init();
@@ -67,3 +75,6 @@ fn main() {
     prints("boot: all tests passed\n");
     return 0;
 }
+
+var exit_code = main();
+syscall(60, exit_code);
