@@ -8,7 +8,7 @@
 
 **Project A (Anthropic)** — In February 2026, Anthropic published "[Building a C Compiler with Claude](https://www.anthropic.com/engineering/building-c-compiler)." 16 parallel Claude agents built a C compiler in Rust over two weeks across ~2,000 sessions, consuming 2 billion input tokens at a cost of ~$20,000. The compiler produces 100,000 lines of Rust and passes 99% of GCC torture tests. It compiles the Linux kernel, QEMU, FFmpeg, SQLite, PostgreSQL, Redis, and Doom.
 
-**Project B (AGNOS/Cyrius)** — In April 2026, one developer working with one Claude agent built a self-hosting systems language and operating system kernel over four days across three sessions, at a cost of ~$400 (two Max subscriptions). The compiler is 164KB (v1.8.2), self-hosts in 11ms from a 29KB seed binary, and has zero external dependencies. The kernel is 98KB (v1.1.0) with 27 subsystems, 25 syscalls, and a 178-cycle getpid — booting to an interactive shell in <100ms.
+**Project B (AGNOS/Cyrius)** — In April 2026, one developer working with three sequential Claude agent sessions (Meta / Language / Kernel — one at a time, not in parallel) built a self-hosting systems language and operating system kernel over four days, at a cost of ~$400 (two Max subscriptions). The compiler is 164KB (v1.8.2), self-hosts in 11ms from a 29KB seed binary, and has zero external dependencies. The kernel is 98KB (v1.1.0) with 27 subsystems, 25 syscalls, and a 178-cycle getpid — booting to an interactive shell in <100ms.
 
 Project A was built as a capability demonstration. Project B was built out of necessity.
 
@@ -104,9 +104,18 @@ At every stage, the system compiles itself and produces verified output. The par
 
 ### The Vidya Effect
 
-AGNOS maintains **vidya** — a curated programming reference library (36 topics, 10 languages). When the compiler needed pointer support, the cycle was: research (30 seconds, patterns already documented) → implementation (15 lines) → testing (48/48 first run). Total: minutes.
+The largest single multiplier on the incremental approach was a curated reference library called **vidya** (36 topics, 10 languages, ~200K words of pre-processed patterns and prior art). Vidya isn't documentation *of* AGNOS — it's documentation *for the agent that builds AGNOS*: known compiler patterns, language-design trade-offs, instruction-encoding tables, calling conventions, ELF/Mach-O/PE32+ layouts, BSP/raycaster math, all pre-distilled into agent-readable form.
 
-Struct support, implemented before vidya coverage existed, took hours. Same developer, same agent, same compiler. The variable was documentation coverage.
+Two contemporaneous data points from the compiler's bring-up:
+
+- **Struct support** — implemented *before* vidya coverage existed. Hours of false starts, partial designs, retraced steps. The agent had to re-derive standard layout choices from first principles each time context rotated.
+- **Pointer support** — implemented *after* the relevant vidya topic landed. Cycle: research (30 seconds, patterns already documented) → implementation (15 lines) → testing (48/48 first run). Total: minutes.
+
+Same developer, same agent, same compiler, same week. The only variable was whether the relevant prior art was pre-staged in a form the agent could consume.
+
+This is the mechanism by which one developer plus three sequential agent sessions outperformed sixteen parallel agents on a harder problem. Parallelism scales throughput. Reference coverage scales *correctness per token spent*. Most "AI pair programming" workflows treat the model as a fresh apprentice on every session; vidya treats the agent as a senior engineer who needs the right reference open on the desk. The cost difference between Project A and Project B isn't primarily about parallelism — it's about how much rediscovery each token has to fund.
+
+Vidya is an emerging pattern, not a finished science: 36 topics is a small library and the curation cost is real. But the leverage was visible from the first comparable feature pair, and every ported subsystem since has benefited from the same effect.
 
 ---
 
@@ -147,7 +156,7 @@ For context: GCC is ~100MB, Clang/LLVM is ~500MB.
 
 ### Since This Was Written
 
-The trajectory continued. The numbers in this article are the Day-4 cut (April 2026). As of April 20, 2026: **Cyrius v5.5.4** (482 KB self-hosting compiler, still bootstrapping byte-identically from the same 29 KB seed, now with Mach-O self-host on Apple Silicon and PE32+ Win64 ABI call-site complete on Windows 11), **AGNOS kernel v1.22.0** (260 KB, 33 subsystems, 26 syscalls, hardened pass). The compiler-optimization arc (**v5.6.x** — O1 through O6 phases) is next, then **v5.7.0 RISC-V**, then **v5.8.0 bare-metal**. The "young language" framing in this article is the honest one; the sprint that closes the remaining compute gaps is scheduled and named.
+The trajectory continued. The numbers above are the Day-4 cut (early April 2026). As of **April 23, 2026**: **Cyrius v5.6.5** (515 KB self-hosting compiler on Linux x86_64, 514 KB on Windows PE32+, 371 KB on aarch64; still bootstrapping byte-identically from the same 29 KB seed across all three platforms, plus Apple Silicon Mach-O self-host closed at v5.5.17). **AGNOS kernel v1.22.0** (254 KB, 33 subsystems, 26 syscalls, hardened pass). The compiler is now mid-way through the **v5.6.x compiler-optimization arc** (O1 through O6 phases); **v5.7.0 RISC-V** and **v5.8.0 bare-metal** are queued behind it. The "young language" framing in this article is the honest one — the sprint that closes the remaining compute gaps is scheduled and named.
 
 Full head-to-head benchmarks on real crate conversions: [Cyrius vs Rust Benchmarks](cyrius-vs-rust-benchmarks.md). The 10-port ledger: [Port Ledger Volume 1](port-ledger-volume-1.md).
 
