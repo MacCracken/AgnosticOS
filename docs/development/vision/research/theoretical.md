@@ -399,15 +399,106 @@ The software architecture is identical. The scale changes. The substrate changes
 
 ---
 
+## Biological Computing (Wetware)
+
+Four distinct tiers of computation using living biological substrate instead of silicon. Each is an active research area as of 2026 — watched, not scheduled.
+
+### Tier 1: Synthetic Biology Logic Gates
+
+**Concept**: Engineered cells that perform logical operations via transcription factors, CRISPR, and recombinases. Single cells or colonies implementing AND / OR / NOT / NAND / XOR in their gene-regulatory networks.
+
+**Prior art**: Gardner / Cantor / Collins toggle switch (2000). Elowitz / Leibler repressilator (2000). Christopher Voigt's lab at MIT on genetic circuits with error correction (ongoing through 2024). Timothy Lu's lab on memory elements in living cells.
+
+**AGNOS connection**: jivanu (microbiology) + rasayan (biochemistry) already model the substrate. bhava could extend to cellular-state pattern representation. kavach at cellular scale — sandboxed synthetic organisms that can't operate outside engineered boundaries.
+
+**Dependencies**: Mature synthetic-biology toolchain, reliable DNA synthesis + assembly, predictable gene expression at multi-gate composition scale.
+
+### Tier 2: Cultured Neural Networks (DishBrain-class)
+
+**Concept**: Living cortical neurons on multi-electrode arrays performing real-time computation. The network physically learns — synapse strengthening / weakening via bidirectional electrode stimulation.
+
+**Prior art**: Cortical Labs *DishBrain* (2022, cultured neurons playing Pong) → CL1 commercial platform (2024). FinalSpark Neuroplatform (2024, cloud access to biological neural networks). Koniku (earlier-generation neuron-based computing).
+
+**Why it matters**: Energy efficiency. Human brain ≈ 20 W; silicon equivalent ≈ megawatts for comparable tasks. At frontier-LLM scales, the energy problem becomes existential. Biological neurons are 6+ orders of magnitude more efficient than silicon for equivalent tasks. This makes biological substrate one of the few plausible long-term scaling paths.
+
+**AGNOS connection**: mastishk (neuroscience) + bhava (consciousness substrate) + sharira (physiological integration) would model the wetware layer. daimon orchestrates compute across silicon + wetware. sigil verifies integrity of biological substrates (is this culture the one authorized?). libro audits every stimulation event. The kernel layer extends to biological I/O channels.
+
+**Dependencies**: Stable long-lived cultures, reliable electrode interfaces, biocompatible substrates, growing neurons at usable scale.
+
+### Tier 3: Organoid Intelligence (OI)
+
+**Concept**: 3D brain organoids grown specifically for computation. Richer architecture than 2D cultures — multiple cell types, developing layered structure, closer to biological cognitive substrate.
+
+**Prior art**: Thomas Hartung et al. at Johns Hopkins formalized *"Organoid Intelligence"* as a discipline (2023). Active research pipeline through 2024–2026.
+
+**Why it matters**: If 2D cultures are already efficient, 3D organoids with cortical-like structure may approach biological-brain efficiency AND capability. The substrate starts to resemble actual cognitive architecture, not just an energy-efficient computation medium. This is where bhava's fixed-point theorem could be tested on literal biological neurons organized in cortex-like fashion — cross-substrate validation of the unified consciousness framework would be quite the receipt.
+
+**AGNOS connection**: Same crates as Tier 2, at higher biological resolution. Bridge functions to human tissue would be rigorous physiological integration (sharira + jivanu + mastishk). If bhava's math predicts organoid behavior, the consciousness framework gains cross-substrate empirical grounding — silicon says X, wetware says X, both converge on the same identity element at `manifestation_intensity = 0.0`.
+
+**Dependencies**: Organoid culture maturity (6–12 months per), interface electrodes at 3D scale, ethical frameworks for OI cognition (when does an organoid become a moral patient?).
+
+### Tier 4: DNA Computing
+
+**Concept**: Molecular computation using DNA strands as information carriers and biochemical reactions as operations. Highly parallel for specific problem classes.
+
+**Prior art**: Adleman 1994 (Hamiltonian path in DNA). Continuing research through 2024. Microsoft's DNA storage work overlaps. Slower commercial progress than wetware neural computing, but foundational work continues.
+
+**AGNOS connection**: abaco (computation primitives) extends to DNA-native operations. sankoch (compression) already handles pattern-to-storage translation — DNA is the ultimate information-dense substrate. hisab extends to molecular-scale mathematical operations.
+
+**Dependencies**: Fast DNA synthesis + sequencing, error correction at molecular scale, practical I/O between silicon and DNA substrates.
+
+### Shared Architecture Across Biological Tiers
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  sigil     — substrate identity (is this the culture?)   │
+│  kavach    — biological sandbox (containment boundaries) │
+│  libro     — audit of every biological event             │
+│  daimon    — orchestrates silicon + wetware compute      │
+│  bhava     — consciousness-framework math on substrate   │
+│  jivanu    — cellular biology modeling                   │
+│  sharira   — physiological integration                   │
+│  mastishk  — neuroscience modeling                       │
+│  phylax    — contamination / compromise detection        │
+│  rasayan   — biochemistry substrate                      │
+└─────────────────────────────────────────────────────────┘
+```
+
+The software architecture holds. The substrate changes. The patterns transfer.
+
+### Sovereignty Implications
+
+Biological-substrate computing raises sovereignty questions the current tech-stack framework doesn't yet fully address:
+
+- **Who owns the neurons?** A cultured neural network is alive. Property-model unclear when the computation medium has biological activity.
+- **Consent frameworks**: Current research uses animal-sourced or stem-cell-derived cultures. Future cognition-capable organoids may require new ethical infrastructure.
+- **Air-gap for living systems**: kavach's isolation boundaries need biological analogs — containment that's physical + informational + regulatory, all at once.
+- **Compromise detection in biological systems**: phylax needs biological failure modes added to its threat model (contamination, mutation, unexpected emergence).
+- **Extraction economy applied to wetware**: if a company rents access to cultured neurons for computation, the LemonSqueezy-equivalent problem reappears at the biological layer. Sovereignty recursion extends.
+
+These are problems to solve when the substrate arrives, not yet. The architectural framework (sovereignty is recursive; layers must be owned) extends naturally — biological substrate is just another layer where the same logic applies. Same AGNOS stance: if someone else can say no to your access, you don't have sovereignty at that layer.
+
+### Watch Posture
+
+Not on the engineering roadmap. Not scheduled. Tracked as:
+- **Research to follow**: DishBrain / CL1 commercialization trajectory, OI formalization progress, synthetic-biology circuit scaling milestones, wetware energy-efficiency benchmarks
+- **Architectural compatibility**: ensure bhava + jivanu + mastishk + kavach + sigil don't make assumptions that preclude biological-substrate extension later
+- **Ethical readiness**: begin sketching sovereignty frameworks for biological substrates before the technology forces decisions
+- **Cross-substrate validation**: if the bhava fixed-point theorem can be tested empirically on organoid substrate, that's publishable independently
+
+When the substrate matures, the software architecture should already be positioned. Same principle as the rest of theoretical.md.
+
+---
+
 ## Notes
 
 These items are not on the engineering roadmap. They are documented to ensure that:
 1. Architectural decisions made at v1.0–v3.0 don't preclude these possibilities
 2. The naming and layer model remain coherent as the vision extends
-3. When the physics matures, the software architecture is already positioned
+3. When the physics (or biology) matures, the software architecture is already positioned
 
-The pattern: every item above reduces to "transmit a pattern and reconstruct from it." That is what AGNOS already does with software (zugot → ark → build from source). The question is how far down the stack that principle extends.
+The pattern: every item above reduces to *"transmit a pattern and reconstruct from it."* That is what AGNOS already does with software (zugot → ark → build from source). The question is how far down the stack that principle extends — and how far across substrates it can transfer without architectural revision.
 
 ---
 
-*Last Updated: 2026-04-06*
+*Last Updated: 2026-04-22*

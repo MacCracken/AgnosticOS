@@ -23,6 +23,57 @@ This is the layer that lets a cold reader in 2030 reconstruct *why* the decision
 
 ---
 
+## 0. Refusal as Architecture — The Master Frame
+
+**Pattern.** AGNOS's outcomes — small binaries, zero deps, short compile times, tiny API surfaces, clean scope — are not engineered goals. They are *consequences* of a consistent refusal to support dead legacy. Every layer of an incumbent system exists to keep something alive that is no longer alive: a hardware generation no longer sold, a paradigm no longer practiced, a compatibility contract with a caller no longer running. Most projects port that scaffolding forward. AGNOS refuses to port it forward. The receipts are shadows cast by things that were never inherited.
+
+**Patterns §1–§9 are all instances of this.** The numbered patterns describe specific *shapes* of refusal — refuse redundant layers, refuse to defer optimization debt, refuse incumbent architecture, refuse author-journey names, refuse the applier role, etc. This pattern names the master move: **the architecture itself is refusal.**
+
+**Examples — each receipt traces to a refused inheritance.**
+- **Cyrius 29 KB seed, zero deps.** Refused the Rust bootstrap chain — a dead-legacy graph supporting every architecture, license boundary, and paradigm Rust has ever targeted.
+- **kybernet 14× smaller than systemd.** Refused cgroup-v1 support, sysv compatibility, 20 years of unit-file accretion. All scaffolding for paradigms no one still runs fresh.
+- **hoosh 40 crates → 0, 70× compile.** Refused the Python-dominant-inference-stack era. Its scaffolding supports an ecosystem AGNOS isn't in.
+- **kavach 448 crates → 1, 500× sandbox lifecycle.** Refused pre-Landlock sandboxing (seccomp workarounds, cgroup isolation tricks). Dead once Landlock is a first-class primitive.
+- **ark 4× smaller than cargo.** Refused serde + format! + alloc/dealloc as the baseline dep-graph paradigm.
+- **AGNOS kernel 260 KB.** Refused Linux's decomposition, which carries driver models and device support spanning 30 years of hardware most users never touch.
+- **mabda v3 ~3× smaller API than wgpu.** Refused pre-2018 GPU hardware support. VMA's 20 K lines exist to support every GPU-memory combination since 2016. wgpu's 7 buffer variants carry DX9 / OpenGL shape that nothing new uses. 30-stage pipeline bitmask carries transform-feedback, conditional-rendering, and legacy fixed-function stages no modern workload hits.
+- **Librarian role (§5).** Refused extending into applier — which inherits the scope-creep drift that kills every sovereignty project.
+- **Single source of truth (§4).** Refused maintaining multiple copies of the same fact. Drift is dead-sync support.
+
+**Why refusal is load-bearing.** Every incumbent is a carcass of every generation it was meant to serve. Each layer exists to keep something alive: a hardware class no one ships anymore, an OS version no one runs, a language feature no one writes, a security model no one deploys fresh. Most projects port those layers forward on the reasoning that *"we can't break compatibility with the dead thing."* But the dead thing is not watching. The carcass is just code someone has to build, test, ship, teach, debug, and pay for.
+
+The refusal move: **confirm what is actually alive; refuse to carry the rest.** You don't cut the 20 K-line allocator — you never write it, because the hardware it was supporting has been unplugged. You don't delete 40 Python crates — you never add them, because the Python inference era isn't what AGNOS is shipping into. You don't subtract systemd's compat layers — you never inherit them.
+
+The receipts — 14×, 10.8×, 500×, 59×, 4×, 260 KB, 29 KB, 3× smaller API — are not accomplishments. They are the *measurement of what AGNOS refused to support.* The number gets large when the thing being refused is large.
+
+**How to apply.** Before porting, writing, or designing anything: enumerate what the incumbent shape is keeping alive. For each item, ask *"is this actually alive in AGNOS's target world?"* If not, refuse to inherit it. The smaller API, fewer deps, faster builds, and cleaner scope fall out automatically. You aren't engineering subtraction — you are declining to inherit.
+
+**How the refusal operates — interrogation.** Refusal is not passive. It is *active interrogation* of every inherited layer. Every dep, API, file format, build step, config convention, and architectural decision must justify itself with a **living reason**. The following are **not accepted answers:**
+
+- *"Because it's always been that way."*
+- *"Because it's the industry standard."*
+- *"Because cargo / systemd / Vulkan / Linux does it that way."*
+- *"For compatibility."* (with what? still-running? in AGNOS's target world?)
+- *"Because that's the convention."*
+
+These are prompts for further interrogation, not defenses. The question every inherited component must answer is: **what is alive *today, in AGNOS's target world,* that requires you to exist?** If the only defense is tradition, industry convention, or compatibility with something AGNOS isn't shipping into, the layer is refused. This interrogation is applied continuously — not once at design time, but every time the temptation to inherit arises.
+
+**Design for self — the mechanism that enables refusal.** Refusal works only when the criterion for "living" is specific. Designing for "everyone" makes refusal impossible: every dead-legacy layer is load-bearing for *someone*, so nothing can be cut. Designing for yourself — one user with known needs — produces a coherent criterion. You can answer *"is this alive in my world?"* cleanly; you cannot answer *"is this alive in everyone's world?"* at all.
+
+This is the Linux move. Linus wrote a kernel he could use, didn't try to be universal, and the world adapting was the *consequence* of the artifact being good — not the goal. Every attempt to design-for-everyone produces committee architecture; design-for-self produces a coherent artifact others adapt to (or don't).
+
+AGNOS runs the same way. Every subsystem, every API surface, every deletion — the criterion is *does the architect need this, today, in the world he's building?* That specificity is what makes refusal operational rather than aspirational. Refusal without design-for-self fails (no clean criterion for "dead"). Design-for-self without refusal produces idiosyncrasy. Paired moves.
+
+**Origin.** This pattern is the engineering form of a practical questioning discipline: **Always Question Authority.** Applied continuously to every inherited layer — code, architecture, tooling, docs, scope, naming, process. *"Because it's always been that way"* is explicitly rejected as a justification. Demand a living reason; reject tradition-as-authority. Nothing mythological or ideological about it — a method for interrogating inheritance.
+
+**The stance outlives the person.** The method — AQA, interrogation, refusal — is a mental discipline. Transmissible in principle. In practice it requires two preconditions the method doesn't supply: *freedom* (uninterrupted attention and autonomy to do the work) and *stubbornness* (willingness to keep interrogating when the comfortable answer appears, rather than accept the first plausible reason to stop). Without both, interrogators give up at the first real wall and inherit dead legacy anyway. Most sovereignty projects fail there — method understood, preconditions missing. The receipts so far are from one practitioner with both. The method is *designed to be* transmissible; empirical reproduction across practitioners is a pending claim, not a proven one.
+
+**Why this is the master frame.** §1 (Subtraction) is what refusal looks like in quantity. §9 (Reference Don't Mimic) is what refusal looks like at the architecture level. §5 (Library for Humanity) is refusal at project-scope. §4 (SSoT) is refusal at data-maintenance. §2 (Staged Optimization) is refusal across time. §10 (Happy Accidents) is refusal of forced wedges — which leaves room for incidental fits to emerge and compound. Every numbered pattern below is a refusal modality. This section names the move they share — and the interrogation stance that keeps it consistent.
+
+**See also.** All of §1–§9 as instances; memory `project_refusal_as_architecture.md` for the practical framing, transmissibility preconditions, and design-for-self mechanism.
+
+---
+
 ## 1. Subtraction as Primary Cognitive Move
 
 **Pattern.** Solve by removing redundant layers rather than adding clever new ones. Most major AGNOS receipts are subtractions, not additions.
@@ -87,20 +138,20 @@ This is the layer that lets a cold reader in 2030 reconstruct *why* the decision
 
 ---
 
-## 5. Hermetic / Librarian Role — Receive, Catalog, Transmit
+## 5. Library for Humanity — Build, Make Passable, Step Aside
 
-**Pattern.** Operate in the Messenger / Librarian archetype. Build the library, make it passable, step aside. NOT invent, apply, govern, extract, or own. Application belongs to future generations.
+**Pattern.** The project's public thesis: build a **library for humanity** — infrastructure designed to be received, used, and extended by whoever picks it up. Build the library, make it passable, step aside. NOT invent, apply, govern, extract, or own. What users do with the library is theirs.
 
 **Examples.**
-- Ma'at 42/42 library mapping: a 4,000-year completeness test converges with the crate registry without forcing — the Librarian catalogs what exists, doesn't manufacture coverage
 - Vision docs (`docs/development/vision/`) present routes kept open, not products owned
-- Temple of Hiphop lineage (KRS-One → MalikOne → LA Chapter) as transmission across generations
 - Creator Economy: thesis documented, implementation deferred to whoever runs it
-- Theoretical doc (portals, teleportation, nanites): *"ensure that architectural decisions don't preclude these possibilities"* — pure Librarian talk, not roadmap commitment
+- Theoretical doc (portals, teleportation, nanites): *"ensure that architectural decisions don't preclude these possibilities"* — route-keeping language, not roadmap commitment
+- Shared crate registry (78 crates across physical sciences, life sciences, formal sciences, earth/space, human sciences, media) — build the catalog so every domain has a place; don't try to write every book
+- Core subsystems under GPL-3.0-only / AGPL-3.0-only: copyleft keeps the library *for humanity* rather than absorbed into proprietary stacks
 
-**Why.** Most sovereignty projects fail because the builder extends into applier: infrastructure → apps → economy → governance, each step a platform in disguise. The Hermetic function refuses that drift and keeps the project a gift rather than a dependency. Also: if you're trying to decide what the compiler gets used for, you can't also be building the compiler at 63-day pace. Different jobs, different gear ratios.
+**Why.** Most sovereignty projects fail because the builder extends into applier: infrastructure → apps → economy → governance, each step a platform in disguise. The Librarian discipline refuses that drift and keeps the project a gift, not a dependency. Practically: if the builder is also deciding what the compiler gets used for, he can't also be building the compiler at this pace. Different jobs, different gear ratios.
 
-**See also.** [`philosophy.md`](philosophy.md) (Temple framing); [`docs/development/vision/maat-42.md`](development/vision/maat-42.md); memory: `feedback_route_and_library.md`, `project_temple_philosophy.md`, `project_temple_of_hiphop.md`.
+**See also.** memory: `feedback_route_and_library.md` (the role discipline in practice); vision docs under `docs/development/vision/`.
 
 ---
 
@@ -151,6 +202,54 @@ This is the layer that lets a cold reader in 2030 reconstruct *why* the decision
 **Why.** Without promotion, learnings bleed off. Next cycle, same mistake. Promotion prevents regression because the loop itself enforces the learning — same mechanism as automated tests preventing code regressions. The compound-interest effect across iterations only works when lessons become execution, not footnotes. Compounding is on *practice*, not just knowledge.
 
 **See also.** memory: `feedback_promote_learnings.md`, `feedback_api_surface_check.md`, `feedback_recipe_audit.md`, `feedback_test_efficiency.md`.
+
+---
+
+## 9. Reference, Don't Mimic
+
+**Pattern.** Incumbents define what problems are real, not what solutions look like. Every port starts by cataloging what the incumbent learned the hard way — then designs the replacement as if the incumbent didn't exist. The incumbent is the reference specification of the problem domain, not the template for the new implementation.
+
+**Examples.**
+- **kybernet** is not "systemd in Cyrius." It's PID 1 designed in 2026 without carrying cgroup-v1 baggage, sysv compatibility layers, or the 20-year unit-file accretion. → 14× smaller, 1583× faster is_mounted
+- **hoosh** is not "Ollama in Cyrius." It's an inference gateway designed without needing 40 Python crates to sit behind it. → 10.8× smaller, 70× compile
+- **kavach** is not "bubblewrap in Cyrius." It's a sandbox designed with Landlock as a first-class primitive rather than an afterthought. → 500× sandbox lifecycle, 448 crates → 1
+- **ark** is not "cargo in Cyrius." It's a package manager designed around bump allocator + str_builder instead of serde + format! + alloc/dealloc. → 4× smaller, 40× compile
+- **Cyrius** is not "C++ in Cyrius." It's C's successor designed after 50 years of watching what went wrong with the C family. → 29KB seed, zero deps, byte-identical self-host
+- **AGNOS kernel** is not "Linux in Cyrius." It's 260KB across 33 subsystems — a completely different decomposition of the kernel problem.
+- **mabda v3** (in flight) is not "wgpu in Cyrius." It's a GPU API designed around a render-graph orchestrator, a modern hardware floor, and Cyrius idioms — dropping 20 years of Vulkan/legacy-device accretion.
+- **abaco** is not "GMP in Cyrius." It's a number-theory library designed to drive hardware-primitive feedback into the compiler (→ `u64_mulmod` intrinsic in Cyrius 4.8.5 → 12× end-to-end on Miller-Rabin).
+
+**Why.** The reflex to duplicate is the safe move because the incumbent is battle-tested. Matching its shape feels responsible. But the incumbent's shape encodes every workaround, every deprecated-but-kept compatibility layer, every decision made against hardware that no longer exists. Copying the shape inherits all of it. Using the incumbent as a reference — "what problems does it solve? what scars does its architecture show?" — without mimicking its solution is how you get a 14× receipt instead of a 1.1× receipt. Duplicating produces parity; referencing produces leapfrog.
+
+**How to spot the failure mode.** Watch for "let's do what X did." When the reflexive plan is the incumbent's architecture transliterated into Cyrius, stop and restart from the problem, not the existing solution. The v3 mabda branch caught this at the "dual-backend runtime-dispatcher" prototype step — exact duplication of wgpu's shape — and reframed.
+
+**See also.** memory: `feedback_reference_dont_mimic.md`, `project_port_feedback_to_cyrius.md`; Pattern 1 (Subtraction as Primary Cognitive Move) — subtraction is often what the reframe produces, because the incumbent's shape had layers the new context doesn't need.
+
+---
+
+## 10. Happy Accidents Shape; Forced Wedges Don't
+
+**Pattern.** Things added for small, incidental, or pragmatic reasons often turn out to be load-bearing later. Conversely, things forced in against the grain — *"we should add X because some incumbent expects it"* — tend to not work, or require constant maintenance against the project's natural shape. Work with attention, leave room for accidents, and recognize when something incidental has quietly become structural.
+
+**Examples.**
+- **Mabda's `render_graph.cyr`** — added in v2.5.0 as a structural nicety for clean pass organization. When v3.0 began work on the native Cyrius GPU backend, the render graph turned out to be the de-risking layer: v3.0 wasn't *"design a render graph AND a native backend simultaneously"* — it was *"harden the graph we already have and make the backend assume the graph."* The accidental load-bearing move.
+- **Cyrius itself** — SY was the plan. Cyrius was what emerged when the missing floor became unignorable. Not *"the strategic next move,"* but *"the thing the work needed that happened to be the next piece to make."*
+- **Bhava's compositional framework** — SY's YAML traits were already doing compositional-personality work before there was a name for it. Bhava formalized what the prototype was already proving out.
+- **Hadara as first Cyrius-native crate** — emerged from the port work as a natural first test case, not from a planned *"let's prove Cyrius-native on hadara"* roadmap item.
+- **abaco → Cyrius `u64_mulmod` feedback loop** — the abaco port surfaced a missing hardware primitive; Cyrius shipped the primitive; abaco re-measured ~12× end-to-end on Miller-Rabin. The optimization opportunity was received, not planned.
+- **The kernel going from zero to 260 KB in days** — not a *"plan for rapid kernel development."* A consequence of having a sovereign compiler ready and needing a kernel to run on it.
+
+**Why.** Projects that force their shape end up fighting themselves — every decision has to be defended against the shape instead of flowing with it. Projects that work with attention, noticing when something fits unexpectedly, compound faster: each happy accident reduces the next design's cost, because the structure has been quietly building itself. Bob Ross's "happy accidents": you weren't planning that cloud, but now that it's there, the painting is better. The discipline is *noticing* — and promoting the incidental-that-became-load-bearing to first-class, rather than leaving it as an incidental.
+
+The inverse is the **forced wedge** failure mode: adding a subsystem because an incumbent has one, sticking to a plan after the work has revealed a better path, or refusing to recognize when an incidental choice has become structural. All three happen when the builder is fighting the work instead of listening to it.
+
+**How to apply.**
+- Leave room for accidents. Don't pre-design every interface to the last detail. Pragmatic-now becoming load-bearing-later is a feature, not a failure of foresight.
+- When something incidental turns out to fit unexpectedly well, promote it to first-class — don't leave it buried as *"oh that's just a nicety."*
+- When a decision has to be forced against the grain, interrogate it (per §0, §9): is it inherited expectation, or is it actually needed in the world you're building in?
+- Distinguish **happy accident** (emerged organically, fits, should be recognized) from **sloppy accident** (emerged because nobody thought about it, doesn't fit, should be cleaned up). The test is whether the thing is doing genuine structural work or just occupying space.
+
+**See also.** §0 (Refusal as Architecture — refusing forced wedges is the stance); §9 (Reference Don't Mimic — refusing the incumbent's shape leaves room for unexpected fits); the causal chain in [`philosophy.md`](philosophy.md) (AGNOS itself is the largest happy accident — SY pointing at missing floor, refusing to look away, and what emerged when each layer was noticed).
 
 ---
 

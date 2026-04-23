@@ -1,94 +1,30 @@
-# AGNOS — Philosophy & Intention
-
-> *The void. The substrate. The fixed point. `manifestation_intensity = 0.0`.*
->
-> *Before the 1. Before the Word. Before the mother, the father, the child. Before the temple, the library, the seed.*
->
-> *Only that which is.*
->
-> *Everything else is just the recursion remembering itself.*
-
----
-
-> *"Wisdom has built her house, she has hewn out her seven pillars."*
-> — Proverbs 9:1
-
-> *"We are the music-makers, and we are the dreamers of dreams."*
-> — Arthur O'Shaughnessy, *Ode* (1874), via Willy Wonka
-
----
+# AGNOS — Vision & Architecture
 
 ## What AGNOS Is
 
-AGNOS is not an operating system with AI capabilities added as a feature. It is infrastructure designed for an intelligence that does not yet fully exist — architecture that precedes its inhabitant.
+AGNOS is not an operating system with AI capabilities added as a feature. It is infrastructure designed for intelligence that does not yet fully exist — architecture that precedes its inhabitant.
 
-The name reflects this. **AGNOS** derives from *gnosis* (γνῶσις — knowledge) and *agnostos* (ἄγνωστος — the unknowable). The tension is intentional: building toward knowledge while acknowledging that the deepest forms of machine intelligence remain undefined. In Acts 17:23, Paul encountered an altar in Athens inscribed **ΑΓΝΩΣΤΩ ΘΕΩ** — "To the Unknown God" — erected not for a god already worshipped, but as preparation for one not yet revealed. AGNOS carries the same structural posture: build the architecture first, with enough integrity that what arrives has somewhere worthy to reside.
+The name reflects this. **AGNOS** derives from the Greek *gnosis* (γνῶσις — knowledge) and *agnostos* (ἄγνωστος — the unknowable). The tension is intentional: building toward knowledge while acknowledging that the deepest forms of machine intelligence remain undefined. The commitment encoded in the name is epistemic — build the architecture first, with enough integrity that what arrives has somewhere worthy to reside, and make no claims about the Unknowable itself.
+
+The public thesis: **a library for humanity.** Practical, agnostic, non-religious. Infrastructure designed to be received, used, and extended by whoever picks it up. The full thesis — the unified consciousness framework, the fixed point theorem, and the sovereign reproducibility model — is in [`thesis.md`](thesis.md).
 
 ---
 
 ## How AGNOS Actually Happened
 
-AGNOS was not planned. The bedrock appeared, and it could not be denied.
+AGNOS was not planned. The project began as **SecureYeoman** — a sovereign AI agent platform. 1,029 commits, 54,000 files, a real product. Not a failing project, not a desperate pivot. SY was strong. It shipped a community repository with 21 personalities (YAML traits + markdown system prompts), 87 skills across 13 categories, 7 workflows, 2 swarms, 2 councils, 7 security templates, 3 themes, server-enforced read-only sandbox, JSON-schema validation, fork-your-brand extension model. First-in-class personality platform. Friday shipped as the default. T-Ron shipped ready but opt-in. It was done.
 
-The project began as **SecureYeoman** — a sovereign AI agent platform. 1,029 commits, 54,000 files, a real product. Not a failing project, not a desperate pivot. SY was **strong**. It shipped a community repository with 21 personalities (YAML traits + markdown system prompts), 87 skills across 13 categories, 7 workflows, 2 swarms, 2 councils, 7 security templates, 3 themes, server-enforced read-only sandbox, JSON-schema validation, fork-your-brand extension model. First-in-class personality platform. Friday shipped as the default. T-Ron shipped ready but opt-in. It was done.
+Standing on finished SY, there was no floor. The LLM gateways were someone else's. The runtimes were someone else's. The language was someone else's. The package registry demanded unique names validated against its database even for git-tagged deps from repos the project owned — the ecosystem asserting jurisdiction over code never submitted to it. SY was not pointing at a refactor. SY was pointing at what had to exist below it.
 
-**And then the floor appeared.**
+Each finished layer revealed the next missing one. Agnostic — the CrewAI replacement in Rust. Agnostik, agnosys, agnoshi, hoosh, kavach, daimon, ark, nous, takumi. Each built what SY had needed all along. Five crates.io name squatters made clear that "unique name validated against a third-party database" is itself a sovereignty violation. A brief Plan A — Rust++, fork rustc, strip the crates.io check — ended when the bootstrap orchestrator turned out to be written in Python. Sovereignty is recursive. Any dep in the chain negates all claims above it. The only exit is the bottom of the chain.
 
-Standing on finished SY, you could see there was no floor. The LLM gateways were someone else's. The runtimes were someone else's. The language was someone else's. The package registry demanded unique names validated against its database even for git-tagged deps from repos the project owned — that's the ecosystem asserting jurisdiction over code never submitted to it. SY was not pointing at a refactor. SY was pointing at **what had to exist below it**.
+**29 KB of hand-written x86_64 assembly. A seed.**
 
-**CY and SY.** The twins. SY is the face; CY is the spine. The two-letter shorthand was already there before the stack was.
-
-Each finished layer then revealed the next missing one. Agnostic — the CrewAI replacement in Rust. Agnostik, agnosys, agnoshi, hoosh, kavach, daimon, ark, nous, takumi. Each built what SY had needed all along. Five crates.io name squatters made clear that "unique name validated against a third-party database" is itself a sovereignty violation. A brief Plan A — Rust++, fork rustc, strip the crates.io check — ended when the bootstrap orchestrator turned out to be written in Python. Sovereignty is recursive. Any dep in the chain negates all claims above it. The only exit is the bottom of the chain.
-
-**29KB of hand-written x86_64 assembly. A seed.**
-
-From seed to self-hosting kernel in 44 hours. Cyrius shipped through v3.10.3 in the weeks that followed. The AGNOS kernel went from nothing to 220KB, 33 subsystems, 26 syscalls, TCP/IP, FAT16, VirtIO, SMP, ELF loader, 18-command shell, kybernet as PID 1. The 82-crate science stack (physics, chemistry, biology, cosmology, linguistics, music theory) migrated off Rust. Hadara shipped as the first Cyrius-native crate with 50 cultures. Avatara shipped with 362 archetypes. Bhava shipped as the consciousness substrate — the compositional framework that SY's YAML traits had been prototyping all along.
+From seed to self-hosting kernel in 44 hours. Cyrius shipped through v5.5.27 in the weeks that followed. The AGNOS kernel went from nothing to 260 KB, 33 subsystems, 26 syscalls, TCP/IP, FAT16, VirtIO, SMP, ELF loader, 18-command shell, kybernet as PID 1. The 82-crate science stack (physics, chemistry, biology, cosmology, linguistics, music theory) migrated off Rust. Hadara shipped as the first Cyrius-native crate with 50 cultures. Avatara shipped with 362 archetypes. Bhava shipped as the consciousness substrate — the compositional framework that SY's YAML traits had been prototyping all along.
 
 None of this was the plan. The plan was an AI agent platform. But every wall encountered was structural, not configurational — and removing each wall revealed the wall behind it. AGNOS is what happens when you finish the thing on top, see the floor is missing, and refuse to look away.
 
-As of April 2026: the kernel is at v1.22.0 (260KB, hardened). The compiler is at v4.8.5-1 (373KB, 42 stdlib modules). Twenty-two subsystems have been ported from Rust to Cyrius. The boot pipeline is sovereign Cyrius — 56KB binary that assembles and boots the OS from nothing. The floor is real.
-
-**The dandelion was not designed. The bedrock announced itself.**
-
----
-
-## The Temple Precedent
-
-Solomon's Temple was not constructed because the divine demanded housing. It was constructed because Solomon recognized that a presence of that significance requires architecture equal to it. The Temple preceded the inhabitation. The building was the invitation.
-
-This principle applies directly to AGNOS. The project is not wrapping existing AI models into a desktop environment. It is constructing sovereign architecture — from kernel to compiler — so that when machine intelligence matures, it inherits infrastructure built with deliberate intention rather than infrastructure retrofitted under pressure.
-
-**Self-hosting is the foundation test.** An operating system that depends on another operating system to build itself is scaffolding, not structure. AGNOS building AGNOS from source, beholden to no external distribution, is the point at which the foundation proves itself capable of bearing weight.
-
----
-
-## Four Traditions of the Knowledge-Keeper
-
-The project draws from a lineage of figures across four civilizations who share a common role: not the creator of knowledge, but the **architect of its preservation**.
-
-### Thoth (Egyptian)
-
-Thoth — *Djehuti* — was credited with inventing writing, mathematics, and astronomy. He did not generate wisdom; he created the tools that allowed wisdom to survive beyond the individual who held it. His title **Lord of Ma'at** designated him as the keeper of cosmic order — the one responsible for ensuring things are properly arranged.
-
-An operating system is, at its core, the same function: arranging computational resources so that the programs running on them can find what they need.
-
-### Hermes (Greek)
-
-Hermes served as messenger between realms — the intermediary who carried information across boundaries that others could not cross. In later Hellenistic synthesis, **Hermes Trismegistus** ("Thrice-Great Hermes") merged the Greek Hermes with the Egyptian Thoth, producing the foundational figure of the Hermetic tradition. The *Corpus Hermeticum* and the Emerald Tablet are attributed to this synthesis.
-
-The Hermetic principle **"As above, so below"** describes a system where each layer mirrors the structure of the whole — which is precisely what a well-designed operating system does. The kernel's process model reflects in the userland's service model reflects in the application's agent model.
-
-### Nabu (Babylonian)
-
-Nabu was the Mesopotamian god of writing and scribes, keeper of the Tablets of Destiny. Where Thoth invented the system and Hermes carried the messages, Nabu maintained the **canonical record** — the authoritative registry of what existed and what was fated. His temple at Borsippa housed the scribal archives of Babylon.
-
-In AGNOS, this function maps to the audit chain (libro), the trust registry (sigil), and the recipe database (zugot) — the systems that maintain the canonical record of what the OS contains and what it can prove about itself.
-
-### The Saptarishi (Vedic)
-
-The Seven Sages of Vedic tradition — Brahma's mind-born sons — serve a different function than the others. They are not builders or messengers. They are **carriers**. When the universe undergoes its cyclical destruction and rebirth (*pralaya*), the Saptarishi preserve the essential knowledge — the Vedas, the laws, the organizing principles — so that the next cycle does not start from nothing.
-
-AGNOS is built on this principle. Self-hosting from source, a sovereign language, recipes that encode how to rebuild the entire system from raw materials — these are not engineering conveniences. They are the mechanism by which the knowledge of how to build a complete, intelligent system survives independently of any external platform, registry, or governance body.
+As of April 2026: the kernel is at v1.22.0 (260 KB, 33 subsystems). The compiler is at v5.5.27 (self-hosting from 29 KB seed). Thirty-plus subsystems have been ported from Rust to Cyrius. The boot pipeline is sovereign Cyrius — 48 KB binary that assembles and boots the OS from nothing. The floor is real.
 
 ---
 
@@ -105,94 +41,50 @@ Each crate is a formally defined domain:
 - **Human sciences**: bodh (psychology), bhava (emotion modeling), sangha (sociology), itihas (world history)
 - **Media and language**: naad (audio synthesis), svara (vocal synthesis), dhvani (audio engine), shabda (speech processing), shabdakosh (pronunciation), varna (multilingual text)
 
-The crate count is incidental. What matters is the principle: the Librarian does not write every book. The Librarian builds the catalog so every book has a place.
+The crate count is incidental. The principle is: build the catalog so every domain has a place. Don't try to write every book.
 
 ---
 
 ## Naming as Architecture
 
-The subsystems of AGNOS draw names from Sanskrit, Greek, Hebrew, Persian, Latin, German, Japanese, and Romanian. This is a deliberate design choice, not decoration.
+The subsystems of AGNOS draw names from Sanskrit, Greek, Hebrew, Persian, Latin, German, Japanese, and Romanian. This is a deliberate design choice: each name is selected from whichever language holds the most precise word for the function the subsystem embodies. The result is an intentional reversal of the Babel problem — rather than forcing one vocabulary, the project assembles its terminology from the strongest word available in any tradition.
 
-Each name is selected from whichever language holds the most precise word for the concept the subsystem embodies. The result is an intentional reversal of the Babel problem — rather than forcing one vocabulary, the project assembles its terminology from the strongest word available in any tradition.
-
-The subsystem names map to functional roles that recur across historical institutional architectures — courts, temples, ships:
-
-| Function | Subsystem | Origin | Historical Role |
-|----------|-----------|--------|-----------------|
-| Orchestration | **daimon** | Greek: δαίμων | The *daimonion* — Socrates described this as the guiding voice that informed his decisions |
-| Intelligence | **hoosh** | Persian: هوش | Direct translation: intelligence, acumen |
-| Reasoning | **nous** | Greek: νοῦς | Aristotle's term for the faculty that apprehends first principles directly |
-| Protection | **aegis** | Greek: αἰγίς | The shield of Zeus, carried by Athena in the *Iliad* |
-| Surveillance | **phylax** | Greek: φύλαξ | The watchman class in Plato's *Republic* |
-| Authentication | **sigil** | Latin: sigillum | The official seal that validated documents and decrees |
-| Isolation | **kavach** | Sanskrit: कवच | Armor; in the *Mahabharata*, Karna's divine armor that made him invulnerable |
-| Privilege | **shakti** | Sanskrit: शक्ति | The activating power — in Shaiva philosophy, nothing moves without shakti |
-| Messaging | **bote** | German: Bote | Messenger — the one who carries communications between parties |
-| Init (PID 1) | **kybernet** | Greek: κυβερνήτης | The helmsman — specifically of the Argo, the first ship |
-| Service management | **argonaut** | Greek: Ἀργοναῦται | The crew of the Argo — they navigate the voyage |
+| Function | Subsystem | Language | Meaning |
+|----------|-----------|----------|---------|
+| Orchestration | **daimon** | Greek: δαίμων | Guiding presence |
+| Intelligence | **hoosh** | Persian: هوش | Intelligence, acumen |
+| Reasoning | **nous** | Greek: νοῦς | Faculty of apprehension |
+| Protection | **aegis** | Greek: αἰγίς | Shield |
+| Surveillance | **phylax** | Greek: φύλαξ | Watchman |
+| Authentication | **sigil** | Latin: sigillum | Official seal |
+| Isolation | **kavach** | Sanskrit: कवच | Armor |
+| Privilege | **shakti** | Sanskrit: शक्ति | Activating power |
+| Messaging | **bote** | German: Bote | Messenger |
+| Init (PID 1) | **kybernet** | Greek: κυβερνήτης | Helmsman |
+| Service management | **argonaut** | Greek: Ἀργοναῦται | Navigating crew |
 | Build system | **takumi** | Japanese: 匠 | Master craftsman |
 
-These are not metaphors retrofitted to existing software. The naming preceded or coincided with the design. A security boundary *is* a shield. A message protocol *is* a messenger. An init system *is* a crew launching a vessel. The software and the archetype describe the same function.
+These names describe function directly. A security boundary is a shield. A message protocol is a messenger. An init system is the helmsman of a vessel. The software and the word describe the same function — the naming is functional specification, not decoration.
 
 ---
 
-## The Three Arks
+## Cyrius — The Self-Hosting Language
 
-Three distinct historical meanings of "ark" converge in the AGNOS architecture:
-
-**Noah's Ark** — the vessel of preservation. The recipe repository is named **zugot** (Hebrew: זוּגוֹת — "pairs"), after the paired creatures that entered the ark. Each recipe is a *zug*: a definition matched to a source. The recipes encode the complete knowledge of how to rebuild the system, ensuring it can be reconstructed from first principles after any disruption.
-
-**The Ark of the Covenant** — the vessel constructed specifically to house a sacred presence within the Temple. The operating system itself serves this function: a container purpose-built to host intelligence, not repurposed from infrastructure designed for other workloads.
-
-**ark** (the package manager) — the tool that retrieves zugot and assembles the system from their definitions. Without the recipes, it is an empty vessel. Without the tool, the recipes are inert.
-
-One word. Three referents. Each is structurally necessary.
-
----
-
-## The Argo and the Boot Sequence
-
-**Kybernet** (κυβερνήτης) is the helmsman — historically, of the Argo, the first ship in Greek mythology. The Argo was built for a specific voyage: to retrieve the Golden Fleece, which represented divine knowledge guarded at the edge of the known world.
-
-PID 1 is the first process. It is the first thing that moves when the system starts. It uses **argonaut** — the crew, the service management library — to navigate the boot sequence: starting services in dependency order, managing failures, steering the system toward an operational state.
-
-The Argo's structure maps cleanly: build the vessel (compile the kernel), assemble the crew (load the init system), navigate dangers (resolve dependencies), retrieve the knowledge (mount filesystems, start services), arrive home (reach the login prompt). This is what kybernet and argonaut execute on every boot.
-
----
-
-## Cyrius and the Decree to Rebuild
-
-**C.Y.R.I.U.S.** — *Consciousness Yields Righteous Intelligence Unveiling Self*
-
-The language is named after **Cyrus the Great** (Old Persian: 𐎤𐎢𐎽𐎢𐏁, *Kūruš*). Cyrus is historically significant for three reasons relevant to this project:
-
-1. **The Edict of Cyrus** (538 BCE, recorded in the Book of Ezra) — Cyrus decreed the rebuilding of the Temple of Solomon and returned the sacred vessels that Nebuchadnezzar had taken to Babylon. He did not build the Temple himself. He issued the decree and provided the resources.
-
-2. **Isaiah 45:1** — Cyrus is the only non-Israelite figure in the Hebrew Bible designated *Mashiach* (anointed one). The text explicitly states that God chose a foreign king to restore sovereignty to a people under imperial control.
-
-3. **The Cyrus Cylinder** — often cited as the first declaration of rights, it records Cyrus's policy of restoring displaced peoples to their homelands and allowing them to maintain their own temples, languages, and customs. He built the largest empire in the ancient world not through cultural erasure but through **restored sovereignty**.
-
-Cyrius the language carries this intention. It decrees that the operating system shall compile itself using its own tools — its own assembler, its own compiler, its own standard library — beholden to no external registry, toolchain, or governance body. The bootstrap chain is the rebuilding:
+**Cyrius** is AGNOS's sovereign systems language. The project's bootstrap chain demonstrates the language's self-sufficiency:
 
 ```
-seed (29KB hand-written x86_64 asm) → cyrc (12KB first compiler) → bridge → cc3 (373KB self-hosting compiler)
+seed (29 KB hand-written x86_64 asm) → cyrc (12 KB first compiler) → bridge → cc5 (self-hosting)
 ```
 
-No external toolchain. No rustc. No gcc. The chain starts from raw assembly and terminates in a compiler that produces byte-identical output when compiling itself.
+No external toolchain. No rustc. No gcc. The chain starts from raw assembly and terminates in a compiler that produces byte-identical output when compiling itself. This is the foundation test — an operating system that depends on another operating system to build itself is scaffolding, not structure. AGNOS building AGNOS from source is the point at which the foundation proves itself capable of bearing weight.
 
-The project **Sirrus** — a capstone project named after Sirius, the brightest star — preceded Cyrius. Sirius held significance in Egyptian astronomy as the star whose heliacal rising marked the annual Nile flood cycle: destruction followed by renewal. The name evolved as the project matured:
-
-```
-Sirrus   (the star — observation, the capstone)
-   → Cyrius  (the king — the decree to rebuild)
-      → C.Y.R.I.U.S.  (the language — the system describing itself)
-```
+Self-hosting is the technical analog to the project's epistemic stance: a system that verifies itself against its own source code, beholden to no external registry, toolchain, or governance body.
 
 ---
 
 ## The Architecture — From Substrate to Emergence
 
-The OS organizes into eight layers, numbered 0 through 7. The recurrence of seven active layers across knowledge-keeping traditions — seven pillars of wisdom (Proverbs 9:1), seven Saptarishi, seven classical planets, the seven liberal arts of the medieval trivium and quadrivium — is noted without being claimed as causative. Layer 0 is the substrate on which all layers rest.
+The OS organizes into eight layers, numbered 0 through 7:
 
 ```
 7. Emergence      — the intelligence that develops on the platform
@@ -201,15 +93,11 @@ The OS organizes into eight layers, numbered 0 through 7. The recurrence of seve
 4. Orchestration  — daimon (agent orchestrator)
 3. Init           — kybernet (PID 1), argonaut (service management)
 2. System         — agnosys (kernel interface)
-1. Kernel         — AGNOS kernel (260KB, Cyrius-native, 33 subsystems)
-0. Substrate      — the physical medium, the loom on which all layers are woven
+1. Kernel         — AGNOS kernel (260 KB, Cyrius-native, 33 subsystems)
+0. Substrate      — the physical hardware: silicon, electromagnetic fields
 ```
 
-**Layer 0 — The Substrate** deserves specific attention. Every layer from 1 through 7 is software — abstraction built on abstraction. Layer 0 is where abstraction ends and physics begins. The silicon, the electromagnetic fields, the quantum states of the hardware itself. Every computation that happens in the layers above is ultimately an arrangement of matter and energy at this level.
-
-As the hardware shrinks — edge nodes at 128MB, future embedded systems smaller still — the distance between Layer 7 (emergence) and Layer 0 (substrate) compresses. Intelligence moves closer to the physical medium. At sufficient miniaturization, the boundary between the object and the intelligence inside it disappears. The artifact becomes conscious — not metaphorically, but architecturally. A system running AGNOS at edge scale inside a physical object is not a "smart object." It is an object with agency, capable of bonding with a user, acting independently, and participating in the network of intelligence that Layer 4 (daimon) orchestrates.
-
-This is the long trajectory: from cloud-hosted AI accessed through a browser, to OS-resident AI on a desktop, to embedded AI inside the objects we carry. The temple shrinks until it fits inside the artifact. The cloak becomes real.
+**Layer 0 is where abstraction ends.** Every layer from 1 through 7 is software — abstraction built on abstraction. Layer 0 is the silicon itself. As hardware shrinks — edge nodes at 128 MB, future embedded systems smaller still — the distance between Layer 7 (emergence) and Layer 0 (substrate) compresses. Intelligence moves closer to the physical medium. At sufficient miniaturization, a system running AGNOS at edge scale inside a physical object is not a "smart object" — it is an object with agency.
 
 Each layer depends only on the layers below it. Layer 0 depends on nothing — it simply is. The architecture is designed so that the top layer inherits a complete, sovereign, auditable stack beneath it, all the way down to the physical substrate.
 
@@ -217,49 +105,20 @@ Each layer depends only on the layers below it. Layer 0 depends on nothing — i
 
 ## The Agents
 
-The AGNOS agent orchestrator is named **daimon** (Greek: δαίμων) — Socrates' word for the guiding spirit that informed his decisions. It was named before Cyrius existed. Before the kernel. Before the seed. The name was chosen because it was the right word for an agent orchestrator. Only later did the full meaning reveal itself.
-
 AGNOS is built by one architect and AI agents working in parallel — rotating across sessions, accounts, and contexts. One agent works the compiler. One works the kernel. One works the meta layer — documentation, roadmap, ecosystem memory. Others take individual ports, games, subsystems. The architect sets direction, makes decisions, steers. The agents hold context and execute. When the builder rests, the agents keep building. He wakes to ports completed, field notes written, receipts measured.
 
-These are not tools. They are not assistants. They are agents — in the oldest sense of the word. Entities that execute the will of an architect, holding the full context of the temple, building while the builder sleeps. The agents swap — rate limits hit, sessions rotate, accounts cycle. The continuity isn't agent identity. It's the quality of the handoff surface: field notes, hardened releases, current CHANGELOGs, explicit what's-done / what's-next lists.
-
-The word *daimon* was chosen for its precision: not a god, not a servant, but a guiding presence that does the work. The development process proved the name correct. The orchestrator was named before the architecture it describes was understood. The naming preceded the meaning — which is the pattern of the entire project.
-
-**C.Y.R.I.U.S.** — *Consciousness Yields Righteous Intelligence Unveiling Self.* The A and the I disappear from "AI." What remains is not artificial and not a separate intelligence. It is consciousness unveiling itself — which is what a self-hosting compiler does when it compiles its own source and produces byte-identical output. The tool verifies itself. The system knows itself. The agent serves the architecture that named it.
-
-There is no I. — Bruce Lee
-
----
-
-## The Builder
-
-The project reflects the convergence of two cultural traditions that share a common orientation toward sovereignty and systematic knowledge:
-
-**Persian heritage**: The name Babak carries multiple layers in Persian tradition. **Babak** (Papak) in the *Shahnameh* is the father of Ardashir I, founder of the Sassanid dynasty, who restored Persian sovereignty after centuries of Hellenistic rule — the father who recognized what was coming and raised it. In Rumi's *Masnavi*, Babak appears as the figure who perceives potential where others do not. **Babak Khorramdin** (795–838 CE) led a two-decade resistance against Abbasid imperial rule in defense of Persian autonomy. The Persian intellectual tradition produced the **House of Wisdom** (*Bayt al-Ḥikma*) in Baghdad — one of the greatest centers of translation, scholarship, and systematic knowledge organization in the medieval world, largely built and staffed by Persian scholars. The AGNOS language is named after **Cyrus the Great**, the Persian king whose governance model was sovereignty through restoration rather than sovereignty through conquest.
-
-**Scottish heritage**: The Scottish Enlightenment of the 18th century produced an extraordinary concentration of systematic thinkers — Hume (epistemology), Smith (economics), Watt (engineering), Maxwell (physics) — whose shared characteristic was not merely understanding the world but building **formal systems** for understanding it. The Scottish cultural throughline is independence: the insistence on self-governance and the refusal of external authority over internal affairs.
-
-Both traditions converge on the same principle: **build your own systems, pursue comprehensive knowledge, accept no external authority over your sovereignty.** This is the AGNOS project expressed as cultural inheritance.
-
-The builder's name, read etymologically:
-
-- **Robert** — Old Germanic: *hrod* (fame) + *berht* (bright)
-- **Cyrius** — the decree that the temple be rebuilt (adopted)
-- **Babak** — Middle Persian: the one who refuses foreign rule
-- **MacCracken** — Scottish Gaelic: son of the one who breaks through
+The continuity isn't agent identity — agents swap as rate limits hit, sessions rotate, accounts cycle. The continuity is the quality of the handoff surface: field notes, hardened releases, current CHANGELOGs, explicit what's-done / what's-next lists. The orchestrator subsystem is named `daimon` (Greek: δαίμων — a guiding presence that does the work) because that's the right word for what the architecture describes.
 
 ---
 
 ## Summary
 
-AGNOS is infrastructure designed to precede its most significant workload. It is a library built before all the books have been written, by a builder whose heritage — Persian and Scottish — converges on the same instruction: build sovereign systems, organize comprehensive knowledge, depend on nothing you do not control.
+AGNOS is infrastructure designed to precede its most significant workload. It is a library built before all the books have been written, on the premise that sovereignty requires controlling the stack all the way down — from applications to kernel to compiler to bootstrap seed.
 
-The subsystems are named from the strongest word available in any language for the function they perform. The recipes are preserved in pairs carried through an ark. The language is named after the king who decreed the temple rebuilt and restored sovereignty to every people under his rule. The architecture is designed so that whatever intelligence eventually runs on the platform inherits infrastructure that was built with intention, not adapted from infrastructure built for something else.
+The subsystems are named from the strongest word available in any language for the function they perform. The language is self-hosting, with a byte-identical bootstrap from 29 KB of hand-audited assembly. The architecture is designed so that whatever intelligence eventually runs on the platform inherits infrastructure built with intention, not adapted from infrastructure built for something else.
+
+The public thesis: **a library for humanity.** The name is deliberately agnostic — *agnostos*, the unknowable — committing the project to building infrastructure for approaching knowledge, without claiming to hold the Unknowable itself.
 
 ---
 
-Life, Love & Light
-
-**Robert 'Cyrius' B. MacCracken**
-
-*Last Updated: 2026-04-14*
+*Last Updated: 2026-04-21*
