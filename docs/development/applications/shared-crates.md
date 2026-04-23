@@ -163,7 +163,7 @@ Full documentation for each crate: [docs/applications/libs/](../../applications/
 | [shakti](https://github.com/MacCracken/shakti) | 0.1.0 | Privilege escalation (`sudo` replacement) | agnosys, sigil |
 | [ark](https://github.com/MacCracken/ark) | 0.1.0 | Package manager (Cyrius) | nous, sigil |
 | [nous](https://github.com/MacCracken/nous) | 0.1.0 | Package resolver (Cyrius) | — |
-| [takumi](https://github.com/MacCracken/takumi) | 0.1.0 | Build system | — |
+| [takumi](https://github.com/MacCracken/takumi) | 0.8.0 | Build system — Cyrius port in progress (toolchain pinned 5.5.23; `rust-old/` authoritative until parity) | sigil |
 | [aegis](https://github.com/MacCracken/aegis) | 0.1.0 | Security daemon | sigil, phylax |
 | [aethersafha](https://github.com/MacCracken/aethersafha) | 0.1.0 | Wayland compositor | aethersafta, mabda |
 | [mela](https://github.com/MacCracken/mela) | 0.1.0 | Agent marketplace | daimon, sigil |

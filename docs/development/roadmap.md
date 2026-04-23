@@ -14,7 +14,7 @@
 > **Phylax 1.0.0** / **Shakti 0.2.2** — threat detection + privilege escalation ported to Cyrius.
 > **New shared crates (Apr 22–23)**: **owl** v0.1.0 (Cyrius-native `cat`/`bat` replacement, M0–M5 shipped) and **vyakarana** v0.1.0 (source-code grammar / tokenizer library — ten-kind palette locked; M1 agent started). owl M3b highlighting consumes vyakarana when M1 lands.
 > **Critical path CLEARED**: libro ✅ argonaut ✅ kybernet ✅ kernel ✅ boot pipeline ✅ kavach ✅ ark ✅ nous ✅
-> **Shared ecosystem**: 30+ repos ported to Cyrius. Pending port: bhava, takumi, aegis, aethersafha.
+> **Shared ecosystem**: 30+ repos ported to Cyrius. In port (partial, `rust-old/` still authoritative): takumi 0.8.0. Pending port: bhava, aegis, aethersafha.
 > **Next milestone**: **May 1 V1** — bootable ISO runs DOOM from Cyrius; kernel + toolchain + 30+ ports + science library shipped. Then biweekly cadence to DEF CON.
 
 ---
@@ -156,7 +156,7 @@ Full milestone history lives in `cyrius/CLAUDE.md` + `cyrius/CHANGELOG.md`. Head
 | shakti | — → 0.2.2 | **Done** | Privilege escalation |
 | hisab | — → 2.2.0 | **Done** | Higher math |
 | bhava | — → 2.0.0 | Pending | Emotion/sentiment (has Cargo.toml) |
-| takumi | — → 0.1.0 | Pending | Package build system |
+| takumi | 0.8.0 → 0.8.x | **In port** | Package build system — Cyrius port active, pinned 5.5.23, `rust-old/` authoritative until parity |
 | aegis | — → 0.1.0 | Pending | System security daemon |
 | aethersafha | — → 0.1.0 | Pending | Wayland compositor |
 
@@ -332,7 +332,7 @@ All subsystems are standalone repos at `/home/macro/Repos/{name}/`.
 | **owl** | `cat`/`bat` replacement | `MacCracken/owl` | 0.1.0 | **Native** — M0–M5 shipped; M3b blocked on vyakarana |
 | **vyakarana** | Source-code grammar / tokenizer | `MacCracken/vyakarana` | 0.1.0 | **Native** — M0 scaffold shipped 2026-04-23; M1 shell grammar in flight |
 | **bhava** | Emotion/sentiment | `MacCracken/bhava` | 2.0.0 | Pending |
-| **takumi** | Package build system | `MacCracken/takumi` | 0.1.0 | Pending |
+| **takumi** | Package build system | `MacCracken/takumi` | 0.8.0 | **In port** — pinned Cyrius 5.5.23, parity work in flight |
 | **aegis** | System security daemon | `MacCracken/aegis` | 0.1.0 | Pending |
 | **aethersafha** | Desktop compositor | `MacCracken/aethersafha` | 0.1.0 | Pending |
 | **mela** | Agent marketplace | `MacCracken/mela` | 0.1.0 | Pending |

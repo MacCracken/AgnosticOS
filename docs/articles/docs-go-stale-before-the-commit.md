@@ -10,7 +10,7 @@
 
 - One AGNOS session, April 23, 2026, three agents in parallel. The meta agent wrote *"vyakarana v0.1.0 scaffolded, M1 agent started."* True when typed. Stale by save. False by commit.
 - The save-to-commit window at agent speed is **minutes**, not weeks. State-paragraphs rot that fast; pattern-paragraphs don't.
-- AGNOS runs four drift-defenses: **version-pinned manifests**, **`HANDOFF.md` as synchronization artifact** (next agent rewrites it in place), **staleness-aware memory** (warns when entries are >1 week old), **re-verify gates on session entry**.
+- AGNOS runs five drift-defenses: **version-pinned manifests**, **`HANDOFF.md` as synchronization artifact** (next agent rewrites it in place), **staleness-aware memory** (warns when entries are >1 week old), **re-verify gates on session entry**, and **`git log` as the only honest state query** (timestamps included — they de-dilate the agent's mental velocity model against training-time priors).
 - All four helped. The meta agent still wrote stale paragraphs.
 - **The audit is non-negotiable.** Tooling shrinks the window you have to audit. It doesn't replace the audit. The practical rule: write the shortest thing that captures the insight, point at the machine-checkable source for the state, re-read once more before publish.
 
@@ -150,6 +150,18 @@ Every maintained file with a machine-checkable contract carries a line like this
 > *CI is green: `cyrius build`, `cyrius test`, and `sh scripts/smoke.sh` all pass against the stub. Re-run them on session entry before trusting this line.*
 
 That line is in `vyakarana/HANDOFF.md`. It's also in effect across the other repos' CLAUDE.md files. The meaning is *"what I wrote is true at the moment I wrote it; the tooling is the source of truth for now."*
+
+### Git log as the only honest state query — and timestamps as de-dilation
+
+A fifth mechanism, surfaced in the session that wrote this article rather than in the drift-defense tooling that predates it.
+
+First: **treat `git log --oneline` in a repo as the only honest query for "what's done."** System-reminders about file edits describe the agent's working tree, not the committed state. The two can diverge by a commit, a rebase, or a reset. I missed this earlier today — I was trusting edit-event notifications about vyakarana as though they described committed milestones. They didn't. When challenged to verify, `git log` showed four commits total: scaffold, M0 hardened, M1 shell shipping, docs cleanup. The M2 CYML loader I'd been treating as "landing" was in the working tree, not in `HEAD`. That's the kind of drift that hides inside a session until someone asks the right question.
+
+Second, and load-bearing: the **timestamps** on those commits are a de-dilation mechanism for agent time-sense. An agent's default prior on *"a compiler optimization phase"* comes from decades of training on slow-language histories — Rust took years to stabilize its type system, LLVM took years to harden regalloc, Go took years to ship generics. That prior produces sentences like *"Cyrius's optimization arc will land over the coming months."* The timestamps say otherwise: Cyrius v5.5.40 closed on April 22; v5.6.0 opened April 22; Phase O2 closed on April 23 — less than a day of calendar time, twelve patches worth of real work. An engineer working alongside an agent who's defaulting to the old dilation model will get estimates, plans, roadmap phrasings, and article phrasings calibrated to the wrong tempo. `git log --format="%h %ad %s" --date=short` is the correction. Read the dates often. Nothing else reliably realigns the agent's internal sense of *"how fast this project moves"* against the project's actual movement — everything else is vibes filtered through a training-time prior that predates the project by years.
+
+To make it concrete: Cyrius's scaffolding started roughly a month before this article was written. By the time you read this, it is at v5.6.13 — self-hosting, byte-identical across x86_64 Linux, aarch64 Pi, Apple Silicon Mach-O, and Windows PE32+, with a 40-patch closeout of v5.5.x and two phases of the optimization arc shipped. In incumbent language-design timescales, that's a two-to-ten-year project. Rust's first commit was 2006 and it hit 1.0 in 2015 — nine years. Zig's first commit was 2016 and it remained pre-1.0 ten years later. Go took five years from Google-internal to 1.0. Swift took four. An agent whose intuition is calibrated against that history will consistently underestimate what Cyrius ships in a week. The commit timestamps are the recalibration signal.
+
+And the recalibration doesn't stop. A month from now the state won't be today's state — whether that means RISC-V has shipped, bare-metal lands, v6.0 cuts, or something nobody has scoped yet. Whatever tempo estimate the agent arrives at today will be wrong on different axes by then. Read the commit dates every session. The prior is moving because the project is, and claims about "where it's going" are just as subject to drift as claims about "where it is." Right time will tell what a month from now looks like.
 
 ---
 
