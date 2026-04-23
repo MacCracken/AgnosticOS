@@ -1,8 +1,8 @@
 # Shared Crates — Registry & Status
 
-> **Status**: Active | **Last Updated**: 2026-04-15
+> **Status**: Active | **Last Updated**: 2026-04-23
 >
-> **102 crates** — 68 at v1.0+ stable, 20 pre-1.0, 7 scaffolded/planned, 4 Cyrius-native, 1 internal, 2 non-library
+> **104 crates** — 68 at v1.0+ stable, 22 pre-1.0, 7 scaffolded/planned, 6 Cyrius-native, 1 internal, 2 non-library
 >
 > v1.0+ crate documentation lives in [docs/applications/libs/](../../applications/libs/).
 > Pre-1.0 crates tracked in [development/applications/](README.md).
@@ -148,6 +148,8 @@ Full documentation for each crate: [docs/applications/libs/](../../applications/
 | [kshetra](https://github.com/MacCracken/kshetra) | 0.1.0 | Temporal geography — spatiotemporal database | itihas, badal, khanij, vanaspati |
 | [leela](https://github.com/MacCracken/leela) | 0.1.0 | Sport — rules, athletes, tournaments, records | hadara, itihas, avatara, jnana |
 | [nyaya](https://github.com/MacCracken/nyaya) | 0.1.0 | Structured legal knowledge — statutes, precedents, IP | trump_epstein, hadara, itihas, jnana |
+| [owl](https://github.com/MacCracken/owl) | 0.1.0 | Watchful file viewer — `cat`/`bat` replacement (Cyrius-native). Plain-mode `cat` parity → TTY decorations → paging → whitespace rendering. Token highlighting (M3b) consumes vyakarana. | end user, agnoshi |
+| [vyakarana](https://github.com/MacCracken/vyakarana) | 0.1.0 | Source-code grammar + tokenizer (Cyrius-native). Ten-kind palette, CYML grammar format, streaming zero-copy token spans. vidya supplies test corpus. | owl (M3b), cyim, vidya, agnoshi, muharrir downstreams |
 
 ---
 
@@ -238,4 +240,4 @@ See [k8s-roadmap.md](../vision/architecture/k8s-roadmap.md) for stiva + nein + m
 
 ---
 
-*Last Updated: 2026-04-15*
+*Last Updated: 2026-04-23*

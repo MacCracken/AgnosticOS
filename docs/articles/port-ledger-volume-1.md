@@ -171,6 +171,22 @@ The abaco → `u64_mulmod` → abaco cycle is not an isolated event. Every port'
 
 No other young language has this loop at scale. Most young languages validate against toy programs or a single flagship. The ledger is ten working, tested, benchmarked production codebases all feeding the same compiler.
 
+### Scaffold-ahead — lock types, stub runtime, ship handoff
+
+A pattern that emerged alongside Volume 1's ports but doesn't live inside them: **scaffolding a consumer-blocking library ahead of its implementation, with the downstream contract frozen on day zero.**
+
+The exemplar is **vyakarana** — the source-code grammar / tokenizer library that **owl**'s M3b syntax highlighting consumes. v0.1.0 ships the ten-kind token palette as named constants, a `Token` record with a locked layout, and a `tokenize_source(src, lang)` entry point that returns an empty tokenbuf for every input. Every grammar, every recognizer, every CYML loader — all deferred. But the consumer contract is there.
+
+What this bought:
+
+- **owl's M3b work can start against a stable import** before any grammar exists. Compilation doesn't wait on implementation.
+- **The M1 agent knows what it cannot break.** A `HANDOFF.md` at the repo root names the frozen invariants (palette size, Token layout, entry-point signature, CLI surface), the exit criteria for M1, and the explicit non-goals (no CYML loader in M1, no second grammar in M1, no regex rules, no zero-copy violations).
+- **The next agent starts on the work, not on the shape.** CLAUDE.md banners point at HANDOFF.md; agents pick up the repo knowing the answer to "what's frozen, what's free, what's next" in under a minute.
+
+The pattern generalizes beyond Cyrius: **if a library blocks three or more consumers, scaffold it as a type-frozen handoff before implementing it.** The cost is a few hours of type design and one markdown file. The benefit is parallel work — the consumer agents and the implementation agents don't block each other, because the contract they share is committed and dated.
+
+This is a coordination pattern, not a language pattern. It shows up in Volume 2 because the shape of the port ledger is changing: Volume 1 was mostly "take a Rust crate and port it"; Volume 2 will have more "scaffold a Cyrius-native crate and hand it off," because the ecosystem is filling in gaps the Rust world never had (owl over `cat`/`bat`, vyakarana over tree-sitter/TextMate — see also [*Reference, Don't Mimic*](../design-patterns.md#reference-dont-mimic)).
+
 ---
 
 ## Where Rust Still Wins — No Hiding

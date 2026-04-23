@@ -184,11 +184,29 @@ Round 4 (SIMD):             beats Rust 3.2x on batch DSP
 
 The trajectory is one-directional — each pass closes gaps, none has opened new ones. The remaining gaps (pure compute, cold-path allocation) are documented compiler optimization targets: constant folding, function inlining, stack-allocated small strings.
 
+### Compiler-side Phase O2 — closed 2026-04-23
+
+The compiler-optimization arc (v5.6.x) that this article's *Known Limitations* section names landed its first two phases. **Phase O1** (instrumentation + FNV-1a symbol hashing) shipped v5.6.0–v5.6.4; **Phase O2** closed at v5.6.11 as five peephole categories on `cc5` itself:
+
+| Category                                              | Shipped | x86 cc5       | aarch64 cc5   |
+|-------------------------------------------------------|---------|---------------|---------------|
+| 1. Partial strength reduction                         | v5.6.5  | -1,912 B      | mirrored      |
+| 2. Flag-result reuse + `test rax, rax` elimination    | v5.6.8  | -2,416 B      | mirrored      |
+| 3. Redundant push/pop elimination                     | v5.6.9  | -3,264 B      | mirrored      |
+| 4. Commutative combine-shuttle elimination            | v5.6.10 | -2,648 B      | re-pinned     |
+| 5. aarch64 combine-shuttle elimination (x86-backported)| v5.6.11 | unchanged     | **-17,672 B (-3.75%)** |
+
+**Aggregate:** x86 `cc5` ~10 KB smaller across the phase; aarch64 `cc5` 471,360 → 453,688 B (-17,672 B, -3.75%) from the single v5.6.11 category alone — previously invisible because v5.6.10 declared aarch64 "had no shuttle" based on an incorrect reading of the backend.
+
+**The engineering-methodology win underneath the numbers.** v5.6.11 was originally slotted for aarch64 fused ops (`madd`/`msub`/`ubfx`/`sbfx`). A **pre-implementation bytescan** on v5.6.10's `cc5_aarch64` showed 0 matches for every target pattern — Cyrius's combine codegen always shuttles intermediate values through the stack, so `mul` and consumer `add` are never adjacent in the emitted bytes. Fused ops require intermediates-in-registers, which requires linear-scan regalloc (v5.6.13). The fused-ops work was re-pinned to v5.6.14 before a single line was written; v5.6.11 shipped the combine-shuttle elim in its slot instead. The full roadmap cascaded v5.6.14 → v5.6.22.
+
+The receipt is *"measure before implementing, not after."* A 0-match bytescan is a cheap artifact to produce — cheaper than a half-implemented feature that benchmark-neutral because its preconditions don't hold in the target binary.
+
 ---
 
 ## Known Limitations
 
-**Pure compute gap**: Branch-heavy operations show 2–42× overhead vs LLVM -O3. Compiler-optimization targets (constant folding, inlining, regalloc, maximal-munch instruction selection) — **Cyrius v5.6.x optimization arc** lands these as O1–O6 phases before v5.7.0 RISC-V.
+**Pure compute gap**: Branch-heavy operations show 2–42× overhead vs LLVM -O3. Compiler-optimization targets (constant folding, inlining, regalloc, maximal-munch instruction selection) — **Cyrius v5.6.x optimization arc** lands these as O1–O6 phases before v5.7.0 RISC-V. O1 and O2 are done (see *Optimization Trajectory → Phase O2*); v5.6.13 linear-scan regalloc is in flight; v5.6.14 fused ops and the remaining O3–O6 phases are queued through v5.6.22.
 
 **No borrow checker**: Memory safety comes from testing, auditing, and a stdlib designed for the absence of hidden aliasing — not a type-system proof. Design stance, not a pending feature.
 

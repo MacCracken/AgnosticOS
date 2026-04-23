@@ -155,6 +155,35 @@ The pre-fix abaco port was publishing a number that lasted days, not months. Tha
 
 Same principle the Go team applied in 1.18. Same principle Rust library authors wish they'd applied more consistently in 2015–2019. Applied deliberately, with receipts, by a language project explicit about which phase it's in.
 
+### The pattern at compressed timescale — owl and vyakarana (April 22–23)
+
+The AGNOS case above runs the three pillars at weeks-scale. Two sibling projects running in the same window illustrate the same pattern at *hours-to-days* scale, which is a stronger claim that the rule generalizes.
+
+**owl** — a Cyrius-native `cat` / `bat` replacement scaffolded and driven through M0 → M5 in three calendar days (2026-04-21 to 2026-04-23):
+
+- M0: `owl --version` / `--help` binary
+- M1: plain-mode `cat` parity (byte-for-byte identical to `cat` on the corpus)
+- M2: TTY detection + line numbers + file headers
+- M3a: language detection + theme scaffolding (token-level highlighting deferred to M3b)
+- M4: pager spawn with `OWL_PAGER` / `PAGER` precedence
+- M5: non-printables + tab expansion + wrap modes
+
+owl's M3b (token highlighting) was held — not because it was hard, but because the grammar library didn't exist in the ecosystem. A pre-implementation survey (documented in owl's ROADMAP) found no port-ready grammar source anywhere in the AGNOS repos. M3b was pinned; the rest of owl shipped. This is **Pillar 1 (re-port pressure) at sprint-scale** — refuse to build against a non-existent dependency; defer the milestone instead.
+
+**vyakarana** — the grammar library owl M3b was waiting on. Scaffolded 2026-04-23 with the **scaffold-ahead pattern** (see also [*Port Ledger Vol 1 → Scaffold-ahead*](port-ledger-volume-1.md#scaffold-ahead--lock-types-stub-runtime-ship-handoff)):
+
+- v0.1.0 ships the Token layout, the ten-kind palette, the entry-point signature, and the `vyk` CLI shape. All runtime returns 0.
+- A `HANDOFF.md` at the repo root names the frozen invariants, the M1 exit criteria, and the explicit non-goals.
+- M1 (hand-coded shell tokenizer) landed in the same afternoon against a Cyrius compiler that rolled v5.6.0 → v5.6.13 in the same session.
+
+What this demonstrates about the three pillars:
+
+- **Pillar 1 (re-port pressure).** vyakarana pinned `cyrius = "5.6.0"` in its manifest while the compiler shipped six minor bumps underneath it. The pin is the forcing function: pick a version, commit to it, re-port forward on a schedule rather than chasing every patch. The owl and vyakarana pins are visible artifacts of the pressure, not abstractions.
+- **Pillar 2 (feedback loop).** Closed inside a single day: vyakarana M1 exercised Cyrius's hand-coded byte-emit paths for a real non-compiler program; any issue found would have been an immediate Cyrius-side ticket. None surfaced. The loop ran; it just happened to close cleanly.
+- **Pillar 3 (system vs compute sequencing).** Neither project is compute-heavy. Both are I/O-bound on kernel syscalls (reading files, writing stdout). Pillar 3 predicts they ship clean pre-optimization — and they did. Neither needed v5.6.x to produce honest first-day numbers.
+
+The case matters because the three pillars were written against quarters and years of language evolution. A pair of day-scale case studies with receipts — compiler rolled 13 patches in 24 hours, library went scaffold → M1 in the same window, the pinning-and-re-porting discipline held throughout — is evidence that the pattern isn't an artifact of slow project timescales. It's the same pattern the Go team applied at 1.18 and Rust authors applied at 2017-2019, compressed into an afternoon.
+
 ---
 
 ## Prior Art

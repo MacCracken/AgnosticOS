@@ -1,8 +1,10 @@
 # AGNOS Development Roadmap
 
-> **Status**: Pre-Beta | **Last Updated**: 2026-04-21
-> **Kernel 1.22.0 shipped** — 260KB, 33 subsystems, 26 syscalls, hardened pass.
-> **Cyrius 5.5.27 shipped** — self-hosting from 29KB seed. x86_64 Linux byte-identical; aarch64 Linux byte-identical on real Pi (v5.3.15+, stdlib shakedown v5.5.18); Apple Silicon Mach-O target closed (self-host v5.3.13; libSystem + `__got` bind v5.5.12–v5.5.17). Windows PE32+ native self-host byte-identical on real Windows 11 (v5.5.10). u64-hashmap (v5.5.20), AES-NI 16-B alignment fix (v5.5.21), `cyrfmt --write` (v5.5.22). NSS/PAM real-fix arc shipping v5.5.23–v5.5.27 (locale/environ/auxv, musl-style `lib/pwd.cyr` + `lib/grp.cyr` + `lib/shadow.cyr`, PAM via unix_chkpwd); `lib/fdlopen.cyr` queued v5.5.28; closeout v5.5.34. v5.6.x compiler-optimization arc → v5.7.0 RISC-V → v5.8.0 bare-metal queued.
+> **Status**: Pre-Beta | **Last Updated**: 2026-04-23
+> **May 1 V1 release** is 8 days out — complete-system V1 (kernel + Cyrius + toolchain + 30+ ports + science library + ISO Stage 0+), positioned as *"Boots, runs DOOM, all Cyrius."* Biweekly cadence through August DEF CON distribution (see [Near-Term Cadence](#near-term-cadence--may-1-v1-to-def-con)).
+> **Kernel 1.22.0 shipped** (2026-04-13) — 260KB, 33 subsystems, 26 syscalls, hardened pass.
+> **Cyrius 5.6.13** (current — linear-scan regalloc in flight). v5.5.x closed at v5.5.40 on 2026-04-22 (40 patches — longest minor in Cyrius history). v5.6.0 opened the compiler-optimization arc on 2026-04-22. **Phase O1** (instrumentation + FNV-1a symbol hashing) shipped v5.6.0–v5.6.4. **Phase O2** (partial strength reduction, flag-result reuse, push/pop elim, commutative combine-shuttle, aarch64 combine-shuttle) closed at v5.6.11 on 2026-04-23 — 5/5 categories. v5.6.14 fused ops (madd/msub/ubfx/sbfx) re-pinned post-regalloc.
+> **Multi-platform closed.** x86_64 Linux byte-identical; aarch64 Linux byte-identical on real Pi (stdlib shakedown v5.5.18); Apple Silicon Mach-O self-host closed (v5.5.17); Windows PE32+ native self-host byte-identical on real Windows 11 (v5.5.10). NSS/PAM real-fix arc shipped v5.5.23–v5.5.27; `lib/fdlopen.cyr` landed in v5.5.x arc. RISC-V rv64 (v5.7.0) and bare-metal (v5.8.0) queued post-v5.6.x optimization arc.
 > **ISO pipeline started** — Stage 0 (component verification) implemented: `make iso-check`. See `docs/development/iso-pipeline.md`.
 > **Kavach 3.0.0 shipped Cyrius-native** — 344KB (was 2.4MB Rust), 1 dep, 9 CWE fixes, sandbox lifecycle 500× faster.
 > **Sankoch 2.0.0 shipped** — lossless compression (LZ4, DEFLATE, zlib, gzip). stdlib fold pending.
@@ -10,10 +12,10 @@
 > **Bote 2.5.1** / **T-Ron 2.0.0** shipped — both out of pre-release. Bote MCP pipeline ~5µs/message.
 > **Ark 0.8.0** / **Nous 1.1.1** — package manager + resolver ported to Cyrius.
 > **Phylax 1.0.0** / **Shakti 0.2.2** — threat detection + privilege escalation ported to Cyrius.
+> **New shared crates (Apr 22–23)**: **owl** v0.1.0 (Cyrius-native `cat`/`bat` replacement, M0–M5 shipped) and **vyakarana** v0.1.0 (source-code grammar / tokenizer library — ten-kind palette locked; M1 agent started). owl M3b highlighting consumes vyakarana when M1 lands.
 > **Critical path CLEARED**: libro ✅ argonaut ✅ kybernet ✅ kernel ✅ boot pipeline ✅ kavach ✅ ark ✅ nous ✅
 > **Shared ecosystem**: 30+ repos ported to Cyrius. Pending port: bhava, takumi, aegis, aethersafha.
-> **Cyrius platform cleanup**: Apple Silicon (closed v5.5.17), aarch64 Linux (stdlib shakedown v5.5.18), Windows PE32+ (native self-host byte-identical v5.5.10), RISC-V (v5.7.0 queued), bare-metal (v5.8.0 queued).
-> **Next milestone**: Bootable ISO (Phase 1). `make iso-check` passes → Stage 1-4 implementation.
+> **Next milestone**: **May 1 V1** — bootable ISO runs DOOM from Cyrius; kernel + toolchain + 30+ ports + science library shipped. Then biweekly cadence to DEF CON.
 
 ---
 
@@ -57,9 +59,36 @@ Creator economy (sovereign distribution, bootable USB media): [vision/creator-ec
 
 ---
 
+## Near-Term Cadence — May 1 V1 to DEF CON
+
+Biweekly beats between the May 1 V1 release and DEF CON / Black Hat
+August distribution. Each beat is a single headline — the thing
+that's true that wasn't true two weeks ago.
+
+| Date        | Beat                                                                                                | Primary repos                       |
+|-------------|-----------------------------------------------------------------------------------------------------|-------------------------------------|
+| **May 1**   | **V1: Boots, runs DOOM, all Cyrius.** ISO Stage 0+ cut; kernel 1.22.x + Cyrius toolchain + 30+ ports + science library | `agnos`, `cyrius`, `agnosticos`     |
+| **May 15**  | **Library for Humanity.** Reference library + knowledge corpus (vidya + abaco + 27-crate science tier) shipped as a browseable first release | `vidya`, `abaco`, all science crates |
+| **June 1**  | **Multi-platform byte-identical.** x86_64 + aarch64 + Apple Silicon + Windows PE32+ reproducible cross all four | `cyrius`                            |
+| **June 15** | **Self-hosting in action.** Cyrius compiles itself from tarball on a booted AGNOS ISO, end-to-end   | `cyrius`, `agnos`, `agnosticos`     |
+| **June 21** | **Solstice: higher-order items.** TBD gift — agent-tooling article + capstone receipts               | `agnosticos/docs/articles`          |
+| **July 1**  | **Distribution at scale.** Ark OTA pipeline live; recipes buildable from zugot by third parties     | `ark`, `nous`, `zugot`              |
+| **July 15** | **Reproducibility standard.** Every artifact in the stack has an SHA manifest; seed + hash chain published | `sigil`, `libro`, `agnosticos`      |
+| **August**  | **DEF CON / Black Hat distribution.** ~$5K budget: 10K stickers + 500 SD cards + 1K quick-start cards. Bumper-sticker-as-cryptographic-root-of-trust: QR-encoded 29KB seed + SHA-256 chain + URL → **sticker becomes paper signing authority.** | `agnosticos`                        |
+
+**Cadence discipline**: each beat is a release, not a blog post. If
+the beat doesn't ship running software on the date, it slips to the
+next biweekly slot — the list tightens, doesn't move right.
+
+**Not in the cadence** (deliberately): Beta, v1.0, SY redesign,
+Phase 17–19 work, polymorphic codegen. Those remain on the Beta Q4
+2026 / v1.0 Q2 2027 track above.
+
+---
+
 ## Status
 
-### Cyrius Language — v5.5.27
+### Cyrius Language — v5.6.13
 
 Full milestone history lives in `cyrius/CLAUDE.md` + `cyrius/CHANGELOG.md`. Headline status for AGNOS:
 
@@ -70,7 +99,7 @@ Full milestone history lives in `cyrius/CLAUDE.md` + `cyrius/CHANGELOG.md`. Head
 | Dependency resolution (cyrius.cyml, falls back to cyrius.toml) | **Done** |
 | http_server + ws stdlib absorption | **Done** (v4.5.0) |
 | Multi-file linker + cross-unit DCE | **Done** (v4.6.x) |
-| PIC codegen, u128 types | **Done** (v4.7-4.8.x) |
+| PIC codegen, u128 types | **Done** (v4.7–4.8.x) |
 | Jump tables + register allocation | **Done** (v4.8.4) |
 | Math pack (u64_mulmod fast-path, 12× Miller-Rabin end-to-end) | **Done** (v4.8.5) |
 | aarch64 cross-compiler + native Pi self-host (byte-identical) | **Done** (v5.3.15+) |
@@ -86,9 +115,13 @@ Full milestone history lives in `cyrius/CLAUDE.md` + `cyrius/CHANGELOG.md`. Head
 | AES-NI 16-B array alignment fix (sigil 2.9.1 unblock) | **Done** (v5.5.21) |
 | `cyrfmt --write` in-place rewrite | **Done** (v5.5.22) |
 | NSS/PAM real-fix arc (pwd/grp/shadow/PAM via unix_chkpwd) | **Done** (v5.5.23–v5.5.27) |
-| `lib/fdlopen.cyr` foreign-dlopen (Cosmopolitan pattern) | Queued — v5.5.28 |
-| v5.5.x closeout | Queued — v5.5.34 |
-| Compiler optimization arc (O1–O6: peephole, IR passes, regalloc, maximal-munch, slab) | Queued — v5.6.0–v5.6.6 |
+| `lib/fdlopen.cyr` foreign-dlopen (Cosmopolitan pattern) | **Done** (v5.5.x arc) |
+| v5.5.x closeout — 40 patches, longest minor in Cyrius history | **Done** (v5.5.40, 2026-04-22) |
+| **Phase O1** — instrumentation + FNV-1a symbol hashing | **Done** (v5.6.0–v5.6.4) |
+| **Phase O2** — peephole categories 1–5 (PSR, flag-result reuse, push/pop elim, commutative combine-shuttle, aarch64 combine-shuttle) | **Done** (v5.6.5–v5.6.11, closed 2026-04-23) |
+| Linear-scan register allocator | **In flight** — v5.6.13 |
+| Fused ops (madd, msub, ubfx, sbfx) — re-pinned post-regalloc | Queued — v5.6.14 |
+| Compiler optimization arc — remaining phases (O3–O6: IR passes, maximal-munch, slab allocator, codebuf tuning) | Queued — v5.6.15–v5.6.22 |
 | RISC-V rv64 codegen | Queued — v5.7.0 |
 | Bare-metal / AGNOS kernel target | Queued — v5.8.0 |
 
@@ -137,7 +170,7 @@ Full details: [sprint-history.md](sprint-history.md#monolith-extraction--complet
 |--------|--------|---------|--------|
 | Boot Time | <10s | **3.2s** (kernel+init), **~80ms** init→event loop | **Achieved** |
 | OS Independence | Yes | Pending | Phase 13A — critical path cleared, self-hosting validation remaining |
-| DOOM | Playable | **2.59ms/frame**, cyrius-doom 0.26.1, hardened (5 CVEs fixed) | Waiting on Cyrius 5.6.x optimization arc |
+| DOOM | Playable | **2.59ms/frame**, cyrius-doom 0.26.1, hardened (5 CVEs fixed) | **Unblocked** — Cyrius Phase O2 closed v5.6.11; regalloc v5.6.13 in flight. Full-frame benchmark re-run pending v5.6.x closeout. |
 
 ---
 
@@ -197,7 +230,7 @@ Repo-specific backlog items tracked in their respective repos.
 
 ### Phase 13B — Arch-Neutral Boot Pipeline
 
-**Gate**: opens on Cyrius v5.6.x compiler-optimization arc closeout (v5.6.5 or v5.6.6).
+**Gate**: opens on Cyrius v5.6.x compiler-optimization arc closeout (tracked to v5.6.22 per the milestone table above — O3–O6 remaining after regalloc and fused ops).
 **Precedes**: Cyrius v5.7.0 RISC-V rv64 — this work lands *between* v5.6.x and v5.7.0.
 **Rationale**: Cyrius locks the sequencing v5.6.x (optimization) → v5.7.0 (RISC-V) → v5.8.0 (bare-metal). Agnos already did the multi-arch split at v1.1.0 (`kernel/arch/x86_64/`, `kernel/arch/aarch64/`, `kernel/core/`, `kernel/user/`). The gap is that everything downstream of boot still carries x86_64/aarch64-shaped assumptions. Neutralizing now means v5.7.0 RISC-V and v5.8.0 bare-metal slot in as "add a target," not "rewrite the pipeline."
 
@@ -296,6 +329,8 @@ All subsystems are standalone repos at `/home/macro/Repos/{name}/`.
 | **phylax** | Threat detection engine | `MacCracken/phylax` | 1.0.0 | **Done** |
 | **shakti** | Privilege escalation | `MacCracken/shakti` | 0.2.2 | **Done** |
 | **hisab** | Higher math | `MacCracken/hisab` | 2.2.0 | **Done** |
+| **owl** | `cat`/`bat` replacement | `MacCracken/owl` | 0.1.0 | **Native** — M0–M5 shipped; M3b blocked on vyakarana |
+| **vyakarana** | Source-code grammar / tokenizer | `MacCracken/vyakarana` | 0.1.0 | **Native** — M0 scaffold shipped 2026-04-23; M1 shell grammar in flight |
 | **bhava** | Emotion/sentiment | `MacCracken/bhava` | 2.0.0 | Pending |
 | **takumi** | Package build system | `MacCracken/takumi` | 0.1.0 | Pending |
 | **aegis** | System security daemon | `MacCracken/aegis` | 0.1.0 | Pending |
@@ -304,6 +339,7 @@ All subsystems are standalone repos at `/home/macro/Repos/{name}/`.
 | **agnova** | OS installer | `MacCracken/agnova` | 0.1.0 | Pending |
 | **seema** | Edge fleet management | `MacCracken/seema` | 0.1.0 | Pending |
 | **samay** | Task scheduler | `MacCracken/samay` | 0.1.0 | Pending |
+| **cyim** | Sovereign text editor (VIM-inspired) | — | — | Planned — consumer of vyakarana |
 | **bazaar** | Community package repo | `MacCracken/bazaar` | — | — |
 
 ### Cross-Cutting Concerns
@@ -330,9 +366,11 @@ Detailed roadmaps tracked in respective repos:
 |--------|---------|------------------|----------|
 | **Service mesh** | Cyrius services need shared HTTP/TCP/TLS layer + service discovery. Like sakshi for services. | vidya, hoosh, ifran, daimon, mela | High (post-boot) |
 | **kula** (कुल) | Family/clan mesh — peer-to-peer identity, contact sharing, device fleet, shared storage. Depends on: sigil, bote, patra, seema, kavach. | Every family running AGNOS | High (post-beta) |
+| **sit** (smriti / स्मृति — memory) | Sovereign version control — git replacement. Deps: sankoch (compression), sigil (crypto), patra (storage). *When-I-have-time* project; deep storyline with sankoch → stdlib fold. | AGNOS-wide | Low (when-ready) |
 | **Geography / GIS** | joshua terrain, edge fleet, raasta pathfinding | joshua, kiran, raasta, nazar | Medium |
 | **Music theory** | shruti or 3rd consumer needs shared scales/rhythm | shruti, naad, jalwa, kiran | Medium |
 | **Typography / font metrics** | sahifa (PDF suite) needs font layout | sahifa, aethersafha, scriba | Low |
+| ~~**Grammar / tokenizer**~~ | ~~owl M3b, cyim~~ | ~~owl, cyim, vidya, agnoshi~~ | **Satisfied** by `vyakarana` (2026-04-23) |
 
 ### Research & Publication
 
@@ -352,4 +390,4 @@ Unified Consciousness Model paper and bhava roadmap tracked in `MacCracken/bhava
 
 ---
 
-*Last Updated: 2026-04-20 | Next Review: 2026-04-27*
+*Last Updated: 2026-04-23 | Next Review: 2026-04-30*

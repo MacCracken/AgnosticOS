@@ -80,6 +80,28 @@ The Library of Alexandria burned because it existed in one building. A self-cont
 
 ---
 
+## The Sticker
+
+If the 29KB seed is small enough to fit on an SD card, it is small enough to fit on a sticker.
+
+A QR code at standard print size encodes ~3 KB; a denser code or a small QR grid encodes the full 29 KB seed, a SHA-256 manifest of every artifact it bootstraps, and a URL to the full distribution. Print it on a $0.20 bumper sticker. Slap it on a laptop. Scan it with a phone.
+
+That sticker is a **paper signing authority**. Not metaphorically — mechanically. The chain is:
+
+1. The QR contains the seed bytes + the SHA-256 of `cc5` + the SHA-256 of the kernel + the SHA-256 of the base recipes + a URL.
+2. Anyone with the sticker can read the bytes, hash them, and verify they match the hash printed (also in QR) next to them. That's the seed, *verified*.
+3. The seed compiles `cc5` byte-identically. Hash matches the hash encoded on the sticker → `cc5`, verified.
+4. `cc5` compiles the kernel. Hash matches → kernel, verified.
+5. Chain continues upward through the full stack.
+
+Every link is machine-checkable. The sticker is the root of trust — the one thing the reader must obtain out-of-band. Once they have it, they don't need a CA, don't need a TPM, don't need an internet connection to a trusted mirror. The sovereign distribution is *physical*, with the signing authority laminated to it.
+
+The distribution plan for August 2026 — DEF CON and Black Hat — is **10,000 stickers + 500 SD cards + 1,000 quick-start cards, ~$5,000 budget**. Stickers go in badges, on laptops, handed out in hallways. An engineering audience scans them on the spot, walks home with the root of trust in their pocket, and can verify the whole stack on any machine they choose.
+
+This is the logical conclusion of the dandelion. A 29KB seed doesn't just fit on an SD card — it fits on something you carry without noticing, multiply without copying, and distribute without asking permission. The sovereign distribution channel is already running; it's just made of paper and glue.
+
+---
+
 ## What This Is Really About
 
 This was never about building a language. It was about removing every dependency between a developer and their ability to ship code under their own name on their own terms.
