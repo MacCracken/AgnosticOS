@@ -112,6 +112,8 @@ Timestamps, filenames, and system-reminder events driving this argument are in t
 
 The AGNOS repos are public. The manifest-pin convention is in every `cyrius.cyml`; the handoff pattern is visible in any `HANDOFF.md` at a repo root. You can audit both yourself — which, given the thesis, is the point.
 
+One more turn worth naming: the standard specifying where AGNOS docs are supposed to live — the three-layer split above, the ADR numbering conventions, the directory tree — was itself written on the same day as this article, at [`docs/development/applications/first-party-documentation.md`](../development/applications/first-party-documentation.md). Until that day, the conventions were real but scattered across repo READMEs and whichever agent's memory had most recently implemented them. Which is also why the article you just read refers to `docs/adrs/` (plural, as the subsystem happened to have it when the piece was drafted) while the same-day standard canonizes `docs/adr/` (singular, matching older repos' convention). The article describing drift was itself drifting from the canonical form being written in parallel — across *one* session, in *one* repo family, with active drift-defense already in place. The pattern was the thing to codify; the list of directories in the pattern will itself drift.
+
 ---
 
 ## Related

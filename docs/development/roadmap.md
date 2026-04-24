@@ -364,7 +364,7 @@ Detailed roadmaps tracked in respective repos:
 
 | Domain | Trigger | Likely Consumers | Priority |
 |--------|---------|------------------|----------|
-| **Service mesh** | Cyrius services need shared HTTP/TCP/TLS layer + service discovery. Like sakshi for services. | vidya, hoosh, ifran, daimon, mela | High (post-boot) |
+| **sandhi** (सन्धि — *junction, connection, joining*) | Service-boundary layer — shared HTTP/TCP/TLS + service discovery. Like sakshi for services. Absorbs `lib/http_server.cyr` extraction (landed sandhi v0.2.0); composes `lib/http.cyr`, `ws.cyr`, `tls.cyr`, `json.cyr`, `net.cyr` into full-featured client patterns. Named 2026-04-24; targets clean-break fold at **Cyrius v5.7.0** per [sandhi ADR 0002](https://github.com/MacCracken/sandhi/blob/main/docs/adr/0002-clean-break-fold-at-cyrius-v5-7-0.md). | vidya, hoosh, ifran, daimon, mela, yantra, sit-remote, ark-remote | **High — in flight** |
 | **kula** (कुल) | Family/clan mesh — peer-to-peer identity, contact sharing, device fleet, shared storage. Depends on: sigil, bote, patra, seema, kavach. | Every family running AGNOS | High (post-beta) |
 | **sit** (smriti / स्मृति — memory) | Sovereign version control — git replacement. Deps: sankoch (compression), sigil (crypto), patra (storage). *When-I-have-time* project; deep storyline with sankoch → stdlib fold. | AGNOS-wide | Low (when-ready) |
 | **Geography / GIS** | joshua terrain, edge fleet, raasta pathfinding | joshua, kiran, raasta, nazar | Medium |

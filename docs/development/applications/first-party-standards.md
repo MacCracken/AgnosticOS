@@ -1,12 +1,14 @@
 # First-Party Application Standards
 
-> **Status**: Active | **Last Updated**: 2026-04-13
+> **Status**: Active | **Last Updated**: 2026-04-23
 >
 > Standards, conventions, and workflows for all AGNOS first-party applications.
 > Non-negotiable for interoperability with daimon, agnoshi, mela, and the marketplace.
 > **Language**: Cyrius (sovereign systems language). Rust-era standards archived at `docs/archive/first-party-standards-rust-era.md`.
 >
-> **Reference implementations**: [kybernet](https://github.com/MacCracken/kybernet) (Cyrius port gold standard), [hadara](https://github.com/MacCracken/hadara) (Cyrius-native gold standard).
+> **Companion**: [first-party-documentation.md](first-party-documentation.md) — the `docs/` tree, root docs (README, CHANGELOG, CLAUDE.md, SECURITY.md, etc.), ADRs, architecture notes, guides, examples, API reference, audit, benchmarks, standards, compliance, and articles. This file covers *code*; the companion covers *docs*.
+>
+> **Reference implementations**: [kybernet](https://github.com/MacCracken/kybernet) (Cyrius port gold standard), [hadara](https://github.com/MacCracken/hadara) (Cyrius-native gold standard), [cyrius](https://github.com/MacCracken/cyrius) (**CLAUDE.md gold standard** — durable rules in CLAUDE.md, volatile state in `docs/development/state.md`), [sit](https://github.com/MacCracken/sit) (minimal docs-scaffold reference for first-party-documentation.md).
 >
 > **IMPORTANT**: This document is transitioning from Rust to Cyrius conventions. Sections below still reference Cargo/Rust in some places — these are being updated as repos port. The example CLAUDE.md template (`example_claude.md`) is fully updated for Cyrius. The **Security Hardening** section is new as of 2026-04-13 and applies to ALL projects regardless of language.
 
@@ -797,6 +799,8 @@ Reference: [hisab logging.rs](https://github.com/MacCracken/hisab/blob/main/src/
 ---
 
 ## Documentation Requirements
+
+> **Moved**: the full documentation standards now live in [first-party-documentation.md](first-party-documentation.md) — doc layer map, required root files, `docs/` tree, ADRs, architecture notes, proposals, guides, tutorials, examples, API reference, source citations, development docs, security/audit docs, benchmarks, standards/compliance, FAQ, CHANGELOG, CLAUDE.md, and articles. The sections below are retained as the short-form summary; the companion doc is authoritative when they conflict.
 
 ### Architectural Decision Records (ADRs)
 

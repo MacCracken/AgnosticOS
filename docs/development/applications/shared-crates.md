@@ -2,7 +2,7 @@
 
 > **Status**: Active | **Last Updated**: 2026-04-23
 >
-> **104 crates** — 68 at v1.0+ stable, 22 pre-1.0, 7 scaffolded/planned, 6 Cyrius-native, 1 internal, 2 non-library
+> **106 crates** — 74 at v1.0+ stable, 19 pre-1.0, 8 scaffolded/planned, 8 Cyrius-native, 1 internal, 2 non-library
 >
 > v1.0+ crate documentation lives in [docs/applications/libs/](../../applications/libs/).
 > Pre-1.0 crates tracked in [development/applications/](README.md).
@@ -10,38 +10,43 @@
 
 ---
 
-## v1.0+ Stable Index (68 crates)
+## v1.0+ Stable Index (74 crates)
 
 Full documentation for each crate: [docs/applications/libs/](../../applications/libs/README.md)
 
-### OS & Infrastructure (18 crates)
+### OS & Infrastructure (23 crates)
 
 | Crate | Version | Domain |
 |-------|---------|--------|
 | agnosai | 1.1.0 | AI orchestration |
+| agnosys | 1.0.0 | Kernel interface — Landlock, seccomp, syscall bindings (Cyrius) |
 | ai-hwaccel | 2.0.0 | GPU detection |
 | bote | 2.5.1 | MCP core (~5us/message, streamable HTTP) |
 | daimon | 1.1.1 | Agent orchestrator (144 MCP tools) |
 | hoosh | 2.0.0 | LLM gateway (15 providers) |
 | ifran | 1.3.0 | LLM inference/training |
 | kavach | 3.0.0 | Sandbox execution |
-| libro | 1.0.3 | Cryptographic audit chain |
-| mabda | 2.1.2 | GPU foundation |
-| majra | 2.2.0 | Queue/pub-sub |
+| libro | 2.0.5 | Cryptographic audit chain |
+| mabda | 2.5.0 | GPU foundation |
+| majra | 2.4.1 | Queue/pub-sub |
 | nein | 1.0.0 | Programmatic nftables firewall |
-| sigil | 2.1.2 | Trust verification & crypto |
+| patra | 1.5.5 | Structured storage & SQL — B+ tree, WAL (Cyrius-native) |
+| phylax | 1.0.0 | Threat detection — YARA, entropy, magic bytes, ML |
+| sakshi | 2.1.0 | Tracing, error handling, structured logging (Cyrius-native) |
+| sankoch | 2.0.1 | Lossless compression — LZ4, DEFLATE, zlib, gzip |
+| sigil | 2.9.1 | Trust verification & crypto |
 | soorat | 1.0.0 | GPU rendering |
 | stiva | 2.0.0 | Container runtime |
 | szal | 1.1.0 | Workflow engine |
 | t-ron | 2.0.0 | MCP security |
 | vidya | 2.2.0 | Programming reference |
-| yukti | 1.2.0 | Device abstraction (USB, block, udev) |
+| yukti | 2.1.1 | Device abstraction (USB, block, udev) |
 
 ### Science & Knowledge (27 crates)
 
 | Crate | Version | Domain |
 |-------|---------|--------|
-| abaco | 2.0.0 | Math engine |
+| abaco | 2.1.0 | Math engine |
 | avatara | 2.3.0 | Divine archetype overlay |
 | badal | 1.1.0 | Weather/atmosphere |
 | bhava | 2.0.0 | Emotion/personality |
@@ -51,7 +56,7 @@ Full documentation for each crate: [docs/applications/libs/](../../applications/
 | dravya | 1.2.0 | Material science |
 | falak | 1.0.0 | Orbital mechanics |
 | hadara | 1.0.0 | Culture modeling (Cyrius-native, 50 cultures) |
-| hisab | 1.4.0 | Higher math |
+| hisab | 2.2.0 | Higher math |
 | hisab-mimamsa | 1.0.0 | Theoretical physics |
 | itihas | 2.2.0 | World history |
 | jantu | 1.1.0 | Ethology/behavior |
@@ -82,7 +87,7 @@ Full documentation for each crate: [docs/applications/libs/](../../applications/
 | prani | 1.1.0 | Creature vocals |
 | shabda | 2.0.0 | G2P conversion |
 | shabdakosh | 2.0.0 | Pronunciation dict |
-| shravan | 2.1.1 | Audio codecs |
+| shravan | 2.3.2 | Audio codecs |
 | svara | 2.0.0 | Vocal synthesis |
 | tarang | 1.0.0 | Media framework (containers, decode/encode) |
 
@@ -90,16 +95,17 @@ Full documentation for each crate: [docs/applications/libs/](../../applications/
 
 | Crate | Version | Domain |
 |-------|---------|--------|
-| bsp | 1.0.1 | BSP geometry (Cyrius-native) |
+| bsp | 1.1.2 | BSP geometry (Cyrius-native) |
 | kiran | 1.0.0 | Game engine (ECS, scene hierarchy) |
 | ranga | 1.0.0 | Image processing (color, blend, GPU compute) |
 
-### Language & Navigation (2 crates)
+### Language & Navigation (3 crates)
 
 | Crate | Version | Domain |
 |-------|---------|--------|
 | raasta | 1.0.0 | Pathfinding |
 | varna | 1.0.0 | Multilingual language engine |
+| vyakarana | 1.0.2 | Source-code grammar + tokenizer (Cyrius-native, ten-kind palette, CYML grammars) |
 
 ### Physics & Engineering (6 crates)
 
@@ -114,17 +120,14 @@ Full documentation for each crate: [docs/applications/libs/](../../applications/
 
 ---
 
-## Pre-1.0 (20 crates)
+## Pre-1.0 (19 crates)
 
 ### Near-Stable (v0.5.0+)
 
 | Crate | Version | Description | Key Consumers |
 |-------|---------|-------------|---------------|
-| [agnosys](https://github.com/MacCracken/agnosys) | 0.97.2 | Kernel interface — Landlock, seccomp, syscall bindings (Cyrius) | daimon, aethersafha, kavach, argonaut |
 | [agnostik](https://github.com/MacCracken/agnostik) | 0.97.1 | Shared types & domain primitives (Cyrius, GitHub-release only) | all AGNOS crates |
-| [sakshi](https://github.com/MacCracken/sakshi) | 0.9.0 | Tracing, error handling, structured logging — zero-alloc hot path (Cyrius-native) | every crate — foundational |
 | [aethersafta](https://github.com/MacCracken/aethersafta) | 0.50.0 | Media compositing — scene graph, capture, HW encoding | aethersafha, tazama |
-| [phylax](https://github.com/MacCracken/phylax) | 0.5.0 | Threat detection — YARA, entropy, magic bytes, ML | daimon, aegis |
 | [jnana](https://github.com/MacCracken/jnana) | 0.5.0 | Unified knowledge system — offline-accessible corpus | agnoshi, hoosh, daimon |
 
 ### In Progress (v0.1.0 - v0.49.x)
@@ -132,11 +135,10 @@ Full documentation for each crate: [docs/applications/libs/](../../applications/
 | Crate | Version | Description | Key Consumers |
 |-------|---------|-------------|---------------|
 | [selah](https://github.com/MacCracken/selah) | 0.29.4 | Screenshot capture, annotation, PII redaction | taswir, soorat |
-| [cyrius-doom](https://github.com/MacCracken/cyrius-doom) | 0.24.5 | DOOM engine in Cyrius — hardened, 5 CVEs fixed, 2.59ms/frame | standalone game / kernel demo |
+| [cyrius-doom](https://github.com/MacCracken/cyrius-doom) | 0.26.1 | DOOM engine in Cyrius — hardened, 5 CVEs fixed, 2.59ms/frame | standalone game / kernel demo |
 | [muharrir](https://github.com/MacCracken/muharrir) | 0.23.5 | Editor primitives — text buffer, undo/redo, command pattern | rasa, tazama, shruti |
-| [patra](https://github.com/MacCracken/patra) | 0.14.0 | Structured storage & SQL — B+ tree, WAL, 243 tests (Cyrius-native) | libro, daimon, vidya, agnoshi |
-| [sankoch](https://github.com/MacCracken/sankoch) | 0.1.0 | Lossless compression — LZ4, DEFLATE, zlib, gzip. Gate to sovereign git. | ark, delta, patra |
 | [vani](https://github.com/MacCracken/vani) | 0.1.0 | Audio device I/O — direct ALSA/OSS syscalls (Cyrius-native) | shravan, dhvani, naad, jalwa, shruti |
+| [yantra](https://github.com/MacCracken/yantra) | 0.1.0 | Sovereign UI automation — browser + mobile, as a Cyrius library (Cyrius-native). `.tcyr` files include `lib/yantra.cyr` and drive Chromium / Firefox / WebKit / Android / iOS. Not a framework — `cyrius test` stays the runner. Planned backends: CDP, W3C WebDriver, Appium. | AGNOS E2E consumers (owl, agnoshi, tanur when GUI lands) |
 | [joshua](https://github.com/MacCracken/joshua) | 0.1.0 | Game manager — AI NPCs, headless simulation | end user |
 | [murti](https://github.com/MacCracken/murti) | 0.1.0 | Model runtime — registry, store, inference backends | hoosh, ifran, tanur |
 | [salai](https://github.com/MacCracken/salai) | 0.1.0 | Game editor — egui visual editor for kiran | kiran |
@@ -148,8 +150,6 @@ Full documentation for each crate: [docs/applications/libs/](../../applications/
 | [kshetra](https://github.com/MacCracken/kshetra) | 0.1.0 | Temporal geography — spatiotemporal database | itihas, badal, khanij, vanaspati |
 | [leela](https://github.com/MacCracken/leela) | 0.1.0 | Sport — rules, athletes, tournaments, records | hadara, itihas, avatara, jnana |
 | [nyaya](https://github.com/MacCracken/nyaya) | 0.1.0 | Structured legal knowledge — statutes, precedents, IP | trump_epstein, hadara, itihas, jnana |
-| [owl](https://github.com/MacCracken/owl) | 0.1.0 | Watchful file viewer — `cat`/`bat` replacement (Cyrius-native). Plain-mode `cat` parity → TTY decorations → paging → whitespace rendering. Token highlighting (M3b) consumes vyakarana. | end user, agnoshi |
-| [vyakarana](https://github.com/MacCracken/vyakarana) | 0.1.0 | Source-code grammar + tokenizer (Cyrius-native). Ten-kind palette, CYML grammar format, streaming zero-copy token spans. vidya supplies test corpus. | owl (M3b), cyim, vidya, agnoshi, muharrir downstreams |
 
 ---
 
@@ -160,9 +160,10 @@ Full documentation for each crate: [docs/applications/libs/](../../applications/
 | [kybernet](https://github.com/MacCracken/kybernet) | 1.0.1 | PID 1 init binary (486KB, Cyrius, 140 tests) | argonaut |
 | [argonaut](https://github.com/MacCracken/argonaut) | 1.2.0 | Init system library (Cyrius) | agnosys |
 | [agnoshi](https://github.com/MacCracken/agnoshi) | 1.0.0 | AI shell (Cyrius) | hoosh, daimon |
-| [shakti](https://github.com/MacCracken/shakti) | 0.1.0 | Privilege escalation (`sudo` replacement) | agnosys, sigil |
-| [ark](https://github.com/MacCracken/ark) | 0.1.0 | Package manager (Cyrius) | nous, sigil |
-| [nous](https://github.com/MacCracken/nous) | 0.1.0 | Package resolver (Cyrius) | — |
+| [owl](https://github.com/MacCracken/owl) | 1.0.0 | Watchful file viewer — `cat`/`bat` replacement (Cyrius-native, **O**bservant **W**atcher of **L**ines). `-p` byte-identical cat drop-in; decorated mode adds token highlighting + VCS gutter + paging. Consumes vyakarana for tokenization. | end user, agnoshi |
+| [shakti](https://github.com/MacCracken/shakti) | 0.2.2 | Privilege escalation (`sudo` replacement) | agnosys, sigil |
+| [ark](https://github.com/MacCracken/ark) | 0.8.0 | Package manager (Cyrius) | nous, sigil |
+| [nous](https://github.com/MacCracken/nous) | 1.1.1 | Package resolver (Cyrius) | — |
 | [takumi](https://github.com/MacCracken/takumi) | 0.8.0 | Build system — Cyrius port in progress (toolchain pinned 5.5.23; `rust-old/` authoritative until parity) | sigil |
 | [aegis](https://github.com/MacCracken/aegis) | 0.1.0 | Security daemon | sigil, phylax |
 | [aethersafha](https://github.com/MacCracken/aethersafha) | 0.1.0 | Wayland compositor | aethersafta, mabda |
@@ -178,8 +179,9 @@ Full documentation for each crate: [docs/applications/libs/](../../applications/
 | Project | Version | Description | Key Consumers |
 |---------|---------|-------------|---------------|
 | [trump_epstein](https://github.com/MacCracken/trump_epstein) | 0.1.0 | Evidence database — court filings, depositions, flight logs | nyaya, patra, sigil, libro |
-| [cyrius-nba-jam](https://github.com/MacCracken/cyrius-nba-jam) | 1.0.0 | NBA Jam reimplementation in Cyrius | standalone game |
+| [cyrius-nba-jam](https://github.com/MacCracken/cyrius-nba-jam) | 0.5.0 | NBA Jam reimplementation in Cyrius | standalone game |
 | [encom-hits](https://github.com/MacCracken/encom-hits) | 1.0.0 | ENCOM retro arcade collection in Cyrius | standalone game |
+| [cyrius-braid](https://github.com/MacCracken/cyrius-braid) | 0.1.0 | *Braid* reimplementation from observation in Cyrius (2008 Blow title). Homage to the sovereign-stance-practitioner in a language that shipped before Jai did. Mechanics traced to documented public sources; original binary never reverse-engineered. | standalone game |
 
 ---
 
@@ -223,6 +225,7 @@ Sovereign video codecs — no C, no FFI, no libav*. Each codec is a standalone c
 | **krishi** | Agriculture — crop science, soil, irrigation, yield modeling (Sanskrit: कृषि) | vanaspati, badal, kimiya, kshetra |
 | **prakriti** | Ecology — ecosystem modeling, food webs, biodiversity (Sanskrit: प्रकृति) | jantu, vanaspati, badal, jivanu |
 | **cyim** | Sovereign text editor — Cyrius-native, VIM-inspired, zero attack surface | agnoshi, aethersafha |
+| **sit** | Sovereign version control — Cyrius-native git replacement (smriti, स्मृति — memory). Deps: sankoch (compression), sigil (hashing), patra (object store). No libgit2, no C, no FFI. | end user, owl (git-marker integration), ark |
 
 ---
 
