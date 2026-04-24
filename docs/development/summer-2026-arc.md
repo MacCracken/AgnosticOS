@@ -14,11 +14,14 @@
 
 | Beat | Date | Audience | Primary artifact | Distribution surface |
 |------|------|----------|------------------|----------------------|
-| **Summer solstice demo** | 2026-06-21 | indie game devs / handmade-hero / Jai-curious | cyrius-braid playable demo + knife article | Blow Twitch tip (if executed) + GitHub release + Steam Summer Sale ambient |
-| **Black Hat receipts** | ~2026-08-05 | security researchers | supply-chain sovereignty piece + kernel/kavach/sigil/phylax audit-ready receipts | Black Hat USA 2026 presence (talk / booth / paper / sponsor distribution) |
-| **DEF CON distribution** | ~2026-08-09+ | hacker/punk/builder | physical ISO + bumper-sticker-as-crypto-root | $5K sticker + SD card distribution budget; DEF CON presence |
+| **Beat 0.5 — Retro Games Day** | **2026-06-13 (Sat)** | indie game devs / retro / systems / *"can it run DOOM"* meme-audience | **cyrius-doom as the featured headline** (strongest portability signal; Carmack-lineage respect; *"AGNOS runs DOOM"* as the one-sentence pitch). Companions available same-day per each repo's readiness: cyrius-nba-jam, encom-hits, and **cyrius-bb v1.0** (50-year Breakout homage, quieter narrative slot) | Coordinated GitHub release bundle + Hacker News (*"can it run DOOM"* post is self-writing) + indie-gaming press + Steam Summer Sale lead-in ambient |
+| **Beat 1 — Summer solstice demo** | **2026-06-21 (Sun — solstice)** | indie game devs / handmade-hero / Jai-curious | **cyrius-braid v1.0** playable + knife article + AGNOS ISO boot demo + sit self-commit receipts | Blow Twitch tip (if executed) + GitHub release + Steam Summer Sale ambient + HN / Lobsters |
+| **Beat 2 — Black Hat receipts** | ~2026-08-05 | security researchers | supply-chain sovereignty piece + kernel/kavach/sigil/phylax audit-ready receipts | Black Hat USA 2026 presence (talk / booth / paper / sponsor distribution) |
+| **Beat 3 — DEF CON distribution** | ~2026-08-09+ | hacker/punk/builder | physical ISO + bumper-sticker-as-crypto-root | $5K sticker + SD card distribution budget; DEF CON presence |
 
-Each audience is warmer than the next in receptiveness and colder than the next in distribution-range. Correctly staged, June 21 sets up August — developers talk about Cyrius publicly, security researchers arrive at Black Hat already having heard of it, DEF CON attendees take ISOs home that they already know what to do with.
+**Sequencing rationale**: June 13 retro-games-drop is the warm-up wave — indie-game audience starts poking at Cyrius from a low-stakes accessible entry point (brick-breaker, DOOM, NBA Jam, ENCOM retro hits). 8 days of chatter builds ambient attention. June 21 solstice is the consolidation moment — cyrius-braid (the technical-depth prestige title) PLUS the broader sovereignty-stack demo (kernel boot, sit self-commit, sandhi / yantra). Developers who poked at the games on June 13 find the full OS story on June 21.
+
+Each audience is warmer than the next in receptiveness and colder than the next in distribution-range. Correctly staged, June 13 + June 21 set up August — developers talk about Cyrius publicly, security researchers arrive at Black Hat already having heard of it, DEF CON attendees take ISOs home that they already know what to do with.
 
 ---
 
@@ -72,6 +75,26 @@ Each audience is warmer than the next in receptiveness and colder than the next 
 - [ ] **Hacker News Show HN submission** — evening of June 21 UTC if donation-bomb executed + engagement seen; morning of June 22 UTC otherwise.
 - [ ] **Handmade Network community post** — natural audience overlap with Blow's viewership.
 - [ ] **Steam Summer Sale ambient** — Steam Summer Sale 2026 typically opens ~June 20–22; indie-game-audience attention is elevated that week. No Steam presence required; just timing-aware.
+
+---
+
+## Beat 1.5 — July/August supplementary game drops (between Beat 1 and Beat 2)
+
+**Shape**: "the library isn't stopping at Braid." Continuity-register — keeps attention warm through the gap between the June 21 solstice moment and the Black Hat / DEF CON pair in early-to-mid August. Each drop is a **LIGHT\*OCEAN\*STUDIOS** release under the Cyrius game-library banner.
+
+**Candidates (none committed to specific dates; priority-aligned only):**
+
+| Candidate | Genre slot | Release readiness notes |
+|-----------|-----------|------------------------|
+| **cyrius-super-plumber-bros** | 2.5D platformer with ragdoll | Nintendo-IP strictness adds review overhead; The Royals + Mouser + Facility Sub-Managers roster is strong. Character-art pass is the long pole. |
+| **cyrius-stellar-swarm** | Arcade fixed-shooter | Tight scope + moderate Namco-IP bar makes this the most feasible July drop. Private Alicia-favorite motivation adds personal stakes. |
+| **cyrius-sunset-drive** | Arcade coastal-racer | Three-music-track composition is the long pole (Yacht Rock + Smooth Jazz + Dance-Hi-Energy). Ferrari-excluded car design needs one creative pass. If music-commission workload compresses, this is a strong August slot. |
+
+**Sequencing rationale**: July and August are structurally similar — indie-game audience warm from Beat 1, not yet engaged in the security-register Black Hat / DEF CON cycle. A supplementary game drop every ~3 weeks keeps the library compounding rather than going dark through the 8-week gap. Priority decision on which (if any) drops in which slot is made at the time, based on which game's creative-work cycle is closest to complete.
+
+**Must land — none.** This beat is entirely optional. Beats 0.5 / 1 / 2 / 3 are the load-bearing moments; this is continuity bonus content. A quiet July + August is acceptable if the creative work isn't ready.
+
+**Cannot land — anything that cuts into Beat 2 (Black Hat receipts) or Beat 3 (DEF CON distribution) prep.** Game drops don't steal attention from the supply-chain article, kernel/kavach/sigil audit receipts, or ISO / sticker / SD-card production.
 
 ---
 
@@ -158,6 +181,7 @@ Each audience is warmer than the next in receptiveness and colder than the next 
 | X4 | [ ] **Social media channels** — at least Mastodon + Bluesky + HN / Lobsters participation | Not required for beats to land; required for post-beat engagement loops. |
 | X5 | [ ] **Agnoshi / hoosh demos** showing the LLM stack on the booted ISO | Differentiator: *"not just a sovereign OS, an AI-native sovereign OS."* Particularly important for DEF CON AI village. |
 | X6 | [ ] **Press outreach** — half-dozen targeted pitches (Hacker News via community, The New Stack, LWN.net, Phoronix, Ars Technica) timed around each beat | Earned-media coverage compounds the distribution arc. Skippable if budget/attention is tight. |
+| X7 | **Games as publicity mechanism** (load-bearing framing across the whole arc) | The retro titles (cyrius-doom, cyrius-nba-jam, cyrius-bb, cyrius-braid, encom-hits) **ARE** the public-facing publicity vehicle for Cyrius + AGNOS — not a secondary thing underneath a traditional PR campaign. Each port is a free, self-contained, organically-shareable demo of the Cyrius stack running real software; distribution of the games IS distribution of the stack. Zero marketing budget required; HN / Reddit / Twitter virality self-seeds through the specific titles (*"can it run DOOM"* writes the first post itself). Every game README → game knife article → sovereignty-thesis article → OS repo chain is pre-built. Consequence for the arc: when a beat's publicity tactic is listed as *"HN submission"* or *"indie gaming press,"* the submitted artifact is ideally a game link that lands on a repo where the OS + language + sovereignty thesis are one click away. This is the art-first-tour-optional discipline applied at campaign scale — the art (playable game) lands first, the tour (OS / language / receipts) is available but never gated behind. |
 
 ---
 
