@@ -69,7 +69,7 @@ AGNOS runs the same way. Every subsystem, every API surface, every deletion — 
 
 **The stance outlives the person.** The method — AQA, interrogation, refusal — is a mental discipline. Transmissible in principle. In practice it requires two preconditions the method doesn't supply: *freedom* (uninterrupted attention and autonomy to do the work) and *stubbornness* (willingness to keep interrogating when the comfortable answer appears, rather than accept the first plausible reason to stop). Without both, interrogators give up at the first real wall and inherit dead legacy anyway. Most sovereignty projects fail there — method understood, preconditions missing. The receipts so far are from one practitioner with both. The method is *designed to be* transmissible; empirical reproduction across practitioners is a pending claim, not a proven one.
 
-**Why this is the master frame.** §1 (Subtraction) is what refusal looks like in quantity. §9 (Reference Don't Mimic) is what refusal looks like at the architecture level. §5 (Library for Humanity) is refusal at project-scope. §4 (SSoT) is refusal at data-maintenance. §2 (Staged Optimization) is refusal across time. §10 (Happy Accidents) is refusal of forced wedges — which leaves room for incidental fits to emerge and compound. Every numbered pattern below is a refusal modality. This section names the move they share — and the interrogation stance that keeps it consistent.
+**Why this is the master frame.** §1 (Subtraction) is what refusal looks like in quantity. §9 (Reference Don't Mimic) is what refusal looks like at the architecture level. §5 (Library for Humanity) is refusal at project-scope. §4 (SSoT) is refusal at data-maintenance. §2 (Staged Optimization) is refusal across time. §10 (Happy Accidents) is refusal of forced wedges — which leaves room for incidental fits to emerge and compound. §11 (Discipline the Surface) is refusal at the prompt-context layer. Every numbered pattern below is a refusal modality. This section names the move they share — and the interrogation stance that keeps it consistent.
 
 **See also.** All of §1–§9 as instances; memory `project_refusal_as_architecture.md` for the practical framing, transmissibility preconditions, and design-for-self mechanism.
 
@@ -251,6 +251,29 @@ The inverse is the **forced wedge** failure mode: adding a subsystem because an 
 - Distinguish **happy accident** (emerged organically, fits, should be recognized) from **sloppy accident** (emerged because nobody thought about it, doesn't fit, should be cleaned up). The test is whether the thing is doing genuine structural work or just occupying space.
 
 **See also.** §0 (Refusal as Architecture — refusing forced wedges is the stance); §9 (Reference Don't Mimic — refusing the incumbent's shape leaves room for unexpected fits); the causal chain in [`philosophy.md`](philosophy.md) (AGNOS itself is the largest happy accident — SY pointing at missing floor, refusing to look away, and what emerged when each layer was noticed).
+
+---
+
+## 11. Discipline the Surface, Don't Multiply Layers
+
+**Pattern.** AGNOS treats prompt context as a layered surface — `CLAUDE.md` / `docs/development/state.md` / `~/.claude/.../memory/` / per-repo ADRs / `docs/`. Each layer has one job and a different lifecycle. When agent compliance drops, the move is structural cleanup at the existing surface — separation of concerns + active re-read at task boundaries — not bolting on another extension point.
+
+**Examples.**
+
+- **CLAUDE.md as preferences/process/procedures only.** Volatile state (versions, sizes, in-flight slots, recently-shipped lists) lives in `docs/development/state.md`, bumped by the release post-hook. CLAUDE.md reads the same across a whole minor series.
+- **`MEMORY.md` as one-line index.** Detail in linked files; the index itself stays under context-limit so it loads cleanly while detail loads on-trigger. Per-memory frontmatter (`name`, `description`, `type`) lets the agent decide relevance before reading the body.
+- **ADRs append-only per repo.** Supersession via new ADR rather than mutation. Each decision keeps its own paper. (sit/CLAUDE.md and cyrius/CLAUDE.md are the gold-standard scaffolds.)
+- **Slash commands as bundled re-read + workflow.** `/init` re-reads project structure before any new-project work; project-specific commands bundle the re-read into the workflow rather than relying on once-loaded context to govern the run.
+- **Hooks as automated re-read.** `settings.json` `PreToolUse` entries that re-inject the relevant slice of CLAUDE.md before specific tool-use events fire. Same effect as a human-prompted re-read, automated.
+- **Refused: plugin-as-fix.** When a meetup talk pitched *"build a plugin to tame Claude Code"* as the answer to the ~30% instruction-drop rate, AGNOS's response was: the 30% number is real, the failure modes are bloat / contradiction / absent re-read, all three are structural problems at the existing surface. A plugin adds another extension point with its own staleness window and attention budget. Refused.
+
+**Why.** Same shape as §0 and §9. The plugin is the multiplied layer; the surface is the existing layer. The ~30% failure mode the prompt-engineering industry is currently solving with extension points is bloat (collapse all five layers into CLAUDE.md), contradiction (volatile state inlined next to durable rules), or absent re-read (LLM attention is uneven; once-loaded context drifts as the conversation grows). All three respond to structural discipline at the layer that already exists. The plugin doesn't fix any of them; it just adds another layer that also gets skimmed.
+
+This is *Refusal as Architecture* applied to prompt engineering. The discipline isn't to refuse all tools — Claude Code itself is a tool. The discipline is to refuse *the multiplication of indirection layers* when the existing surface can do the job with structural work.
+
+**How to apply.** Triage any over-bloated CLAUDE.md against the five-layer surface: move volatile state out (→ `state.md`), move behavioral feedback out (→ memory), move per-decision archaeology out (→ ADRs), trim what's left, and prompt the re-read at task boundaries. The agent will not re-read unprompted; the prompt is the discipline.
+
+**See also.** [*Your CLAUDE.md Isn't Lying. You're Skimming.*](articles/your-claude-md-isnt-lying.md) (deep-dive); [*Docs Go Stale Before the Commit*](articles/docs-go-stale-before-the-commit.md) (the same drift dynamics one doc-layer over); memory: `feedback_claude_md_durable_state_external.md`. Pattern §0 (Refusal as Architecture — master frame) and §9 (Reference Don't Mimic — sibling refusal pattern at the implementation layer rather than the documentation layer).
 
 ---
 

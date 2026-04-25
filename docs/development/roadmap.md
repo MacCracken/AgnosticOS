@@ -81,8 +81,10 @@ the beat doesn't ship running software on the date, it slips to the
 next biweekly slot — the list tightens, doesn't move right.
 
 **Not in the cadence** (deliberately): Beta, v1.0, SY redesign,
-Phase 17–19 work, polymorphic codegen. Those remain on the Beta Q4
-2026 / v1.0 Q2 2027 track above.
+Phase 17–19 work. Those remain on the Beta Q4 2026 / v1.0 Q2 2027
+track above. (Polymorphic codegen previously listed here; slotted
+to Cyrius v5.13.x as of 2026-04-25 — see
+`cyrius/docs/development/roadmap.md`.)
 
 ---
 
