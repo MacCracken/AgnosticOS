@@ -2,12 +2,12 @@
 
 > **Rasayan** (Sanskrit: रसायन — alchemy, chemistry of life) — Biochemistry engine
 
-| Field | Value |
-|-------|-------|
-| Status | Pre-1.0 |
-| Version | `0.1.0` |
-| Repository | `MacCracken/rasayan` |
-| Runtime | library crate (Rust) |
+- **Version**: 1.0.0
+- **Repository**: [github.com/MacCracken/rasayan](https://github.com/MacCracken/rasayan)
+- **License**: GPL-3.0-only
+- **Status**: v1.0+ stable
+
+See the [shared-crates registry](../../development/applications/shared-crates.md) for full context and dependency graph.
 
 ---
 

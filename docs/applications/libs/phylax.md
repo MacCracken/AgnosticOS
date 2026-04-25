@@ -1,15 +1,13 @@
 # Phylax
 
-> **Phylax** (Greek: guardian/watchman) — AI-native threat detection engine
+> **Phylax** (Greek: guardian/watchman) — AI-native threat detection engine (Cyrius-native, ported)
 
-| Field | Value |
-|-------|-------|
-| Status | Released |
-| Version | `0.22.3` |
-| Repository | `MacCracken/phylax` |
-| Runtime | library crate (Rust) |
-| Recipe | `zugot/marketplace/phylax.toml` |
-| crates.io | N/A (not yet published) |
+- **Version**: 1.0.0
+- **Repository**: [github.com/MacCracken/phylax](https://github.com/MacCracken/phylax)
+- **License**: GPL-3.0-only
+- **Status**: v1.0+ stable
+
+See the [shared-crates registry](../../development/applications/shared-crates.md) for full context and dependency graph.
 
 ---
 
@@ -29,10 +27,6 @@
 
 ## Architecture
 
-- 5 crates: core (engine), rules (YARA), ml (classifier), scan (fanotify), mcp (tool interface)
-- Scan pipeline: magic bytes -> entropy -> YARA -> ML -> LLM triage
-- Dependencies: tokio, serde, hoosh (LLM triage)
-
-## Roadmap
-
-Pre-release — scaffolded at v0.1.0, core 15A done. Future: ClamAV signature import, network traffic scanning, threat intelligence feed ingestion.
+- 5 modules: core (engine), rules (YARA), ml (classifier), scan (fanotify), mcp (tool interface)
+- Scan pipeline: magic bytes → entropy → YARA → ML → LLM triage
+- Depends on hoosh for LLM triage

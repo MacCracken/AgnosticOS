@@ -2,12 +2,12 @@
 
 > **Mastishk** (Sanskrit: मस्तिष्क — brain) — Computational neuroscience
 
-| Field | Value |
-|-------|-------|
-| Status | Pre-1.0 |
-| Version | `0.1.0` |
-| Repository | `MacCracken/mastishk` |
-| Runtime | library crate (Rust) |
+- **Version**: 1.1.0
+- **Repository**: [github.com/MacCracken/mastishk](https://github.com/MacCracken/mastishk)
+- **License**: GPL-3.0-only
+- **Status**: v1.0+ stable
+
+See the [shared-crates registry](../../development/applications/shared-crates.md) for full context and dependency graph.
 
 ---
 
@@ -30,7 +30,7 @@ Neurotransmitter synthesis depends on metabolic precursors (tryptophan → serot
 
 ## Consumers
 
-- **bhava** — v1.8 neuroscience bridge (serotonin→mood, dopamine→preference, cortisol→stress, BDNF→plasticity)
+- **bhava** — neuroscience bridge (serotonin→mood, dopamine→preference, cortisol→stress, BDNF→plasticity)
 - **bodh** — cognitive performance models informed by neurotransmitter state
 - **kiran/joshua** — NPC brain chemistry for procedural personality
 - **agnosai** — agent cognitive modeling

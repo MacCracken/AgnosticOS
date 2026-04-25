@@ -2,14 +2,12 @@
 
 > **AgnosAI** (AGNOS + AI) — Provider-agnostic AI orchestration framework
 
-| Field | Value |
-|-------|-------|
-| Status | Released |
-| Version | `0.25.3` |
-| Repository | `MacCracken/agnosai` |
-| Runtime | library crate (Rust) |
-| Recipe | `zugot/marketplace/agnosai.toml` |
-| crates.io | [agnosai](https://crates.io/crates/agnosai) |
+- **Version**: 1.1.0
+- **Repository**: [github.com/MacCracken/agnosai](https://github.com/MacCracken/agnosai)
+- **License**: GPL-3.0-only
+- **Status**: v1.0+ stable
+
+See the [shared-crates registry](../../development/applications/shared-crates.md) for full context and dependency graph.
 
 ---
 
@@ -19,7 +17,7 @@
 - Task DAG execution with dependency resolution and parallel stages
 - Tool execution framework with sandboxed invocation
 - Fleet distribution for spreading crews across nodes
-- CrewAI replacement written in pure Rust for the AGNOS ecosystem
+- CrewAI replacement for the AGNOS ecosystem
 
 ## Consumers
 
@@ -31,8 +29,4 @@
 
 - Crew/Task/Tool abstraction layers with trait-based extensibility
 - DAG scheduler with topological sort and cycle detection
-- Dependencies: tokio, serde, hoosh (LLM calls)
-
-## Roadmap
-
-Stable — published on crates.io. Future: streaming task results, crew checkpointing and resume, cost estimation per crew run.
+- Depends on hoosh for LLM calls

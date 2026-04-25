@@ -1,18 +1,17 @@
 # Shared Crates — Registry & Status
 
-> **Status**: Active | **Last Updated**: 2026-04-23
+> **Status**: Active | **Last Updated**: 2026-04-25
 >
-> **106 crates** — 74 at v1.0+ stable, 19 pre-1.0, 8 scaffolded/planned, 8 Cyrius-native, 1 internal, 2 non-library
+> **107 entries** — 80 at v1.0+ stable (74 libs + 5 binaries + 1 stdlib-folded), 20 pre-1.0 libs, 9 pre-1.0 binaries/tools, 10 non-library, 3 planned, plus the Audio I/O / Video Codec / GitHub-only sub-sections (overlap with the v1.0+/pre-1.0 counts above where applicable).
 >
-> v1.0+ crate documentation lives in [docs/applications/libs/](../../applications/libs/).
-> Pre-1.0 crates tracked in [development/applications/](README.md).
+> **Classification rule**: pre-v1.0 crates are tracked in [`docs/development/applications/`](README.md). v1.0+ stable crates have their docs in [`docs/applications/libs/`](../../applications/libs/) (libraries) or [`docs/applications/`](../../applications/) (consumer apps).
 > See [First-Party Standards](first-party-standards.md) for versioning and publishing conventions.
 
 ---
 
-## v1.0+ Stable Index (74 crates)
+## v1.0+ Stable Index (80 entries)
 
-Full documentation for each crate: [docs/applications/libs/](../../applications/libs/README.md)
+Full documentation for each library: [docs/applications/libs/](../../applications/libs/README.md). Consumer apps live one level up at [docs/applications/](../../applications/README.md).
 
 ### OS & Infrastructure (23 crates)
 
@@ -30,16 +29,16 @@ Full documentation for each crate: [docs/applications/libs/](../../applications/
 | mabda | 2.5.0 | GPU foundation |
 | majra | 2.4.1 | Queue/pub-sub |
 | nein | 1.0.0 | Programmatic nftables firewall |
-| patra | 1.5.5 | Structured storage & SQL — B+ tree, WAL (Cyrius-native) |
+| patra | 1.8.3 | Structured storage & SQL — B+ tree, WAL (Cyrius-native) |
 | phylax | 1.0.0 | Threat detection — YARA, entropy, magic bytes, ML |
 | sakshi | 2.1.0 | Tracing, error handling, structured logging (Cyrius-native) |
-| sankoch | 2.0.1 | Lossless compression — LZ4, DEFLATE, zlib, gzip |
-| sigil | 2.9.1 | Trust verification & crypto |
+| sankoch | 2.1.0 | Lossless compression — LZ4, DEFLATE, zlib, gzip |
+| sigil | 2.9.3 | Trust verification & crypto — AES-NI + SHA-NI hardware accel |
 | soorat | 1.0.0 | GPU rendering |
 | stiva | 2.0.0 | Container runtime |
 | szal | 1.1.0 | Workflow engine |
 | t-ron | 2.0.0 | MCP security |
-| vidya | 2.2.0 | Programming reference |
+| vidya | 2.3.0 | Programming reference |
 | yukti | 2.1.1 | Device abstraction (USB, block, udev) |
 
 ### Science & Knowledge (27 crates)
@@ -118,9 +117,25 @@ Full documentation for each crate: [docs/applications/libs/](../../applications/
 | tanmatra | 1.2.1 | Atomic physics |
 | ushma | 1.3.0 | Thermodynamics |
 
+### Binaries & Tools (5 crates)
+
+| Crate | Version | Domain |
+|-------|---------|--------|
+| [agnoshi](https://github.com/MacCracken/agnoshi) | 1.0.0 | AI shell (Cyrius) — depends on hoosh, daimon |
+| [argonaut](https://github.com/MacCracken/argonaut) | 1.2.0 | Init system library (Cyrius) — depends on agnosys |
+| [kybernet](https://github.com/MacCracken/kybernet) | 1.0.1 | PID 1 init binary (486KB, Cyrius, 140 tests) — depends on argonaut |
+| [nous](https://github.com/MacCracken/nous) | 1.1.1 | Package resolver (Cyrius) |
+| [owl](https://github.com/MacCracken/owl) | 1.1.4 | Watchful file viewer — `cat`/`bat` replacement (Cyrius-native, **O**bservant **W**atcher of **L**ines). `-p` byte-identical cat drop-in; decorated mode adds token highlighting + VCS gutter + paging. Consumes vyakarana for tokenization. |
+
+### Stdlib-Folded (1 crate)
+
+| Crate | Version | Domain |
+|-------|---------|--------|
+| [sandhi](https://github.com/MacCracken/sandhi) | 1.0.0 | Service-boundary layer (HTTP client+server, HTTP/2, streaming, JSON-RPC, service discovery, TLS policy). **Folded into Cyrius stdlib at v5.7.0** as `lib/sandhi.cyr` (vendored byte-identical, 376,037 B / 9,649 lines / 469 fns). Sandhi repo entered maintenance mode per [ADR 0002](https://github.com/MacCracken/sandhi/blob/main/docs/adr/0002-clean-break-fold-at-cyrius-v5-7-0.md); subsequent surface patches land via Cyrius release cycle. |
+
 ---
 
-## Pre-1.0 (19 crates)
+## Pre-1.0 (20 crates)
 
 ### Near-Stable (v0.5.0+)
 
@@ -150,20 +165,16 @@ Full documentation for each crate: [docs/applications/libs/](../../applications/
 | [kshetra](https://github.com/MacCracken/kshetra) | 0.1.0 | Temporal geography — spatiotemporal database | itihas, badal, khanij, vanaspati |
 | [leela](https://github.com/MacCracken/leela) | 0.1.0 | Sport — rules, athletes, tournaments, records | hadara, itihas, avatara, jnana |
 | [nyaya](https://github.com/MacCracken/nyaya) | 0.1.0 | Structured legal knowledge — statutes, precedents, IP | trump_epstein, hadara, itihas, jnana |
+| [sit](https://github.com/MacCracken/sit) | 0.7.1 | Sovereign version control — Cyrius-native git replacement (smriti, स्मृति — memory). Deps: sankoch (compression), sigil (hashing), patra (object store). No libgit2, no C, no FFI. | end user, owl (git-marker integration), ark |
 
 ---
 
-## System Binaries & Tools (pre-1.0)
+## Binaries & Tools (pre-1.0, 9 entries)
 
 | Binary | Version | Description | Depends On |
 |--------|---------|-------------|------------|
-| [kybernet](https://github.com/MacCracken/kybernet) | 1.0.1 | PID 1 init binary (486KB, Cyrius, 140 tests) | argonaut |
-| [argonaut](https://github.com/MacCracken/argonaut) | 1.2.0 | Init system library (Cyrius) | agnosys |
-| [agnoshi](https://github.com/MacCracken/agnoshi) | 1.0.0 | AI shell (Cyrius) | hoosh, daimon |
-| [owl](https://github.com/MacCracken/owl) | 1.0.0 | Watchful file viewer — `cat`/`bat` replacement (Cyrius-native, **O**bservant **W**atcher of **L**ines). `-p` byte-identical cat drop-in; decorated mode adds token highlighting + VCS gutter + paging. Consumes vyakarana for tokenization. | end user, agnoshi |
 | [shakti](https://github.com/MacCracken/shakti) | 0.2.2 | Privilege escalation (`sudo` replacement) | agnosys, sigil |
 | [ark](https://github.com/MacCracken/ark) | 0.8.0 | Package manager (Cyrius) | nous, sigil |
-| [nous](https://github.com/MacCracken/nous) | 1.1.1 | Package resolver (Cyrius) | — |
 | [takumi](https://github.com/MacCracken/takumi) | 0.8.0 | Build system — Cyrius port in progress (toolchain pinned 5.5.23; `rust-old/` authoritative until parity) | sigil |
 | [aegis](https://github.com/MacCracken/aegis) | 0.1.0 | Security daemon | sigil, phylax |
 | [aethersafha](https://github.com/MacCracken/aethersafha) | 0.1.0 | Wayland compositor | aethersafta, mabda |
@@ -231,7 +242,6 @@ Sovereign video codecs — no C, no FFI, no libav*. Each codec is a standalone c
 | **krishi** | Agriculture — crop science, soil, irrigation, yield modeling (Sanskrit: कृषि) | vanaspati, badal, kimiya, kshetra |
 | **prakriti** | Ecology — ecosystem modeling, food webs, biodiversity (Sanskrit: प्रकृति) | jantu, vanaspati, badal, jivanu |
 | **cyim** | Sovereign text editor — Cyrius-native, VIM-inspired, zero attack surface | agnoshi, aethersafha |
-| **sit** | Sovereign version control — Cyrius-native git replacement (smriti, स्मृति — memory). Deps: sankoch (compression), sigil (hashing), patra (object store). No libgit2, no C, no FFI. | end user, owl (git-marker integration), ark |
 
 ---
 
@@ -249,4 +259,4 @@ See [k8s-roadmap.md](../vision/architecture/k8s-roadmap.md) for stiva + nein + m
 
 ---
 
-*Last Updated: 2026-04-23*
+*Last Updated: 2026-04-25*

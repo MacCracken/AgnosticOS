@@ -2,14 +2,12 @@
 
 > **Dhvani** (Sanskrit: sound) — Core audio engine
 
-| Field | Value |
-|-------|-------|
-| Status | Released |
-| Version | `0.22.4` |
-| Repository | `MacCracken/dhvani` |
-| Runtime | library crate (Rust) |
-| Recipe | `zugot/marketplace/dhvani.toml` |
-| crates.io | [dhvani](https://crates.io/crates/dhvani) |
+- **Version**: 1.1.0
+- **Repository**: [github.com/MacCracken/dhvani](https://github.com/MacCracken/dhvani)
+- **License**: GPL-3.0-only
+- **Status**: v1.0+ stable
+
+See the [shared-crates registry](../../development/applications/shared-crates.md) for full context and dependency graph.
 
 ---
 
@@ -32,8 +30,3 @@
 
 - Core audio buffer types with generic sample formats (f32, i16, i24)
 - Lock-free ring buffers for real-time audio threads
-- Dependencies: serde, symphonia (codec support)
-
-## Roadmap
-
-Stable — published on crates.io. Future: spatial audio (HRTF), VST3/CLAP plugin hosting bridge, PipeWire native backend.

@@ -2,12 +2,12 @@
 
 > **Jivanu** (Hindi: जीवाणु — microbe, bacterium) — Microbiology and microbial sciences
 
-| Field | Value |
-|-------|-------|
-| Status | Planned |
-| Version | `0.1.0` |
-| Repository | `MacCracken/jivanu` |
-| Runtime | library crate (Rust) |
+- **Version**: 1.0.0
+- **Repository**: [github.com/MacCracken/jivanu](https://github.com/MacCracken/jivanu)
+- **License**: GPL-3.0-only
+- **Status**: v1.0+ stable
+
+See the [shared-crates registry](../../development/applications/shared-crates.md) for full context and dependency graph.
 
 ---
 

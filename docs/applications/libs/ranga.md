@@ -2,14 +2,12 @@
 
 > **Ranga** (Sanskrit: color) — Core image processing library
 
-| Field | Value |
-|-------|-------|
-| Status | Released |
-| Version | `0.24.3` |
-| Repository | `MacCracken/ranga` |
-| Runtime | library crate (Rust) |
-| Recipe | `zugot/marketplace/ranga.toml` |
-| crates.io | [ranga](https://crates.io/crates/ranga) |
+- **Version**: 1.0.0
+- **Repository**: [github.com/MacCracken/ranga](https://github.com/MacCracken/ranga)
+- **License**: GPL-3.0-only
+- **Status**: v1.0+ stable
+
+See the [shared-crates registry](../../development/applications/shared-crates.md) for full context and dependency graph.
 
 ---
 
@@ -29,10 +27,6 @@
 
 ## Architecture
 
-- Pure Rust core with optional GPU compute backend
+- Pure-language core with optional GPU compute backend
 - Generic over pixel type for zero-copy interop
-- Dependencies: serde, ai-hwaccel (optional)
-
-## Roadmap
-
-Stable — published on crates.io. Future: HDR/wide-gamut support, SIMD-optimized filter kernels, ICC profile handling.
+- Optional dependency on ai-hwaccel
