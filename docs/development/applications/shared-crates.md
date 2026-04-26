@@ -169,7 +169,7 @@ Full documentation for each library: [docs/applications/libs/](../../application
 
 ---
 
-## Binaries & Tools (pre-1.0, 9 entries)
+## Binaries & Tools (pre-1.0, 10 entries)
 
 | Binary | Version | Description | Depends On |
 |--------|---------|-------------|------------|
@@ -182,6 +182,7 @@ Full documentation for each library: [docs/applications/libs/](../../application
 | [agnova](https://github.com/MacCracken/agnova) | 0.1.0 | OS installer | ark, kavach |
 | [seema](https://github.com/MacCracken/seema) | 0.1.0 | Edge fleet management | daimon, bote |
 | [samay](https://github.com/MacCracken/samay) | 0.1.0 | Task scheduler | szal |
+| [cyim](https://github.com/MacCracken/cyim) | 0.1.0 | Sovereign modal text editor (VIM-inspired, zero attack surface, no embedded scripting). Consumers: agnoshi, aethersafha, daimon-orchestrated agents (the AI-agent edit loop closes through cyim). | vyakarana (M2+) |
 
 ---
 
@@ -241,7 +242,6 @@ Sovereign video codecs — no C, no FFI, no libav*. Each codec is a standalone c
 |-------|-------------|---------------|
 | **krishi** | Agriculture — crop science, soil, irrigation, yield modeling (Sanskrit: कृषि) | vanaspati, badal, kimiya, kshetra |
 | **prakriti** | Ecology — ecosystem modeling, food webs, biodiversity (Sanskrit: प्रकृति) | jantu, vanaspati, badal, jivanu |
-| **cyim** | Sovereign text editor — Cyrius-native, VIM-inspired, zero attack surface | agnoshi, aethersafha |
 
 ---
 

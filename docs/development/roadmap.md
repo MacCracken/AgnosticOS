@@ -341,7 +341,7 @@ All subsystems are standalone repos at `/home/macro/Repos/{name}/`.
 | **agnova** | OS installer | `MacCracken/agnova` | 0.1.0 | Pending |
 | **seema** | Edge fleet management | `MacCracken/seema` | 0.1.0 | Pending |
 | **samay** | Task scheduler | `MacCracken/samay` | 0.1.0 | Pending |
-| **cyim** | Sovereign text editor (VIM-inspired) | — | — | Planned — consumer of vyakarana |
+| **cyim** | Sovereign text editor (VIM-inspired) | `MacCracken/cyim` | 0.1.0 | **Scaffolded** 2026-04-25 — M0 ships, vyakarana consumer at M2 |
 | **bazaar** | Community package repo | `MacCracken/bazaar` | — | — |
 
 ### Cross-Cutting Concerns
