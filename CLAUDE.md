@@ -6,7 +6,7 @@
 
 - **Type**: Genesis repository — meta, build wrapper, documentation
 - **License**: GPL-3.0-only
-- **Version**: CalVer `2026.4.14` (YYYY.M.D, patches as `-N`)
+- **Version**: CalVer `2026.4.25` (YYYY.M.D, patches as `-N`)
 - **Version file**: `VERSION` at repo root (single source of truth)
 - **Language**: Cyrius (sovereign systems language, 29KB seed, zero external deps)
 - **Status**: Pre-Beta — kernel 1.22.0 shipped (260KB, 33 subsystems), boot pipeline active, ISO assembly in progress
@@ -24,7 +24,7 @@ This repo is the **genesis layer** — meta, narrative, and the infrastructure t
 
 **Does NOT own (extracted):**
 - **AGNOS kernel** → `agnos` repo (v1.22.0, 260KB, Cyrius-native)
-- **Cyrius compiler** → `cyrius` repo (v5.5.27, self-hosting from 29KB seed)
+- **Cyrius compiler** → `cyrius` repo (v5.7.12, self-hosting from 29KB seed)
 - **Recipes** → `zugot` repo (421 base + 90 bazaar recipes)
 - **Production code** → 130+ standalone repos under `/home/macro/Repos/{name}/`
 - **Old userland/** — monolith fully dismantled 2026-04-01. No Cargo workspace remains.
@@ -34,20 +34,20 @@ This repo is the **genesis layer** — meta, narrative, and the infrastructure t
 | Subsystem | Version | Role | Port Status |
 |-----------|---------|------|-------------|
 | **agnos** | 1.22.0 | AGNOS kernel (260KB, 33 subsystems, 26 syscalls) | **Native** |
-| **cyrius** | 5.5.27 | Sovereign compiler + stdlib + toolchain | **Native** |
+| **cyrius** | 5.7.12 | Sovereign compiler + stdlib + toolchain | **Native** |
 | **zugot** | — | Recipe repository (all takumi build recipes) | — |
-| **agnostik** | 0.97.1 | Shared types, domain primitives | **Ported** |
-| **agnosys** | 1.0.0 | Kernel interface (Landlock, seccomp, syscalls) | **Ported** |
+| **agnostik** | 1.0.1 | Shared types, domain primitives | **Ported** |
+| **agnosys** | 1.0.2 | Kernel interface (Landlock, seccomp, syscalls) | **Ported** |
 | **kybernet** | 1.0.1 | PID 1 binary (486KB, 140 tests, 46 benchmarks) | **Ported** |
-| **argonaut** | 1.2.0 | Init system library | **Ported** |
-| **sigil** | 2.9.0 | Trust/crypto boundary | **Ported** |
+| **argonaut** | 1.4.0 | Init system library | **Ported** |
+| **sigil** | 2.9.3 | Trust/crypto boundary | **Ported** |
 | **libro** | 2.0.5 | Cryptographic audit chain | **Ported** |
 | **hoosh** | 2.0.0 | LLM inference gateway (474KB, 15 providers) | **Ported** |
 | **avatara** | 2.3.0 | Divine archetype overlay (2,761× faster cached) | **Ported** |
 | **ai-hwaccel** | 2.0.0 | GPU detection (217KB, 518 tests) | **Ported** |
 | **hadara** | 1.0.0 | Culture modeling (50 cultures, Cyrius-native) | **Native** |
 | **shravan** | 2.3.2 | Audio codecs | **Ported** |
-| **mabda** | 2.4.1 | GPU foundation (folded into Cyrius stdlib) | **Ported** |
+| **mabda** | 2.5.0 | GPU foundation (folded into Cyrius stdlib) | **Ported** |
 | **daimon** | 1.1.1 | Agent orchestrator, 144 MCP tools | **Ported** |
 | **agnoshi** | 1.0.0 | AI shell | **Ported** |
 | **aethersafha** | 0.1.0 | Wayland compositor | Pending |
@@ -64,9 +64,10 @@ This repo is the **genesis layer** — meta, narrative, and the infrastructure t
 | **itihas** | 2.2.0 | History/versioning | **Ported** |
 | **bsp** | 1.1.2 | BSP geometry library (waiting on Cyrius 5.6.x optimization arc) | **Ported** |
 | **cyrius-doom** | 0.26.1 | DOOM engine in Cyrius (waiting on Cyrius 5.6.x optimization arc) | **Native** |
-| **sankoch** | 2.0.0 | Lossless compression (LZ4, DEFLATE, zlib, gzip) | **Ported** |
+| **sankoch** | 2.1.0 | Lossless compression (LZ4, DEFLATE, zlib, gzip) | **Ported** |
 | **bhava** | 2.0.0 | Emotion/sentiment modeling | Pending port |
-| **hisab** | 2.2.0 | Accounting/calculation | **Ported** |
+| **hisab** | 2.2.2 | Accounting/calculation | **Ported** |
+| **agnova** | 0.1.0 | OS installer (Cyrius port from 3,656 Rust lines, base established) | **Ported** |
 
 ## Development Process
 
@@ -120,7 +121,7 @@ cyrius build src/boot.cyr build/boot
 **Deps are declared in `scripts/cyrius.cyml`** — do NOT manually include stdlib.
 Source files only need project includes (`src/types.cyr` etc.).
 
-**Current Cyrius release:** 5.5.27 (see `cyrius/VERSION`). Toolchain pinned in `scripts/cyrius.cyml` `cyrius = "5.5.27"` — manifest is single source of truth (no separate `.cyrius-toolchain` file).
+**Current Cyrius release:** see `cyrius/VERSION` (verify at session start; v5.7.x patch series active). Toolchain pinned in `scripts/cyrius.cyml` via the `cyrius = "<version>"` field — manifest is single source of truth (no separate `.cyrius-toolchain` file).
 
 ## Documentation Structure
 

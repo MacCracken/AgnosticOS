@@ -1,27 +1,28 @@
 # Shared Crates — Registry & Status
 
-> **Status**: Active | **Last Updated**: 2026-04-25
+> **Status**: Active | **Last Updated**: 2026-04-27
 >
-> **107 entries** — 80 at v1.0+ stable (74 libs + 5 binaries + 1 stdlib-folded), 20 pre-1.0 libs, 9 pre-1.0 binaries/tools, 10 non-library, 3 planned, plus the Audio I/O / Video Codec / GitHub-only sub-sections (overlap with the v1.0+/pre-1.0 counts above where applicable).
+> **107 entries** — 82 at v1.0+ stable (75 libs + 6 binaries + 1 stdlib-folded), 19 pre-1.0 libs, 8 pre-1.0 binaries/tools, 10 non-library, 3 planned, plus the Audio I/O / Video Codec / GitHub-only sub-sections (overlap with the v1.0+/pre-1.0 counts above where applicable).
 >
 > **Classification rule**: pre-v1.0 crates are tracked in [`docs/development/applications/`](README.md). v1.0+ stable crates have their docs in [`docs/applications/libs/`](../../applications/libs/) (libraries) or [`docs/applications/`](../../applications/) (consumer apps).
 > See [First-Party Standards](first-party-standards.md) for versioning and publishing conventions.
 
 ---
 
-## v1.0+ Stable Index (80 entries)
+## v1.0+ Stable Index (82 entries)
 
 Full documentation for each library: [docs/applications/libs/](../../applications/libs/README.md). Consumer apps live one level up at [docs/applications/](../../applications/README.md).
 
-### OS & Infrastructure (23 crates)
+### OS & Infrastructure (24 crates)
 
 | Crate | Version | Domain |
 |-------|---------|--------|
 | agnosai | 1.1.0 | AI orchestration |
-| agnosys | 1.0.0 | Kernel interface — Landlock, seccomp, syscall bindings (Cyrius) |
+| agnostik | 1.0.1 | Shared types & domain primitives (Cyrius, GitHub-release only) — foundation for all AGNOS crates |
+| agnosys | 1.0.2 | Kernel interface — Landlock, seccomp, syscall bindings (Cyrius, GitHub-release only) |
 | ai-hwaccel | 2.0.0 | GPU detection |
 | bote | 2.5.1 | MCP core (~5us/message, streamable HTTP) |
-| daimon | 1.1.1 | Agent orchestrator (144 MCP tools) |
+| daimon | 1.1.1 | Agent orchestrator (144 MCP tools, GitHub-release only) |
 | hoosh | 2.0.0 | LLM gateway (15 providers) |
 | ifran | 1.3.0 | LLM inference/training |
 | kavach | 3.0.0 | Sandbox execution |
@@ -29,7 +30,7 @@ Full documentation for each library: [docs/applications/libs/](../../application
 | mabda | 2.5.0 | GPU foundation |
 | majra | 2.4.1 | Queue/pub-sub |
 | nein | 1.0.0 | Programmatic nftables firewall |
-| patra | 1.8.3 | Structured storage & SQL — B+ tree, WAL (Cyrius-native) |
+| patra | 1.9.0 | Structured storage & SQL — B+ tree, WAL (Cyrius-native) |
 | phylax | 1.0.0 | Threat detection — YARA, entropy, magic bytes, ML |
 | sakshi | 2.1.0 | Tracing, error handling, structured logging (Cyrius-native) |
 | sankoch | 2.1.0 | Lossless compression — LZ4, DEFLATE, zlib, gzip |
@@ -55,7 +56,7 @@ Full documentation for each library: [docs/applications/libs/](../../application
 | dravya | 1.2.0 | Material science |
 | falak | 1.0.0 | Orbital mechanics |
 | hadara | 1.0.0 | Culture modeling (Cyrius-native, 50 cultures) |
-| hisab | 2.2.0 | Higher math |
+| hisab | 2.2.2 | Higher math |
 | hisab-mimamsa | 1.0.0 | Theoretical physics |
 | itihas | 2.2.0 | World history |
 | jantu | 1.1.0 | Ethology/behavior |
@@ -117,15 +118,16 @@ Full documentation for each library: [docs/applications/libs/](../../application
 | tanmatra | 1.2.1 | Atomic physics |
 | ushma | 1.3.0 | Thermodynamics |
 
-### Binaries & Tools (5 crates)
+### Binaries & Tools (6 crates)
 
 | Crate | Version | Domain |
 |-------|---------|--------|
 | [agnoshi](https://github.com/MacCracken/agnoshi) | 1.0.0 | AI shell (Cyrius) — depends on hoosh, daimon |
-| [argonaut](https://github.com/MacCracken/argonaut) | 1.2.0 | Init system library (Cyrius) — depends on agnosys |
+| [argonaut](https://github.com/MacCracken/argonaut) | 1.4.0 | Init system library (Cyrius) — depends on agnosys |
+| [cyim](https://github.com/MacCracken/cyim) | 1.1.3 | Sovereign modal text editor (Cyrius-native, VIM-inspired, zero attack surface, no embedded scripting). Consumes vyakarana; consumers: agnoshi, aethersafha, daimon-orchestrated agents (the AI-agent edit loop closes through cyim). |
 | [kybernet](https://github.com/MacCracken/kybernet) | 1.0.1 | PID 1 init binary (486KB, Cyrius, 140 tests) — depends on argonaut |
 | [nous](https://github.com/MacCracken/nous) | 1.1.1 | Package resolver (Cyrius) |
-| [owl](https://github.com/MacCracken/owl) | 1.1.4 | Watchful file viewer — `cat`/`bat` replacement (Cyrius-native, **O**bservant **W**atcher of **L**ines). `-p` byte-identical cat drop-in; decorated mode adds token highlighting + VCS gutter + paging. Consumes vyakarana for tokenization. |
+| [owl](https://github.com/MacCracken/owl) | 1.1.6 | Watchful file viewer — `cat`/`bat` replacement (Cyrius-native, **O**bservant **W**atcher of **L**ines). `-p` byte-identical cat drop-in; decorated mode adds token highlighting + VCS gutter + paging. Consumes vyakarana for tokenization. |
 
 ### Stdlib-Folded (1 crate)
 
@@ -135,13 +137,12 @@ Full documentation for each library: [docs/applications/libs/](../../application
 
 ---
 
-## Pre-1.0 (20 crates)
+## Pre-1.0 (19 crates)
 
 ### Near-Stable (v0.5.0+)
 
 | Crate | Version | Description | Key Consumers |
 |-------|---------|-------------|---------------|
-| [agnostik](https://github.com/MacCracken/agnostik) | 0.97.1 | Shared types & domain primitives (Cyrius, GitHub-release only) | all AGNOS crates |
 | [aethersafta](https://github.com/MacCracken/aethersafta) | 0.50.0 | Media compositing — scene graph, capture, HW encoding | aethersafha, tazama |
 | [jnana](https://github.com/MacCracken/jnana) | 0.5.0 | Unified knowledge system — offline-accessible corpus | agnoshi, hoosh, daimon |
 
@@ -169,7 +170,7 @@ Full documentation for each library: [docs/applications/libs/](../../application
 
 ---
 
-## Binaries & Tools (pre-1.0, 10 entries)
+## Binaries & Tools (pre-1.0, 9 entries)
 
 | Binary | Version | Description | Depends On |
 |--------|---------|-------------|------------|
@@ -179,10 +180,9 @@ Full documentation for each library: [docs/applications/libs/](../../application
 | [aegis](https://github.com/MacCracken/aegis) | 0.1.0 | Security daemon | sigil, phylax |
 | [aethersafha](https://github.com/MacCracken/aethersafha) | 0.1.0 | Wayland compositor | aethersafta, mabda |
 | [mela](https://github.com/MacCracken/mela) | 0.1.0 | Agent marketplace | daimon, sigil |
-| [agnova](https://github.com/MacCracken/agnova) | 0.1.0 | OS installer | ark, kavach |
+| [agnova](https://github.com/MacCracken/agnova) | 0.1.0 | OS installer (Cyrius port from 3,656 Rust lines, base established) | ark, kavach |
 | [seema](https://github.com/MacCracken/seema) | 0.1.0 | Edge fleet management | daimon, bote |
 | [samay](https://github.com/MacCracken/samay) | 0.1.0 | Task scheduler | szal |
-| [cyim](https://github.com/MacCracken/cyim) | 0.1.0 | Sovereign modal text editor (VIM-inspired, zero attack surface, no embedded scripting). Consumers: agnoshi, aethersafha, daimon-orchestrated agents (the AI-agent edit loop closes through cyim). | vyakarana (M2+) |
 
 ---
 
@@ -200,14 +200,6 @@ Full documentation for each library: [docs/applications/libs/](../../application
 | [cyrius-sunset-drive](https://github.com/MacCracken/cyrius-sunset-drive) | 0.1.0 | 2.5D arcade coastal-racer (homage to *Outrun*, Sega / Yu Suzuki 1986 — reimplementation from observation). Pick-a-route + pick-a-track signature mechanics. Initial routes: Sunset Drive / Coastal Run / Ridgeline. Initial music selects: Yacht Rock / Smooth Jazz / Dance-Hi-Energy. Original convertible-coupe car (NOT a Ferrari Testarossa — Sega-IP moderate + Ferrari IP hard-excluded). | standalone game |
 | [cyrius-grapevine](https://github.com/MacCracken/cyrius-grapevine) | 0.1.0 | 2.5D cozy meta-casual vineyard sim. Genre-synthesis of *My Vineyard* (Metaplace, 2010) + *Animal Crossing* (Nintendo, 2001) + *Stardew Valley* (ConcernedApe, 2016). First cozy-sim slot in the library. Vineyard-focused (grapes + 2-3 crops max), 8-12 Stardew-grade NPCs with schedules and dialogue, real-time seasonal rhythm, four seasonal festivals. **Trusted-pair multiplayer co-op as M3 core scope** (not stretch) — async-visit + real-time co-op via sandhi networking. Hard rules: no combat / mining / dungeons / bachelor-catalog. Save-format versioned from day one (players invest years). Three-tier distinctiveness bar: Nintendo-strict on AC-adjacent / Metaplace-defunct-relaxed / ConcernedApe-respect on Stardew-adjacent. | standalone game |
 | [cyrius-chellys-beach-adventure](https://github.com/MacCracken/cyrius-chellys-beach-adventure) | 0.1.0 | 2.5D cascade-reel slot machine in Cyrius. **B2B commercial-platform-demo** designed to pitch Cyrius as secure, sovereign gaming-industry OS to Konami / IGT / Scientific Games / Light & Wonder / Aristocrat. Original game (not homage); slot mechanics are industry-convention used freely. **Column-cascade Wild** (entire column cascades on wild, not tile-cascade) as signature mechanical twist. Warm golden-hour beach theme. Characters Chelly (Black Bichpoo) and Mykala (GSD/Chow mix). Technical arguments: **provable-fair RNG native via sigil** (not bolted on), byte-identical cross-platform reproducible builds, small attack surface, kavach game-isolation. RTP 94-96% industry-standard validated via abaco. Not a consumer retail game; not a certified slot (certification post-manufacturer-commit). | B2B platform demo |
-
----
-
-## GitHub Release Only (internal)
-
-| Crate | Version | Description |
-|-------|---------|-------------|
-| [agnostik](https://github.com/MacCracken/agnostik) | 0.97.1 | Shared types and domain primitives for AGNOS (Cyrius) |
 
 ---
 
@@ -259,4 +251,4 @@ See [k8s-roadmap.md](../vision/architecture/k8s-roadmap.md) for stiva + nein + m
 
 ---
 
-*Last Updated: 2026-04-25*
+*Last Updated: 2026-04-27*
