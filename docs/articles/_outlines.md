@@ -253,63 +253,68 @@ OpenSSL (via `dynlib` to `libssl.so.3` / `libcrypto.so.3`) was the last FFI brid
 
 ---
 
-## 5. cyrius-braid knife article — *the JBlow-on-JBlow homage*
+## 5. *Brynn's Tale* launch article — *original mythic-modern game shipped on a sovereign stack*
 
-**Status**: outline | **Trigger**: `cyrius-braid` v1.0 (playable end-to-end, all worlds, art pass done)
+**Status**: outline | **Trigger**: `cyrius-brynns-tale` Beat 1 demo (Act 1 World 1 playable end-to-end; v0.3.0 milestone; ~2026-06-21 solstice). Full v1.0 launch article comes later when all three acts ship; this Beat 1 article is the *demo* article.
 
-### Provisional title (unlocked, options)
+> **Pivot context** (2026-04-26): this slot was previously *"Braid in Cyrius: a homage to the sovereign stance"* — a JBlow-on-JBlow gesture tied to the cyrius-braid Braid-reimplementation framing. On 2026-04-26 the project pivoted to original IP (*Brynn's Tale*); the article slot pivots with it. The article is no longer about Braid or Blow — it is about *Brynn's Tale* on its own terms (mythic-modern register, three-act diptych-becoming-triptych, mechanic-as-narrative-form). The sovereignty-stack / sovereign-language receipt argument carries forward; the homage framing does not.
 
-- *"Braid in Cyrius: a homage to the sovereign stance, from a stack that shipped first"*
-- *"The Most Respectful Undermining in Software"*
-- *"Braid-in-Cyrius"* — minimalist
-- *"What 18 Years Buys You"* — 2008 Braid → 2026 Cyrius rebuild
+### Provisional titles (unlocked, options)
+
+- *"Brynn's Tale: a mythic-modern game on a sovereign stack"*
+- *"What Mechanic-as-Narrative Looks Like Without Engine Drag"*
+- *"How a 1.5-Person Team Shipped Six Time Mechanics in Cyrius"*
+- *"The Time Mechanic Is the Storytelling Form"* — design-thesis-forward
+- *"Brynn's Tale, Beat 1: First Act Playable"* — demo-launch literal
 
 ### Headline thesis direction
 
-Jonathan Blow spent 2014–2026 building Jai because he distrusted existing systems languages. In 2026 AGNOS / Cyrius shipped a sovereign systems language that self-hosts from a 29KB seed, in under a month of active work, for ~$400. As a gesture of respect *and* technical argument, cyrius-braid reimplements Blow's 2008 title — from observation, not source — in Cyrius. The game ships; the language shipped first.
+*Brynn's Tale* is an original mythic-modern game built on a tightly-coupled mechanic-narrative spine. Brynn uses time-rewind to save her dying husband; the cost is herself. Act 1 is told **backward** (Memento-form), Act 2 forward and irreversible (Bleed mechanic for witness-of-the-past, no rewind), Act 3 NG+ as the integrated being THEM after a Phoenix-rebirth — three acts where mechanic and storytelling form are one thing on each side, not separable.
 
-The tone is homage, not attack. Braid is a great game; Blow is a serious practitioner. The sovereign-language receipt AGNOS offers is real, works, and is freely usable. If the rebuild lands well enough that it nudges Blow (or Jai's community, or any of the broader handmade-hero culture) toward Cyrius — that's the invitation implicit in the whole gesture.
+That design framework runs on AGNOS / Cyrius — a sovereign systems language that self-hosts from a 29KB seed, ships zero external dependencies, and has built and shipped both the OS and the game. The article's argument is two-track: *here is the design framework on its own terms*, and *here is what shipping it on a sovereign stack costs and gains*.
+
+The sovereignty-stack argument carries from previous articles in the series; the design-framework argument is new. Both land as receipts, neither as manifesto.
 
 ### Section skeleton
 
-1. **The Gesture** — what cyrius-braid is, what it isn't (not a port, not a clone, not a mod). The ADR-0001 / ADR-0002 stance in one paragraph each. Why this specific title: Braid is canonical, tractable, and Blow is the handmade culture's most visible refusal-practitioner.
+1. **The Premise** — Brynn, her husband, the trade. *Brynn's Tale* in one paragraph. The hook is mythic-modern stakes: lover's-sacrifice, contemporary setting, time-mechanic as narrative-form. Not a Braid homage; not a fairytale lift; not a prestige-indie grief walking-sim. The bridge between cosmic and reachable.
 
-2. **The Technical Bets** — time-rewind ring buffer, determinism under rewind-forward-rewind, puzzle-gated world progression, slot-loaded soundtrack. What the mabda / kiran / impetus / shravan / sankoch / sigil stack carried.
+2. **The Three Acts** — Act 1 (backward, rewind, Memento-form descent). Act 2 (forward, Bleed + irreversible, Orpheus-as-survivor). Act 3 (NG+, full toolkit, alchemical *rebis* after Phoenix-rebirth). Each act's mechanic IS its mythic position. Pointer to the ADR set (0003–0007) for the design-framework deep-dive; this article surfaces, doesn't duplicate.
 
-3. **Original Assets in the Spirit of the Original** — ADR 0002 in article form. What got newly painted, what got publicly-sourced, what didn't get shipped (the original score). Attribution transparency throughout.
+3. **The Technical Bets** — time-rewind ring buffer (six variants on Brynn's side; deterministic across rewind-forward-rewind), Bleed visual-register coupling on the husband's side (the aesthetic shifts when he bleeds; mechanic and visuals are the same thing), full-toolkit composition in NG+ (deterministic rewind+Bleed compounding). What the mabda / kiran / impetus / shravan / sankoch / sigil stack carried.
 
-4. **Receipts** — binary size, startup time, memory footprint, time-rewind buffer overhead, per-world load times. Comparison point: Braid's original published specs where Blow has disclosed them; otherwise versus a reasonable 2026 Unity / Godot / Bevy baseline for the same shape.
+4. **Bosses Are Selectively Souls-like** — soft-fail everyday + hard-fail bosses. Brynn's external mythic figures (threshold-keepers + Yama). The husband's internal mythic figures (grief-aspects + shadow-self requiring **die-to-merge**, not defeat). The "YOU DIED" screen used straight at the chosen-death moment that triggers Phoenix-rebirth.
 
-5. **The Meta-Argument** — what this rebuild says to the handmade-hero culture: *"the sovereign-language pitch isn't theoretical anymore. A language exists, it ships, a real game runs on it. Fork it, adopt it, or keep waiting on Jai — all three are defensible, only the third still costs you a decade."*
+5. **Receipts** — binary size, startup time, time-rewind buffer overhead, Bleed transition latency, NG+ verb-composition determinism. Comparison point: a 2026 Godot or Bevy baseline on the same mechanical workload (not to any specific other game).
 
-6. **Scope Discipline** — cyrius-braid is not a Braid-replacement. If Blow ships the Anniversary Edition, that's the canonical work. cyrius-braid is a parallel tribute. Its purpose is the gesture + the language demonstration, not market competition.
+6. **The Sovereignty-Stack Argument** — what shipping this on Cyrius costs and gains. No Unity license fee, no engine drag, no FFI bridge. The whole stack from kernel to GPU is first-party. Mechanic-design questions ("can we make the Bleed mechanic feel right at 60 FPS while also recording for determinism?") get answered by writing a stdlib patch, not by negotiating with a black-box engine. The sovereign-language receipt pays back specifically when the design wants something the engine doesn't already do.
 
-7. **What this invites** — a short section on the open-door posture. Cyrius is GPL-3.0, free to fork, specifically designed to be sovereign from anyone including AGNOS itself. If Blow, or any of the broader sovereignty-minded culture, wants to adopt it or fork it — that's the intended landing zone.
+7. **What This Invites** — open-door posture. Cyrius is GPL-3.0, free to fork, designed to be sovereign from anyone including AGNOS itself. The sovereignty-minded creative community is the audience.
 
 ### Receipts the article delivers
 
-- cyrius-braid binary size + startup time
-- Time-rewind buffer overhead (MB per second of captured state; CPU per rewind-forward cycle)
-- Full end-to-end playthrough performance (FPS, frame-time distribution)
-- Consumer-matrix benchmark (mabda / kiran / impetus workload)
-- Comparison to a 2026 Godot or Bevy baseline on the same mechanical workload (not to the original Braid binary, which we never reverse-engineer)
+- cyrius-brynns-tale binary size + startup time + memory footprint
+- Time-rewind buffer overhead (MB per second of captured state; CPU per rewind-forward cycle) — six variants
+- Bleed transition latency + visual-register-shift overhead
+- Full Act 1 World 1 playthrough performance (FPS, frame-time distribution)
+- Consumer-matrix benchmark (mabda / kiran / impetus / shravan workload)
+- Comparison to a 2026 Godot or Bevy baseline on the same mechanical workload
 
 ### Related (existing articles it extends)
 
 - `memory-should-be-sovereign-too.md` — sit refusal piece; same series
-- `why-gpu-belongs-in-the-stdlib.md` — mabda refusal piece; cyrius-braid is a mabda consumer
-- `sovereign-compiler-vs-brute-force.md` — the $400 OS comparison; cyrius-braid is a receipt for "the language also runs real consumer software"
+- `why-gpu-belongs-in-the-stdlib.md` — mabda refusal piece; *Brynn's Tale* is a mabda consumer
+- `sovereign-compiler-vs-brute-force.md` — the $400 OS comparison; *Brynn's Tale* is a receipt for "the language also runs real consumer software with a complete design framework"
 
 ### Captured anchors
 
-- [`cyrius-braid/docs/adr/0001-reimplementation-from-observation.md`](../../../Repos/cyrius-braid/docs/adr/0001-reimplementation-from-observation.md) — mechanics-from-observation thesis
-- [`cyrius-braid/docs/adr/0002-original-assets-in-the-spirit-of-the-original.md`](../../../Repos/cyrius-braid/docs/adr/0002-original-assets-in-the-spirit-of-the-original.md) — asset-creation policy
-- [`cyrius-braid/docs/design/README.md`](../../../Repos/cyrius-braid/docs/design/README.md) — art pipeline + soundtrack policy
-- `shared-crates.md` — cyrius-braid registered under Non-Library Projects
-
-### Marketing coda (optional)
-
-The stream-donation distribution gag — time the v1.0 release around a Blow Twitch stream, drop a supporter tip with the GitHub URL and benchmark links, let the donation message ("*bro it does it better sorry — but hey, you can use it for FREE*") do its work. Aggressive recruitment dressed as a compliment dressed as a tip. If it lands, the Twitch clip *is* the article's launch asset.
+- [`cyrius-brynns-tale/docs/adr/0003-pivot-to-original-mythic-modern-ip.md`](../../../Repos/cyrius-brynns-tale/docs/adr/0003-pivot-to-original-mythic-modern-ip.md) — pivot to original IP (the meta-decision that supersedes ADRs 0001 + 0002)
+- [`cyrius-brynns-tale/docs/adr/0004-two-perspective-diptych-structure.md`](../../../Repos/cyrius-brynns-tale/docs/adr/0004-two-perspective-diptych-structure.md) — three-act structure
+- [`cyrius-brynns-tale/docs/adr/0005-verb-sets-per-half.md`](../../../Repos/cyrius-brynns-tale/docs/adr/0005-verb-sets-per-half.md) — rewind / Bleed+irreversible / THEM toolkit
+- [`cyrius-brynns-tale/docs/adr/0006-boss-tier-philosophy.md`](../../../Repos/cyrius-brynns-tale/docs/adr/0006-boss-tier-philosophy.md) — selective Souls-like; what bosses are
+- [`cyrius-brynns-tale/docs/adr/0007-phoenix-rebirth-and-rebis-integration.md`](../../../Repos/cyrius-brynns-tale/docs/adr/0007-phoenix-rebirth-and-rebis-integration.md) — die-to-merge, Phoenix-rebirth, *rebis*, rubedo
+- [`cyrius-brynns-tale/docs/design/README.md`](../../../Repos/cyrius-brynns-tale/docs/design/README.md) — art direction, music direction, asset-licensing standards
+- `shared-crates.md` — cyrius-brynns-tale registered under Non-Library Projects
 
 ---
 

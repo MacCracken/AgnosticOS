@@ -15,11 +15,11 @@
 | Beat | Date | Audience | Primary artifact | Distribution surface |
 |------|------|----------|------------------|----------------------|
 | **Beat 0.5 — Retro Games Day** | **2026-06-13 (Sat)** | indie game devs / retro / systems / *"can it run DOOM"* meme-audience | **cyrius-doom as the featured headline** (strongest portability signal; Carmack-lineage respect; *"AGNOS runs DOOM"* as the one-sentence pitch). Companions available same-day per each repo's readiness: cyrius-nba-jam, encom-hits, and **cyrius-bb v1.0** (50-year Breakout homage, quieter narrative slot) | Coordinated GitHub release bundle + Hacker News (*"can it run DOOM"* post is self-writing) + indie-gaming press + Steam Summer Sale lead-in ambient |
-| **Beat 1 — Summer solstice demo** | **2026-06-21 (Sun — solstice)** | indie game devs / handmade-hero / Jai-curious | **cyrius-braid v1.0** playable + knife article + AGNOS ISO boot demo + sit self-commit receipts | Blow Twitch tip (if executed) + GitHub release + Steam Summer Sale ambient + HN / Lobsters |
+| **Beat 1 — Summer solstice demo** | **2026-06-21 (Sun — solstice)** | indie game devs / handmade-hero / Jai-curious | ***Brynn's Tale*** **Act 1 demo** (Memento-form descent, base rewind, world 1 gray-box) + launch article + AGNOS ISO boot demo + sit self-commit receipts | GitHub release + Steam Summer Sale ambient + HN / Lobsters |
 | **Beat 2 — Black Hat receipts** | ~2026-08-05 | security researchers | supply-chain sovereignty piece + kernel/kavach/sigil/phylax audit-ready receipts | Black Hat USA 2026 presence (talk / booth / paper / sponsor distribution) |
 | **Beat 3 — DEF CON distribution** | ~2026-08-09+ | hacker/punk/builder | physical ISO + bumper-sticker-as-crypto-root | $5K sticker + SD card distribution budget; DEF CON presence |
 
-**Sequencing rationale**: June 13 retro-games-drop is the warm-up wave — indie-game audience starts poking at Cyrius from a low-stakes accessible entry point (brick-breaker, DOOM, NBA Jam, ENCOM retro hits). 8 days of chatter builds ambient attention. June 21 solstice is the consolidation moment — cyrius-braid (the technical-depth prestige title) PLUS the broader sovereignty-stack demo (kernel boot, sit self-commit, sandhi / yantra). Developers who poked at the games on June 13 find the full OS story on June 21.
+**Sequencing rationale**: June 13 retro-games-drop is the warm-up wave — indie-game audience starts poking at Cyrius from a low-stakes accessible entry point (brick-breaker, DOOM, NBA Jam, ENCOM retro hits). 8 days of chatter builds ambient attention. June 21 solstice is the consolidation moment — *Brynn's Tale* (the technical-depth prestige title; original mythic-modern IP, not a homage) PLUS the broader sovereignty-stack demo (kernel boot, sit self-commit, sandhi / yantra). Developers who poked at the games on June 13 find the full OS story on June 21.
 
 Each audience is warmer than the next in receptiveness and colder than the next in distribution-range. Correctly staged, June 13 + June 21 set up August — developers talk about Cyrius publicly, security researchers arrive at Black Hat already having heard of it, DEF CON attendees take ISOs home that they already know what to do with.
 
@@ -37,44 +37,45 @@ Each audience is warmer than the next in receptiveness and colder than the next 
 
 ## Beat 1 — Summer Solstice Demo (2026-06-21, Sun; ~8 weeks out)
 
-**Shape**: "it's real, and Blow's own game runs on it." The artifact-centric demo moment.
+**Shape**: "it's real, and we're shipping an original mythic-modern game on it." The artifact-centric demo moment.
 
 ### Must land
 
 | # | Item | Notes |
 |---|------|-------|
-| S1 | [ ] **cyrius-braid M1 complete** (time-rewind ring buffer, determinism test suite green) | Foundational technical bet. Without M1 the demo is just a scaffold. |
-| S2 | [ ] **cyrius-braid M2 complete** (world 1 gray-box: platform physics + rewind + puzzle-piece placeholder) | Playable end-to-end on one world. Proves rewind integrates with the rest. |
-| S3 | [ ] **AGNOS ISO bootable end-to-end** on reference hardware + QEMU | Kernel + shell + Cyrius toolchain in one image. ark install of cyrius-braid from the booted environment. |
+| S1 | [ ] **cyrius-brynns-tale M1 complete** (time-rewind ring buffer, determinism test suite green) | Foundational technical bet for Act 1. Without M1 the demo is just a scaffold. |
+| S2 | [ ] **cyrius-brynns-tale A1.W1 complete** (Act 1 World 1 gray-box: base rewind, Memento-form opening, backward-narrative onboarding) | Playable end-to-end on one world. Proves rewind integrates with the storytelling form. |
+| S3 | [ ] **AGNOS ISO bootable end-to-end** on reference hardware + QEMU | Kernel + shell + Cyrius toolchain in one image. ark install of cyrius-brynns-tale from the booted environment. |
 | S4 | [ ] **Cyrius self-hosting verified** across Linux x86_64, aarch64 Pi, Apple Silicon, Windows PE at demo time | The "it runs everywhere" claim needs to be true in the week the demo goes live, not six weeks prior. |
-| S5 | [ ] **Knife article drafted and scheduled** — *"Braid in Cyrius"* (cyrius-braid outline in [`_outlines.md §5`](../articles/_outlines.md)) | Demo without an article is a screenshot; article without a demo is manifesto. Both or neither. |
-| S6 | [ ] **Video capture** — Cyrius self-building from seed, AGNOS booting, Braid running, rewind demo | 2–5 minute loop, no narration required. Publishable as standalone or embedded in the knife article. |
-| S7 | [ ] **Benchmark one-pager** — Cyrius vs Rust compile time, AGNOS kernel vs Linux boot, cyrius-braid vs [equivalent Rust/Unity baseline on same mechanic workload] | Numbers. Not prose. |
-| S8 | [ ] **GitHub release tag for cyrius-braid** | Semver-clean. Publishable artifacts. README points at ADR 0001 + 0002 so adopters find the stance before the code. |
+| S5 | [ ] **Launch article drafted and scheduled** — original-IP framing for *Brynn's Tale* (working title TBD; outline in [`_outlines.md §5`](../articles/_outlines.md)) | Demo without an article is a screenshot; article without a demo is manifesto. Both or neither. |
+| S6 | [ ] **Video capture** — Cyrius self-building from seed, AGNOS booting, *Brynn's Tale* Act 1 demo (death-as-frame-one opening + base rewind in action) | 2–5 minute loop, no narration required. Publishable as standalone or embedded in the launch article. |
+| S7 | [ ] **Benchmark one-pager** — Cyrius vs Rust compile time, AGNOS kernel vs Linux boot, *Brynn's Tale* rewind-determinism throughput vs [equivalent Rust/Unity baseline on same mechanic workload] | Numbers. Not prose. |
+| S8 | [ ] **GitHub release tag for cyrius-brynns-tale** | Semver-clean. Publishable artifacts. README points at ADRs 0003–0007 so adopters find the design framework before the code. |
 
 ### Should land
 
 | # | Item | Notes |
 |---|------|-------|
-| S9  | [ ] cyrius-braid M3 (world-gating + hub + save system) | Second world accessible from first world gate. Extends the demo from "one room" to "a game." |
-| S10 | [ ] cyrius-braid M4 worlds 2–3 gray-box | Breadth: three worlds > one. Still gray-box art. |
+| S9  | [ ] cyrius-brynns-tale A1.W2 (second rewind variant; "the path you can't unwalk") | Second variant world playable. Extends the demo from "one variant" to "the variants exist." |
+| S10 | [ ] cyrius-brynns-tale A1.W3 (third rewind variant; "the doppelgänger / former self") | Third variant world. Breadth without committing to all six. Still gray-box art. |
 | S11 | [ ] yantra M1 — Chromium CDP backend live, benchmark vs Playwright published | Demonstrates the yantra knife-article thesis in flight. Cross-pollinates developer audiences beyond just game devs. |
-| S12 | [ ] Short sidebar in the knife article: **Black Hat angle preview** | One paragraph seeds the August audience. Cheap. |
+| S12 | [ ] Short sidebar in the launch article: **Black Hat angle preview** | One paragraph seeds the August audience. Cheap. |
 
 ### Can land (nice-to-haves)
 
 | # | Item | Notes |
 |---|------|-------|
-| S13 | [ ] cyrius-braid art pass started (M5) | First stylized asset replacements. Lower priority than breadth. |
-| S14 | [ ] cyrius-braid soundtrack slot-loading working (M6) | Documented slot paths + silent fallback. |
+| S13 | [ ] cyrius-brynns-tale art pass started (early stylized assets for opening world only) | First stylized asset replacements. Lower priority than breadth. |
+| S14 | [ ] cyrius-brynns-tale opening cinematic music (the death-as-frame-one moment) | Original score; mythic-modern register; lets the opening land emotionally even in gray-box state. |
 | S15 | [ ] Second benchmark: yantra vs Appium on a mobile workload | Adds mobile-dev audience to the June 21 reach. |
 
 ### Distribution tactics
 
-- [ ] **Blow Twitch donation-bomb** (optional but outlined) — timed during a live stream, $50 tip with Cyrius + cyrius-braid + benchmark URLs, message carefully composed to be accurate-and-friendly, not hostile (see cyrius-braid outline §Marketing coda for the pattern). Executed or not is a judgment call; the plan exists regardless.
-- [ ] **Hacker News Show HN submission** — evening of June 21 UTC if donation-bomb executed + engagement seen; morning of June 22 UTC otherwise.
-- [ ] **Handmade Network community post** — natural audience overlap with Blow's viewership.
+- [ ] **Hacker News Show HN submission** — morning of June 22 UTC. Title leans on "original mythic-modern game shipped in a sovereign systems language" — not a Braid-homage hook.
+- [ ] **Handmade Network community post** — natural audience overlap with handmade-hero / sovereign-stack-curious developers.
 - [ ] **Steam Summer Sale ambient** — Steam Summer Sale 2026 typically opens ~June 20–22; indie-game-audience attention is elevated that week. No Steam presence required; just timing-aware.
+
+> **Note**: Pre-pivot plan included a "Blow Twitch donation-bomb" tactic tied to the Braid-homage framing (drop a $50 tip during a Blow stream with the cyrius-braid URL). That tactic is no longer applicable post-pivot — the JBlow-on-JBlow rhetorical move belonged to the homage, not to the original IP. Dropped.
 
 ---
 
@@ -149,7 +150,7 @@ Each audience is warmer than the next in receptiveness and colder than the next 
 |---|------|-------|
 | D1 | [ ] **$5K sticker + SD card production complete and shipped** to DEF CON location | Per existing [project memory](../../../.claude/projects/-home-macro-Repos-agnosticos/memory/project_handoff_2026_04_22.md). Pre-order SD cards ≥ 4 weeks out; bumper stickers ≥ 2 weeks out. |
 | D2 | [ ] **Bumper-sticker-as-cryptographic-root-of-trust mechanism** spec'd, working, and printed | The sticker carries a verifiable cryptographic artifact (QR code? fingerprint? signed public-key identifier?). Not a gimmick — a legitimate trust anchor. Existing memory has the phrasing; implementation detail needs locking. |
-| D3 | [ ] **SD card flashing pipeline** — 200+ pre-flashed SD cards, each with a bootable AGNOS image, tested on diverse hardware | Image includes kernel + shell + cyrius-braid + basic dev environment. Boot-to-shell < 10 seconds. |
+| D3 | [ ] **SD card flashing pipeline** — 200+ pre-flashed SD cards, each with a bootable AGNOS image, tested on diverse hardware | Image includes kernel + shell + cyrius-brynns-tale + basic dev environment. Boot-to-shell < 10 seconds. |
 | D4 | [ ] **One-page printed installation/boot instructions** bundled with SD cards | "Plug in, boot, here's what's on it, here's where the docs are." Non-technical-lead-time people should be able to follow it. |
 | D5 | [ ] **Post-DEF-CON landing page** — attendees who take the SD card home can find the project online from the printed URL | URL on the sticker should not be a shortener; stable, predictable, still live 2 years later. |
 | D6 | [ ] **DEF CON presence** — booth / village / lightning talk / ad-hoc presence. Even just "the sticker guy" works if structured well. | Formal village slot ideal; informal distribution still effective with enough people taking SD cards to coworkers. |
@@ -176,12 +177,12 @@ Each audience is warmer than the next in receptiveness and colder than the next 
 | # | Item | Notes |
 |---|------|-------|
 | X1 | [ ] **Public AGNOS landing page** — stable URL, not a README, with a "what is this" hook readable by three audiences (game dev / security / hacker) in parallel paragraphs | Everything points back to this URL. June 21 / Aug 5 / Aug 9 all route through one entry page. |
-| X2 | [ ] **Video content library** — at least 3–4 short demos (compiler bootstrap, kernel boot, cyrius-braid gameplay, sit self-commit) | Hosted where viewers won't fight a CDN. YouTube + PeerTube / Tilvids mirror. |
+| X2 | [ ] **Video content library** — at least 3–4 short demos (compiler bootstrap, kernel boot, *Brynn's Tale* Act 1 gameplay, sit self-commit) | Hosted where viewers won't fight a CDN. YouTube + PeerTube / Tilvids mirror. |
 | X3 | [ ] **One-paragraph summary per target audience** — game dev, security, hacker — each usable as a tweet, a conference abstract, a donation-message blurb | Reduces friction on ad-hoc distribution. Anyone representing AGNOS on short notice has copy ready. |
 | X4 | [ ] **Social media channels** — at least Mastodon + Bluesky + HN / Lobsters participation | Not required for beats to land; required for post-beat engagement loops. |
 | X5 | [ ] **Agnoshi / hoosh demos** showing the LLM stack on the booted ISO | Differentiator: *"not just a sovereign OS, an AI-native sovereign OS."* Particularly important for DEF CON AI village. |
 | X6 | [ ] **Press outreach** — half-dozen targeted pitches (Hacker News via community, The New Stack, LWN.net, Phoronix, Ars Technica) timed around each beat | Earned-media coverage compounds the distribution arc. Skippable if budget/attention is tight. |
-| X7 | **Games as publicity mechanism** (load-bearing framing across the whole arc) | The retro titles (cyrius-doom, cyrius-nba-jam, cyrius-bb, cyrius-braid, encom-hits) **ARE** the public-facing publicity vehicle for Cyrius + AGNOS — not a secondary thing underneath a traditional PR campaign. Each port is a free, self-contained, organically-shareable demo of the Cyrius stack running real software; distribution of the games IS distribution of the stack. Zero marketing budget required; HN / Reddit / Twitter virality self-seeds through the specific titles (*"can it run DOOM"* writes the first post itself). Every game README → game knife article → sovereignty-thesis article → OS repo chain is pre-built. Consequence for the arc: when a beat's publicity tactic is listed as *"HN submission"* or *"indie gaming press,"* the submitted artifact is ideally a game link that lands on a repo where the OS + language + sovereignty thesis are one click away. This is the art-first-tour-optional discipline applied at campaign scale — the art (playable game) lands first, the tour (OS / language / receipts) is available but never gated behind. |
+| X7 | **Games as publicity mechanism** (load-bearing framing across the whole arc) | The retro titles (cyrius-doom, cyrius-nba-jam, cyrius-bb, encom-hits) plus the original-IP prestige title (cyrius-brynns-tale) **ARE** the public-facing publicity vehicle for Cyrius + AGNOS — not a secondary thing underneath a traditional PR campaign. Each port is a free, self-contained, organically-shareable demo of the Cyrius stack running real software; distribution of the games IS distribution of the stack. Zero marketing budget required; HN / Reddit / Twitter virality self-seeds through the specific titles (*"can it run DOOM"* writes the first post itself; *Brynn's Tale*'s mythic-modern register writes a different post). Every game README → game knife article → sovereignty-thesis article → OS repo chain is pre-built. Consequence for the arc: when a beat's publicity tactic is listed as *"HN submission"* or *"indie gaming press,"* the submitted artifact is ideally a game link that lands on a repo where the OS + language + sovereignty thesis are one click away. This is the art-first-tour-optional discipline applied at campaign scale — the art (playable game) lands first, the tour (OS / language / receipts) is available but never gated behind. |
 
 ---
 
@@ -194,11 +195,11 @@ Cyrius v5.7.x (partial — RISC-V + http.cyr depth + json.cyr depth)
     ↓
 yantra M1 (Chromium CDP backend) ──── Beat 1 (S11 — optional)
     ↓
-cyrius-braid M1 (time-rewind ring buffer)
+cyrius-brynns-tale M1 (time-rewind ring buffer)
     ↓
-cyrius-braid M2 (world 1 gray-box) ─── Beat 1 (S2 — must)
+cyrius-brynns-tale A1.W1 (world 1 gray-box, base rewind) ─── Beat 1 (S2 — must)
     ↓
-cyrius-braid M3/M4 (additional worlds) ─ Beat 1 (S9, S10 — should)
+cyrius-brynns-tale A1.W2/W3 (variant worlds) ──────────── Beat 1 (S9, S10 — should)
 
 Cyrius v5.9.x (TLS arc, partial)
     ↓
@@ -215,7 +216,7 @@ Flashing pipeline + testing ────────── Beat 3 (D3 — must)
 
 **The biggest risk**: Cyrius v5.6.x closeout drifting past mid-May. If v5.6.x doesn't close by then, v5.7.x's http.cyr + json.cyr depth slip, which pressures yantra M1 (not blocking Beat 1 since it's optional), and more importantly pressures the supply-chain story at Black Hat (which depends on v5.9.x TLS progress being visible, which depends on v5.7.x → v5.8.x → v5.9.x staying on track).
 
-**Second-biggest risk**: cyrius-braid M1 (time-rewind ring buffer determinism). Every other Braid milestone stacks on it. A two-week slip on M1 cascades into "no Beat 1 demo."
+**Second-biggest risk**: cyrius-brynns-tale M1 (time-rewind ring buffer determinism). Every other *Brynn's Tale* milestone stacks on it. A two-week slip on M1 cascades into "no Beat 1 demo."
 
 ---
 
@@ -226,8 +227,8 @@ Flashing pipeline + testing ────────── Beat 3 (D3 — must)
 | 2026-05-01 | V1 plan announcement (short) | pre-arc |
 | 2026-05-15 | Micro-article (cycle) | pre-arc |
 | 2026-05-29 | Micro-article (cycle) | pre-arc |
-| 2026-06-12 | cyrius-braid progress teaser (short; "here's what's been built") | Beat 1 pre-launch |
-| **2026-06-19 – 06-21** | **cyrius-braid knife article — *"Braid in Cyrius"*** | **Beat 1** |
+| 2026-06-12 | *Brynn's Tale* progress teaser (short; "here's what's been built") | Beat 1 pre-launch |
+| **2026-06-19 – 06-21** | ***Brynn's Tale* launch article** (working title TBD; mythic-modern original-IP framing — see [`_outlines.md §5`](../articles/_outlines.md)) | **Beat 1** |
 | 2026-07-04 | Post-solstice reflection / receipts piece | bridge |
 | **2026-07-15** | **Supply-chain sovereignty reframing article** | **Beat 2 pre-launch** |
 | 2026-07-29 | Black Hat preview / talk abstract | Beat 2 pre-launch |
@@ -256,17 +257,16 @@ No new work is introduced by the arc that wasn't already queued. The arc is a **
 ## What could derail this (and what to do)
 
 - **Cyrius v5.6.x closeout slips past May 15** → pull Beat 2 B10 (TLS arc progress) from "must" to "should"; supply-chain article B1 still lands because it's retrospective on existing receipts
-- **cyrius-braid M1 takes >3 weeks** → reduce Beat 1 scope to M1-only demo + knife article; no world-breadth promises
+- **cyrius-brynns-tale M1 takes >3 weeks** → reduce Beat 1 scope to M1-only demo + launch article; no world-breadth promises
 - **Health / attention disruption** → Beat 1 can slide to June 28 (still Steam Summer Sale window) or July 4 (Handmade Day, less ambient attention but still thematic). Beat 2 date is less flexible (Black Hat is fixed). Beat 3 similarly (DEF CON is fixed).
-- **Blow streams infrequently / stream channel offline** → donation-bomb skipped; arc still functions without it. It's a distribution tactic, not a load-bearing beat component.
 - **Sticker/SD production delays** → tolerable if base ISO image ships on-time; physical distribution can be mailed post-con to sign-ups collected at the event
 
 ---
 
 ## Principle for working through the arc
 
-- **Beat 1 is the hardest because it's the most product work** (cyrius-braid demo-ready). Beats 2 and 3 are more packaging + distribution work on top of existing receipts.
-- **Don't let Beat 1 perfection kill Beat 2 preparation.** Supply-chain article can draft in June while cyrius-braid M1-M2 are being built.
+- **Beat 1 is the hardest because it's the most product work** (cyrius-brynns-tale demo-ready). Beats 2 and 3 are more packaging + distribution work on top of existing receipts.
+- **Don't let Beat 1 perfection kill Beat 2 preparation.** Supply-chain article can draft in June while cyrius-brynns-tale M1 + A1.W1 are being built.
 - **Every beat's must-list survives independently of the others.** Beat 1 slipping a week doesn't kill Beat 2. Beat 2 over-delivering doesn't excuse Beat 3 under-delivery. Each beat is its own ship-or-don't decision.
 - **`git log` everything before quoting dates outward.** This doc will be stale in specifics within the week.
 
