@@ -5,7 +5,26 @@ All notable changes to AGNOS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2026.4.13] - 2026-04-13
+## [2026.4.27] - 2026-04-27
+
+### Changed — Boot pipeline brought current with the public Cyrius release
+
+- **Boot pipeline toolchain pin**: `scripts/cyrius.cyml` bumped `cyrius = "5.5.27"` → `cyrius = "5.7.21"`. Boot pipeline rebuilt clean against 5.7.21 (`cyrius build src/boot.cyr build/boot` → 67KB binary, all options working). Skips the 5.6.x optimization arc and the 5.7.0 sandhi fold in one move; boot is stdlib-only (no `[deps]` section), so the toolchain bump is the only manifest change.
+- **Genesis VERSION**: `2026.4.25` → `2026.4.27`.
+
+### Fixed — ISO check unblocked (sigil 2.9.4 + agnostik VERSION revert)
+
+- **sigil 2.9.4** — manifest `[build].output` renamed `build/sigil-smoke` → `build/sigil` to match the boot's `--iso-check` convention (it expects `build/<package>` for each component). Smoke-test program is otherwise unchanged (still entry-pointed at `programs/smoke.cyr` with `SIGIL_SMOKE` defined). `dist/sigil.cyr` regenerated. Roadmap captured in the manifest's `[build]` comment block: a future patch replaces smoke with a real library probe; later still, the boot looks at `dist/sigil.cyr` directly; eventual endgame is sigil folding into Cyrius stdlib (like sandhi at 5.7.0, mabda at 3.4.19).
+- **agnostik** — local `VERSION` reverted `1.0.1` → `1.0.0` to match the canonical GitHub release. Local `1.0.1` was a docs-update attempt that didn't land; the WIP commits stay on main past the 1.0.0 mark for whenever that work resumes. Boot now reports the released version, not the local-only one.
+- **Boot `--iso-check`** now PASS at **26 of 26 components ready, 0 missing** — ISO assembly unblocked.
+
+### Ecosystem state (snapshot)
+
+- **Cyrius 5.7.21** — current public release. The 5.7.x patch series picks up after the 5.7.0 sandhi fold (2026-04-25, sandhi folded into stdlib at `lib/sandhi.cyr`).
+- **AGNOS kernel 1.26.1** — released 2026-04-28 (UTC). 1.26.0's CI/release hygiene workaround was replaced with a real fix in 1.26.1; the fix surfaced real formatting issues which were then resolved in the same patch. Boot's `--iso-check` now reports kernel v1.26.1 (247,816 bytes).
+- **Sigil 2.9.4** — released alongside this genesis bump for the boot-output rename above.
+- **Agnostik 1.0.0** — canonical (local now matches; 1.0.1 docs work is paused on main).
+- **Boot pipeline** runs against the public toolchain (5.7.21), one minor version ahead of the kernel's pinned toolchain (5.7.19). No incompatibility — boot is a host-side validator, not a kernel build dependency.
 
 ### Achieved — Kernel 1.21.0 + Cyrius 4.0.0 + Sovereign Boot
 

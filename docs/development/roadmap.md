@@ -1,7 +1,15 @@
 # AGNOS Development Roadmap
 
-> **Status**: Pre-Beta | **Last Updated**: 2026-04-25
-> **May 1 V1 release** is 6 days out — complete-system V1 (kernel + Cyrius + toolchain + 30+ ports + science library + ISO Stage 0+), positioned as *"Boots, runs DOOM, all Cyrius."* Biweekly cadence through August DEF CON distribution (see [Near-Term Cadence](#near-term-cadence--may-1-v1-to-def-con)).
+> **Status**: Pre-Beta | **Last Updated**: 2026-04-27
+>
+> 🔴 **NEXT ACTIVE WORK**: ISO Stage-4-only first cut — see
+> **[`iso-stage4-plan.md`](iso-stage4-plan.md)**. This is the next-up item
+> after the 2026-04-27 boot-pipeline updates (sigil 2.9.4 cut, agnostik
+> reverted, scripts pinned to Cyrius 5.7.21). The plan has four open
+> decisions (D1–D4) that need user input before coding begins. Next agent:
+> **read the plan, then resolve D1–D4 with Robert.**
+>
+> **May 1 V1 release** is 4 days out — complete-system V1 (kernel + Cyrius + toolchain + 30+ ports + science library + ISO Stage 0+ working toward Stage-4-only first cut), positioned as *"Boots, runs DOOM, all Cyrius."* Biweekly cadence through August DEF CON distribution (see [Near-Term Cadence](#near-term-cadence--may-1-v1-to-def-con)).
 > **Kernel 1.22.0 shipped** (2026-04-13) — 260KB, 33 subsystems, 26 syscalls, hardened pass.
 > **Cyrius 5.7.0 shipped** (2026-04-25) — **THE SANDHI FOLD**. `lib/sandhi.cyr` adds (vendored byte-identical from sandhi v1.0.0, 376,037 B / 9,649 lines, 469 fns); `lib/http_server.cyr` deletes; sandhi repo enters maintenance mode per [ADR 0002](https://github.com/MacCracken/sandhi/blob/main/docs/adr/0002-clean-break-fold-at-cyrius-v5-7-0.md). Cyrius-side gates 1, 2, 3, 5, 6 ✅; gate 4 (downstream sweep) is separate user-organized work — only **vidya** actually `include`s `lib/http_server.cyr`; yantra and sit have orphan pre-fold copies (cleanup-only); the originally-listed `sit-remote`/`ark-remote` don't exist. v5.6.x closed at v5.6.45 on 2026-04-25 (45 patches — new longest-minor record). v5.6.0 opened the compiler-optimization arc on 2026-04-22 (**Phase O1** v5.6.0–v5.6.4 instrumentation + FNV-1a symbol hashing; **Phase O2** v5.6.11 partial strength reduction, flag-result reuse, push/pop elim, commutative + aarch64 combine-shuttle; **regalloc** v5.6.20–v5.6.24 default-on linear-scan; **closeout** v5.6.43 sigil 2.9.3 / sankoch 2.1.0 / output_buf 2MB).
 > **Multi-platform closed.** x86_64 Linux byte-identical; aarch64 Linux byte-identical on real Pi (stdlib shakedown v5.5.18); Apple Silicon Mach-O self-host closed (v5.5.17); Windows PE32+ native self-host byte-identical on real Windows 11 (v5.5.10). NSS/PAM real-fix arc shipped v5.5.23–v5.5.27; `lib/fdlopen.cyr` landed in v5.5.x arc. **v5.7.x slate**: v5.7.1 cyrius-ts foundational (TS sync non-TSX subset; 10 phases P1 lex → P10 release; pinned 2026-04-24); v5.7.2 cyrius-ts completion (async/await/Promise + JSX scope decision; pinned 2026-04-25); v5.7.3 RISC-V rv64 (slid 3× from v5.7.0; pinned 2026-04-25); v5.8.0 bare-metal queued.
@@ -188,13 +196,15 @@ Full details: [sprint-history.md](sprint-history.md#monolith-extraction--complet
 
 | # | Item | Status | Notes |
 |---|------|--------|-------|
-| 1 | Kernel boots in QEMU | **Done** | boot.cyr (56KB Cyrius binary), kernel 1.22.0 (260KB) |
+| 1 | Kernel boots in QEMU | **Done** | boot.cyr (67KB Cyrius binary, rebuilt against 5.7.21 on 2026-04-27), kernel 1.26.1 (248KB, real CI hygiene fix replaced 1.26.0 workaround) |
 | 2 | Sovereign boot pipeline | **Done** | `make boot-test` from genesis repo |
-| 3 | Run bootstrap-toolchain.sh end-to-end | Not started | Build cross-compiler from source tarballs (scripts need Cyrius port) |
-| 4 | Build base system in chroot | Not started | ark-build all 109 base recipes in order |
-| 5 | Build AGNOS userland on target | Not started | Cyrius-compiled binaries inside AGNOS |
-| 6 | Selfhost-validate passes all phases | Not started | Run `selfhost-validate --phase all` on booted ISO |
-| 7 | CI automation | In progress | GitHub Actions workflows |
+| 2.5 | ISO `--iso-check` (Stage 0 component verification) | **Done** | 26-of-26 components READY (2026-04-27 audit), ISO assembly unblocked |
+| **3** | **ISO Stage-4-only first cut (live image, pre-built binaries)** | **🔴 NEXT** — planned, awaiting D1–D4 | See [`iso-stage4-plan.md`](iso-stage4-plan.md). Days, not weeks. **Phase 1 of the May 1 V1 ISO story.** |
+| 4 | LFS Stage 1: bootstrap-toolchain.sh end-to-end | Deferred to Phase 2 | Build cross-compiler from source tarballs. Not blocking first ISO. |
+| 5 | LFS Stage 2: build base system in chroot | Deferred to Phase 2 | ark-build all 109 base recipes. Phase 2 = self-hosting story. |
+| 6 | LFS Stage 3: build AGNOS userland on target | Deferred to Phase 2 | Cyrius-compiled binaries inside AGNOS (Stage-4-only ships pre-built). |
+| 7 | Selfhost-validate passes all phases | Deferred to Phase 2 | Run `selfhost-validate --phase all` on booted ISO |
+| 8 | CI automation | In progress | GitHub Actions workflows |
 
 **Target**: May 1, 2026 (Beltane)
 
@@ -392,4 +402,4 @@ Unified Consciousness Model paper and bhava roadmap tracked in `MacCracken/bhava
 
 ---
 
-*Last Updated: 2026-04-23 | Next Review: 2026-04-30*
+*Last Updated: 2026-04-27 | Next Review: 2026-05-01 (V1 release date)*
