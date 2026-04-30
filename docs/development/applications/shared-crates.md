@@ -1,8 +1,8 @@
 # Shared Crates — Registry & Status
 
-> **Status**: Active | **Last Updated**: 2026-04-27
+> **Status**: Active | **Last Updated**: 2026-04-30
 >
-> **107 entries** — 82 at v1.0+ stable (75 libs + 6 binaries + 1 stdlib-folded), 19 pre-1.0 libs, 8 pre-1.0 binaries/tools, 10 non-library, 3 planned, plus the Audio I/O / Video Codec / GitHub-only sub-sections (overlap with the v1.0+/pre-1.0 counts above where applicable).
+> **108 entries** — 82 at v1.0+ stable (75 libs + 6 binaries + 1 stdlib-folded), 20 pre-1.0 libs, 8 pre-1.0 binaries/tools, 10 non-library, 3 planned, plus the Audio I/O / Video Codec / GitHub-only sub-sections (overlap with the v1.0+/pre-1.0 counts above where applicable).
 >
 > **Classification rule**: pre-v1.0 crates are tracked in [`docs/development/applications/`](README.md). v1.0+ stable crates have their docs in [`docs/applications/libs/`](../../applications/libs/) (libraries) or [`docs/applications/`](../../applications/) (consumer apps).
 > See [First-Party Standards](first-party-standards.md) for versioning and publishing conventions.
@@ -137,7 +137,7 @@ Full documentation for each library: [docs/applications/libs/](../../application
 
 ---
 
-## Pre-1.0 (19 crates)
+## Pre-1.0 (20 crates)
 
 ### Near-Stable (v0.5.0+)
 
@@ -153,7 +153,8 @@ Full documentation for each library: [docs/applications/libs/](../../application
 | [selah](https://github.com/MacCracken/selah) | 0.29.4 | Screenshot capture, annotation, PII redaction | taswir, soorat |
 | [cyrius-doom](https://github.com/MacCracken/cyrius-doom) | 0.26.1 | DOOM engine in Cyrius — hardened, 5 CVEs fixed, 2.59ms/frame | standalone game / kernel demo |
 | [muharrir](https://github.com/MacCracken/muharrir) | 0.23.5 | Editor primitives — text buffer, undo/redo, command pattern | rasa, tazama, shruti |
-| [vani](https://github.com/MacCracken/vani) | 0.1.0 | Audio device I/O — direct ALSA/OSS syscalls (Cyrius-native) | shravan, dhvani, naad, jalwa, shruti |
+| [samvada](https://github.com/MacCracken/samvada) | 0.2.1 | DBus client (Cyrius-native) — C-shim wrapping `sd_bus`, minimal logind subset (`TakeDevice` for DRM master delegation, `Pause`/`ResumeDevice` signals). v1.0 retires the libsystemd shim alongside mabda v4.0's wgpu-native retirement. | mabda (Phase D `gpu_surface_configure_native_logind`) |
+| [vani](https://github.com/MacCracken/vani) | 0.1.0 | Audio device I/O — direct ALSA/OSS syscalls (Cyrius-native). Full audio stack (ALSA ioctls, ring buffer, XRUN recovery, mixer); targeting cyrius 5.8.0 to retire legacy `lib/audio.cyr` and become the single audio authority in stdlib. | shravan, dhvani, naad, jalwa, shruti |
 | [yantra](https://github.com/MacCracken/yantra) | 0.1.0 | Sovereign UI automation — browser + mobile, as a Cyrius library (Cyrius-native). `.tcyr` files include `lib/yantra.cyr` and drive Chromium / Firefox / WebKit / Android / iOS. Not a framework — `cyrius test` stays the runner. Planned backends: CDP, W3C WebDriver, Appium. | AGNOS E2E consumers (owl, agnoshi, tanur when GUI lands) |
 | [joshua](https://github.com/MacCracken/joshua) | 0.1.0 | Game manager — AI NPCs, headless simulation | end user |
 | [murti](https://github.com/MacCracken/murti) | 0.1.0 | Model runtime — registry, store, inference backends | hoosh, ifran, tanur |
@@ -253,4 +254,4 @@ See [k8s-roadmap.md](../vision/architecture/k8s-roadmap.md) for stiva + nein + m
 
 ---
 
-*Last Updated: 2026-04-27*
+*Last Updated: 2026-04-30*
