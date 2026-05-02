@@ -31,43 +31,49 @@ This repo is the **genesis layer** — meta, narrative, and the infrastructure t
 
 ## Standalone Repos (Cyrius-native)
 
-| Subsystem | Version | Role | Port Status |
-|-----------|---------|------|-------------|
-| **agnos** | 1.22.0 | AGNOS kernel (260KB, 33 subsystems, 26 syscalls) | **Native** |
-| **cyrius** | 5.7.12 | Sovereign compiler + stdlib + toolchain | **Native** |
-| **zugot** | — | Recipe repository (all takumi build recipes) | — |
-| **agnostik** | 1.0.1 | Shared types, domain primitives | **Ported** |
-| **agnosys** | 1.0.2 | Kernel interface (Landlock, seccomp, syscalls) | **Ported** |
-| **kybernet** | 1.0.1 | PID 1 binary (486KB, 140 tests, 46 benchmarks) | **Ported** |
-| **argonaut** | 1.4.0 | Init system library | **Ported** |
-| **sigil** | 2.9.3 | Trust/crypto boundary | **Ported** |
-| **libro** | 2.0.5 | Cryptographic audit chain | **Ported** |
-| **hoosh** | 2.0.0 | LLM inference gateway (474KB, 15 providers) | **Ported** |
-| **avatara** | 2.3.0 | Divine archetype overlay (2,761× faster cached) | **Ported** |
-| **ai-hwaccel** | 2.0.0 | GPU detection (217KB, 518 tests) | **Ported** |
-| **hadara** | 1.0.0 | Culture modeling (50 cultures, Cyrius-native) | **Native** |
-| **shravan** | 2.3.2 | Audio codecs | **Ported** |
-| **mabda** | 2.5.0 | GPU foundation (folded into Cyrius stdlib) | **Ported** |
-| **daimon** | 1.1.1 | Agent orchestrator, 144 MCP tools | **Ported** |
-| **agnoshi** | 1.0.0 | AI shell | **Ported** |
-| **aethersafha** | 0.1.0 | Wayland compositor | Pending |
-| **ark** | 0.8.0 | Package manager (532KB, 4× smaller than Rust) | **Ported** |
-| **nous** | 1.1.1 | Package resolver | **Ported** |
-| **takumi** | 0.1.0 | Build system | Pending |
-| **aegis** | 0.1.0 | Security daemon | Pending |
-| **shakti** | 0.2.2 | Privilege escalation | **Ported** |
-| **kavach** | 3.0.0 | Sandbox execution | **Ported** |
-| **bote** | 2.5.1 | MCP core + host registry | **Ported** |
-| **t-ron** | 2.0.0 | MCP security | **Ported** |
-| **phylax** | 1.0.0 | Threat detection | **Ported** |
-| **abaco** | 2.1.0 | Math/number theory library | **Ported** |
-| **itihas** | 2.2.0 | History/versioning | **Ported** |
-| **bsp** | 1.1.2 | BSP geometry library (waiting on Cyrius 5.6.x optimization arc) | **Ported** |
-| **cyrius-doom** | 0.26.1 | DOOM engine in Cyrius (waiting on Cyrius 5.6.x optimization arc) | **Native** |
-| **sankoch** | 2.1.0 | Lossless compression (LZ4, DEFLATE, zlib, gzip) | **Ported** |
-| **bhava** | 2.0.0 | Emotion/sentiment modeling | Pending port |
-| **hisab** | 2.2.2 | Accounting/calculation | **Ported** |
-| **agnova** | 0.1.0 | OS installer (Cyrius port from 3,656 Rust lines, base established) | **Ported** |
+> **Volatile state lives in [`docs/development/state.md`](docs/development/state.md)** — current versions, Cyrius pins, port status, active sweeps, carry-forward debt. Refresh that file, not this section.
+>
+> **Crate registries** (versions + roles): [`docs/development/applications/shared-crates.md`](docs/development/applications/shared-crates.md) is the full registry (incl. pre-1.0); [`docs/applications/libs/README.md`](docs/applications/libs/README.md) is the v1.0+ stable subset.
+
+The role map below is for orientation. **Versions are intentionally omitted** — they drift fast; consult state.md or the registries.
+
+| Subsystem | Role | Port Status |
+|-----------|------|-------------|
+| **agnos** | AGNOS kernel (33 subsystems, 26 syscalls) | **Native** |
+| **cyrius** | Sovereign compiler + stdlib + toolchain | **Native** |
+| **zugot** | Recipe repository (all takumi build recipes) | — |
+| **agnostik** | Shared types, domain primitives | **Ported** |
+| **agnosys** | Kernel interface (Landlock, seccomp, syscalls) | **Ported** |
+| **kybernet** | PID 1 binary (486KB, 140 tests, 46 benchmarks) | **Ported** |
+| **argonaut** | Init system library | **Ported** |
+| **sigil** | Trust/crypto boundary | **Ported** |
+| **libro** | Cryptographic audit chain | **Ported** |
+| **hoosh** | LLM inference gateway (15 providers) | **Ported** |
+| **avatara** | Divine archetype overlay (2,761× faster cached) | **Ported** |
+| **ai-hwaccel** | GPU detection (518 tests) | **Ported** |
+| **hadara** | Culture modeling (50 cultures, Cyrius-native) | **Native** |
+| **shravan** | Audio codecs | **Ported** |
+| **mabda** | GPU foundation (folded into Cyrius stdlib) | **Ported** |
+| **daimon** | Agent orchestrator, 144 MCP tools | **Ported** |
+| **agnoshi** | AI shell | **Ported** |
+| **aethersafha** | Wayland compositor | Pending |
+| **ark** | Package manager (4× smaller than Rust) | **Ported** |
+| **nous** | Package resolver | **Ported** |
+| **takumi** | Build system | Pending |
+| **aegis** | Security daemon | Pending |
+| **shakti** | Privilege escalation | **Ported** |
+| **kavach** | Sandbox execution | **Ported** |
+| **bote** | MCP core + host registry | **Ported** |
+| **t-ron** | MCP security | **Ported** |
+| **phylax** | Threat detection | **Ported** |
+| **abaco** | Math/number theory library | **Ported** |
+| **itihas** | History/versioning | **Ported** |
+| **bsp** | BSP geometry library (waiting on Cyrius v5.8.x optimization cycle) | **Ported** |
+| **cyrius-doom** | DOOM engine in Cyrius (waiting on Cyrius v5.8.x optimization cycle) | **Native** |
+| **sankoch** | Lossless compression (LZ4, DEFLATE, zlib, gzip) | **Ported** |
+| **bhava** | Emotion/sentiment modeling | Pending port |
+| **hisab** | Accounting/calculation | **Ported** |
+| **agnova** | OS installer (Cyrius port from 3,656 Rust lines, base established) | **Ported** |
 
 ## Development Process
 
@@ -121,7 +127,7 @@ cyrius build src/boot.cyr build/boot
 **Deps are declared in `scripts/cyrius.cyml`** — do NOT manually include stdlib.
 Source files only need project includes (`src/types.cyr` etc.).
 
-**Current Cyrius release:** see `cyrius/VERSION` (verify at session start; v5.7.x patch series active). Toolchain pinned in `scripts/cyrius.cyml` via the `cyrius = "<version>"` field — manifest is single source of truth (no separate `.cyrius-toolchain` file).
+**Current Cyrius release:** see `cyrius/VERSION` (verify at session start; **v5.8.x active — optimization, math, language fixes cycle**). Toolchain pinned in `scripts/cyrius.cyml` via the `cyrius = "<version>"` field — manifest is single source of truth (no separate `.cyrius-toolchain` file). Cycle status, pin-lag spectrum, and active sweeps live in [`docs/development/state.md`](docs/development/state.md).
 
 ## Documentation Structure
 
@@ -131,12 +137,14 @@ Root files (required):
 
 docs/ (required):
   architecture.md — system architecture overview (module map, data flow, tech stack)
-  architecture/kernel-layers.md — kernel layer decomposition (v1.22.0, 33 subsystems)
+  architecture/kernel-layers.md — kernel layer decomposition
   design-patterns.md — recurring cognitive patterns across AGNOS decisions (through-line layer; accretion doc, becomes GA retrospective spine)
   philosophy.md — ideological basis (sovereignty, Temple, Hermetic role)
   history.md, timeline.md — project history and dated milestones
+  development/state.md — live ecosystem state (Cyrius cycle, pin-lag, active sweeps, carry-forward)
   development/roadmap.md — completed, backlog, future, v1.0 criteria
-  development/applications/shared-crates.md — crate registry
+  development/applications/shared-crates.md — crate registry (full, incl. pre-1.0)
+  applications/libs/README.md — v1.0+ stable library registry
   articles/ — thematic engineering articles (port sequencing, sovereign compiler, etc.)
 
 docs/ (when earned):
@@ -155,6 +163,7 @@ scripts/ (Cyrius project):
 - `design-patterns.md` = why the decisions fit together as a system (through-lines)
 - ADRs = why *this specific* choice (per-decision)
 - `history.md` / `timeline.md` = what happened when (events)
+- `development/state.md` = what's true *right now* (volatile state — versions, pins, sweeps, debt)
 - `articles/` = specific thematic arguments (deep-dives on particular patterns)
 - `CHANGELOG.md` per repo = what changed in v-N
 - Memory files = cross-session agent behavioral directives
