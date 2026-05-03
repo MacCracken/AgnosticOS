@@ -115,6 +115,19 @@ Items that did not ship during v5.7.x — verify before acting (the original che
 | 4 | vidya per-minor refresh (`language.toml` / `dependencies.toml` / `ecosystem.toml`) | ❓ Pending verification | vidya at 2.3.0 / pin 5.7.0 — check whether tomls reflect post-fold ecosystem |
 | 5 | hoosh / ifran / daimon / mela / ark sandhi-fold audit-confirm | ❓ Unverified | v5.7.0 audit said no `[deps.sandhi]` and no `include`; re-confirm |
 
+### CVE-2026-31431 (Copy Fail) cleanup + audit
+
+Linux kernel LPE in `algif_aead` (AF_ALG in-place AEAD + `splice()` → 4-byte page-cache write → root). Disclosed 2026-04-29; affects mainline kernels from 2017 onward. Roadmap item **S1**.
+
+**AGNOS-native kernel** (`agnos` v1.26.1): structurally immune — verified at `kernel/core/syscall.cyr:32-36`, 26-syscall table contains no `socket`, no `splice`, no AF_ALG family. Bug class is unreachable.
+
+| # | Action | Status |
+|---|--------|--------|
+| 1 | Host defconfigs — pin `# CONFIG_CRYPTO_USER_API{,_HASH,_SKCIPHER,_AEAD,_RNG} is not set` in `agnosticos/kernel/6.6-lts/configs/*defconfig`, `6.x-stable/configs/agnos_defconfig`, `7.0-devel/configs/agnos_defconfig`, `configs/edge-*.config` | ❌ Pending |
+| 2 | Audit local crypto-adjacent repos for `AF_ALG` / `algif_aead` refs: sigil, agnosys, phylax | ✅ Done 2026-05-03 — zero hits |
+| 3 | Audit when next cloned: kybernet, libro, kavach, shakti, aegis, t-ron, argonaut, ark, agnostik, bote, daimon, hoosh | ❓ Deferred — repos not local |
+| 4 | Once defconfigs pinned, document the absence-by-design pattern alongside other AGNOS-vs-Linux structural-immunity examples in `design-patterns.md` | [ ] |
+
 ### Pending Cyrius ports
 
 | Repo | Current state | Action |
