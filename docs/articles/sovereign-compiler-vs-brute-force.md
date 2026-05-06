@@ -156,15 +156,22 @@ For context: GCC is ~100MB, Clang/LLVM is ~500MB.
 
 ### Since This Was Written
 
-**Verified April 23, 2026 — roughly three weeks past this article's original Day-4 cut (early April 2026).** The numbers above are that Day-4 snapshot; the numbers below are the 3-week follow-up. If you are reading this more than a release cycle later, expect the v5.6.x figures to be stale in specifics while the shape still holds — see [*Docs Go Stale Before the Commit*](docs-go-stale-before-the-commit.md) for why that's inherent rather than accidental.
+**Refreshed 2026-05-06 — five weeks past this article's original Day-4 cut.** The numbers above are that Day-4 snapshot; the numbers below are current. Rewrite-in-place per [*Docs Go Stale Before the Commit*](docs-go-stale-before-the-commit.md) — git history is authoritative for prior figures.
 
-- **Cyrius v5.6.13** — 488 KB self-hosting compiler on Linux x86_64, 486 KB on Windows PE32+, 454 KB on aarch64 post-combine-shuttle-elim; still bootstrapping byte-identically from the same 29 KB seed across all three platforms, plus Apple Silicon Mach-O self-host closed at v5.5.17.
-- **AGNOS kernel v1.22.0** — 260 KB, 33 subsystems, 26 syscalls, hardened pass.
-- **v5.6.x compiler-optimization arc** mid-way (O1 through O6 phases); **v5.7.0 RISC-V** and **v5.8.0 bare-metal** queued behind it.
+- **Cyrius v5.9.0** — cc5 at 741,048 B self-hosting compiler on Linux x86_64; multi-platform closed (aarch64, Windows PE32+, Apple Silicon Mach-O) — all bootstrapping byte-identically from the same 29 KB seed.
+- **AGNOS kernel v1.26.1** — 260 KB, 33 subsystems, 26 syscalls, three hardening passes (14 buffer overflows found and fixed).
+- **Optimization arc shipped through v5.8.x** — Phase O1 (FNV-1a hashing) and O2 (five peephole categories) closed in v5.6.x; O3a IR instrumentation landed v5.6.12; O4a/b/c register-allocation incl. Poletto-Sarkar linear-scan picker shipped through v5.7.x and v5.8.x; O5/O6 (codebuf compaction with NOP harvest) referenced through v5.8.x with status sweep pending in v5.9.x.
+- **Stdlib-fold pattern compounded three times** — sandhi (v5.7.0, service-boundary, 376 KB / 469 fns), vani (v5.8.0, audio I/O), niyama (v5.9.0, 5 regex engines / 6,664 lines). Each fold is a multi-consumer-gated maturation of a sibling distfile into the canonical stdlib `lib/`.
+- **v5.9.x is the catchup arc** — consumer rollup, optimization-debt audit, ESTORESTACKPARM and dangling-item closeout — leaving v5.10.x clean for AGNOS bare-metal target + RISC-V rv64 backend (both slipped from earlier cycles as foldin work compounded).
 
-The "young language" framing in this article is the honest one. The sprint that closes the remaining compute gaps is scheduled and named.
+The "young language" framing in this article is the honest one. The sprint that closes the remaining compute gaps has been operating continuously since this was written.
 
-**Sustained velocity at sovereign scale.** A receipt worth naming directly: **v5.5.x closed at v5.5.40 on April 22 — the longest minor in Cyrius history at 40 patches**, including the NSS/PAM real-fix arc (v5.5.23–v5.5.27), the u64-hashmap rewrite (v5.5.20), the AES-NI 16-byte alignment fix that unblocked `sigil` 2.9.1 (v5.5.21), `cyrfmt --write` (v5.5.22), and the `lib/fdlopen.cyr` foreign-dlopen shim landed inside the arc. v5.5.40 wrapped with a 19/19 check-gate pass. Within 24 hours of the closeout, **Phase O1** (instrumentation + FNV-1a symbol hashing, v5.6.0–v5.6.4) and **Phase O2** (five peephole categories: partial strength reduction, flag-result reuse, redundant push/pop elim, commutative combine-shuttle, aarch64 combine-shuttle — closed at v5.6.11 on April 23) landed 12 optimization patches and rolled v5.6.13 with linear-scan regalloc in flight. That cadence — 40 patches to close a minor, then 12 optimization patches in the next two days — is the sovereignty thesis operationalized. A seed that fits on a QR sticker also ships this.
+**Sustained velocity at sovereign scale.** Two receipts worth naming directly:
+
+- **v5.5.x** closed at v5.5.40 on April 22 (40 patches, NSS/PAM real-fix arc, u64-hashmap rewrite, AES-NI alignment fix that unblocked sigil, `lib/fdlopen.cyr` shim, 19/19 check-gate pass).
+- **v5.8.x** ran 66 patches across 4 days (2026-05-01 → 2026-05-05) as a 3-phase cycle: Phase 1 (slots 1-8) closed the v5.8.0 audit (lint/fmt cap, f64_log2 polyfill, sys_stat/fstat backfill, _SC_ARITY cross-arch gate, NI-class dupe, cc5_aarch64 packaging); Phase 2 (slots 9-26) handled language vocabulary (var X; diagnostic, fmt --check exit code, vidya audit); Phase 3 (slots 27-65) was the stdlib foldin sweep continuing the sandhi pattern. **66-in-4-days is the velocity high-water mark.**
+
+That cadence — 40 patches to close one minor, 66 patches in the next four days, then niyama opening v5.9.x on day 5 — is the sovereignty thesis operationalized. A seed that fits on a QR sticker also ships this.
 
 Full head-to-head benchmarks on real crate conversions: [Cyrius vs Rust Benchmarks](cyrius-vs-rust-benchmarks.md). The 10-port ledger: [Port Ledger Volume 1](port-ledger-volume-1.md).
 

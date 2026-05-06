@@ -11,11 +11,13 @@ See also: [First-Party Standards — Own the Stack](../../development/applicatio
 
 ---
 
-## OS & Infrastructure (18)
+## OS & Infrastructure (24)
 
 | Crate | Version | Domain |
 |-------|---------|--------|
 | agnosai | 1.1.0 | AI orchestration |
+| agnostik | 1.0.0 | Shared types & domain primitives (Cyrius, GitHub-release only) |
+| agnosys | 1.0.4 | Kernel interface — Landlock, seccomp, syscall bindings (Cyrius) |
 | ai-hwaccel | 2.0.0 | GPU detection |
 | bote | 2.5.1 | MCP core (~5us/message, streamable HTTP) |
 | daimon | 1.1.4 | Agent orchestrator (144 MCP tools) |
@@ -26,7 +28,11 @@ See also: [First-Party Standards — Own the Stack](../../development/applicatio
 | mabda | 3.0.0-rc.2 | GPU foundation |
 | majra | 2.4.1 | Queue/pub-sub |
 | nein | 1.0.0 | Programmatic nftables firewall |
-| sigil | 3.0.1 | Trust verification & crypto |
+| patra | 1.9.3 | Structured storage & SQL — B+ tree, WAL (Cyrius-native) |
+| phylax | 1.1.0 | Threat detection — YARA, entropy, magic bytes, ML |
+| sakshi | 2.2.3 | Tracing, error handling, structured logging (Cyrius-native) |
+| sankoch | 2.2.4 | Lossless compression — LZ4, DEFLATE, zlib, gzip |
+| sigil | 3.0.1 | Trust verification & crypto — AES-NI + SHA-NI hardware accel |
 | soorat | 1.0.0 | GPU rendering |
 | stiva | 2.0.0 | Container runtime |
 | szal | 1.1.0 | Workflow engine |
@@ -91,12 +97,13 @@ See also: [First-Party Standards — Own the Stack](../../development/applicatio
 | kiran | 1.0.0 | Game engine (ECS, scene hierarchy) |
 | ranga | 1.0.0 | Image processing (color, blend, GPU compute) |
 
-## Language & Navigation (2)
+## Language & Navigation (3)
 
 | Crate | Version | Domain |
 |-------|---------|--------|
 | raasta | 1.0.0 | Pathfinding |
 | varna | 1.0.0 | Multilingual language engine |
+| vyakarana | 1.0.2 | Source-code grammar + tokenizer (Cyrius-native, ten-kind palette, CYML grammars) |
 
 ## Physics & Engineering (6)
 
@@ -108,3 +115,12 @@ See also: [First-Party Standards — Own the Stack](../../development/applicatio
 | pravash | 1.2.0 | Fluid dynamics |
 | tanmatra | 1.2.1 | Atomic physics |
 | ushma | 1.3.0 | Thermodynamics |
+
+## Stdlib-Folded (2)
+
+Sibling distfiles vendored byte-identical into the Cyrius stdlib `lib/`. Standalone repos remain for direct consumers needing newer surface than the folded snapshot; subsequent surface patches land via Cyrius release cycle.
+
+| Crate | Folded At | Domain |
+|-------|-----------|--------|
+| sandhi | Cyrius v5.7.0 | Service-boundary layer — HTTP/HTTP2/WS/TLS/JSON/net (376 KB / 9,649 lines / 469 fns). Set the fold pattern; sandhi repo entered maintenance mode per ADR 0002. |
+| niyama | Cyrius v5.9.0 | Regex engines — bre / re2 / pcre / fuzzy / vim (6,664 lines / 7 modules). Multi-consumer gate: cyim + queued AGNOS bare-metal kernel. |

@@ -165,7 +165,7 @@ Pure compute is where Cyrius showed its early codegen ceiling. Three distinct ga
 
 **Algorithm gap (7-42×) — closed.** Number theory originally used `mod_mul` with 64 additions per multiply because Cyrius had no u128 type. **u128 shipped in Cyrius v4.7–v4.8.x.** Abaco then specified a hardware `u64_mulmod` fast-path; **Cyrius v4.8.5 shipped it**. Abaco re-measured: **Miller-Rabin end-to-end ~12× faster** than the original Cyrius port. This is the canonical closed-loop example — a downstream port drove a compiler feature, the compiler shipped it, the port then measured the result. Benchmarks here predate that cycle; the newer abaco numbers live in `abaco/benches/` and the [port feedback loop memory](../../CLAUDE.md).
 
-**Inlining gap (300-700×)** — DSP scalar sub-nanosecond times mean LLVM inlined the entire function. Cyrius ~400ns is function call overhead through the benchmark harness, not computation time. The batch numbers (`sanitize_4096` at 4.4×, `poly_blep` at 9.6×) reflect the real gap without SIMD. **Targeted by the Cyrius v5.6.x compiler-optimization arc** (O1–O6: instrumentation, peephole, IR-driven passes, linear-scan regalloc, maximal-munch, slab allocator).
+**Inlining gap (300-700×)** — DSP scalar sub-nanosecond times mean LLVM inlined the entire function. Cyrius ~400ns is function call overhead through the benchmark harness, not computation time. The batch numbers (`sanitize_4096` at 4.4×, `poly_blep` at 9.6×) reflect the real gap without SIMD. **Optimization arc shipped through v5.8.x** — O1 (FNV-1a hashing v5.6.0–v5.6.4), O2 (five peephole categories closed v5.6.11), O3a IR instrumentation (v5.6.12), linear-scan regalloc default-on (v5.6.20–v5.6.24), Phase O4a/b/c register-allocation incl. Poletto-Sarkar linear-scan picker (through v5.7.x and v5.8.x). O5/O6 codebuf compaction with NOP harvest is referenced through v5.8.x with status sweep pending in v5.9.x catchup arc.
 
 **SIMD wins (3.2×)** — Explicit SSE2 intrinsics (`addpd`/`mulpd`/`subpd`) beat Rust's auto-vectorization on 4,096-element f64 arrays. Cyrius emits direct packed double instructions with no loop analysis overhead. Intent beats inference.
 
@@ -206,7 +206,7 @@ The receipt is *"measure before implementing, not after."* A 0-match bytescan is
 
 ## Known Limitations
 
-**Pure compute gap**: Branch-heavy operations show 2–42× overhead vs LLVM -O3. Compiler-optimization targets (constant folding, inlining, regalloc, maximal-munch instruction selection) — **Cyrius v5.6.x optimization arc** lands these as O1–O6 phases before v5.7.0 RISC-V. O1 and O2 are done (see *Optimization Trajectory → Phase O2*); v5.6.13 linear-scan regalloc is in flight; v5.6.14 fused ops and the remaining O3–O6 phases are queued through v5.6.22.
+**Pure compute gap**: Branch-heavy operations show 2–42× overhead vs LLVM -O3. The compiler-optimization arc (O1–O6) shipped continuously through v5.6.x → v5.7.x → v5.8.x. O1 (instrumentation + FNV-1a) v5.6.0–v5.6.4; O2 (five peephole categories) v5.6.11; O3a IR instrumentation v5.6.12; linear-scan regalloc default-on v5.6.20–v5.6.24; O4a/b/c regalloc + Poletto-Sarkar linear-scan picker through v5.7.x–v5.8.x. **O5/O6 codebuf compaction (NOP harvest with jump+fixup) is the remaining audit work, queued for v5.9.x catchup arc.** v5.10.x reserved for AGNOS bare-metal target + RISC-V rv64.
 
 **No borrow checker**: Memory safety comes from testing, auditing, and a stdlib designed for the absence of hidden aliasing — not a type-system proof. Design stance, not a pending feature.
 

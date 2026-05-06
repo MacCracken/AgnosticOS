@@ -219,10 +219,9 @@ Root [`CLAUDE.md`](../../CLAUDE.md) "Standalone Repos" table also drifted (same 
 | [`applications/shared-crates.md`](applications/shared-crates.md) | Bump versions; re-verify all "v0.x.x" claims (see drift list above) |
 | [`docs/applications/libs/README.md`](../applications/libs/README.md) | Bump versions for v1.0+ subset; "Last Updated 2026-04-15" predates two cycles |
 | [`applications/first-party-documentation.md`](applications/first-party-documentation.md) | Re-read at each v5.9.x patch — meta-irony from *Docs Go Stale Before the Commit* |
-| **NEW** Vani fold-in article | Refusal-as-Architecture instance #2 (sandhi was #1) — still pending |
-| **NEW** Niyama fold-in article | Refusal-as-Architecture instance #3 — slot opened v5.9.0 |
-| **NEW** Phase-3-stdlib-foldin retrospective | v5.8.x's 27 foldin slots in 4 days is its own story — sandhi-pattern compounded |
-| **NEW** starship.toml prompt convention (v5.8.0) | ॐ Om + 🌀 cyclone — possibly under `articles/` or `design-patterns.md` |
+| **NEW** ✅ [*What Justifies a Stdlib Foldin*](../articles/what-justifies-a-stdlib-foldin.md) | Shipped 2026-05-06 — meta-process article covering the gate framework, anti-criteria, mechanism, and three-instance pattern across sandhi/vani/niyama. Subsumes per-instance article slots; per-fold articles (vani #2, niyama #3) optional if a different angle wants its own piece. |
+| **NEW** ✅ Phase-3-stdlib-foldin retrospective | Landed 2026-05-06 in vidya at `content/cyrius/field_notes/compiler/retros/foldin_arc_v57_v59.cyml`. Covers the sandhi/vani/niyama three-instance pattern. Skeleton + observable receipts written by meta agent; marked sections `[LANG-AGENT: extend]` for the language agent to fill in with niyama-direct experience. Companion to the `what-justifies-a-stdlib-foldin.md` article (process) — the retro is the experiential ledger. |
+| **NEW** ✅ starship.toml prompt convention (v5.8.0) | ॐ Om + 🌀 cyclone — added to `design-patterns.md` as Terminal-symbol identity stub under *Patterns Yet to Add*. |
 
 ---
 

@@ -25,7 +25,7 @@ The rule exists because "trust me, it got faster" isn't a receipt. A git tag + a
 - **Cyrius v5.5.4** — self-hosting from a 29KB assembly seed, zero external dependencies, bootstrap chain of four items (CPU → seed → compiler → output)
 - **Age:** 17 days old when Volume 1 was cut. First commit 2026-04-03. Kernel solid 2026-04-04 23:16 PDT (44 hours in)
 - **Platforms:** x86_64 Linux byte-identical self-host; aarch64 Linux byte-identical on real Pi hardware (v5.3.15+); Apple Silicon Mach-O byte-identical self-host on M-series (v5.3.13); Windows PE32+ Win64 ABI call-site complete on real Windows 11 (v5.5.4)
-- **Optimization arc:** not yet run. v5.6.x (O1–O6) is the dedicated minor that closes the remaining compute gaps.
+- **Optimization arc:** not yet run *at the time of this volume's cut*. v5.6.x opened the arc (O1–O6); subsequent cycles continued it. **Status as of 2026-05-06: O1, O2, O3a, O4a/b/c shipped through v5.6.x → v5.7.x → v5.8.x; O5/O6 audit pending in v5.9.x catchup arc.** Volume 2 will carry the post-arc re-measurements.
 
 The ledger below is the state before the first optimization sprint. That is the relevant framing.
 
@@ -194,39 +194,40 @@ This is a coordination pattern, not a language pattern. It shows up in Volume 2 
 Four categories, all of them enumerated and scheduled:
 
 **1. Zero-copy micro-ops** — `&str` slicing avoids allocation on single-value hot paths. Cyrius's bump allocator + `str_builder` wins when the path allocates + formats + frees, but loses when the path barely touches memory. Examples: ark `cmd_create` 4×, ark `recent_10` 8×, agnostik `sandbox_config` 37×, kybernet `vec_push_get_len` 8×, kybernet `seccomp_build` 44×.
-**Closes with v5.6.1 (O2 peephole) + v5.6.2 (O3 IR-driven passes).**
+**Targeted by O2 (peephole) + O3 (IR-driven passes). O2 closed v5.6.11; O3a IR instrumentation v5.6.12. Re-measurement pending in Volume 2.**
 
 **2. Constant folding on pure compute** — Rust's LLVM -O3 evaluates `classify_signal` (2 ns), `notify_parse` (2 ns), and `sigset` ops (1 ns) at *compile time* because the inputs are literals in the benchmark. Cyrius computes them at runtime. The 2–19× gaps on these benchmarks are not runtime differences — they are "Rust runs the benchmark in the compiler, Cyrius runs it in the CPU."
-**Closes with v5.6.0 (O1 instrumentation + constant-folding pass) + v5.6.2.**
+**Targeted by O1 (instrumentation + constant-folding) + O3 IR passes. O1 closed v5.6.4; O3a v5.6.12. Re-measurement pending.**
 
 **3. Inlining on sub-nanosecond DSP** — LLVM inlines entire scalar DSP functions at -O3; Cyrius currently emits a call through the benchmark harness. The "300–700× gap" on abaco DSP scalar ops is almost entirely the call overhead. The batch numbers (`sanitize_4096` 4.4×, `poly_blep` 9.6×) show the real gap without SIMD.
-**Closes with v5.6.3 (O4 linear-scan regalloc) + v5.6.4 (O5 maximal-munch instruction selection).**
+**Targeted by O4 (linear-scan regalloc + Poletto-Sarkar picker) + O5 (maximal-munch). O4 shipped through v5.6.x–v5.8.x; O5/O6 codebuf compaction queued for v5.9.x audit. Re-measurement pending.**
 
 **4. serde string serialization** — Rust's serde is the most-optimized serialization path in any systems language. Cyrius currently emits general-purpose string code for the same work. agnostik shows 5.8–6.8× gaps on string roundtrip.
-**Closes with targeted stdlib work + v5.6.2.**
+**Targeted by stdlib work + IR passes. Stdlib-fold maturity (sandhi v5.7.0 / vani v5.8.0 / niyama v5.9.0) re-shaped the surface. Re-measurement pending.**
 
-These are not excuses. They are a backlog with patch numbers.
+These are not excuses. They are a backlog with patch numbers — most patches now historical, re-measurement is the open work.
 
 ---
 
 ## The Sprint That Runs Out in Front
 
-Cyrius v5.6.x is the dedicated compiler-optimization arc. Six phases, each with its own patch number:
+Cyrius v5.6.x opened the compiler-optimization arc. Six phases as originally planned, with what actually shipped:
 
-| Phase | What it does |
-|-------|--------------|
-| **v5.6.0** (O1) | Instrumentation + FNV-1a symbol table — baseline measurement before optimizing |
-| **v5.6.1** (O2) | Peephole quick wins (x86_64 + aarch64) |
-| **v5.6.2** (O3) | IR-driven passes: constant folding, dead-store elimination, common subexpression elimination |
-| **v5.6.3** (O4) | Linear-scan register allocation (Poletto-Sarkar) |
-| **v5.6.4** (O5) | Maximal-munch instruction selection (per-target tiles) |
-| **v5.6.5** (O6) | Slab allocator for IR pools (measurement-gated; skippable if O4 benchmarks say bump is fine) |
+| Phase | What it does | Status |
+|-------|--------------|--------|
+| **O1** | Instrumentation + FNV-1a symbol table | ✅ Shipped v5.6.0–v5.6.4 |
+| **O2** | Peephole — five categories (x86_64 + aarch64) | ✅ Closed v5.6.11 |
+| **O3a** | IR instrumentation | ✅ Shipped v5.6.12 |
+| **O3 (full)** | IR-driven passes: constant folding, DSE, CSE | Partial — IR foundation in; full pass set pending re-measurement |
+| **O4** | Linear-scan regalloc + Poletto-Sarkar picker | ✅ Default-on v5.6.20–v5.6.24; O4b explicit through v5.8.x |
+| **O5** | Maximal-munch instruction selection | Referenced; status sweep pending in v5.9.x |
+| **O6** | Codebuf compaction with NOP harvest + jump+fixup | Referenced; status sweep pending in v5.9.x |
 
-The arc closes the four gaps above by construction. It also does something Rust cannot: **every new Cyrius port shipped after v5.6.x inherits these optimizations automatically, on the same compiler that's 482 KB and still bootstraps from 29 KB of assembly.** Rust's LLVM is a 20-year codebase of millions of lines. The Cyrius compiler fits in a browser tab.
+The arc closes the four gaps above by construction. It also does something Rust cannot: **every new Cyrius port shipped after the arc inherits these optimizations automatically, on the same compiler that's 741 KB and still bootstraps from 29 KB of assembly.** Rust's LLVM is a 20-year codebase of millions of lines. The Cyrius compiler fits in a browser tab.
 
-After v5.6.x: RISC-V rv64 (v5.7.0), then bare-metal / AGNOS kernel target (v5.8.0) — surface Rust cannot reach without shelling out to external toolchains.
+**Cycle sequencing as it actually went** — v5.6.x (optimization arc opens) → v5.7.x (sandhi-fold + cyrius-ts) → v5.8.x (audit closeout + language vocabulary + stdlib foldins) → v5.9.x (catchup + fixes, current) → **v5.10.x reserved for RISC-V rv64 + bare-metal / AGNOS kernel target** (both slipped from earlier cycles as foldin work compounded). Surface Rust cannot reach without shelling out to external toolchains.
 
-The ledger in Volume 1 shows a young language at near-parity or ahead after seventeen days and zero compiler optimization. The sprint that runs it out in front is scheduled, named, and on disk.
+The ledger in Volume 1 shows a young language at near-parity or ahead after seventeen days and zero compiler optimization. Volume 2 measures what happened after the arc.
 
 ---
 

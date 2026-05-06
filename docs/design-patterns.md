@@ -281,7 +281,13 @@ This is *Refusal as Architecture* applied to prompt engineering. The discipline 
 
 Space for accretion. When a pattern surfaces in work and isn't covered above, add a stub here with the date and a pointer to context. Expand into a full section when material accrues.
 
-*(no stubs yet — this doc begins 2026-04-20)*
+### Sibling-distfile fold (added 2026-05-06)
+
+Three instances now: **sandhi** (Cyrius v5.7.0, service-boundary layer, 376 KB / 469 fns), **vani** (Cyrius v5.8.0, audio device I/O), **niyama** (Cyrius v5.9.0, regex engines, 6,664 lines / 5 engines). The pattern: a sibling repo proves out a domain, hits multi-consumer status, gets vendored byte-identical into Cyrius stdlib's `lib/` as a single artifact, and the standalone repo enters maintenance mode while the fold becomes the canonical source. Multi-consumer gate is the trigger (sandhi: 6+ AGNOS consumers; niyama: cyim + queued bare-metal kernel). cc5 binary size is unaffected (foldins are `lib/` content; the compiler doesn't include them). Pattern instance of §0 (Refusal as Architecture) at the stdlib-boundary layer — refusing the multiplication of dep-graph layers when the surface is mature enough to anchor in stdlib. The decision framework (gates + anti-criteria + cost) is articulated in [*What Justifies a Stdlib Foldin*](articles/what-justifies-a-stdlib-foldin.md). Expand into a full §12 once the next fold lands and the framework's been tested across four instances.
+
+### Terminal-symbol identity (added 2026-05-06)
+
+Cyrius packages render in the shell prompt with **ॐ** (Om, U+0950) and the active toolchain version with **🌀** (cyclone, U+1F300), formatted: `ॐ <pkg-name> <pkg-version> (<repo>) | 🌀 <toolchain-version>`. Shipped Cyrius v5.8.0 via the `cyriusly` starship.toml prompt rework. The convention establishes Cyrius as a distinct ecosystem alongside the existing prompt-engine visual vocabulary (Rust 📦, Go gopher, Python snake) — not by adopting one of those, not by going symbol-less, but by picking glyphs that *describe what the ecosystem is*: **Om** = source/origin in the Sanskrit lineage that names AGNOS subsystems; **cyclone** = active rotation, the cycle the toolchain ships in. `𝕮` (mathematical fraktur C, U+1D49C) is retained as documented ASCII fallback for emoji-hostile terminals — graceful degradation rather than feature-loss. Pattern instance of §6 (User-Side Naming) extended to visual identity at the terminal: the symbol describes function, not personality, not author-journey. Possible promotion path: if more ecosystem-identity micro-conventions accrete (CLI banner, file-type icon, error-marker glyph), hoist into a fuller pattern about *visual sovereignty at the surface*.
 
 ---
 
