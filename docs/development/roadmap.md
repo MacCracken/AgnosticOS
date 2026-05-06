@@ -1,6 +1,8 @@
 # AGNOS Development Roadmap
 
-> **Status**: Pre-Beta | **Last Updated**: 2026-04-27
+> **Status**: Pre-Beta — Closed Beta targeting **early June 2026** | **Last Updated**: 2026-05-06
+>
+> 🔴 **BETA RESCOPED (2026-05-06)**: Two-stage beta. **Closed beta** targets early June 2026 — Phase 13A complete, exercised by a small private cohort of trusted testers (friend-network), no formal community-program enrollment. **Public beta** retains the original Q4 2026 window and adds the third-party security audit + community testing program. This is a deliberate compression: previously-mandatory beta gates (audit, community program) move to the public-beta gate so the closed-beta line is honest about what shipped.
 >
 > 🔴 **NEXT ACTIVE WORK**: ISO Stage-4-only first cut — see
 > **[`iso-stage4-plan.md`](iso-stage4-plan.md)**. This is the next-up item
@@ -9,7 +11,7 @@
 > decisions (D1–D4) that need user input before coding begins. Next agent:
 > **read the plan, then resolve D1–D4 with Robert.**
 >
-> **May 1 V1 release** is 4 days out — complete-system V1 (kernel + Cyrius + toolchain + 30+ ports + science library + ISO Stage 0+ working toward Stage-4-only first cut), positioned as *"Boots, runs DOOM, all Cyrius."* Biweekly cadence through August DEF CON distribution (see [Near-Term Cadence](#near-term-cadence--may-1-v1-to-def-con)).
+> **May 1 V1 release** has passed. Per [`state.md`](state.md), kernel is at **1.26.1** (past the 1.22.x predicted in the original V1 line), Cyrius cut **v5.9.0** today (2026-05-06), and v5.10.x reservation holds the **AGNOS bare-metal target + RISC-V rv64 backend**. V1 status itself: verify against ISO/CI receipts before re-asserting in any public copy. Biweekly cadence through August DEF CON distribution (see [Near-Term Cadence](#near-term-cadence--may-1-v1-to-def-con)).
 > **Kernel 1.22.0 shipped** (2026-04-13) — 260KB, 33 subsystems, 26 syscalls, hardened pass.
 > **Cyrius 5.7.0 shipped** (2026-04-25) — **THE SANDHI FOLD**. `lib/sandhi.cyr` adds (vendored byte-identical from sandhi v1.0.0, 376,037 B / 9,649 lines, 469 fns); `lib/http_server.cyr` deletes; sandhi repo enters maintenance mode per [ADR 0002](https://github.com/MacCracken/sandhi/blob/main/docs/adr/0002-clean-break-fold-at-cyrius-v5-7-0.md). Cyrius-side gates 1, 2, 3, 5, 6 ✅; gate 4 (downstream sweep) is separate user-organized work — only **vidya** actually `include`s `lib/http_server.cyr`; yantra and sit have orphan pre-fold copies (cleanup-only); the originally-listed `sit-remote`/`ark-remote` don't exist. v5.6.x closed at v5.6.45 on 2026-04-25 (45 patches — new longest-minor record). v5.6.0 opened the compiler-optimization arc on 2026-04-22 (**Phase O1** v5.6.0–v5.6.4 instrumentation + FNV-1a symbol hashing; **Phase O2** v5.6.11 partial strength reduction, flag-result reuse, push/pop elim, commutative + aarch64 combine-shuttle; **regalloc** v5.6.20–v5.6.24 default-on linear-scan; **closeout** v5.6.43 sigil 2.9.3 / sankoch 2.1.0 / output_buf 2MB).
 > **Multi-platform closed.** x86_64 Linux byte-identical; aarch64 Linux byte-identical on real Pi (stdlib shakedown v5.5.18); Apple Silicon Mach-O self-host closed (v5.5.17); Windows PE32+ native self-host byte-identical on real Windows 11 (v5.5.10). NSS/PAM real-fix arc shipped v5.5.23–v5.5.27; `lib/fdlopen.cyr` landed in v5.5.x arc. **v5.7.x shipped** sandhi-fold (lib/sandhi.cyr) + cyrius-ts P1–P10 across 51 patches in 36 days. **v5.8.x shipped** (2026-05-01 → 2026-05-05, 66 patches in 4 days) as a 3-phase cycle: Phase 1 (slots 1-8) closed the v5.8.0 audit (lint/fmt cap, f64_log2 polyfill, sys_stat/fstat backfill, _SC_ARITY cross-arch gate, NI-class dupe, cc5_aarch64 packaging + cyrc_check orphan); Phase 2 (slots 9-26) handled language vocabulary (var X; diagnostic, fmt --check exit code, vidya audit at v5.8.40); Phase 3 (slots 27-65) was the **stdlib foldin sweep** (sandhi-pattern continuation, vani audio at slot 1). **v5.9.0 opened** (2026-05-06) with niyama fold-in (8th sibling distfile, 5 regex engines). **v5.9.x scope** = catchup + fixes: consumer rollup of pin-lag tail, optimization-debt audit (O5/O6), dangling-item closeout (cyim→niyama integration, ESTORESTACKPARM held, cyrlint multi-line assert non-repro). **v5.10.x reserved**: AGNOS bare-metal target + RISC-V rv64 backend (both slipped from earlier cycles).
@@ -49,11 +51,21 @@ kybernet folds into AGNOS kernel as PID 1
 Phase 13A (self-hosting boot) ──→ Phase 16 (desktop) ──→ Phase 13C (community) ──→ BETA
 ```
 
-### Beta — Q4 2026
+### Closed Beta — Early June 2026 (~1 month)
 
 - [ ] **OS Independence (13A)** — PRIMARY BLOCKER
+- [ ] Small private tester cohort (friend-network), 5–15 testers, exercising the bootable system on real hardware
+- [ ] No public enrollment. No formal community program. No marketing.
+
+**Gate philosophy**: closed beta is the honest "the OS rebuilds itself, and humans other than the founder have run it" milestone. Audit and broad community testing are deliberately deferred to public beta — a cleaner, smaller line that ships on the date.
+
+**Cadence dependency**: gated on Cyrius v5.10.x landing the bare-metal target (queued; v5.9.0 cut today, v5.10.x window 2–3 weeks per recent cycle velocity), then 1–2 weeks of 13A self-hosting validation. Slips by week, not by month.
+
+### Public Beta — Q4 2026
+
+- [ ] Closed beta exited cleanly (cohort report + critical-bug closeout)
 - [ ] Third-party security audit complete
-- [ ] Community testing program active
+- [ ] Community testing program active (formal enrollment)
 
 ### v1.0 — Q2 2027
 
@@ -98,9 +110,9 @@ to Cyrius v5.13.x as of 2026-04-25 — see
 
 ## Status
 
-### Cyrius Language — v5.6.13
+### Cyrius Language — v5.9.0 (cut 2026-05-06)
 
-Full milestone history lives in `cyrius/CLAUDE.md` + `cyrius/CHANGELOG.md`. Headline status for AGNOS:
+Full milestone history lives in `cyrius/CLAUDE.md` + `cyrius/CHANGELOG.md`. Live cycle status in [`state.md`](state.md). Headline status for AGNOS:
 
 | Milestone | Status |
 |-----------|--------|
@@ -208,7 +220,7 @@ Full details: [sprint-history.md](sprint-history.md#monolith-extraction--complet
 | 7 | Selfhost-validate passes all phases | Deferred to Phase 2 | Run `selfhost-validate --phase all` on booted ISO |
 | 8 | CI automation | In progress | GitHub Actions workflows |
 
-**Target**: May 1, 2026 (Beltane)
+**Target**: Closed beta cut, **early June 2026** (~1 month from 2026-05-06). Gated on Cyrius v5.10.x bare-metal target landing.
 
 ### P0 — Other Active Blockers
 
@@ -455,4 +467,4 @@ Unified Consciousness Model paper and bhava roadmap tracked in `MacCracken/bhava
 
 ---
 
-*Last Updated: 2026-04-27 | Next Review: 2026-05-01 (V1 release date)*
+*Last Updated: 2026-05-06 (Cyrius v5.9.0 cut day, beta rescope) | Next Review: closed-beta cut (~early June 2026)*

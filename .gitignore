@@ -298,3 +298,7 @@ result-*
 
 # Assembly output
 *.s
+
+# Private outreach / fundraising / partnership planning
+# Named-target docs stay out of the public GPL repo
+docs/private/
