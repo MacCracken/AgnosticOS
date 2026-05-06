@@ -61,7 +61,7 @@ Cyrius doesn't. `lib/yantra.cyr` is first-party stdlib. A `.tcyr` file can drive
 
 ### Captured anchors (won't drift)
 
-- [`yantra/docs/adr/0001-yantra-is-a-library-not-a-framework.md`](../../../Repos/yantra/docs/adr/0001-yantra-is-a-library-not-a-framework.md) — headline thesis in prologue, cross-linked to design-patterns.md §0
+- [`yantra/docs/adr/0001-yantra-is-a-library-not-a-framework.md`](https://github.com/MacCracken/yantra/blob/main/docs/adr/0001-yantra-is-a-library-not-a-framework.md) — headline thesis in prologue, cross-linked to design-patterns.md §0
 - [`design-patterns.md §0 Refusal as Architecture`](../design-patterns.md#0-refusal-as-architecture--the-master-frame) — thesis in the Examples list as a receipt bullet
 
 ---
@@ -308,12 +308,12 @@ The sovereignty-stack argument carries from previous articles in the series; the
 
 ### Captured anchors
 
-- [`cyrius-brynns-tale/docs/adr/0003-pivot-to-original-mythic-modern-ip.md`](../../../Repos/cyrius-brynns-tale/docs/adr/0003-pivot-to-original-mythic-modern-ip.md) — pivot to original IP (the meta-decision that supersedes ADRs 0001 + 0002)
-- [`cyrius-brynns-tale/docs/adr/0004-two-perspective-diptych-structure.md`](../../../Repos/cyrius-brynns-tale/docs/adr/0004-two-perspective-diptych-structure.md) — three-act structure
-- [`cyrius-brynns-tale/docs/adr/0005-verb-sets-per-half.md`](../../../Repos/cyrius-brynns-tale/docs/adr/0005-verb-sets-per-half.md) — rewind / Bleed+irreversible / THEM toolkit
-- [`cyrius-brynns-tale/docs/adr/0006-boss-tier-philosophy.md`](../../../Repos/cyrius-brynns-tale/docs/adr/0006-boss-tier-philosophy.md) — selective Souls-like; what bosses are
-- [`cyrius-brynns-tale/docs/adr/0007-phoenix-rebirth-and-rebis-integration.md`](../../../Repos/cyrius-brynns-tale/docs/adr/0007-phoenix-rebirth-and-rebis-integration.md) — die-to-merge, Phoenix-rebirth, *rebis*, rubedo
-- [`cyrius-brynns-tale/docs/design/README.md`](../../../Repos/cyrius-brynns-tale/docs/design/README.md) — art direction, music direction, asset-licensing standards
+- [`cyrius-brynns-tale/docs/adr/0003-pivot-to-original-mythic-modern-ip.md`](https://github.com/MacCracken/cyrius-brynns-tale/blob/main/docs/adr/0003-pivot-to-original-mythic-modern-ip.md) — pivot to original IP (the meta-decision that supersedes ADRs 0001 + 0002)
+- [`cyrius-brynns-tale/docs/adr/0004-two-perspective-diptych-structure.md`](https://github.com/MacCracken/cyrius-brynns-tale/blob/main/docs/adr/0004-two-perspective-diptych-structure.md) — three-act structure
+- [`cyrius-brynns-tale/docs/adr/0005-verb-sets-per-half.md`](https://github.com/MacCracken/cyrius-brynns-tale/blob/main/docs/adr/0005-verb-sets-per-half.md) — rewind / Bleed+irreversible / THEM toolkit
+- [`cyrius-brynns-tale/docs/adr/0006-boss-tier-philosophy.md`](https://github.com/MacCracken/cyrius-brynns-tale/blob/main/docs/adr/0006-boss-tier-philosophy.md) — selective Souls-like; what bosses are
+- [`cyrius-brynns-tale/docs/adr/0007-phoenix-rebirth-and-rebis-integration.md`](https://github.com/MacCracken/cyrius-brynns-tale/blob/main/docs/adr/0007-phoenix-rebirth-and-rebis-integration.md) — die-to-merge, Phoenix-rebirth, *rebis*, rubedo
+- [`cyrius-brynns-tale/docs/design/README.md`](https://github.com/MacCracken/cyrius-brynns-tale/blob/main/docs/design/README.md) — art direction, music direction, asset-licensing standards
 - `shared-crates.md` — cyrius-brynns-tale registered under Non-Library Projects
 
 ---
