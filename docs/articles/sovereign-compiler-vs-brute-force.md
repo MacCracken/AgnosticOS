@@ -49,17 +49,25 @@ This does not mean AGNOS is bug-free — logic errors, race conditions, and desi
 
 ### Prior Art
 
-Other projects have attempted single-language operating systems:
+Other projects have attempted pieces of this. Each holds a different leg of the sovereignty argument. AGNOS aims for the conjunction.
 
-| Project | Language | External Dependency |
-|---------|----------|-------------------|
-| Singularity (Microsoft) | C# | Bootloader in assembly, runtime in C++ |
-| Redox | Rust | Compiler requires LLVM (C++) |
-| MirageOS | OCaml | Runs on Xen hypervisor (C) |
-| TempleOS | HolyC | Compiler bootstrapped from C |
-| **AGNOS** | **Cyrius** | **29KB seed → self-hosting compiler → kernel → init → tools** |
+| Project | Language | What it has | What it lacks |
+|---------|----------|-------------|---------------|
+| Singularity (Microsoft) | C# | Single-language ambition | Bootloader in assembly, runtime in C++ |
+| Redox | Rust | Active OS, modern language | Compiler requires LLVM (C++) |
+| MirageOS | OCaml | Library OS architecture | Runs on Xen hypervisor (C) |
+| TempleOS | HolyC | Self-hosting once C is present | Compiler bootstrapped from C |
+| seL4 | C | Formally verified microkernel | Verification chain through OCaml + C |
+| Project Oberon | Oberon | Single-language OS, compiler implemented in itself | Cold-start through cross-compilation; no hand-auditable seed |
+| GNU Mes / Stage0 | hex / scheme / C | Hand-auditable hex0 seed (~256 bytes) | **Chain terminates at gcc** (incumbent C ecosystem) |
+| Zig | Zig | LLVM detachment shipped 2024–2025 | Stage-1 history traces through C++/LLVM origins |
+| **AGNOS** | **Cyrius** | **Hand-auditable seed + sovereign chain + working OS** | **Maturity (kernel young; full ecosystem still porting)** |
 
-AGNOS is, to our knowledge, the first single-language OS stack where the compiler is self-hosting from a hand-auditable seed with no external toolchain in the build path. That said, the kernel is young (2,979 lines, 25 syscalls) compared to the decades of development in Redox or the formal verification work behind seL4. Sovereignty is achieved; maturity is not.
+The three closest peers — Stage0/Mes, Oberon, Zig — deserve direct engagement because anyone informed about the space will reach for them first. **Stage0/Mes has a smaller seed than 29KB** (the hex0 monitor is 256 bytes), and the audit-from-hex leg has shipped. The chain terminates at gcc — once you reach gcc, you are back inside the C ecosystem with everything that implies. Stage0/Mes proves the seed-leg of the sovereignty argument; it does not prove a sovereign chain. **Project Oberon has the single-language-OS architecture down**, and Wirth has shipped this kind of system multiple times across decades — but the cold-start moment (zero infrastructure → working compiler) is historically addressed via cross-compilation from another platform, not from a hand-auditable seed at the bottom. **Zig 0.13–0.14 detached from LLVM in 2024–2025** — a substantial sovereignty milestone, the first major modern systems language to do so. Zig's claim is *current* sovereignty (the build today doesn't require LLVM); Cyrius's claim is *historical* sovereignty (the chain doesn't trace through C anywhere, ever, including its origin moment). Both claims are real; they are different claims.
+
+AGNOS is, to our knowledge, the first stack where (1) the seed is hand-auditable in a single sitting, (2) the chain that grows from it never enters an incumbent ecosystem (no C, no LLVM, no Python, no libc, no foundation), and (3) a working OS sits at the top. Stage0 has the seed but terminates at gcc. Project Oberon has the language and OS but not the cold-start. Zig has the recent LLVM detachment but not the seed-level claim. The conjunction is the contribution — not any single leg, but the join.
+
+That said, the kernel is young (2,979 lines, 25 syscalls in the snapshot above; current numbers in *Since This Was Written* below) compared to decades of development in Redox or the formal verification work behind seL4. Sovereignty is achieved; maturity is not.
 
 ---
 

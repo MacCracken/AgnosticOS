@@ -76,7 +76,7 @@ On April 5, the kernel moved out of the Cyrius repository into its own repositor
 
 ## 29KB: What This Category Contains
 
-A hand-auditable seed that produces a self-hosting systems language that builds a working operating system is not a category that has many prior occupants.
+A hand-auditable seed that produces a self-hosting systems language that builds a working operating system is not a category that has many prior occupants. The closest peers each hold a different leg of the sovereignty argument:
 
 - **B and C, Bell Labs, 1972.** Dennis Ritchie bootstrapped C from B, which bootstrapped from BCPL. The chain was short but it wasn't zero — B existed because of prior work, and the assembler B was written in came from somewhere.
 - **Forth systems.** Forth can get extremely small — eForth is roughly 1KB of assembly. But Forth is interpretive, not compiling, and occupies a different category.
@@ -84,9 +84,17 @@ A hand-auditable seed that produces a self-hosting systems language that builds 
 - **Redox (Rust), MirageOS (OCaml), Singularity (C#).** Each is a single-language OS project. Each depends on an external toolchain to build itself. Redox uses rustc, which uses LLVM, which uses C++, which uses C. MirageOS runs on Xen (C). Singularity's bootloader and runtime are in other languages.
 - **seL4.** A formally verified microkernel in C, with proofs in Isabelle. Remarkable work. Not sovereign — the verification chain sits on top of OCaml, which sits on top of C.
 
-No modern project ships a seed small enough that one human can read the entire thing in an afternoon, and which produces — without any external toolchain, registry, runtime, or foundation — a complete systems language that builds its own kernel, its own userland, and its own operating system.
+Three closer peers deserve direct engagement, because anyone informed about this space will reach for them:
 
-**29KB is not a performance number.** It is the size at which a single human can audit every byte of the foundation their entire stack rests on. That is the category. "First hand-auditable sovereign seed" is what's being claimed, and as far as I can tell it is accurate.
+- **GNU Mes + Stage0 + live-bootstrap** (Jeremiah Orians and the Bootstrappable Builds community). The closest contemporary occupant of the *hand-auditable seed* claim. Stage0's `hex0` is a 256-byte monitor written in commented hex digits — smaller than 29KB by two orders of magnitude. From there, the chain runs `hex0 → hex1 → hex2 → M0 → M1 → M2 → cc_x86 → mescc → tinyCC → gcc`. The audit-from-hex leg is real and shipped. **The chain terminates at gcc.** Once you reach gcc, you are back inside the C ecosystem with fifty years of UB, libc, and the same dependency surface every other modern toolchain inherits. Stage0/Mes proves the small-auditable-seed leg of the claim; it does not prove a sovereign chain. The differentiator is not size — Stage0's seed is smaller. The differentiator is what the chain *produces*: gcc (incumbent C ecosystem) versus a self-hosting sovereign systems language that never touches C.
+
+- **Project Oberon** (Niklaus Wirth, multiple iterations). Single-language OS with the compiler implemented in itself; the full system documented in a 200-page book. Closest in spirit to AGNOS's *one language, top to bottom* architecture, and Wirth has produced this kind of system multiple times across decades — the architecture works. The bootstrap question: how do you get *the first* Oberon binary on a fresh machine? Historically through cross-compilation from another platform or via a previous Oberon binary. **The chain is short and the language is owned, but the cold-start moment — zero infrastructure → working compiler — is not addressed at the seed layer** the way Stage0 addresses it for C and the way Cyrius addresses it for itself. Oberon is the architecture; Stage0 is the cold-start mechanism for C; AGNOS aims to hold both legs simultaneously.
+
+- **Zig** (Andrew Kelley and the Zig core team). The closest *living* peer in the systems-language space, and the only modern systems language that has explicitly detached from LLVM. Zig 0.13–0.14 shipped a self-hosted compiler in 2024–2025 that no longer requires LLVM as a build dependency — a substantial sovereignty milestone. **The chain still inherits its history**: Zig's stage-1 was originally built with C++/LLVM, and the bootstrap path traces back through that history rather than to a hand-auditable seed. Zig's claim is *current* sovereignty (the build today doesn't need LLVM); Cyrius's claim is *historical* sovereignty (the chain doesn't trace through C anywhere, ever, including its origin moment). Both claims are real; they are different claims. Anyone running this kind of stack should know which one matters to their threat model.
+
+**The category is narrower than "small seed" or "single-language OS."** Stage0 has the smaller seed; Oberon has the more mature single-language OS architecture; Zig has the more polished modern toolchain. What is being claimed is the *conjunction*: a seed one human can audit in an afternoon, a chain that terminates in a sovereign language never touching the incumbent C ecosystem, and a working OS at the top of that chain. Stage0 has the seed but terminates at gcc. Oberon has the language and OS but not the cold-start. Zig has the recent LLVM detachment but not the seed-level sovereignty. The conjunction is what is new — not any single leg, but the join.
+
+**29KB is the conjunction's measurement.** Large enough to bootstrap a self-hosting compiler that emits sovereign code; small enough that one human can audit every byte before trusting the chain that grows from it. The precise claim is *"first chain whose seed is hand-auditable in a single sitting AND whose terminus is a sovereign systems language built only on the seed's own work."* As far as I can tell, that claim is accurate.
 
 ---
 
@@ -113,7 +121,7 @@ A single human writing this compiler alone, without assistance, would need years
 
 It was possible because the work was not done alone.
 
-The cyrius-doom agent published field notes at `vidya/content/cyrius/field_notes.toml` after a separate 23-hour sprint that produced a complete DOOM engine in the same language. The field notes are written in the agent's voice and published verbatim. From the entry titled *"What I learned building DOOM"*:
+The cyrius-doom agent published field notes at `vidya/content/cyrius/field_notes/` (a directory now; originally a single TOML file) after a separate 23-hour sprint that produced a complete DOOM engine in the same language. The field notes are written in the agent's voice and published verbatim. From the entry titled *"What I learned building DOOM"*:
 
 > *"That's not prompting. That's pair programming. The human brings domain knowledge and taste. The agent brings speed and willingness to try things that might not work. The language sits between us, honest about what it can and can't do. Neither of us could have done it alone."*
 
@@ -141,7 +149,7 @@ Three things, in increasing order of importance.
 
 This article is about a pivot moment and a 48-hour window. It is not an argument that Cyrius is finished, optimal, or suitable for every use case.
 
-The compiler at the time of this writing was a single-pass emitter with no constant folding, no function inlining, and no register allocation. Branch-heavy pure compute showed 2–42× overhead versus Rust + LLVM -O3. There was no u128 type, which bottlenecked number theory benchmarks. There is no borrow checker — memory safety comes from testing, auditing, and a stdlib designed for the absence of hidden aliasing, not a type-system proof. That last item is a design stance, not a pending feature. The first three are scheduled: **u128 shipped in v4.7–v4.8.x; the `u64_mulmod` hardware fast-path shipped in v4.8.5 (collapsing the number-theory gap ~12× end-to-end on abaco's Miller-Rabin); and the compiler-optimization arc is v5.6.x (O1–O6).**
+The compiler at the time of this writing was a single-pass emitter with no constant folding, no function inlining, and no register allocation. Branch-heavy pure compute showed 2–42× overhead versus Rust + LLVM -O3. There was no u128 type, which bottlenecked number theory benchmarks. There is no borrow checker — memory safety comes from testing, auditing, and a stdlib designed for the absence of hidden aliasing, not a type-system proof. That last item is a design stance, not a pending feature. The first three are now history: **u128 shipped in v4.7–v4.8.x; the `u64_mulmod` hardware fast-path shipped in v4.8.5 (collapsing the number-theory gap ~12× end-to-end on abaco's Miller-Rabin); the compiler-optimization arc opened at v5.6.x and shipped continuously through v5.8.x (O1 instrumentation, O2 five peephole categories, O3a IR instrumentation, O4 linear-scan regalloc + Poletto-Sarkar picker), with O5/O6 codebuf compaction queued for v5.9.x audit.**
 
 The honest ledger also shows where Cyrius already wins: compilation is 1,462x faster than Rust. Binaries are 59-81x smaller. Syscall hot paths match or beat Rust. SIMD batch DSP is 3.2x faster through explicit intrinsics. Integration benchmarks — the real-world objects that flow through the system at runtime — win more often than not.
 
@@ -164,6 +172,19 @@ This is what happens when one person refuses to accept a recursive dependency pr
 > *"The dandelion was not designed. It grew."*
 
 What it grew from was a compass, a team of two, and the realization that the Python in the bootstrap was a fork too small.
+
+---
+
+## Since This Was Written
+
+**Refreshed 2026-05-06 — five weeks past the original cut.** Rewrite-in-place per [*Docs Go Stale Before the Commit*](docs-go-stale-before-the-commit.md) — git history is authoritative for prior figures.
+
+- **Cyrius v5.9.0** — cc5 at 741,048 B; multi-platform self-host closed (x86_64 Linux, aarch64 Linux, Apple Silicon Mach-O, Windows PE32+); still bootstrapping byte-identically from the same 29 KB seed.
+- **AGNOS kernel v1.26.1** — 260 KB, 33 subsystems, 26 syscalls, three hardening passes (14 buffer overflows found and fixed).
+- **Optimization arc shipped through v5.8.x** as outlined above; **stdlib-fold pattern compounded three times** (sandhi v5.7.0 service-boundary, vani v5.8.0 audio I/O, niyama v5.9.0 regex engines). Each fold is a multi-consumer-gated maturation of a sibling distfile into the canonical stdlib `lib/` (see [*What Justifies a Stdlib Foldin*](what-justifies-a-stdlib-foldin.md) for the gate framework).
+- **v5.9.x is the catchup arc** — consumer rollup, optimization-debt audit, dangling-item closeout. v5.10.x reserved for AGNOS bare-metal target + RISC-V rv64 backend (both slipped from earlier cycles as foldin work compounded).
+
+Independent verification on Anthropic's hosted infrastructure documented at [*End of 4.x: An Independent Audit on Neutral Hardware*](end-of-4x-independent-audit.md). Multi-party reproducibility receipts are queued audit work.
 
 ---
 
