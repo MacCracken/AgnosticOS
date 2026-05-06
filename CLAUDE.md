@@ -9,7 +9,7 @@
 - **Version**: CalVer `2026.4.25` (YYYY.M.D, patches as `-N`)
 - **Version file**: `VERSION` at repo root (single source of truth)
 - **Language**: Cyrius (sovereign systems language, 29KB seed, zero external deps)
-- **Status**: Pre-Beta — kernel 1.22.0 shipped (260KB, 33 subsystems), boot pipeline active, ISO assembly in progress
+- **Status**: Pre-Beta — kernel 1.26.1 shipped (260KB, 33 subsystems, Cyrius-native), boot pipeline active, ISO assembly in progress
 
 ## Role
 
@@ -23,8 +23,8 @@ This repo is the **genesis layer** — meta, narrative, and the infrastructure t
 - **docker/** — Dockerfiles for dev/edge/installer
 
 **Does NOT own (extracted):**
-- **AGNOS kernel** → `agnos` repo (v1.22.0, 260KB, Cyrius-native)
-- **Cyrius compiler** → `cyrius` repo (v5.7.12, self-hosting from 29KB seed)
+- **AGNOS kernel** → `agnos` repo (260KB, 33 subsystems, Cyrius-native — current version in `state.md`)
+- **Cyrius compiler** → `cyrius` repo (self-hosting from 29KB seed — current toolchain in `state.md`)
 - **Recipes** → `zugot` repo (421 base + 90 bazaar recipes)
 - **Production code** → 130+ standalone repos under `/home/macro/Repos/{name}/`
 - **Old userland/** — monolith fully dismantled 2026-04-01. No Cargo workspace remains.
@@ -68,11 +68,11 @@ The role map below is for orientation. **Versions are intentionally omitted** �
 | **phylax** | Threat detection | **Ported** |
 | **abaco** | Math/number theory library | **Ported** |
 | **itihas** | History/versioning | **Ported** |
-| **bsp** | BSP geometry library (waiting on Cyrius v5.8.x optimization cycle) | **Ported** |
-| **cyrius-doom** | DOOM engine in Cyrius (waiting on Cyrius v5.8.x optimization cycle) | **Native** |
+| **bsp** | BSP geometry library | **Ported** |
+| **cyrius-doom** | DOOM engine in Cyrius | **Native** |
 | **sankoch** | Lossless compression (LZ4, DEFLATE, zlib, gzip) | **Ported** |
 | **bhava** | Emotion/sentiment modeling | Pending port |
-| **hisab** | Accounting/calculation | **Ported** |
+| **hisab** | Higher math | **Ported** |
 | **agnova** | OS installer (Cyrius port from 3,656 Rust lines, base established) | **Ported** |
 
 ## Development Process

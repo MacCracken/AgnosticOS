@@ -214,7 +214,7 @@ $5K budget → sticker + SD production ── Beat 3 (D1, D2 — must)
 Flashing pipeline + testing ────────── Beat 3 (D3 — must)
 ```
 
-**The biggest risk**: Cyrius v5.6.x closeout drifting past mid-May. If v5.6.x doesn't close by then, v5.7.x's http.cyr + json.cyr depth slip, which pressures yantra M1 (not blocking Beat 1 since it's optional), and more importantly pressures the supply-chain story at Black Hat (which depends on v5.9.x TLS progress being visible, which depends on v5.7.x → v5.8.x → v5.9.x staying on track).
+**The biggest risk** *(retired — v5.6.x closed 2026-04-25; v5.7.x sandhi-fold shipped tls.cyr/http.cyr/json.cyr into stdlib; v5.8.x ran 66-patch foldin + audit cycle to closeout 2026-05-05; v5.9.x catchup arc opened 2026-05-06)*: original framing was Cyrius v5.6.x closeout drifting past mid-May, which would have cascaded into v5.7.x stdlib slip and pressured the supply-chain story at Black Hat. Cycle outcomes overshot the timeline — TLS landed via sandhi-fold (v5.7.0); v5.10.x bare-metal + RISC-V are the live cycle dependency for late-summer beats now, not v5.9.x.
 
 **Second-biggest risk**: cyrius-brynns-tale M1 (time-rewind ring buffer determinism). Every other *Brynn's Tale* milestone stacks on it. A two-week slip on M1 cascades into "no Beat 1 demo."
 

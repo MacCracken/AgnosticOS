@@ -2,10 +2,10 @@
 
 > Reusable library crates that form the AGNOS stack. Consumer [applications](../README.md) depend on these — they should never depend on external libraries when an AGNOS crate covers the domain.
 >
-> **68 crates at v1.0+** — pre-1.0 crates tracked in [development/applications/](../../development/applications/README.md).
-> Full registry: [Shared Crates Registry](../../development/applications/shared-crates.md).
+> **83 crates at v1.0+** (count includes 2 stdlib-folded: sandhi v5.7.0, niyama v5.9.0) — pre-1.0 crates tracked in [development/applications/](../../development/applications/README.md).
+> Full registry: [Shared Crates Registry](../../development/applications/shared-crates.md) — that doc is the authoritative source; refresh from there.
 >
-> **Last Updated**: 2026-04-15
+> **Last Updated**: 2026-05-06
 
 See also: [First-Party Standards — Own the Stack](../../development/applications/first-party-standards.md#own-the-stack) | [Science Crate Specs](../../development/guides/science-crate-specs.md)
 
@@ -18,27 +18,27 @@ See also: [First-Party Standards — Own the Stack](../../development/applicatio
 | agnosai | 1.1.0 | AI orchestration |
 | ai-hwaccel | 2.0.0 | GPU detection |
 | bote | 2.5.1 | MCP core (~5us/message, streamable HTTP) |
-| daimon | 1.1.1 | Agent orchestrator (144 MCP tools) |
+| daimon | 1.1.4 | Agent orchestrator (144 MCP tools) |
 | hoosh | 2.0.0 | LLM gateway (15 providers) |
 | ifran | 1.3.0 | LLM inference/training |
 | kavach | 3.0.0 | Sandbox execution |
-| libro | 1.0.3 | Cryptographic audit chain |
-| mabda | 2.1.2 | GPU foundation |
-| majra | 2.2.0 | Queue/pub-sub |
+| libro | 2.0.5 | Cryptographic audit chain |
+| mabda | 3.0.0-rc.2 | GPU foundation |
+| majra | 2.4.1 | Queue/pub-sub |
 | nein | 1.0.0 | Programmatic nftables firewall |
-| sigil | 2.1.2 | Trust verification & crypto |
+| sigil | 3.0.1 | Trust verification & crypto |
 | soorat | 1.0.0 | GPU rendering |
 | stiva | 2.0.0 | Container runtime |
 | szal | 1.1.0 | Workflow engine |
 | t-ron | 2.0.0 | MCP security |
-| vidya | 2.2.0 | Programming reference |
-| yukti | 1.2.0 | Device abstraction (USB, block, udev) |
+| vidya | 2.6.4 | Programming reference |
+| yukti | 2.2.2 | Device abstraction (USB, block, udev) |
 
 ## Science & Knowledge (27)
 
 | Crate | Version | Domain |
 |-------|---------|--------|
-| abaco | 2.0.0 | Math engine |
+| abaco | 2.2.0 | Math engine |
 | avatara | 2.3.0 | Divine archetype overlay |
 | badal | 1.1.0 | Weather/atmosphere |
 | bhava | 2.0.0 | Emotion/personality |
@@ -48,7 +48,7 @@ See also: [First-Party Standards — Own the Stack](../../development/applicatio
 | dravya | 1.2.0 | Material science |
 | falak | 1.0.0 | Orbital mechanics |
 | hadara | 1.0.0 | Culture modeling (Cyrius-native, 50 cultures) |
-| hisab | 1.4.0 | Higher math |
+| hisab | 2.2.2 | Higher math |
 | hisab-mimamsa | 1.0.0 | Theoretical physics |
 | itihas | 2.2.0 | World history |
 | jantu | 1.1.0 | Ethology/behavior |
@@ -73,13 +73,13 @@ See also: [First-Party Standards — Own the Stack](../../development/applicatio
 | dhvani | 1.1.0 | Audio engine |
 | garjan | 1.1.0 | Environmental sound |
 | ghurni | 1.0.0 | Mechanical sound |
-| goonj | 1.1.1 | Acoustics |
-| naad | 1.0.0 | Audio synthesis |
+| goonj | 1.4.3 | Acoustics |
+| naad | 1.2.5 | Audio synthesis |
 | nidhi | 1.1.0 | Sample playback |
 | prani | 1.1.0 | Creature vocals |
 | shabda | 2.0.0 | G2P conversion |
 | shabdakosh | 2.0.0 | Pronunciation dict |
-| shravan | 2.1.1 | Audio codecs |
+| shravan | 2.3.2 | Audio codecs |
 | svara | 2.0.0 | Vocal synthesis |
 | tarang | 1.0.0 | Media framework (containers, decode/encode) |
 
@@ -87,7 +87,7 @@ See also: [First-Party Standards — Own the Stack](../../development/applicatio
 
 | Crate | Version | Domain |
 |-------|---------|--------|
-| bsp | 1.0.1 | BSP geometry (Cyrius-native) |
+| bsp | 1.1.2 | BSP geometry (Cyrius-native) |
 | kiran | 1.0.0 | Game engine (ECS, scene hierarchy) |
 | ranga | 1.0.0 | Image processing (color, blend, GPU compute) |
 

@@ -12,7 +12,7 @@
 > **May 1 V1 release** is 4 days out — complete-system V1 (kernel + Cyrius + toolchain + 30+ ports + science library + ISO Stage 0+ working toward Stage-4-only first cut), positioned as *"Boots, runs DOOM, all Cyrius."* Biweekly cadence through August DEF CON distribution (see [Near-Term Cadence](#near-term-cadence--may-1-v1-to-def-con)).
 > **Kernel 1.22.0 shipped** (2026-04-13) — 260KB, 33 subsystems, 26 syscalls, hardened pass.
 > **Cyrius 5.7.0 shipped** (2026-04-25) — **THE SANDHI FOLD**. `lib/sandhi.cyr` adds (vendored byte-identical from sandhi v1.0.0, 376,037 B / 9,649 lines, 469 fns); `lib/http_server.cyr` deletes; sandhi repo enters maintenance mode per [ADR 0002](https://github.com/MacCracken/sandhi/blob/main/docs/adr/0002-clean-break-fold-at-cyrius-v5-7-0.md). Cyrius-side gates 1, 2, 3, 5, 6 ✅; gate 4 (downstream sweep) is separate user-organized work — only **vidya** actually `include`s `lib/http_server.cyr`; yantra and sit have orphan pre-fold copies (cleanup-only); the originally-listed `sit-remote`/`ark-remote` don't exist. v5.6.x closed at v5.6.45 on 2026-04-25 (45 patches — new longest-minor record). v5.6.0 opened the compiler-optimization arc on 2026-04-22 (**Phase O1** v5.6.0–v5.6.4 instrumentation + FNV-1a symbol hashing; **Phase O2** v5.6.11 partial strength reduction, flag-result reuse, push/pop elim, commutative + aarch64 combine-shuttle; **regalloc** v5.6.20–v5.6.24 default-on linear-scan; **closeout** v5.6.43 sigil 2.9.3 / sankoch 2.1.0 / output_buf 2MB).
-> **Multi-platform closed.** x86_64 Linux byte-identical; aarch64 Linux byte-identical on real Pi (stdlib shakedown v5.5.18); Apple Silicon Mach-O self-host closed (v5.5.17); Windows PE32+ native self-host byte-identical on real Windows 11 (v5.5.10). NSS/PAM real-fix arc shipped v5.5.23–v5.5.27; `lib/fdlopen.cyr` landed in v5.5.x arc. **v5.7.x slate**: v5.7.1 cyrius-ts foundational (TS sync non-TSX subset; 10 phases P1 lex → P10 release; pinned 2026-04-24); v5.7.2 cyrius-ts completion (async/await/Promise + JSX scope decision; pinned 2026-04-25); v5.7.3 RISC-V rv64 (slid 3× from v5.7.0; pinned 2026-04-25); v5.8.0 bare-metal queued.
+> **Multi-platform closed.** x86_64 Linux byte-identical; aarch64 Linux byte-identical on real Pi (stdlib shakedown v5.5.18); Apple Silicon Mach-O self-host closed (v5.5.17); Windows PE32+ native self-host byte-identical on real Windows 11 (v5.5.10). NSS/PAM real-fix arc shipped v5.5.23–v5.5.27; `lib/fdlopen.cyr` landed in v5.5.x arc. **v5.7.x shipped** sandhi-fold (lib/sandhi.cyr) + cyrius-ts P1–P10 across 51 patches in 36 days. **v5.8.x shipped** (2026-05-01 → 2026-05-05, 66 patches in 4 days) as a 3-phase cycle: Phase 1 (slots 1-8) closed the v5.8.0 audit (lint/fmt cap, f64_log2 polyfill, sys_stat/fstat backfill, _SC_ARITY cross-arch gate, NI-class dupe, cc5_aarch64 packaging + cyrc_check orphan); Phase 2 (slots 9-26) handled language vocabulary (var X; diagnostic, fmt --check exit code, vidya audit at v5.8.40); Phase 3 (slots 27-65) was the **stdlib foldin sweep** (sandhi-pattern continuation, vani audio at slot 1). **v5.9.0 opened** (2026-05-06) with niyama fold-in (8th sibling distfile, 5 regex engines). **v5.9.x scope** = catchup + fixes: consumer rollup of pin-lag tail, optimization-debt audit (O5/O6), dangling-item closeout (cyim→niyama integration, ESTORESTACKPARM held, cyrlint multi-line assert non-repro). **v5.10.x reserved**: AGNOS bare-metal target + RISC-V rv64 backend (both slipped from earlier cycles).
 > **ISO pipeline started** — Stage 0 (component verification) implemented: `make iso-check`. See `docs/development/iso-pipeline.md`.
 > **Kavach 3.0.0 shipped Cyrius-native** — 344KB (was 2.4MB Rust), 1 dep, 9 CWE fixes, sandbox lifecycle 500× faster.
 > **Sankoch 2.0.0 shipped** — lossless compression (LZ4, DEFLATE, zlib, gzip). stdlib fold pending.
@@ -129,11 +129,13 @@ Full milestone history lives in `cyrius/CLAUDE.md` + `cyrius/CHANGELOG.md`. Head
 | v5.5.x closeout — 40 patches, longest minor in Cyrius history | **Done** (v5.5.40, 2026-04-22) |
 | **Phase O1** — instrumentation + FNV-1a symbol hashing | **Done** (v5.6.0–v5.6.4) |
 | **Phase O2** — peephole categories 1–5 (PSR, flag-result reuse, push/pop elim, commutative combine-shuttle, aarch64 combine-shuttle) | **Done** (v5.6.5–v5.6.11, closed 2026-04-23) |
-| Linear-scan register allocator | **In flight** — v5.6.13 |
-| Fused ops (madd, msub, ubfx, sbfx) — re-pinned post-regalloc | Queued — v5.6.14 |
-| Compiler optimization arc — remaining phases (O3–O6: IR passes, maximal-munch, slab allocator, codebuf tuning) | Queued — v5.6.15–v5.6.22 |
-| RISC-V rv64 codegen | Queued — v5.7.0 |
-| Bare-metal / AGNOS kernel target | Queued — v5.8.0 |
+| Linear-scan register allocator | **Done** — v5.6.20–v5.6.24 default-on |
+| Fused ops (madd, msub, ubfx, sbfx) | **Done** — v5.6.x post-regalloc |
+| Phase O3a IR instrumentation | **Done** — v5.6.12 (referenced as pre-existing through v5.8.x) |
+| Phase O4a/b/c regalloc — Poletto-Sarkar linear-scan picker | **Done** — v5.8.x (O4b explicit) |
+| Phase O5 / O6 (NOP harvest with jump+fixup, codebuf compaction) | **Partial / audit pending** — referenced in v5.8.x; final status to be swept in v5.9.x |
+| RISC-V rv64 codegen | Queued — **v5.10.x** (slipped 7+ from v5.7.0) |
+| Bare-metal / AGNOS kernel target | Queued — **v5.10.x** (slipped from v5.8.0 → v5.9.0 → v5.10.x as stdlib foldin work compounded; multi-consumer gate triggers via niyama and queued AGNOS bare-metal kernel) |
 
 ### Cyrius Ports — Dependency Chain to Boot
 
@@ -244,9 +246,9 @@ Repo-specific backlog items tracked in their respective repos.
 
 ### Phase 13B — Arch-Neutral Boot Pipeline
 
-**Gate**: opens on Cyrius v5.6.x compiler-optimization arc closeout (tracked to v5.6.22 per the milestone table above — O3–O6 remaining after regalloc and fused ops).
-**Precedes**: Cyrius v5.7.0 RISC-V rv64 — this work lands *between* v5.6.x and v5.7.0.
-**Rationale**: Cyrius locks the sequencing v5.6.x (optimization) → v5.7.0 (RISC-V) → v5.8.0 (bare-metal). Agnos already did the multi-arch split at v1.1.0 (`kernel/arch/x86_64/`, `kernel/arch/aarch64/`, `kernel/core/`, `kernel/user/`). The gap is that everything downstream of boot still carries x86_64/aarch64-shaped assumptions. Neutralizing now means v5.7.0 RISC-V and v5.8.0 bare-metal slot in as "add a target," not "rewrite the pipeline."
+**Gate**: v5.6.x optimization arc shipped through v5.8.x (O3a IR / O4 regalloc landed; O5/O6 audit pending in v5.9.x).
+**Precedes**: Cyrius v5.10.x RISC-V rv64 + bare-metal — this work lands *during* v5.9.x catchup so v5.10.x opens clean.
+**Rationale**: Cyrius sequencing settled to v5.6.x (optimization arc) → v5.7.x (sandhi-fold + cyrius-ts) → v5.8.x (audit closeout + language vocabulary + stdlib foldins) → **v5.9.x (catchup + fixes)** → **v5.10.x (RISC-V + bare-metal)**. Agnos already did the multi-arch split at v1.1.0 (`kernel/arch/x86_64/`, `kernel/arch/aarch64/`, `kernel/core/`, `kernel/user/`). The gap is that everything downstream of boot still carries x86_64/aarch64-shaped assumptions. Neutralizing during v5.9.x means v5.10.x RISC-V + bare-metal slot in as "add a target," not "rewrite the pipeline."
 
 **Genesis-repo items (owned here):**
 
@@ -262,7 +264,7 @@ Repo-specific backlog items tracked in their respective repos.
 - **Should-touch (build/packaging)**: ark, nous, zugot, agnova, takumi
 - **May-touch**: phylax, shakti, ai-hwaccel, seema
 
-**Target**: complete before Cyrius v5.7.0 ships. Don't scope-creep before v5.6.x closeout — let the optimization arc re-baseline benchmarks first.
+**Target**: complete during Cyrius v5.9.x catchup arc, before v5.10.x opens RISC-V + bare-metal. The optimization-arc baselines have re-baselined across v5.6.x → v5.8.x; remaining O5/O6 audit lands in v5.9.x alongside this work.
 
 ### Phase 13C — Community & Documentation
 
@@ -427,7 +429,7 @@ Detailed roadmaps tracked in respective repos:
 
 | Domain | Trigger | Likely Consumers | Priority |
 |--------|---------|------------------|----------|
-| **sandhi** (सन्धि — *junction, connection, joining*) | Service-boundary layer — shared HTTP/TCP/TLS + service discovery. Like sakshi for services. Absorbs `lib/http_server.cyr` extraction (landed sandhi v0.2.0); composes `lib/http.cyr`, `ws.cyr`, `tls.cyr`, `json.cyr`, `net.cyr` into full-featured client patterns. Named 2026-04-24; targets clean-break fold at **Cyrius v5.7.0** per [sandhi ADR 0002](https://github.com/MacCracken/sandhi/blob/main/docs/adr/0002-clean-break-fold-at-cyrius-v5-7-0.md). | vidya, hoosh, ifran, daimon, mela, yantra, sit-remote, ark-remote | **High — in flight** |
+| **sandhi** (सन्धि — *junction, connection, joining*) | Service-boundary layer — shared HTTP/TCP/TLS + service discovery. Like sakshi for services. Absorbs `lib/http_server.cyr` extraction; composes `lib/http.cyr`, `ws.cyr`, `tls.cyr`, `json.cyr`, `net.cyr` into full-featured client patterns. **Folded into Cyrius stdlib at v5.7.0 per [sandhi ADR 0002](https://github.com/MacCracken/sandhi/blob/main/docs/adr/0002-clean-break-fold-at-cyrius-v5-7-0.md); sandhi repo entered maintenance mode.** Pattern set the precedent for vani-fold (v5.8.0) and niyama-fold (v5.9.0). | vidya, hoosh, ifran, daimon, mela, yantra | **Done — shipped v5.7.0** |
 | **kula** (कुल) | Family/clan mesh — peer-to-peer identity, contact sharing, device fleet, shared storage. Depends on: sigil, bote, patra, seema, kavach. | Every family running AGNOS | High (post-beta) |
 | **sit** (smriti / स्मृति — memory) | Sovereign version control — git replacement. Deps: sankoch (compression), sigil (crypto), patra (storage). *When-I-have-time* project; deep storyline with sankoch → stdlib fold. | AGNOS-wide | Low (when-ready) |
 | **Geography / GIS** | joshua terrain, edge fleet, raasta pathfinding | joshua, kiran, raasta, nazar | Medium |

@@ -18,16 +18,16 @@ This doc holds **volatile state** — what's currently true across the AGNOS dev
 
 ## Cyrius cycle — v5.9.x
 
-The **continuation of the stdlib-foldin arc** that became v5.8.x's actual theme. Prior cycles:
+**Catchup + fixes arc.** Pure-Cyrius compiler/stdlib work has run ahead of consumer rollups since v5.7.x; v5.9.x is when the ecosystem catches up to current toolchain and the remaining optimization-debt clears, so v5.10.x can open clean on bare-metal + RISC-V rv64. Prior cycles:
 
-- **v5.6.x** opened the optimization arc (O1 instrumentation + FNV-1a hashing; O2 strength reduction + commutative-combine-shuttle; regalloc default-on linear-scan) but closed at v5.6.45 with O3–O6 deferred.
+- **v5.6.x** opened the optimization arc (O1 instrumentation + FNV-1a hashing; O2 strength reduction + commutative-combine-shuttle; regalloc default-on linear-scan) but closed at v5.6.45 with **O3–O6 deferred** — partial follow-on shipped through v5.7.x and v5.8.x (O3a IR instrumentation; O4a/b/c register-allocation incl. Poletto-Sarkar linear-scan picker; O5 referenced; O6 codebuf compaction).
 - **v5.7.x** ended up sandhi-fold + cyrius-ts P1–P10 + 51 patches across 36 days. RISC-V rv64 slid 7 times. Optimization work was incidental.
-- **v5.8.x** was positioned at v5.8.0 as "optimization + bug-fix theme" with a 12-item slot list — the cycle's *actual* theme turned out to be **stdlib foldins (Phase 3, sandhi-pattern), 27 foldin slots across 66 patches in 4 days** (2026-05-01 → 2026-05-05). Vani audio fold-in opened the cycle; Phase 3 closed at v5.8.65 with foldin slot 27.
-- **v5.9.x** opens with **niyama fold-in** (8th sibling distfile, 6,664 lines, 5 regex engines: bre / re2 / pcre / fuzzy / vim) — the multi-consumer gate met by cyim (#1) + queued AGNOS bare-metal kernel (#2). Continues the foldin work that defined v5.8.x; original v5.8.0 12-item slot list rolls forward as v5.9.x backlog (most items still deferred).
+- **v5.8.x** ran a **3-phase 66-patch cycle in 4 days** (2026-05-01 → 2026-05-05). Phase 1 (v5.8.1–v5.8.8) closed 8 of the 12 original v5.8.0 audit items + carry-forwards (lint/fmt cap, cc5_aarch64 packaging + cyrc_check orphan, ts/parse.cyr fmt sweep, f64_log2 polyfill, sys_stat/fstat backfill, _SC_ARITY cross-arch gate, NI-class dupe / phylax #4 closeout). Phase 2 (slots 9–26) was the language-vocabulary arc (`var X;` diagnostic, fmt --check exit code, vidya audit pattern at v5.8.40, exhaustive match / Result+? / allocators). Phase 3 (slots 27–65) was the **stdlib foldin sweep** (sandhi-pattern continuation, 27 foldin slots, vani audio at slot 1). Original v5.8.0 plan was bare-metal — slipped to v5.9.0 then to v5.10.x as foldin work compounded.
+- **v5.9.x** opens with **niyama fold-in** (slot 1; 8th sibling distfile, 6,664 lines, 5 regex engines: bre / re2 / pcre / fuzzy / vim) — multi-consumer gate met by cyim (#1) + queued AGNOS bare-metal kernel (#2 → v5.10.x trigger). Cycle scope is **catchup + fixes**: consumer-rollup of the pin-lag tail, optimization-debt audit, dangling-item closeout, and bare-metal-readiness work for v5.10.x.
 
-**Soft backstop**: v5.7.x's 51 was the duration high-water; v5.8.x's 66-in-4-days was the velocity high-water. v5.9.x cadence TBD.
+**Soft backstop**: v5.7.x's 51 patches was the duration high-water; v5.8.x's 66-in-4-days was the velocity high-water. v5.9.x cadence TBD — catchup work is per-repo, not per-slot.
 
-**Deferred to v5.10.x**: AGNOS bare-metal target (was queued for v5.8.0; second niyama-consumer gate). RISC-V rv64 backend remains pushed.
+**v5.10.x reservation**: AGNOS bare-metal target + RISC-V rv64 backend (both slipped from v5.8.0 / earlier cycles). v5.9.x's job is leaving the ecosystem ready for both.
 
 ### v5.9.0 cut state
 
@@ -37,31 +37,47 @@ cc5 at **741,048 B** (net unchanged from v5.8.65 — foldin is `lib/` content on
 - **api-surface snapshot** — 2,725 → 2,760 public fn entries (+35 from niyama). All additions non-breaking per the api-surface gate.
 - **Verification** — self-host two-step byte-identical (cc5 → cc5b 741,048 B); check.sh 65/65 green; niyama smoke (re2 compile + search) links and runs from vendored lib.
 
-### v5.9.x slot list (carry-forward from v5.8.0 audit + new)
+### v5.9.x slot list — actual scope
 
-The original v5.8.x 12-item list largely deferred — bandwidth went to Phase 3 stdlib foldins instead. Re-anchored as v5.9.x backlog; verify each before acting (some may have shipped during v5.8.x mid-cycle):
+The original v5.8.0 12-item slot list largely **shipped during v5.8.x Phase 1–2** (verified against cyrius CHANGELOG 2026-05-06). What remains is genuinely dangling:
+
+**Closeouts from v5.8.0 audit:**
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| – | `lint`/`fmt` 128KB cap raise | ✅ v5.8.1 | Mabda Class A1 closed |
+| – | `cc5_aarch64` packaging + `cyrc_check` orphan | ✅ v5.8.2 | Both carry-forwards closed in same slot |
+| – | ts/parse.cyr fmt sweep | ✅ v5.8.3 | |
+| – | `f64_log2` polyfill | ✅ v5.8.4–5 | aarch64 polyfill + SSH-gate hardware verification |
+| – | `sys_stat` / `fstat` backfill | ✅ v5.8.6 | phylax #2 |
+| – | `_SC_ARITY` cross-arch gate | ✅ v5.8.7 | phylax #3 + sakshi |
+| – | NI-class dupe investigation | ✅ v5.8.8 | phylax #4 closeout |
+| – | Preprocessor include-pattern | ✅ v5.8.x | dated 2026-05-01 |
+| – | Vidya audit | ✅ v5.8.40 | "Vidya audit pattern matures" |
+| – | `var X;` bare-decl diagnostic | ✅ v5.8.x | Mabda C1 |
+| – | `cyrius fmt --check` exit code | ✅ v5.8.x | Mabda A2 |
+
+**Genuinely dangling — v5.9.x candidates:**
 
 | # | Item | Domain | Notes |
 |---|------|--------|-------|
 | 1 | niyama fold-in | Stdlib | ✅ Shipped v5.9.0 |
-| 2 | `lint`/`fmt` 128KB output cap raise | Tooling | Blocks the `ts/parse.cyr` fmt sweep deferred from v5.8.0 |
-| 3 | `f64_log2` polyfill | Math | Numerics surface |
-| 4 | `sys_stat` / `fstat` backfill | Stdlib syscalls | Continues v5.7.35 syscall-surface-gaps work |
-| 5 | `_SC_ARITY` pass | Language | Correctness |
-| 6 | NI-class dupe investigation | Stdlib | Drift audit |
-| 7 | Preprocessor include-pattern | Language | Fixes |
-| 8 | Vidya audit | Downstream consumer | vidya bumped to 2.6.4 / pin 5.8.34 — content audit pending |
-| 9 | `var X;` error message | Language ergonomics | |
-| 10 | `cyrlint` multi-line assert | Tooling | |
-| 11 | `cyim` regex | Tooling | cyim now consumes niyama (v5.9.0 multi-consumer gate #1) — verify content |
-| 12 | `cyrius fmt --check` exit code | Tooling | |
-| 13 | `ESTORESTACKPARM` stub | Language | Correctness |
-| 14 | Continued Phase 3+ stdlib foldins | Stdlib | Each major sibling is a multi-consumer-gate decision |
+| 2 | cyim → niyama integration | Consumer | Multi-consumer gate #1 — verify cyim regex paths now route through niyama |
+| 3 | `cyrlint` multi-line assert | Tooling | Investigated v5.8.41; couldn't reproduce on 4 synthetic tests. Decide: close as moot, or pin a real reproduction case |
+| 4 | `ESTORESTACKPARM` stub | Language | Explicitly **held** ("TODOs in src/: 1, held") — needs unhold-or-resolve decision |
+| 5 | Optimization arc O3–O6 audit | Compiler | Partial follow-on shipped (O3a IR / O4a–c regalloc / O5 / O6 codebuf) — needs status sweep against v5.6.x deferral list to identify what's still open |
+| 6 | Consumer rollup — pre-CYML format tail | Ecosystem | 11 repos still on `cyrius.toml` at v3.x–v4.x (avatara, ai-hwaccel, hadara, itihas, hoosh, kavach, agnoshi, nein, bote, t-ron, shravan); format migration + pin bump |
+| 7 | Consumer rollup — deep-lag tail | Ecosystem | ark (5.1.10), libro (5.4.7), majra (5.4.17), bsp (5.5.2), takumi (5.5.23), vyakarana (5.6.0), yantra (5.6.17) |
+| 8 | Consumer rollup — v5.7.48 held cluster | Ecosystem | agnosys, phylax, mabda, cyrius-doom, samvada — investigate per repo whether content held them or just bandwidth |
+| 9 | Bare-metal readiness — v5.10.x prereqs | Compiler/runtime | Surface what's needed for clean v5.10.0 bare-metal target open |
+| 10 | RISC-V rv64 readiness — v5.10.x prereqs | Compiler/backend | rv64 backend slipped 7+ times through v5.7.x; what's the current minimum to land it cleanly |
 
-Plus carry-forward from v5.8.x close:
+**Status of in-flight optimization phases** (verify before scheduling):
 
-- `build/cyrc_check` orphan delete (carried since v5.7.50)
-- `cc5_aarch64` packaging fix — move back under `bin/` in `install.sh` and release tarball
+- O3a IR instrumentation — landed v5.6.12 (referenced as pre-existing through v5.8.x)
+- O4a/b/c regalloc — Poletto-Sarkar linear-scan picker shipped through v5.8.x (O4b explicit at line 17551 of CHANGELOG)
+- O5 — referenced but full status unverified
+- O6 codebuf compaction (NOP harvest with jump+fixup) — referenced; full status unverified
 
 ---
 
