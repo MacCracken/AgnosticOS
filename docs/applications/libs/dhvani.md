@@ -2,7 +2,6 @@
 
 > **Dhvani** (Sanskrit: sound) — Core audio engine
 
-- **Version**: 1.1.0
 - **Repository**: [github.com/MacCracken/dhvani](https://github.com/MacCracken/dhvani)
 - **License**: GPL-3.0-only
 - **Status**: v1.0+ stable

@@ -2,7 +2,6 @@
 
 > **Raasta** (Hindi: path/road) — Navigation and pathfinding library
 
-- **Version**: 1.0.0
 - **Repository**: [github.com/MacCracken/raasta](https://github.com/MacCracken/raasta)
 - **License**: GPL-3.0-only
 - **Status**: v1.0+ stable

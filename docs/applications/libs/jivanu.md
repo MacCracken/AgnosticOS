@@ -2,7 +2,6 @@
 
 > **Jivanu** (Hindi: जीवाणु — microbe, bacterium) — Microbiology and microbial sciences
 
-- **Version**: 1.0.0
 - **Repository**: [github.com/MacCracken/jivanu](https://github.com/MacCracken/jivanu)
 - **License**: GPL-3.0-only
 - **Status**: v1.0+ stable

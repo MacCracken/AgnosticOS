@@ -2,7 +2,6 @@
 
 > **AgnosAI** (AGNOS + AI) — Provider-agnostic AI orchestration framework
 
-- **Version**: 1.1.0
 - **Repository**: [github.com/MacCracken/agnosai](https://github.com/MacCracken/agnosai)
 - **License**: GPL-3.0-only
 - **Status**: v1.0+ stable

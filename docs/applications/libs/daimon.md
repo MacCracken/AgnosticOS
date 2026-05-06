@@ -2,7 +2,6 @@
 
 Agent orchestrator — 144 MCP tools.
 
-- **Version**: 1.1.1
 - **Repository**: [github.com/MacCracken/daimon](https://github.com/MacCracken/daimon)
 - **License**: GPL-3.0-only
 - **Status**: v1.0+ stable

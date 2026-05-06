@@ -2,7 +2,6 @@
 
 Math engine — Miller-Rabin ~12× faster end-to-end via Cyrius hardware u64_mulmod fast-path.
 
-- **Version**: 2.1.0
 - **Repository**: [github.com/MacCracken/abaco](https://github.com/MacCracken/abaco)
 - **License**: GPL-3.0-only
 - **Status**: v1.0+ stable

@@ -2,7 +2,6 @@
 
 Theoretical physics.
 
-- **Version**: 1.0.0
 - **Repository**: [github.com/MacCracken/hisab-mimamsa](https://github.com/MacCracken/hisab-mimamsa)
 - **License**: GPL-3.0-only
 - **Status**: v1.0+ stable

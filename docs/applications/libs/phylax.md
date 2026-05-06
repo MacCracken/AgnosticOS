@@ -2,7 +2,6 @@
 
 > **Phylax** (Greek: guardian/watchman) — AI-native threat detection engine (Cyrius-native, ported)
 
-- **Version**: 1.0.0
 - **Repository**: [github.com/MacCracken/phylax](https://github.com/MacCracken/phylax)
 - **License**: GPL-3.0-only
 - **Status**: v1.0+ stable

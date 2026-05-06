@@ -2,7 +2,6 @@
 
 > **Kiran** (Sanskrit: ray of light) — AI-native game engine
 
-- **Version**: 1.0.0
 - **Repository**: [github.com/MacCracken/kiran](https://github.com/MacCracken/kiran)
 - **License**: GPL-3.0-only
 - **Status**: v1.0+ stable

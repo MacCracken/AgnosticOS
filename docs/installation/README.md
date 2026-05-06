@@ -1,15 +1,15 @@
 # AGNOS Installation Guide
 
-> **Version:** 2026.4.14 | **Last Updated:** 2026-04-20
+> **Version:** 2026.5.6 | **Last Updated:** 2026-05-06
 >
-> **Status:** AGNOS is **Pre-Beta**. The kernel boots in QEMU and the sovereign boot pipeline is active. The full installer (`agnova`) and bootable distribution ISO land with **Phase 1** — see [ISO pipeline](../development/iso-pipeline.md) for stage status. This guide describes what is buildable and testable **today**, and what is coming.
+> **Status:** AGNOS is **Pre-Beta** — closed beta targets early June 2026, public beta Q4 2026 (see [roadmap](../development/roadmap.md)). The kernel boots in QEMU and the sovereign boot pipeline is active. The full installer (`agnova`) and bootable distribution ISO land with **Phase 1** — see [ISO pipeline](../development/iso-pipeline.md) for stage status. This guide describes what is buildable and testable **today**, and what is coming.
 
 ---
 
 ## What Works Today
 
-- **Sovereign boot pipeline** — `scripts/boot.cyr` (Cyrius, 56KB compiled) launches the AGNOS kernel in QEMU.
-- **AGNOS kernel** — v1.22.0, 260KB, 33 subsystems, 26 syscalls, Cyrius-native. Boots to shell.
+- **Sovereign boot pipeline** — `scripts/boot.cyr` (Cyrius, ~67KB compiled) launches the AGNOS kernel in QEMU.
+- **AGNOS kernel** — v1.26.1, 248KB, 33 subsystems, 26 syscalls, Cyrius-native. Boots to shell.
 - **Component verification** — `make iso-check` walks every downstream repo and confirms the artifacts an ISO would need are present and current.
 - **Per-subsystem builds** — every subsystem (kybernet, ark, nous, sigil, libro, agnoshi, …) builds standalone from its own repo via `cyrius build`.
 
@@ -18,7 +18,7 @@
 - **ISO Stages 1–4** — source download, cross-toolchain bootstrap, base-system build in chroot, ISO packaging. See `docs/development/iso-pipeline.md`.
 - **agnova** (installer) — currently at 0.1.0 scaffold. Will own disk partitioning, LUKS2, bootloader install, profile selection (Desktop / Server / Minimal).
 - **takumi** (build system) — pending Cyrius port. Drives recipe builds during ISO assembly.
-- **Target**: May 1, 2026 (Beltane) — see `docs/development/roadmap.md` Phase 13A.
+- **Target**: closed beta cut, **early June 2026** — gated on Cyrius v5.10.x bare-metal target. See `docs/development/roadmap.md` Phase 13A.
 
 ---
 
@@ -45,7 +45,7 @@ All commands run from the genesis repo root unless noted.
 Cyrius toolchain (required):
 ```sh
 # Install from release tarball or build from source (cyrius repo)
-# Toolchain version pinned in scripts/.cyrius-toolchain
+# Toolchain version pinned in scripts/cyrius.cyml (manifest is single source of truth)
 which cyrius  # verify on PATH
 ```
 
@@ -111,7 +111,7 @@ Progress against the ISO pipeline:
 | 3 | Build base system in chroot | Not started |
 | 4 | Package into ISO | Not started |
 
-Phase 13B (Arch-Neutral Boot Pipeline) will run between Cyrius v5.6.x closeout and v5.7.0 RISC-V to make Stages 1–4 target-triple-aware from the start.
+Phase 13B (Arch-Neutral Boot Pipeline) is being neutralized during Cyrius v5.9.x catchup so v5.10.x can open clean for both bare-metal and RISC-V rv64. See [roadmap Phase 13B](../development/roadmap.md#phase-13b--arch-neutral-boot-pipeline).
 
 ---
 
@@ -122,7 +122,7 @@ Phase 13B (Arch-Neutral Boot Pipeline) will run between Cyrius v5.6.x closeout a
 | Symptom | Cause / Fix |
 |---------|-------------|
 | `cyrius: command not found` | Toolchain not on PATH. Check `~/.cyrius/bin/` or install from cyrius release tarball. |
-| `cyrius build` fails with missing stdlib | Running `cc3` directly; always use `cyrius build` (auto-prepends includes). |
+| `cyrius build` fails with missing stdlib | Running `cc5` directly; always use `cyrius build` (auto-prepends includes). |
 | `make boot-test` hangs on black screen | QEMU serial not wired; check with `qemu-system-x86_64 --version` ≥ 7.0. |
 | `make iso-check` reports a stale artifact | Sibling repo hasn't been rebuilt. `cd ../<repo> && cyrius build …` then retry. |
 

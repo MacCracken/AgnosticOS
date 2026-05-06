@@ -2,7 +2,6 @@
 
 > **Ranga** (Sanskrit: color) — Core image processing library
 
-- **Version**: 1.0.0
 - **Repository**: [github.com/MacCracken/ranga](https://github.com/MacCracken/ranga)
 - **License**: GPL-3.0-only
 - **Status**: v1.0+ stable

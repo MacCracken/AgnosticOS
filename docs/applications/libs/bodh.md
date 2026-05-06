@@ -2,7 +2,6 @@
 
 > **Bodh** (Sanskrit: बोध — awareness, understanding) — Psychology and cognitive science
 
-- **Version**: 1.0.0
 - **Repository**: [github.com/MacCracken/bodh](https://github.com/MacCracken/bodh)
 - **License**: GPL-3.0-only
 - **Status**: v1.0+ stable

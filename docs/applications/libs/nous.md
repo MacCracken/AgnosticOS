@@ -2,7 +2,6 @@
 
 Package resolver (Cyrius).
 
-- **Version**: 1.1.1
 - **Repository**: [github.com/MacCracken/nous](https://github.com/MacCracken/nous)
 - **License**: GPL-3.0-only
 - **Status**: v1.0+ stable

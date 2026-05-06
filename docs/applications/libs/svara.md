@@ -4,7 +4,6 @@
 
 Formant and vocal synthesis: glottal source modeling, vocal tract filtering, phoneme-level synthesis, prosodic control, and sequenced speech rendering.
 
-- **Version**: 1.0.0
 - **crates.io**: [svara](https://crates.io/crates/svara)
 - **Repository**: [github.com/MacCracken/svara](https://github.com/MacCracken/svara)
 - **Consumers**: dhvani, vansh, prani, shabda

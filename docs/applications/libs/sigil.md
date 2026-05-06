@@ -2,7 +2,6 @@
 
 Trust verification and crypto — AES-NI + SHA-NI hardware acceleration. Owns ALL AGNOS crypto (sigil is the boundary; downstream crates use sigil, not their own crypto).
 
-- **Version**: 2.9.3
 - **Repository**: [github.com/MacCracken/sigil](https://github.com/MacCracken/sigil)
 - **License**: GPL-3.0-only
 - **Status**: v1.0+ stable

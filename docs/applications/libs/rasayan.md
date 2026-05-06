@@ -2,7 +2,6 @@
 
 > **Rasayan** (Sanskrit: रसायन — alchemy, chemistry of life) — Biochemistry engine
 
-- **Version**: 1.0.0
 - **Repository**: [github.com/MacCracken/rasayan](https://github.com/MacCracken/rasayan)
 - **License**: GPL-3.0-only
 - **Status**: v1.0+ stable

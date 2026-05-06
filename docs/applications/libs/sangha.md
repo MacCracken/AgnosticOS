@@ -2,7 +2,6 @@
 
 > **Sangha** (Sanskrit: सङ्घ — community, assembly) — Sociology and social dynamics
 
-- **Version**: 1.0.0
 - **Repository**: [github.com/MacCracken/sangha](https://github.com/MacCracken/sangha)
 - **License**: GPL-3.0-only
 - **Status**: v1.0+ stable

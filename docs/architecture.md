@@ -1,6 +1,8 @@
 # AGNOS System Architecture
 
-> **Last Updated**: 2026-04-14 | **Version**: 2026.4.14
+> **Last Updated**: 2026-05-06 | **Version**: 2026.5.6
+>
+> Live ecosystem state (cycle, per-repo pins, sweeps): [`development/state.md`](development/state.md). Stable narrative values below — verify against state.md before quoting per-repo versions.
 
 This document provides the technical architecture of AGNOS (AI-Native General Operating System).
 
@@ -57,7 +59,7 @@ AGNOS is a sovereign operating system written in Cyrius. The architecture consis
 |  +---------------------------------------------------------------+   |
 |  |              AGNOS Kernel (Cyrius-native)                     |   |
 |  |  +---------------------------------------------------+       |   |
-|  |  |         v1.22.0 — 260KB, 33 subsystems             |       |   |
+|  |  |         v1.26.1 — 248KB, 33 subsystems             |       |   |
 |  |  |  +-----------+ +-----------+ +----------------+    |       |   |
 |  |  |  |  Memory   | | Process  | |   Network      |    |       |   |
 |  |  |  |  Manager  | | Manager  | |   (TCP/IP)     |    |       |   |
@@ -85,7 +87,7 @@ AGNOS is a sovereign operating system written in Cyrius. The architecture consis
 
 AGNOS runs its own sovereign kernel, written in Cyrius. No Linux dependency at runtime.
 
-**AGNOS kernel v1.22.0** — 260KB, 33 subsystems, 26 syscalls:
+**AGNOS kernel v1.26.1** — 248KB, 33 subsystems, 26 syscalls:
 - Memory management, process management, SMP
 - TCP/IP networking, VirtIO-Net/Blk
 - FAT16 filesystem, ELF loader
@@ -99,15 +101,15 @@ The `kernel/` directory in this repo contains Linux kernel configs for **host bo
 
 Every subsystem is a standalone repo at `/home/macro/Repos/{name}/`. Each has its own CLAUDE.md, CHANGELOG, and version.
 
-### ark — Unified Package Manager (v0.1.0, Cyrius)
+### ark — Unified Package Manager (v0.8.0, Cyrius)
 
-User-facing CLI for all package operations.
+User-facing CLI for all package operations. 4× smaller, 40× faster than the Rust predecessor.
 
-### nous — Package Resolver (v0.1.0, Cyrius)
+### nous — Package Resolver (v1.1.1, Cyrius)
 
 Intelligence layer behind ark. Given a package name, determines which source to use.
 
-### sigil — Trust System (v2.1.2, Cyrius)
+### sigil — Trust System (v2.9.4, Cyrius)
 
 System-wide trust and verification. Every binary, package, config, and update is verified through sigil. Ed25519 signing, revocation lists, trust levels.
 
@@ -119,9 +121,9 @@ System-wide trust and verification. Every binary, package, config, and update is
 
 Unified security and threat protection. Coordinates threat detection, quarantine, and scanning.
 
-### takumi — Package Build System (v0.1.0, pending Cyrius port)
+### takumi — Package Build System (v0.8.0, Cyrius port in flight)
 
-Compiles packages from source into `.ark` binary packages via TOML recipes. Recipes live in the `zugot` repo.
+Compiles packages from source into `.ark` binary packages via TOML recipes. Recipes live in the `zugot` repo. Cyrius port active; `rust-old/` authoritative until parity.
 
 ### argonaut — Init System (v1.2.0, Cyrius)
 
@@ -211,8 +213,8 @@ AGNOS kernel (260KB, Cyrius-native)
 
 | Layer | Technology | Notes |
 |-------|-----------|-------|
-| Kernel | Cyrius (AGNOS-native) | 260KB, 33 subsystems, 26 syscalls |
-| Compiler | Cyrius 4.8.5-1 | 373KB, self-hosting from 29KB seed, 42 stdlib modules |
+| Kernel | Cyrius (AGNOS-native) | 248KB (v1.26.1), 33 subsystems, 26 syscalls |
+| Compiler | Cyrius 5.9.0 (cc5) | ~741KB, self-hosting from 29KB seed, 42+ stdlib modules |
 | User space | Cyrius | All ported subsystems compile with `cyrius build` |
 | Host bootstrap | Linux kernel configs | For building cross-compiler on existing host only |
 | Build recipes | TOML (zugot repo) | 421 base + 90 bazaar recipes |
@@ -220,27 +222,26 @@ AGNOS kernel (260KB, Cyrius-native)
 
 ### Pending Cyrius Ports
 
-These subsystems still have Rust (Cargo.toml) codebases:
+Per [`development/state.md`](development/state.md), these subsystems are still pending or in-flight (Rust authoritative):
 
 | Subsystem | Version | Notes |
 |-----------|---------|-------|
-| takumi | 0.1.0 | Build system |
-| aegis | 0.1.0 | Security daemon |
-| shakti | 0.1.0 | Privilege escalation |
-| aethersafha | 0.1.0 | Wayland compositor |
-| phylax | 0.22.3 | Threat detection |
-| bhava | 2.0.0 | Emotion/sentiment |
-| hisab | 1.4.0 | Higher math |
+| bhava | 2.0.0 (Rust) | Emotion/sentiment — port can start; gating on v5.9.x stdlib + math additions |
+| aegis | 0.1.0 (scaffold) | Security daemon — real implementation pending |
+| aethersafha | 0.1.0 (scaffold) | Wayland compositor — real implementation pending |
+| takumi | 0.8.0 | Build system — Cyrius port active, `rust-old/` authoritative until parity |
+
+Recently shipped (no longer pending): phylax 1.0.0, shakti 0.2.2, hisab 2.2.0 (all Cyrius-native). See [shared-crates registry](development/applications/shared-crates.md) for full status.
 
 ## Design Decisions
 
 ### 1. Sovereign Kernel
 
-AGNOS has its own kernel written in Cyrius (260KB, v1.22.0). No Linux dependency at runtime. Linux kernel configs in this repo are for host bootstrap only.
+AGNOS has its own kernel written in Cyrius (248KB, v1.26.1). No Linux dependency at runtime. Linux kernel configs in this repo are for host bootstrap only.
 
 ### 2. Cyrius for Everything
 
-Cyrius is the sovereign systems language — 29KB seed, zero external dependencies, self-hosting compiler. All production subsystems are being ported from Rust to Cyrius. 22+ ports complete.
+Cyrius is the sovereign systems language — 29KB seed, zero external dependencies, self-hosting compiler. All production subsystems are being ported from Rust to Cyrius. 30+ ports complete.
 
 ### 3. Landlock + seccomp-bpf
 
@@ -252,7 +253,7 @@ Prioritize local LLM execution with cloud fallback. Privacy, offline capability,
 
 ### 5. Cryptographic Audit Chain
 
-Immutable, hash-chained, signed audit logs via libro (1.0.3). sigil (2.1.2) owns all cryptographic operations.
+Immutable, hash-chained, signed audit logs via libro (2.0.5). sigil (2.9.4) owns all cryptographic operations.
 
 ### 6. Named Subsystems
 

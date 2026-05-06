@@ -2,7 +2,6 @@
 
 Container runtime.
 
-- **Version**: 2.0.0
 - **Repository**: [github.com/MacCracken/stiva](https://github.com/MacCracken/stiva)
 - **License**: GPL-3.0-only
 - **Status**: v1.0+ stable
