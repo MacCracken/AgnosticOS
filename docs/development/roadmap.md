@@ -270,7 +270,8 @@ Repo-specific backlog items tracked in their respective repos.
 |---|------|--------|-------|
 | 1 | Video tutorials | Not started | Installation, usage, agent creation |
 | 2 | Support portal | Not started | Discord + forum |
-| 3 | Community testing program | Not started | Beta tester enrollment |
+| 3 | Community testing program | Not started | Beta tester enrollment + LTT/Labs- or Level1Techs-style hardware submission requests for benchmarking on configurations outside the in-house matrix (long-tail coverage); Wendell Wilson's enterprise/server/ZFS/IOMMU depth aligns particularly well with AGNOS's technical audience |
+| 5 | Hardware-access partnerships | Not started | Tiered outreach: (1) direct manufacturer relationships (NVIDIA/AMD/Intel partner programs) for eval silicon + early driver access; (2) fallback to reviewer/creator channels with existing card pipelines — Jay2Cents (SoCal-local; proximity = easier physical handoff for driver work and cross-checks), Wendell/Level1Techs (enterprise depth), LTT Labs (breadth). Reviewers are a fallback when direct manufacturer relationships aren't accessible, not a substitute |
 | 4 | Third-party security audit | Not started | External vendor |
 
 ### Phase 13F — Hardware Testing Matrix
@@ -287,11 +288,59 @@ Repo-specific backlog items tracked in their respective repos.
 | 8 | DJI Tello drone | ARM | IoT | Available |
 | 9 | ESP32 devices (multiple) | xtensa | IoT/Edge | Available |
 | 10 | ASIC miners | — | Crypto accel | Available |
-| 11 | Gaming cabinet | x86_64 | Desktop + kavach | Available — dual-purpose: AGNOS host + Windows guest |
+| 11 | Gaming cabinet (GTX 1060 OC) | x86_64 | Desktop + kavach | Available — low-end NVIDIA / Pascal; dual-purpose: AGNOS host + Windows guest |
+| 12 | Skytech Legacy 4 (Ultra 9 285K, RTX 5080, 64GB DDR5, 2TB NVMe) | x86_64 | Desktop / GPU+AI workload | **Arriving 2026-05-04** — high-end NVIDIA bring-up: ai-hwaccel, hoosh, mabda, aethersafha. Upgrade vectors: Intel Arc GPU swap, next-gen NVIDIA late-2026/early-2027, DDR5 capacity bump |
+| 13 | Vaio all-in-one (older NVIDIA CUDA) | x86_64 | Desktop / legacy CUDA floor | Available — oldest CUDA-capable target, validates ai-hwaccel low-end fallback |
+| 14 | AMD NUC devbox (Ryzen 7 5800H, Radeon Vega/Cezanne) | x86_64 | Primary dev environment | **Active** — daily-driver dev box; covers AMD CPU (Zen 3) + `amdgpu` driver stack (integrated GCN/Vega) |
+| 15 | MacBook Pro 2018 (Intel + T2) | x86_64 | Laptop / Apple EFI | Available — laptop form factor (battery, lid-suspend, hybrid graphics); validates Apple EFI + T2 security chip quirks |
+| 16 | MacBook Pro M5 | aarch64 | Laptop / Apple Silicon | Pending — blocked on Asahi-class reverse-engineered driver support for M5 generation |
+| 17 | Mac Mini 2025 (Apple Silicon) | aarch64 | Desktop / Apple Silicon | Pending — same Asahi-driver dependency; closes aarch64 desktop-class coverage when ready |
+| 18 | RISC-V dev boards (multiple) | riscv64 | IoT/Edge | Available — closes RISC-V architecture gap; validates rv64 toolchain path |
+| 19 | Arduino Uno (ATmega328) | AVR 8-bit | Peripheral / sensor | Available — not an AGNOS host (8-bit, ~32KB flash); peripheral testbed for UART/I2C/SPI interaction from AGNOS edge nodes |
+
+**NVIDIA mid-tier coverage (Ampere/Ada, 3000/4000-series):** physical bench coverage spans Pascal (1060 OC) → Blackwell (RTX 5080), skipping Turing/Ampere/Ada. Acquire a used 3060/3070 only if the resale market supplies one at reasonable cost for the validation window needed; otherwise, GPU rental (Lambda/RunPod/Vast.ai) covers the compute-side gap — CUDA arch validation, ai-hwaccel detection, hoosh inference paths. Rental does **not** cover physical-hardware behavior (power management, thermals, display/HDMI quirks, sleep/wake), but those generalize from the Pascal and Blackwell endpoints.
+
+**Remaining gaps (acceptable for v1.0):** discrete AMD GPU (RDNA/RDNA2/RDNA3) — `amdgpu` kernel driver is validated daily on the NUC's integrated Vega, so the gap is RDNA-specific arch paths only. Same acquisition strategy as NVIDIA mid-tier: prefer rental for compute-side validation, fall back to used market only if cost/availability favors physical. Apple Silicon (M-series) bring-up — gated on Asahi-class driver work, not bench inventory.
+
+**Long-tail coverage (post-public-launch):** community-submission program (see Phase 13C item 3) — solicit hardware-test requests in the LTT/Level1Techs (Wendell) mold to validate AGNOS on configurations outside the in-house matrix. Cheaper and broader than buying every gap; also doubles as marketing surface.
 
 ### Phase 13G — Consumer App Bundle Tests
 
 All 19 apps released. Bundle tests (`ark-bundle.sh`) not yet run.
+
+### Phase 13H — Driver Port Strategy
+
+**Method**: sequential-focus port — pick one platform/device class, drive to solid before moving on. Mirrors the subsystem-porting approach (one Cyrius port at a time, no parallel half-finished ports). Sequence is driven by the Phase 13F hardware matrix — what's on the bench gets ported; everything else is "not supported" until a partnership or community submission moves it onto the bench.
+
+**Workflow per target**:
+1. Pick next driver from the sequence (informed by 13F priorities and partnership pipeline)
+2. Port to solid — boots, stable, benchmarked, integrated with ai-hwaccel/aethersafha/etc. as relevant
+3. Document and announce shipped support
+4. Cross-target sweep — re-validate prior ports against any cross-cutting changes introduced during the new port
+5. Move to next
+
+**Public signal**: maintain a visible "Currently working on: X driver support" status (README, status page, or equivalent) so contributors know what's in flight, where to help, and what's intentionally on the back burner. Closes the gap between "we have a plan" and "we know what's actually being worked on right now."
+
+**Shim-then-native pattern**: when a target sits on the matrix but native-port bandwidth isn't available yet, ship via a bounded shim layer (Linux DRM/KMS or amdgpu shim, à la FreeBSD `linuxkpi`; Linux net driver shim; etc.) so the hardware works *now* — then queue the native Cyrius port and retire the shim when it lands. Decouples "we support this hardware" from "we have a clean native driver." Constraints: the shim surface must be explicit and bounded (not creeping into pervasive Linux-API inheritance), each shimmed driver carries an explicit native-port queue entry, and retirement of the shim is a tracked deliverable — not a permanent compatibility layer. Keeps the "refuse dead legacy" stance honest while letting hardware support ship on a real timeline.
+
+**Release cadence (mabda model)**: each major release focuses on one vendor's native driver port — same single-target, predictable-deprecation rhythm mabda uses. Per-vendor shim lifecycle is **three majors**: native ships in major N (shim still present alongside), deprecated with warnings in major N+1, removed entirely in major N+2. Proposed sequence:
+
+| Major | Native focus | Grind tier | Concurrent shim deprecations | Shim removals |
+|-------|--------------|------------|------------------------------|---------------|
+| 3.0 | AMD GPU (RDNA discrete + iGPU native) | **Tractable** — open `amdgpu` kernel driver, public RDNA ISA, RADV/Mesa reference | — | — |
+| 4.0 | NVIDIA (CUDA + display) | **Heavy lift** — closed-source stack; clean-room route (Nouveau/Nova-class) is multi-year; partnership path strongly preferred | AMD shim deprecated (warnings) | — |
+| 5.0 | Intel Arc (Xe + media) | **Tractable** — open Xe driver, open documentation, Mesa stack | NVIDIA shim deprecated | AMD shim removed |
+| 6.0 | (next vendor — TBD: Apple Silicon GPU pending Asahi work, or Mali/Adreno for ARM) | **Heavy lift** — Apple Silicon is reverse-engineering (Asahi-class); Mali/Adreno less brutal but still vendor-opaque | Intel Arc shim deprecated | NVIDIA shim removed |
+
+Every shim has a known demolition date the moment it ships. No vendor's shim outlives two majors. Contributors and users can plan against the cadence: "if you're on AMD, the shim is supported through 3.x, deprecated in 4.x, gone in 5.x — port your tooling assumptions accordingly."
+
+**Timing dependency (Cyrius 6.x)**: the AGNOS-3.0 AMD native port (and the rest of this cadence) is gated on Cyrius 6.x landing and stabilizing — toolchain/compiler bandwidth for serious native GPU driver work isn't available before that. Until Cyrius 6.x is ready, the entire driver story is *shim-only*; the native sequence above starts in the AGNOS major immediately following Cyrius-6.x stabilization. Don't promise native AMD ahead of that gate.
+
+**mabda status (not on critical path)**: mabda is at **3.0.0-rc.2** — needs a soak period before the GA cut, then folds into the Cyrius stdlib. Expected to land before Cyrius 6.x stabilizes, so the GPU foundation layer is in place when the per-vendor native work starts. mabda is *not* the bottleneck on this cadence; Cyrius 6.x is.
+
+**Honest grind expectation**: the **NVIDIA (4.0) and Apple GPU (6.0)** slots are the multi-major **tough-time** efforts — closed-source stacks where the bench/rental/partnership tooling above is necessary but not sufficient. AMD (3.0) and Intel Arc (5.0) are the tractable wins that keep the cadence moving while the heavy lifts grind. If a heavy-lift slot slips, expect it to slip into the *following* major rather than blocking the easier ports — preserve the rhythm, don't stall the train on one vendor.
+
+**Front-load Intel Arc as the pressure-release valve**: a discrete Arc card runs **$300–500** — cheap enough to acquire ahead of its scheduled 5.0 slot. If NVIDIA (4.0) starts heading into multi-month grind territory, promote Intel Arc forward into that major and slot NVIDIA back. Cadence rhythm is preserved (a tractable native port still ships), the grind gets another major of bench time, and the cheap acquisition pays for itself by removing schedule risk on the heavy lift. Either buy a dedicated card or do the planned Arc swap on the Skytech (row 12, upgrade vectors) earlier than scheduled.
 
 ### Phase 16 — Desktop Completeness
 
