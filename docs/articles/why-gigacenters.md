@@ -1,6 +1,6 @@
 # Why Do LLMs Need Gigacenters? They Don't.
 
-> **Status**: Outline — capturing the thesis while it's hot. Full article when the distributed inference demo is real.
+> **Status**: Held outline. Thesis captured; article promotes when the **murti + seema distributed-inference demo** ships with benchmarked results. Triage 2026-05-06: hold (not stub-demote, not promote — receipts don't exist yet, but the thesis is durable enough to keep on file). Last verified 2026-05-06.
 >
 > The assumption that inference requires datacenter-scale hardware is an infrastructure argument, not a math argument. A distributed network of sovereign nodes on commodity hardware can match or exceed centralized compute. Bitcoin proved the model works. AGNOS is the substrate that makes it work for inference.
 
@@ -40,7 +40,7 @@ What if the stack looked like this:
 
 ```
 Hardware (commodity x86_64 / ARM / repurposed ASIC)
-  → AGNOS kernel (260KB, v1.22.0, boots in <100ms)
+  → AGNOS kernel (260KB, v1.26.1, boots in <100ms)
     → murti (sovereign model runtime, local inference)
       → Inference
 ```
@@ -62,7 +62,7 @@ A million-token context window sounds like overkill until you measure what curre
 
 **Estimate:** 30-60% of effective context in current deployments is infrastructure noise, not reasoning.
 
-On AGNOS, with a 48KB PID 1 and 60-80x smaller binaries, the context window is the context window. A million tokens of thinking. Not a million tokens of thinking-plus-garbage.
+On AGNOS, with a 260KB Cyrius-native kernel + 486KB kybernet PID 1 (full feature surface; the 48KB figure was the early-port prototype) and 3-59× smaller binaries across ten production ports, the context window is the context window. A million tokens of thinking. Not a million tokens of thinking-plus-garbage.
 
 **The claim (to be benchmarked):** Same model, same prompt, same hardware — AGNOS substrate vs Ubuntu substrate. Measure: tokens-to-first-useful-output, inference latency, context utilization efficiency, energy per completion.
 
@@ -93,7 +93,7 @@ Current paradigm:
   Controlled by: 3-5 companies (NVIDIA, Microsoft, Google, AWS, Meta)
 
 AGNOS paradigm:
-  Sovereign node (AGNOS, 48KB kernel, clean substrate)
+  Sovereign node (AGNOS kernel 260KB + kybernet PID 1, clean substrate)
     → murti (local model runtime, inference backends)
       → bhava (personality/consciousness runtime)
         → seema (edge fleet management)

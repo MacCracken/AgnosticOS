@@ -60,6 +60,24 @@ At that rate, most engineering documentation becomes structurally unable to desc
 
 ---
 
+## What This Looks Like When It Hits Production
+
+Doc-vs-state drift is not new at the *mechanism* level. What is new at agent speed is the velocity. Three public postmortems from the pre-agent era show what the drift produces when it lands in operations:
+
+- **GitLab.com, 2017-01-31** ([postmortem](https://about.gitlab.com/blog/postmortem-of-database-outage-of-january-31/)). An engineer working through a replication-lag incident ran `rm -rf /var/opt/gitlab/postgresql/data/*` on the production primary instead of the lagging replica. 300 GB deleted in two seconds. The recovery story is the part that matters here: **five backup mechanisms were documented; only one was actually working.** `pg_dump` was misconfigured and silently failing. Failure-alert emails were being silently rejected by DMARC for months. Retention windows were stale. The runbook described a backup posture that did not exist. Recovery took 18 hours, restored from a snapshot a different engineer had taken six hours earlier *by accident* during unrelated testing. Live-streamed. The lucky save was the only thing standing between GitLab and 24+ hours of customer data permanently gone.
+
+- **Knight Capital, 2012-08-01** ([SEC release](https://www.sec.gov/newsroom/press-releases/2013-222)). A deployment runbook said "push to all eight SMARS servers." The actual process required a manual step on each host. One server got missed. The new code repurposed a feature flag the eighth server's old code still recognized as the deprecated *Power Peg* function — and orders began executing infinitely against a now-defunct fulfillment path. **45 minutes, 4 million executions across 154 stocks, $460M loss.** No machine-checkable assertion existed that all eight servers carried the same code; the runbook was documentation, not enforcement. *Power Peg* itself had been deprecated **eight years earlier**; the documentation describing its retirement had never been re-audited against the live deploy footprint. Knight survived only via emergency capital injection from a Jefferies-led consortium and was acquired the following year.
+
+- **Atlassian, April 2022** ([post-incident review](https://www.atlassian.com/blog/atlassian-engineering/post-incident-review-april-2022-outage)). A maintenance script executed against the wrong ID type — Team A passed *site* IDs where Team B's deletion script expected *app* IDs. Peer review caught endpoint correctness; nobody caught the ID-type contract drift. **775 customers / 883 sites permanently deleted.** Recovery from backup; the longest-impacted customers were down for 14 days. The script did exactly what it was *documented* to do; the cross-team contract about what kind of ID flowed across the boundary had drifted from the system's actual deletion semantics.
+
+Three different industries, three different timescales (one hour, 45 minutes, two weeks of customer impact), one mechanism: **the operational artifact described a system the system was no longer.** GitLab's runbook claimed a backup posture; reality was four of five backups silently broken. Knight's runbook claimed a deployment outcome; reality was one server still running eight-year-old code. Atlassian's cross-team contract claimed an ID type; reality was a different ID type with very different consequences.
+
+These all happened on slow-moving pre-agent infrastructure, where the doc-vs-state gap accumulated over months or years. **At agent speed, the same gap accumulates between two paragraphs of an article being written.** The timescale for *"your runbook drifted from your system"* used to be the interval between annual audits. The agent-era equivalent is the interval between two consecutive `git commit` calls. Same mechanism, three orders of magnitude faster, same potential cost when it intersects production.
+
+The audit-pass argument later in this piece is not theoretical. It is the difference between GitLab's snapshot-by-accident outcome (recoverable) and Atlassian's permanent-deletion outcome (775 customers down for two weeks). Tooling shrinks the window. Audits close the cases the tooling cannot see.
+
+---
+
 ## What Sovereign Stacks Get That Most Teams Don't
 
 AGNOS hit this gap early and engineered around it. What made the engineering-around-it possible is that AGNOS is a sovereign stack — every layer is under project control. When drift-defense surfaced as a problem, the fix could be made at whichever layer was cheapest.
