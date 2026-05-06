@@ -1,8 +1,10 @@
-# License Fixes — 2026-03-30
+# License Fixes — 2026-03-30 (ARCHIVED — Rust-era checklist)
 
-> **Rule**: `GPL-3.0-only` for all library crates, `AGPL-3.0-only` for desktop GUI apps.
+> **Archived 2026-05-06**: This was a pre-Cyrius-pivot license-cleanup TODO. Items reference `Cargo.toml`, `crates.io`, and Rust SPDX-string conventions. After the 2026-04-04 Cyrius pivot ([ADR-008](../adr/adr-008-cyrius-as-sovereign-systems-language.md)), most items are moot — Cyrius uses `cyrius.cyml` not Cargo.toml, and ark/zugot replace crates.io. Remaining license-correctness work (per-repo LICENSE file accuracy) is per-repo housekeeping tracked in each repo's own backlog. Preserved here as a dated snapshot.
 >
-> Fix = update `license` field in Cargo.toml + LICENSE file if needed.
+> **Original rule**: `GPL-3.0-only` for all library crates, `AGPL-3.0-only` for desktop GUI apps.
+>
+> **Original fix recipe**: update `license` field in Cargo.toml + LICENSE file if needed.
 > Republish to crates.io after fix if already published.
 
 ---

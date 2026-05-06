@@ -377,5 +377,4 @@ See existing implementations (e.g., `shruti.rs`) as reference.
 
 ---
 
-*For API endpoint documentation, see [docs/api/explorer.html](/docs/api/explorer.html).
-For agent development, see [agent-development.md](agent-development.md).*
+*For current API endpoints and tool inventory, see `daimon/CLAUDE.md` in the daimon repo (per the drift notice at the top of this file). For agent development, see [agent-development.md](agent-development.md).*

@@ -1,10 +1,10 @@
 # AGNOS Kernel — Layer Architecture
 
-> **Status**: Layers 1–5 shipped. Kernel at **v1.22.0** — 260KB, 33 subsystems, 26 syscalls.
-> **Last Updated**: 2026-04-20
+> **Status**: Layers 1–5 shipped. Kernel at **v1.26.1** — 248KB, 33 subsystems, 26 syscalls. (Live size in [`development/state.md`](../development/state.md).)
+> **Last Updated**: 2026-04-20 (status line refreshed 2026-05-06)
 > **Authoritative per-subsystem status**: [agnos/CLAUDE.md](https://github.com/MacCracken/agnos). This doc is the conceptual decomposition; the subsystem table in the agnos repo is the receipt.
 
-The kernel was originally planned as five layers — "boots," "runs programs," "storage," "talks to the world," "usable." All five landed inside a ~7-week window (Cyrius scaffold 2026-04-03 → kernel v1.22.0 on 2026-04-14). The decomposition below reflects where each layer sits today and what it carries.
+The kernel was originally planned as five layers — "boots," "runs programs," "storage," "talks to the world," "usable." All five landed inside a ~7-week window (Cyrius scaffold 2026-04-03 → kernel v1.22.0 on 2026-04-14, hardened through to v1.26.1 / 248KB by 2026-04-28). The decomposition below reflects where each layer sits today and what it carries.
 
 ---
 

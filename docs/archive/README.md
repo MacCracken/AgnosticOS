@@ -33,6 +33,7 @@ docs/archive/
 | `desktop-environment-rust-era.md` | aethersafha desktop environment spec, Rust era | 2026-03-11 | `MacCracken/aethersafha` (pending Cyrius port) |
 | `example_claude-rust-era.md` | CLAUDE.md template for Rust-era sibling repos | 2026-04-13 | Each active repo now maintains its own Cyrius-era CLAUDE.md |
 | `first-party-standards-rust-era.md` | First-party application standards, Rust era | 2026-04-08 | `../development/applications/` docs + per-repo CONTRIBUTING.md |
+| `license-fixes-rust-era.md` | 42-item license-cleanup TODO checklist (Cargo.toml, crates.io, SPDX-string fixes) | 2026-05-06 | Moot post-Cyrius pivot — `cyrius.cyml` replaces Cargo.toml, ark/zugot replaces crates.io. Per-repo LICENSE accuracy is per-repo housekeeping. |
 
 ## `libs-pre-cyrius/` — Library docs before the Cyrius port
 

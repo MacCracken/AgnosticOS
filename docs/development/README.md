@@ -1,23 +1,29 @@
 # Development Documentation
 
-> **Last Updated**: 2026-04-14
+> **Last Updated**: 2026-05-06
 
 ## Active
 
 | Document | Description |
 |----------|-------------|
 | [roadmap.md](roadmap.md) | Master development roadmap — phases, blockers, release targets |
+| [state.md](state.md) | **Live ecosystem state** — Cyrius cycle, pin-lag, sweeps, carry-forward debt |
+| [doc-health.md](doc-health.md) | **Living doc-health ledger** — fresh / stale / archived / open-question buckets |
 | [sprint-history.md](sprint-history.md) | Completed phase archive |
 | [monolith-extraction.md](monolith-extraction.md) | Extraction from monolith to standalone repos (complete) |
+| [summer-2026-arc.md](summer-2026-arc.md) | Summer 2026 narrative arc (DEF CON / Black Hat distribution beats) |
+| [iso-pipeline.md](iso-pipeline.md) | ISO assembly pipeline (Stage 0 done, Stage-4 first cut next) |
+| [iso-stage4-plan.md](iso-stage4-plan.md) | Stage-4-only first cut plan (D1–D4 decisions pending) |
 
 ## Applications
 
 | Document | Description |
 |----------|-------------|
-| [applications/shared-crates.md](applications/shared-crates.md) | 78-crate registry with versions and consumers |
+| [applications/shared-crates.md](applications/shared-crates.md) | Shared crate registry — full (incl. pre-1.0); refresh from state.md drift list |
 | [applications/first-party-standards.md](applications/first-party-standards.md) | Standards for all AGNOS projects |
+| [applications/first-party-documentation.md](applications/first-party-documentation.md) | Doc-tree standards (companion to first-party-standards.md) |
 | [applications/example_claude.md](applications/example_claude.md) | CLAUDE.md template for new projects |
-| [applications/roadmap.md](applications/roadmap.md) | Consumer application roadmap |
+| [applications/roadmap.md](applications/roadmap.md) | Consumer application roadmap (forward planning, pre-v1) |
 
 ## Guides
 
@@ -64,4 +70,4 @@ Future architecture, theoretical exploration, and long-range planning.
 
 | Directory | Description |
 |-----------|-------------|
-| [os/](os/) | Full ecosystem registry — 45 subsystems, versions, repos, port status |
+| [os/](os/) | OS subsystems categorization map — repos + roles. Live versions in [state.md](state.md) and [shared-crates.md](applications/shared-crates.md). |

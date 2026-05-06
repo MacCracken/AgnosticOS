@@ -360,14 +360,18 @@ All public APIs should be documented with comments:
 
 ### Documentation Locations
 
+This is the **genesis repo**. Per-repo doc conventions (where to put API docs, user guides, etc., inside each subsystem repo) are defined in [first-party-documentation.md](docs/development/applications/first-party-documentation.md). The genesis repo's own `docs/` tree is structured as follows:
+
 | Type | Location |
 |------|----------|
-| API docs | `docs/api/` |
-| User guides | `docs/user/` |
-| Developer docs | `docs/development/` |
-| Security docs | `docs/security/` |
-| README | Component root |
-| Inline | Source code |
+| Architecture & philosophy | `docs/` (root: architecture.md, philosophy.md, design-patterns.md, AGNOS.md, thesis.md) |
+| ADRs | `docs/adr/` |
+| Articles | `docs/articles/` |
+| Developer docs | `docs/development/` (state.md, roadmap.md, doc-health.md, sprint-history.md, applications/, guides/, infrastructure/, os/, vision/) |
+| Application/lib pointers | `docs/applications/`, `docs/applications/libs/` (per-subsystem pointer docs; live docs in each subsystem's own repo) |
+| Security policy | `docs/security/`, root `SECURITY.md` |
+| Installation | `docs/installation/` |
+| Archive | `docs/archive/` (frozen pre-Cyrius / pre-extraction artifacts) |
 
 ## Security
 

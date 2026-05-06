@@ -322,7 +322,7 @@ intensity = 2.0
 | **T-Ron** | NPC tool call security | `/home/macro/Repos/t-ron/src/` | Scaffolded (0.1.0) |
 | **Libro** | Simulation audit trail, replay reproducibility | `/home/macro/Repos/libro/src/` | High — published (0.21.3), 17 tests |
 | **Nazar** | egui desktop app patterns | `/home/macro/Repos/nazar/` | High — reference for editor UI |
-| **Daimon** | Agent lifecycle, RAG, vector store | `userland/agent-runtime/src/` | High — 3897+ tests |
+| **Daimon** | Agent lifecycle, RAG, vector store | `/home/macro/Repos/daimon/` (extracted from `userland/agent-runtime/` in 2026-04-01 monolith dismantle) | High — 3897+ tests |
 | **SecureYeoman** | Simulation/game management patterns | `/home/macro/Repos/secureyeoman/packages/core/src/simulation/` | Medium — reference patterns |
 
 ## Why This Matters

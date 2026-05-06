@@ -19,9 +19,9 @@ This is a **ledger**, not a one-time audit. Rewrite-in-place as docs change. Per
 
 | Bucket | Count | What it means |
 |---|---|---|
-| ✅ **Fresh / refreshed in this audit** | ~120 | Confirmed current or just edited. Includes ~56 lib docs cleaned (version lines removed) + ~28 fossil-noticed docs that are now accurate + 4 entry-points + ADRs + dev/os batch + history + timeline + etc. |
-| 🟡 **Stale — refresh in place** | ~2 | Light residue only. Registries (libs/README.md, shared-crates.md) verified fresh as of 2026-05-06 (confirmed during Stage 15+ check). |
-| 🟠 **Read-through outstanding** | ~15 | Light skim still wanted on creative/, evergreen articles, .github templates. None known to be wrong. |
+| ✅ **Fresh / refreshed in this audit** | ~135 | Confirmed current or just edited. Includes ~56 lib docs cleaned (version lines removed) + ~28 fossil-noticed docs (now accurate) + 4 entry-points + ADRs + dev/os batch + history + timeline + dev/os/README.md restructure + dev/README.md index + 4 broken-link fixes (SUPPORT, CONTRIBUTING, mcp-tools-reference, joshua) + LICENSE-FIXES archived. |
+| 🟡 **Stale — refresh in place** | ~0 | Cleared — no known-stale operational docs remain. Registries verified fresh. |
+| 🟠 **Read-through outstanding** | ~10 | Light skim only on creative/, dated-artifact articles, .github templates. None known to be wrong. |
 | 🔵 **Probably evergreen** | ~25 | Philosophy, thesis, code-of-conduct, .github templates — re-read pass annually, not weekly. |
 | 📦 **Archive — frozen by design** | ~36 | `docs/archive/`. Verified — nothing misclassified. |
 | ❓ **Open strategic question** | 0 | All 4 strategic questions (lib doc pattern, app doc inventory, ADR posture, entry-point refresh) resolved in this audit. Q4 (release-vision compass) closed in Stage 5. |
@@ -44,11 +44,16 @@ Numbers approximate; rolls up from the per-tier tables below.
 - ✅ Stage 13 — history.md, timeline.md, sprint-history.md: history.md and timeline.md got post-Beltane milestone entries (Cyrius v5.5.x multi-platform → v5.6.x optimization arc → v5.7.0 sandhi-fold → kernel 1.26.1 → v5.8.x 66-patch arc → v5.9.0 niyama-fold → beta rescope), footer dates refreshed to 2026-05-06; sprint-history.md fine as-is (already pairs with CHANGELOG per its footer).
 - ✅ Stage 14 — `docs/security/` batch (5 files): 4 already had accurate fossil notices; security-guide.md got CVE-2026-31431 structural-immunity note pointing to state.md.
 - ✅ Stage 15 — CONTRIBUTING.md (`cc3` → `cc5` reference fix), SECURITY.md verified (mostly evergreen), iso-pipeline.md status note refreshed (Stage 0 implemented + Stage-4-only first cut planned + CHANGELOG 2026.4.27 26/26 components ready).
+- ✅ Stage 16 — index/registry refresh + broken-link sweep:
+  - `docs/architecture/kernel-layers.md` status line: v1.22.0/260KB → v1.26.1/248KB with state.md pointer.
+  - `docs/development/README.md` index refreshed: added state.md, doc-health.md, summer-2026-arc.md, iso-pipeline.md, iso-stage4-plan.md, first-party-documentation.md to active lists; removed "78-crate registry" stale; updated os/ description.
+  - `docs/development/os/README.md` restructured: removed Version column from all 11 subsystem tables (defer to state.md/shared-crates.md per lib-doc precedent); refreshed port-status summary (22+ → 30+); phylax noted as Cyrius-native (no longer Rust); sankoch/agnova/zugot/takumi statuses corrected.
+  - `docs/applications/libs/LICENSE-FIXES.md` archived to `docs/archive/license-fixes-rust-era.md` with banner explaining all items moot post-Cyrius pivot. archive README index updated.
+  - **Broken-link fixes**: SUPPORT.md (referenced non-existent `docs/agent-runtime.md` and `docs/troubleshooting.md`); CONTRIBUTING.md "Documentation Locations" section confused per-repo conventions with genesis-repo paths (rewritten to enumerate genesis tree honestly + pointer to first-party-documentation.md for per-repo conventions); mcp-tools-reference.md (referenced non-existent `docs/api/explorer.html`); joshua.md (stale `userland/agent-runtime/src/` path → current `/home/macro/Repos/daimon/`).
 
-**Open** (smaller surface remaining):
-- Crate registries: `docs/applications/libs/README.md` ("Last Updated 2026-04-15" callout — content vs. touch date drift) and `docs/development/applications/shared-crates.md` (~30+ rows with versions; per-row sweep needed against state.md drift list). State.md tracks this as ongoing per-row work.
-- ~25 truly evergreen items (philosophy, thesis, code-of-conduct, .github templates, etc.) — sample-check, no urgent edits.
-- The 🟠 read-through bucket is now mostly cleared. Remaining items are the registries and the lighter creative/.github cluster.
+**Open** (very small surface remaining):
+- ~10 truly evergreen items (philosophy, thesis, code-of-conduct, .github templates, creative/, articles in dated-artifact bucket) — sample-check, no urgent edits expected.
+- CHANGELOG historical entries reference long-dead paths (docs/agent-runtime.md, docs/api/) — leave alone, they're historical.
 
 ---
 

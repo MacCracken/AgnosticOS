@@ -9,11 +9,12 @@ Before opening an issue, please check the documentation:
 | Resource | Description |
 |----------|-------------|
 | [README.md](README.md) | Project overview and quick start |
+| [docs/AGNOS.md](docs/AGNOS.md) | Project anchor — thesis, history, subsystems |
 | [docs/architecture.md](docs/architecture.md) | System architecture |
-| [docs/agent-runtime.md](docs/agent-runtime.md) | Agent runtime guide |
-| [docs/troubleshooting.md](docs/troubleshooting.md) | Common issues and solutions |
+| [docs/installation/README.md](docs/installation/README.md) | Installation & build guide |
+| [docs/installation/troubleshooting.md](docs/installation/troubleshooting.md) | Common issues and solutions |
 | [docs/development/roadmap.md](docs/development/roadmap.md) | Development roadmap |
-| [docs/api/](docs/api/) | API reference |
+| [docs/development/state.md](docs/development/state.md) | Live ecosystem state |
 
 ## Community Channels
 
@@ -31,7 +32,7 @@ Before opening an issue, please check the documentation:
 
 Before opening an issue, please:
 1. Search [existing issues](https://github.com/agnostos/agnos/issues) to avoid duplicates
-2. Check the [troubleshooting guide](docs/troubleshooting.md)
+2. Check the [troubleshooting guide](docs/installation/troubleshooting.md)
 3. Gather relevant logs and system information
 
 ## Security Vulnerabilities

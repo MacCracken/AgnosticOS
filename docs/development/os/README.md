@@ -1,123 +1,124 @@
-# OS Subsystems — Full Registry
+# OS Subsystems — Categorization Map
 
-> **Last Updated**: 2026-04-14
-
-Every OS-level subsystem in AGNOS. Each is a standalone repo at `github.com/MacCracken/{name}` and locally at `/home/macro/Repos/{name}/`. The repo's own CLAUDE.md is the authoritative source for each.
+> **Last Updated**: 2026-05-06 (Version columns removed — defer to live registries)
+>
+> Every OS-level subsystem in AGNOS. Each is a standalone repo at `github.com/MacCracken/{name}` and locally at `/home/macro/Repos/{name}/`. The repo's own `CLAUDE.md` is the authoritative source for each subsystem's behavior; live version + cycle state lives in [`docs/development/state.md`](../state.md); the full versioned registry lives in [`shared-crates.md`](../applications/shared-crates.md).
+>
+> This file is the **categorization map** — what subsystems exist and what role each plays. Versions were previously inlined here and drifted; per the lib-doc precedent (2026-05-06 audit), version columns are stripped to remove drift surface.
 
 ---
 
 ## Kernel & Boot
 
-| Subsystem | Version | Repo | Port | Role |
-|-----------|---------|------|------|------|
-| **agnos** | 1.22.0 | [MacCracken/agnos](https://github.com/MacCracken/agnos) | Native | AGNOS kernel (260KB, 33 subsystems, 26 syscalls) |
-| **cyrius** | 4.8.5-1 | [MacCracken/cyrius](https://github.com/MacCracken/cyrius) | Native | Sovereign compiler + stdlib (373KB, 42 modules) |
-| **kybernet** | 1.0.1 | [MacCracken/kybernet](https://github.com/MacCracken/kybernet) | Cyrius | PID 1 (486KB, 140 tests) |
-| **argonaut** | 1.2.0 | [MacCracken/argonaut](https://github.com/MacCracken/argonaut) | Cyrius | Init system, service management |
+| Subsystem | Repo | Port | Role |
+|-----------|------|------|------|
+| **agnos** | [MacCracken/agnos](https://github.com/MacCracken/agnos) | Native | AGNOS kernel (33 subsystems, 26 syscalls) |
+| **cyrius** | [MacCracken/cyrius](https://github.com/MacCracken/cyrius) | Native | Sovereign compiler + stdlib + toolchain |
+| **kybernet** | [MacCracken/kybernet](https://github.com/MacCracken/kybernet) | Cyrius | PID 1 (140 tests, 46 benchmarks) |
+| **argonaut** | [MacCracken/argonaut](https://github.com/MacCracken/argonaut) | Cyrius | Init system, service management |
 
 ## Agent & Intelligence
 
-| Subsystem | Version | Repo | Port | Role |
-|-----------|---------|------|------|------|
-| **daimon** | 1.1.1 | [MacCracken/daimon](https://github.com/MacCracken/daimon) | Cyrius | Agent orchestrator, 144 MCP tools |
-| **hoosh** | 2.0.0 | [MacCracken/hoosh](https://github.com/MacCracken/hoosh) | Cyrius | LLM gateway (474KB, 15 providers) |
-| **agnoshi** | 1.0.0 | [MacCracken/agnoshi](https://github.com/MacCracken/agnoshi) | Cyrius | AI shell |
+| Subsystem | Repo | Port | Role |
+|-----------|------|------|------|
+| **daimon** | [MacCracken/daimon](https://github.com/MacCracken/daimon) | Cyrius | Agent orchestrator, ~144 MCP tools |
+| **hoosh** | [MacCracken/hoosh](https://github.com/MacCracken/hoosh) | Cyrius | LLM gateway, 15 providers |
+| **agnoshi** | [MacCracken/agnoshi](https://github.com/MacCracken/agnoshi) | Cyrius | AI shell |
 
 ## MCP & Messaging
 
-| Subsystem | Version | Repo | Port | Role |
-|-----------|---------|------|------|------|
-| **bote** | 2.5.1 | [MacCracken/bote](https://github.com/MacCracken/bote) | Cyrius | MCP core (~5µs/message, streamable HTTP) |
-| **t-ron** | 2.0.0 | [MacCracken/t-ron](https://github.com/MacCracken/t-ron) | Cyrius | MCP security |
+| Subsystem | Repo | Port | Role |
+|-----------|------|------|------|
+| **bote** | [MacCracken/bote](https://github.com/MacCracken/bote) | Cyrius | MCP core (~5µs/message, streamable HTTP) |
+| **t-ron** | [MacCracken/t-ron](https://github.com/MacCracken/t-ron) | Cyrius | MCP security |
 
 ## Trust & Security
 
-| Subsystem | Version | Repo | Port | Role |
-|-----------|---------|------|------|------|
-| **sigil** | 2.1.2 | [MacCracken/sigil](https://github.com/MacCracken/sigil) | Cyrius | Crypto boundary (Ed25519, trust) |
-| **kavach** | 3.0.0 | [MacCracken/kavach](https://github.com/MacCracken/kavach) | Cyrius | Sandbox (344KB, 9 CWE fixes) |
-| **libro** | 1.0.3 | [MacCracken/libro](https://github.com/MacCracken/libro) | Cyrius | Cryptographic audit chain |
-| **aegis** | 0.1.0 | [MacCracken/aegis](https://github.com/MacCracken/aegis) | Pending | Security daemon |
-| **shakti** | 0.1.0 | [MacCracken/shakti](https://github.com/MacCracken/shakti) | Pending | Privilege escalation |
-| **phylax** | 0.22.3 | [MacCracken/phylax](https://github.com/MacCracken/phylax) | Pending | Threat detection |
+| Subsystem | Repo | Port | Role |
+|-----------|------|------|------|
+| **sigil** | [MacCracken/sigil](https://github.com/MacCracken/sigil) | Cyrius | Crypto boundary (Ed25519, trust) |
+| **kavach** | [MacCracken/kavach](https://github.com/MacCracken/kavach) | Cyrius | Sandbox (9 CWE fixes, 500× faster lifecycle) |
+| **libro** | [MacCracken/libro](https://github.com/MacCracken/libro) | Cyrius | Cryptographic audit chain |
+| **phylax** | [MacCracken/phylax](https://github.com/MacCracken/phylax) | Cyrius | Threat detection (was Rust 0.22.3; ported to Cyrius v1.0.0 in 2026-04) |
+| **shakti** | [MacCracken/shakti](https://github.com/MacCracken/shakti) | Cyrius | Privilege escalation |
+| **aegis** | [MacCracken/aegis](https://github.com/MacCracken/aegis) | Pending | Security daemon (scaffold) |
 
 ## Kernel Interface & Types
 
-| Subsystem | Version | Repo | Port | Role |
-|-----------|---------|------|------|------|
-| **agnosys** | 0.97.2 | [MacCracken/agnosys](https://github.com/MacCracken/agnosys) | Cyrius | Syscall bindings, Landlock, seccomp |
-| **agnostik** | 0.97.1 | [MacCracken/agnostik](https://github.com/MacCracken/agnostik) | Cyrius | Shared types, domain primitives |
+| Subsystem | Repo | Port | Role |
+|-----------|------|------|------|
+| **agnosys** | [MacCracken/agnosys](https://github.com/MacCracken/agnosys) | Cyrius | Syscall bindings, Landlock, seccomp |
+| **agnostik** | [MacCracken/agnostik](https://github.com/MacCracken/agnostik) | Cyrius | Shared types, domain primitives |
 
 ## Package Management
 
-| Subsystem | Version | Repo | Port | Role |
-|-----------|---------|------|------|------|
-| **ark** | 0.1.0 | [MacCracken/ark](https://github.com/MacCracken/ark) | Cyrius | Package manager |
-| **nous** | 0.1.0 | [MacCracken/nous](https://github.com/MacCracken/nous) | Cyrius | Package resolver |
-| **takumi** | 0.1.0 | [MacCracken/takumi](https://github.com/MacCracken/takumi) | Pending | Build system |
-| **zugot** | — | [MacCracken/zugot](https://github.com/MacCracken/zugot) | — | Recipe repository (421 base + 90 bazaar) |
-| **mela** | 0.1.0 | [MacCracken/mela](https://github.com/MacCracken/mela) | Pending | App marketplace |
+| Subsystem | Repo | Port | Role |
+|-----------|------|------|------|
+| **ark** | [MacCracken/ark](https://github.com/MacCracken/ark) | Cyrius | Package manager (4× smaller than Rust predecessor) |
+| **nous** | [MacCracken/nous](https://github.com/MacCracken/nous) | Cyrius | Package resolver |
+| **takumi** | [MacCracken/takumi](https://github.com/MacCracken/takumi) | In port | Build system (Cyrius port active; `rust-old/` authoritative until parity) |
+| **zugot** | [MacCracken/zugot](https://github.com/MacCracken/zugot) | — | Recipe repository (421 base + 90 bazaar; not a versioned crate) |
+| **mela** | [MacCracken/mela](https://github.com/MacCracken/mela) | Pending | App marketplace (scaffold) |
 
 ## Desktop & UI
 
-| Subsystem | Version | Repo | Port | Role |
-|-----------|---------|------|------|------|
-| **aethersafha** | 0.1.0 | [MacCracken/aethersafha](https://github.com/MacCracken/aethersafha) | Pending | Wayland compositor |
+| Subsystem | Repo | Port | Role |
+|-----------|------|------|------|
+| **aethersafha** | [MacCracken/aethersafha](https://github.com/MacCracken/aethersafha) | Pending | Wayland compositor (scaffold) |
 
 ## Media & Audio
 
-| Subsystem | Version | Repo | Port | Role |
-|-----------|---------|------|------|------|
-| **shravan** | 2.1.1 | [MacCracken/shravan](https://github.com/MacCracken/shravan) | Cyrius | Audio codecs |
-| **mabda** | 2.1.2 | [MacCracken/mabda](https://github.com/MacCracken/mabda) | Cyrius | GPU foundation |
-| **ai-hwaccel** | 2.0.0 | [MacCracken/ai-hwaccel](https://github.com/MacCracken/ai-hwaccel) | Cyrius | GPU detection (217KB, 518 tests) |
+| Subsystem | Repo | Port | Role |
+|-----------|------|------|------|
+| **shravan** | [MacCracken/shravan](https://github.com/MacCracken/shravan) | Cyrius | Audio codecs |
+| **mabda** | [MacCracken/mabda](https://github.com/MacCracken/mabda) | Cyrius | GPU foundation (folded into Cyrius stdlib) |
+| **ai-hwaccel** | [MacCracken/ai-hwaccel](https://github.com/MacCracken/ai-hwaccel) | Cyrius | GPU detection (518 tests) |
 
 ## Knowledge & Culture
 
-| Subsystem | Version | Repo | Port | Role |
-|-----------|---------|------|------|------|
-| **avatara** | 2.3.0 | [MacCracken/avatara](https://github.com/MacCracken/avatara) | Cyrius | Divine archetype overlay (362 archetypes) |
-| **hadara** | 1.0.0 | [MacCracken/hadara](https://github.com/MacCracken/hadara) | Native | Culture modeling (50 cultures) |
-| **bhava** | 2.0.0 | [MacCracken/bhava](https://github.com/MacCracken/bhava) | Pending | Emotion/sentiment modeling |
-| **itihas** | 2.2.0 | [MacCracken/itihas](https://github.com/MacCracken/itihas) | Cyrius | History/versioning |
+| Subsystem | Repo | Port | Role |
+|-----------|------|------|------|
+| **avatara** | [MacCracken/avatara](https://github.com/MacCracken/avatara) | Cyrius | Divine archetype overlay (362 archetypes, 24 traditions) |
+| **hadara** | [MacCracken/hadara](https://github.com/MacCracken/hadara) | Native | Culture modeling (50 cultures, Cyrius-native v1.0.0) |
+| **bhava** | [MacCracken/bhava](https://github.com/MacCracken/bhava) | Pending | Emotion/sentiment modeling |
+| **itihas** | [MacCracken/itihas](https://github.com/MacCracken/itihas) | Cyrius | History/versioning |
 
 ## Math & Compression
 
-| Subsystem | Version | Repo | Port | Role |
-|-----------|---------|------|------|------|
-| **abaco** | 2.0.0 | [MacCracken/abaco](https://github.com/MacCracken/abaco) | Cyrius | Math/number theory (-52% lines, 12× Miller-Rabin) |
-| **hisab** | 1.4.0 | [MacCracken/hisab](https://github.com/MacCracken/hisab) | Pending | Higher math |
-| **sankoch** | 0.1.0 | [MacCracken/sankoch](https://github.com/MacCracken/sankoch) | Native | Compression (LZ4, DEFLATE — scaffolded) |
+| Subsystem | Repo | Port | Role |
+|-----------|------|------|------|
+| **abaco** | [MacCracken/abaco](https://github.com/MacCracken/abaco) | Cyrius | Math/number theory (-52% lines, 12× faster Miller-Rabin) |
+| **hisab** | [MacCracken/hisab](https://github.com/MacCracken/hisab) | Cyrius | Higher math |
+| **sankoch** | [MacCracken/sankoch](https://github.com/MacCracken/sankoch) | Cyrius | Lossless compression (LZ4, DEFLATE, zlib, gzip) |
 
 ## Infrastructure
 
-| Subsystem | Version | Repo | Port | Role |
-|-----------|---------|------|------|------|
-| **nein** | 1.0.0 | [MacCracken/nein](https://github.com/MacCracken/nein) | Cyrius | Programmatic nftables firewall |
-| **stiva** | 2.0.0 | [MacCracken/stiva](https://github.com/MacCracken/stiva) | — | Container runtime |
-| **yukti** | 1.2.0 | [MacCracken/yukti](https://github.com/MacCracken/yukti) | Cyrius | Device abstraction |
-| **majra** | 2.2.0 | [MacCracken/majra](https://github.com/MacCracken/majra) | — | Queue/pub-sub |
+| Subsystem | Repo | Port | Role |
+|-----------|------|------|------|
+| **nein** | [MacCracken/nein](https://github.com/MacCracken/nein) | Cyrius | Programmatic nftables firewall |
+| **stiva** | [MacCracken/stiva](https://github.com/MacCracken/stiva) | — | Container runtime |
+| **yukti** | [MacCracken/yukti](https://github.com/MacCracken/yukti) | Cyrius | Device abstraction |
+| **majra** | [MacCracken/majra](https://github.com/MacCracken/majra) | — | Queue/pub-sub |
 
 ## Game Engine
 
-| Subsystem | Version | Repo | Port | Role |
-|-----------|---------|------|------|------|
-| **bsp** | 1.0.1 | [MacCracken/bsp](https://github.com/MacCracken/bsp) | Cyrius | BSP geometry library |
-| **cyrius-doom** | 0.24.5 | [MacCracken/cyrius-doom](https://github.com/MacCracken/cyrius-doom) | Native | DOOM engine (2.59ms/frame) |
+| Subsystem | Repo | Port | Role |
+|-----------|------|------|------|
+| **bsp** | [MacCracken/bsp](https://github.com/MacCracken/bsp) | Cyrius | BSP geometry library |
+| **cyrius-doom** | [MacCracken/cyrius-doom](https://github.com/MacCracken/cyrius-doom) | Native | DOOM engine in Cyrius (2.59ms/frame) |
 
 ## Install & Edge
 
-| Subsystem | Version | Repo | Port | Role |
-|-----------|---------|------|------|------|
-| **agnova** | 0.1.0 | [MacCracken/agnova](https://github.com/MacCracken/agnova) | Pending | OS installer |
-| **seema** | 0.1.0 | [MacCracken/seema](https://github.com/MacCracken/seema) | Pending | Edge fleet management |
-| **samay** | 0.1.0 | [MacCracken/samay](https://github.com/MacCracken/samay) | Pending | Task scheduler |
+| Subsystem | Repo | Port | Role |
+|-----------|------|------|------|
+| **agnova** | [MacCracken/agnova](https://github.com/MacCracken/agnova) | Cyrius | OS installer (port from 3,656 Rust lines, base established) |
+| **seema** | [MacCracken/seema](https://github.com/MacCracken/seema) | Pending | Edge fleet management (scaffold) |
+| **samay** | [MacCracken/samay](https://github.com/MacCracken/samay) | Pending | Task scheduler (scaffold) |
 
 ---
 
-**Port status summary:** 22+ Cyrius-native, 2 Cyrius-native from scratch (hadara, sankoch), ~10 pending port.
+**Port status summary** (2026-05-06): 30+ Cyrius-native or fully ported. ~5 still pending (bhava, aegis, aethersafha, takumi parity, mela). Live status: [`state.md`](../state.md).
 
-Detailed dev docs for pending subsystems: [aegis](aegis.md), [aethersafha](aethersafha.md), [agnova](agnova.md), [ark](ark.md), [mela](mela.md), [nous](nous.md), [phylax](phylax.md), [samay](samay.md), [seema](seema.md), [takumi](takumi.md).
+Detailed dev docs for in-progress subsystems: [aegis](aegis.md), [aethersafha](aethersafha.md), [agnova](agnova.md), [ark](ark.md), [mela](mela.md), [nous](nous.md), [phylax](phylax.md), [samay](samay.md), [seema](seema.md), [takumi](takumi.md), [zugot](zugot.md).
 
-Stable crate profiles: [docs/os/](../../os/README.md)
-Shared libraries: [shared-crates.md](../applications/shared-crates.md)
+Stable crate profiles: [`docs/os/README.md`](../../os/README.md). Shared libraries: [`shared-crates.md`](../applications/shared-crates.md).
