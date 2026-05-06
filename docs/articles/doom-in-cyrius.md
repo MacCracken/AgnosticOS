@@ -79,7 +79,7 @@ The numbers above are the April 8–13 cut. Refreshed 2026-05-06.
 
 **Stdlib-fold pattern compounded three times** — sandhi (v5.7.0, service-boundary, 376 KB / 469 fns), vani (v5.8.0, audio I/O), niyama (v5.9.0, 5 regex engines). Each fold matures a sibling distfile into the canonical stdlib `lib/` once a multi-consumer gate is met.
 
-**For DOOM specifically.** cyrius-doom is at v0.26.2, still pinned to Cyrius 5.7.48 — held with the v5.7.48 cluster (agnosys, phylax, mabda, samvada) waiting on a stdlib-stable rollup point. v5.9.x catchup arc is the natural rollup window; full-frame benchmark re-run pending an unblock release. Sprint 3 (Black Book v1.0 audit) sits behind that release. cyrius-doom's per-tag receipts live in [vidya field notes](https://github.com/MacCracken/vidya/blob/main/content/cyrius/field_notes/doom.toml).
+**For DOOM specifically.** cyrius-doom is at v0.26.2, still pinned to Cyrius 5.7.48 — held with the v5.7.48 cluster (agnosys, phylax, mabda, samvada) waiting on a stdlib-stable rollup point. v5.9.x catchup arc is the natural rollup window; full-frame benchmark re-run pending an unblock release. Sprint 3 (Black Book v1.0 audit) sits behind that release. cyrius-doom's per-tag receipts live in [vidya field notes](https://github.com/MacCracken/vidya/blob/main/content/cyrius/field_notes/doom.cyml).
 
 ---
 
@@ -88,7 +88,7 @@ The numbers above are the April 8–13 cut. Refreshed 2026-05-06.
 - [Building a Sovereign Compiler with Claude](sovereign-compiler-vs-brute-force.md) — how Cyrius got here
 - [The Python in the Bootstrap](python-in-the-bootstrap.md) — why Cyrius had to exist
 - [The Dandelion Core](the-2-dollar-sd-card.md) — what sovereignty enables
-- [cyrius-doom field notes](https://github.com/MacCracken/vidya/blob/main/content/cyrius/field_notes/doom.toml) — per-session granular detail (bugs, features, timing, versions)
+- [cyrius-doom field notes](https://github.com/MacCracken/vidya/blob/main/content/cyrius/field_notes/doom.cyml) — per-session granular detail (bugs, features, timing, versions)
 - [Game Engine Black Book: DOOM](https://fabiensanglard.net/gebbdoom/) — Fabien Sanglard's authoritative reference, sprint 3's audit target
 - [BSP 1.0.0](https://github.com/MacCracken/bsp) — the ecosystem's first stable 1.0 library
 

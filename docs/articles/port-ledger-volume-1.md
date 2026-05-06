@@ -185,7 +185,7 @@ What this bought:
 
 The pattern generalizes beyond Cyrius: **if a library blocks three or more consumers, scaffold it as a type-frozen handoff before implementing it.** The cost is a few hours of type design and one markdown file. The benefit is parallel work — the consumer agents and the implementation agents don't block each other, because the contract they share is committed and dated.
 
-This is a coordination pattern, not a language pattern. It shows up in Volume 2 because the shape of the port ledger is changing: Volume 1 was mostly "take a Rust crate and port it"; Volume 2 will have more "scaffold a Cyrius-native crate and hand it off," because the ecosystem is filling in gaps the Rust world never had (owl over `cat`/`bat`, vyakarana over tree-sitter/TextMate — see also [*Reference, Don't Mimic*](../design-patterns.md#reference-dont-mimic)).
+This is a coordination pattern, not a language pattern. It shows up in Volume 2 because the shape of the port ledger is changing: Volume 1 was mostly "take a Rust crate and port it"; Volume 2 will have more "scaffold a Cyrius-native crate and hand it off," because the ecosystem is filling in gaps the Rust world never had (owl over `cat`/`bat`, vyakarana over tree-sitter/TextMate — see also [*Reference, Don't Mimic*](../design-patterns.md#9-reference-dont-mimic)).
 
 ---
 

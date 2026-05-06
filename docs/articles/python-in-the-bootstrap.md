@@ -194,7 +194,7 @@ Independent verification on Anthropic's hosted infrastructure documented at [*En
 - [Building a Sovereign Compiler and OS Kernel with Claude](sovereign-compiler-vs-brute-force.md) — the broader comparison with Anthropic's internal C compiler project
 - [The Dandelion Core](the-2-dollar-sd-card.md) — the philosophical frame
 - [DOOM in Cyrius](doom-in-cyrius.md) — the 23-hour companion sprint
-- [Cyrius field notes](https://github.com/MacCracken/vidya/blob/main/content/cyrius/field_notes.toml) — the agent's voice on the methodology
+- [Cyrius field notes](https://github.com/MacCracken/vidya/tree/main/content/cyrius/field_notes) — the agent's voice on the methodology (now a directory of CYML topics; was a single TOML file at the time the body of this article was first written)
 - [AGNOS — Philosophy & Intention](../philosophy.md) — the temple, the compass, the Builder
 
 ---
