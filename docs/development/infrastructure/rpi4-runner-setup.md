@@ -3,7 +3,7 @@
 > Checklist for setting up a Raspberry Pi 4 as a GitHub Actions self-hosted runner
 > for aarch64 AGNOS builds (SD card images, arm64 rootfs, cross-validation).
 
-> **Fossil notice (2026-04-14):** This setup guide references Rust cross-compilation tooling. Cyrius cross-compilation is a Cyrius 5.0 target (multi-platform: Mach-O, PE/COFF, RISC-V, bare-metal).
+> **Fossil notice (2026-04-14, refreshed 2026-05-06):** This setup guide references Rust cross-compilation tooling. Cyrius cross-compilation **partly shipped at v5.5.x** (x86_64 Linux + aarch64 Linux on real Pi + Apple Silicon Mach-O + Windows PE32+ all byte-identical). **RISC-V rv64 + bare-metal targets are queued for Cyrius v5.10.x** per [`development/state.md`](../state.md). Update this doc when v5.10.x lands.
 
 ---
 

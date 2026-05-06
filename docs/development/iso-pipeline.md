@@ -1,6 +1,8 @@
 # ISO Pipeline — Extraction Completion Plan
 
-> **Status**: Stage 0 implemented | **Last Updated**: 2026-04-15
+> **Status**: Stage 0 implemented; Stage-4-only first cut planned next | **Last Updated**: 2026-04-15 (status note refreshed 2026-05-06)
+>
+> Per [`iso-stage4-plan.md`](iso-stage4-plan.md), the next active work is the **Stage-4-only first cut** (live image with pre-built binaries) — D1–D4 decisions pending user input. Per [CHANGELOG 2026.4.27](../../CHANGELOG.md), `make iso-check` reports 26-of-26 components ready (Stage 0 cleanly passes); ISO assembly is unblocked. LFS Stages 1–3 (cross-toolchain + base-system build) are deferred to Phase 2 of the ISO arc.
 >
 > The monolith extraction moved every component into standalone repos.
 > This document defines what it takes to **reassemble them into a bootable ISO** —

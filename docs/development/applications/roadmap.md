@@ -1,11 +1,11 @@
 # Application Development Roadmap
 
-> **Status**: Active | **Last Updated**: 2026-04-01
+> **Status**: Active | **Last Updated**: 2026-05-06
 >
 > Future first-party applications planned for the AGNOS ecosystem.
 > All follow the [First-Party Standards](first-party-standards.md).
 > Released applications are documented in [docs/applications/](../../applications/).
-> Shared crates: [shared-crates.md](shared-crates.md) — 76 total (55 at v1.0+, 20 pre-1.0, 1 internal).
+> Shared crates: [shared-crates.md](shared-crates.md) — count and v1.0+ subset live there (counts omitted here to avoid drift; refresh via shared-crates.md).
 > Monolith extraction: [monolith-extraction.md](../monolith-extraction.md).
 
 ---

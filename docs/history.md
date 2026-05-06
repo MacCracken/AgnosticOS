@@ -48,9 +48,9 @@ AGNOS went from initial commit to first bootable ISO in **39 days** (2026-02-11 
 
 From first commit to sovereign self-hosting language with its own kernel in **53 days** (2026-02-11 to 2026-04-04).
 
-The Cyrius language went from nothing to a self-hosting compiler with a kernel in **one day** (2026-04-04), and then through 50+ versions to v4.8.5-1 (373KB, 42 stdlib modules) by day 63. The AGNOS kernel hardened from 143KB (with 14 buffer overflows — "The 143KB Lie") to 260KB at v1.22.0. Twenty-two subsystems ported from Rust to Cyrius, each measured against its Rust predecessor.
+The Cyrius language went from nothing to a self-hosting compiler with a kernel in **one day** (2026-04-04), and through major-version cuts (1.0 → 2.0 → 3.0 → 4.0 → 5.0) reaching the v5.x stdlib-foldin cycle by week 12. The AGNOS kernel hardened from 143KB (with 14 buffer overflows — "The 143KB Lie") through 220KB (v1.21.0) → 260KB (v1.22.0) → 248KB (v1.26.1, current). 30+ subsystems ported from Rust to Cyrius, each measured against its Rust predecessor.
 
-The shared crate ecosystem grew to **78 crates** (56 at v1.0+ stable), with 19+ consumer applications developed in parallel.
+The shared crate ecosystem reached ~76 crates (most at v1.0+ stable), with 19+ consumer applications developed in parallel. Live counts and per-repo versions in [`development/state.md`](development/state.md) and [`development/applications/shared-crates.md`](development/applications/shared-crates.md).
 
 ---
 
@@ -71,7 +71,16 @@ The shared crate ecosystem grew to **78 crates** (56 at v1.0+ stable), with 19+ 
 | 22+ Cyrius ports, kavach 3.0, abaco 2.0, bote 2.5.1 | 2026-04-14 | 63 |
 | Kernel v1.22.0 (260KB), Cyrius 4.8.5-1 (373KB) | 2026-04-14 | 63 |
 | Sankoch (compression library) scaffolded | 2026-04-14 | 63 |
-| **Target: Beltane release** | **2026-05-01** | **79** |
+| Cyrius 5.0.0 shipped | 2026-04-15 | 63 |
+| Cyrius v5.5.x — multi-platform byte-identical (x86_64 Linux, aarch64 Linux on real Pi, Apple Silicon Mach-O, Windows PE32+) | 2026-04-22 | 70 |
+| Cyrius v5.6.x — optimization arc (O1 instrumentation + FNV-1a; O2 peephole; linear-scan regalloc default-on); v5.6.45 closeout | 2026-04-25 | 73 |
+| **Cyrius v5.7.0 — sandhi-fold** (first stdlib absorption: `lib/sandhi.cyr` 9,649 lines vendored byte-identical from sandhi v1.0.0; sandhi repo enters maintenance mode) | 2026-04-25 | 73 |
+| Boot pipeline rebuilt against Cyrius 5.7.21; sigil 2.9.4; ISO `--iso-check` reports 26-of-26 components ready | 2026-04-27 | 75 |
+| **AGNOS kernel v1.26.1 (248KB)** — replaces v1.26.0's CI/release-hygiene workaround with a real fix | 2026-04-28 | 76 |
+| Cyrius v5.8.x — **66 patches in 4 days** (3-phase: audit closeout, language vocabulary, stdlib foldin sweep with vani-fold at slot 1) | 2026-05-01 → 2026-05-05 | 79–83 |
+| **Cyrius v5.9.0 cut — niyama-fold opener** (8th sibling distfile, 5 regex engines, 6,664 lines vendored). cc5 binary at 741,048 B | 2026-05-06 | 84 |
+| **Beta rescoped — two-stage**: closed beta (early June 2026, 13A + friend-tester cohort) + public beta (Q4 2026, adds audit + community testing); ADR-008 catch-up records the Cyrius pivot | 2026-05-06 | 84 |
+| **Target: Closed beta cut** | **early June 2026** | ~115 |
 
 ---
 
@@ -91,4 +100,4 @@ Four renames total across four language-major transitions. The `cc5` → `cyc` e
 
 ---
 
-*Last Updated: 2026-04-20*
+*Last Updated: 2026-05-06*

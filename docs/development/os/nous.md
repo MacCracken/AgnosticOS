@@ -1,6 +1,5 @@
 # Nous — Package Resolver
 
-- **Version**: 0.1.0
 - **Repo**: [MacCracken/nous](https://github.com/MacCracken/nous)
 - **License**: GPL-3.0-only
 - **Tests**: 57

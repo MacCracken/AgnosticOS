@@ -1,6 +1,5 @@
 # Aethersafha — Wayland Compositor
 
-- **Version**: 0.1.0
 - **Repo**: [MacCracken/aethersafha](https://github.com/MacCracken/aethersafha)
 - **License**: AGPL-3.0-only
 - **Tests**: 785

@@ -15,16 +15,16 @@ This is a **ledger**, not a one-time audit. Rewrite-in-place as docs change. Per
 
 ## At a glance — 2026-05-06 inventory
 
-**265 markdown files** across the repo. Bucket counts:
+**265 markdown files** across the repo. Bucket counts (after 2026-05-06 audit pass — Stages 1–15):
 
 | Bucket | Count | What it means |
 |---|---|---|
-| ✅ **Fresh** (touched ≤ 7 days, content matches current state) | ~28 | Confirmed current. No action. |
-| 🟡 **Stale — refresh in place** | ~24 | Wrong version, past target date, or known-drifted callout. Edit. |
-| 🟠 **Stale — needs read-through** | ~85 | Last touched 2-5 weeks ago. May be fine, may not. Sample audit. |
-| 🔵 **Probably evergreen** | ~25 | Templates, philosophy, principles — re-read pass annually, not weekly. |
-| 📦 **Archive — frozen by design** | ~36 | `docs/archive/`. Verify nothing was misclassified. Otherwise leave. |
-| ❓ **Open strategic question** | ~67 | Lib + app docs — pattern question (see [Open questions](#open-strategic-questions)) before any per-file action. |
+| ✅ **Fresh / refreshed in this audit** | ~120 | Confirmed current or just edited. Includes ~56 lib docs cleaned (version lines removed) + ~28 fossil-noticed docs that are now accurate + 4 entry-points + ADRs + dev/os batch + history + timeline + etc. |
+| 🟡 **Stale — refresh in place** | ~2 | Light residue only. Registries (libs/README.md, shared-crates.md) verified fresh as of 2026-05-06 (confirmed during Stage 15+ check). |
+| 🟠 **Read-through outstanding** | ~15 | Light skim still wanted on creative/, evergreen articles, .github templates. None known to be wrong. |
+| 🔵 **Probably evergreen** | ~25 | Philosophy, thesis, code-of-conduct, .github templates — re-read pass annually, not weekly. |
+| 📦 **Archive — frozen by design** | ~36 | `docs/archive/`. Verified — nothing misclassified. |
+| ❓ **Open strategic question** | 0 | All 4 strategic questions (lib doc pattern, app doc inventory, ADR posture, entry-point refresh) resolved in this audit. Q4 (release-vision compass) closed in Stage 5. |
 
 Numbers approximate; rolls up from the per-tier tables below.
 
@@ -33,8 +33,22 @@ Numbers approximate; rolls up from the per-tier tables below.
 - ✅ Stage 2 — ADR-008 (Cyrius pivot) drafted; ADR-001 marked partially superseded; ADR README index updated.
 - ✅ Stage 3 — App README refresh (added Status column, fixed Vidhana drift, corrected Ifran display name).
 - ✅ Stage 4 — Lib doc cleanup (deleted version lines from 56 files; registry tables now sole source of truth for versions).
+- ✅ Stage 5 — release-vision.md fossil notice updated to point at roadmap.md as the compass (closes the unfulfilled-promise gap).
+- ✅ Stage 6 — CLAUDE.md inline kernel sizes removed (was "260KB"; deferred to state.md per its own "no volatile state" principle).
+- ✅ Stage 7 — CHANGELOG.md new entry [2026.5.6] covering Cyrius v5.7→5.9 cycle progression, beta rescope, doc audit work.
+- ✅ Stage 8 — `docs/development/os/` batch (11 files): bulk-deleted version lines from 9 bulleted-pattern files (aegis, aethersafha, agnova, ark, mela, nous, samay, seema, takumi); refreshed phylax (Rust → Cyrius-native v1.0.0; 5 crates → 5 modules); refreshed zugot (recipe-DB framing, no versioned-crate semantics).
+- ✅ Stage 9 — `docs/development/guides/` batch (5 files): 3 had accurate fossil notices (agent-development, kernel-guide, testing); refreshed kernel-guide fossil notice (1.22.0/260KB → state.md pointer); added drift notice to mcp-tools-reference (71 → ~144 tools); added fossil notice to science-crate-specs (Rust-era scaffolding).
+- ✅ Stage 10 — `docs/development/infrastructure/` batch (4 files): all 4 had accurate fossil notices; refreshed rpi4-runner-setup fossil notice to reflect Cyrius cross-compilation now partly shipped (v5.5.x multi-platform), RISC-V + bare-metal still queued (v5.10.x).
+- ✅ Stage 11 — `docs/development/applications/` batch (~12 planning docs): hadara updated (was "Scaffolded 0.1.0"; now "Released — Cyrius-native v1.0.0" per state.md); applications/roadmap.md drift removed (crate count "76 total / 55 at v1.0+" pulled in favor of shared-crates.md as source). Other planning docs verified — Status: Scaffolded framing on tanur/joshua/murti is accurate; first-party-standards/-documentation are current; bullshift-split, pdf-suite, agnostic-integration are accurate planning artifacts.
+- ✅ Stage 12 — `docs/development/vision/` batch (12 files): all correctly labeled Vision/Theoretical/Future-consideration; one factual drift fixed (space-infrastructure.md "AGNOS at 204KB" → "~248KB at v1.26.1" with state.md pointer); release-vision.md fossil pointer was already updated in Stage 5.
+- ✅ Stage 13 — history.md, timeline.md, sprint-history.md: history.md and timeline.md got post-Beltane milestone entries (Cyrius v5.5.x multi-platform → v5.6.x optimization arc → v5.7.0 sandhi-fold → kernel 1.26.1 → v5.8.x 66-patch arc → v5.9.0 niyama-fold → beta rescope), footer dates refreshed to 2026-05-06; sprint-history.md fine as-is (already pairs with CHANGELOG per its footer).
+- ✅ Stage 14 — `docs/security/` batch (5 files): 4 already had accurate fossil notices; security-guide.md got CVE-2026-31431 structural-immunity note pointing to state.md.
+- ✅ Stage 15 — CONTRIBUTING.md (`cc3` → `cc5` reference fix), SECURITY.md verified (mostly evergreen), iso-pipeline.md status note refreshed (Stage 0 implemented + Stage-4-only first cut planned + CHANGELOG 2026.4.27 26/26 components ready).
 
-**Open**: Tier 2/4/7 read-through pass (~85 files in 🟠 bucket); release-vision.md fossil pointer fix (Q4 — recommended: declare roadmap.md the compass and update fossil notice); CHANGELOG refresh; CLAUDE.md kernel-size drift (says 260KB; should be 248KB or removed entirely per its own "no volatile state" principle).
+**Open** (smaller surface remaining):
+- Crate registries: `docs/applications/libs/README.md` ("Last Updated 2026-04-15" callout — content vs. touch date drift) and `docs/development/applications/shared-crates.md` (~30+ rows with versions; per-row sweep needed against state.md drift list). State.md tracks this as ongoing per-row work.
+- ~25 truly evergreen items (philosophy, thesis, code-of-conduct, .github templates, etc.) — sample-check, no urgent edits.
+- The 🟠 read-through bucket is now mostly cleared. Remaining items are the registries and the lighter creative/.github cluster.
 
 ---
 

@@ -4,10 +4,9 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Active |
-| Version | 0.1.0 |
+| Status | Active — 421 base + 90 bazaar recipes |
 | Repository | [MacCracken/zugot](https://github.com/MacCracken/zugot) |
-| Type | Recipe database (TOML files, not a Rust crate) |
+| Type | Recipe database (TOML/CYML files, not a versioned crate) |
 | License | GPL-3.0-only |
 
 ---

@@ -4,12 +4,11 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Released |
-| Version | `0.22.3` |
-| Repository | `MacCracken/phylax` |
-| Runtime | library crate (Rust) |
+| Status | Released — Cyrius-native v1.0.0 (port complete 2026-04) |
+| Repository | [MacCracken/phylax](https://github.com/MacCracken/phylax) |
+| Runtime | Cyrius-native (was Rust library crate at v0.22.3) |
 | Recipe | `zugot/marketplace/phylax.toml` |
-| crates.io | N/A (not yet published) |
+| Live version | see [`development/state.md`](../state.md) |
 
 ---
 
@@ -29,10 +28,10 @@
 
 ## Architecture
 
-- 5 crates: core (engine), rules (YARA), ml (classifier), scan (fanotify), mcp (tool interface)
+- 5 modules: core (engine), rules (YARA), ml (classifier), scan (fanotify), mcp (tool interface)
 - Scan pipeline: magic bytes -> entropy -> YARA -> ML -> LLM triage
-- Dependencies: tokio, serde, hoosh (LLM triage)
+- Cyrius-native; integrates with hoosh for LLM triage
 
 ## Roadmap
 
-Pre-release — scaffolded at v0.1.0, core 15A done. Future: ClamAV signature import, network traffic scanning, threat intelligence feed ingestion.
+v1.0.0 shipped 2026-04 (Cyrius-native port from Rust v0.22.3). Future: ClamAV signature import, network traffic scanning, threat intelligence feed ingestion. See [`development/state.md`](../state.md) for current cycle status.

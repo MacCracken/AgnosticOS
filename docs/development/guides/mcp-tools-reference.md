@@ -1,7 +1,9 @@
 # MCP Tools & Agnoshi Intents Reference
 
-> **Last Updated**: 2026-03-14
-> **Total**: 71 MCP tools, 65 agnoshi intents across 12 tool groups
+> **Last Updated**: 2026-03-14 (tool counts below are a snapshot from this date)
+> **Total at time of writing**: 71 MCP tools, 65 agnoshi intents across 12 tool groups
+>
+> **Drift notice (2026-05-06)**: daimon now ships ~144 MCP tools (per `CLAUDE.md` and `docs/development/roadmap.md`). The per-tool-group breakdown below predates that count and may be missing entire groups. Treat this document as a *category map*, not an authoritative inventory — for the current shipping tool list, see `daimon/CLAUDE.md` in the daimon repo.
 
 ---
 

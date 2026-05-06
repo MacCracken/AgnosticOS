@@ -9,7 +9,7 @@
 - **Version**: CalVer `2026.4.25` (YYYY.M.D, patches as `-N`)
 - **Version file**: `VERSION` at repo root (single source of truth)
 - **Language**: Cyrius (sovereign systems language, 29KB seed, zero external deps)
-- **Status**: Pre-Beta — kernel 1.26.1 shipped (260KB, 33 subsystems, Cyrius-native), boot pipeline active, ISO assembly in progress
+- **Status**: Pre-Beta — kernel and boot pipeline active, ISO assembly in progress; closed beta target early June 2026, public beta Q4 2026 (see `docs/development/roadmap.md`); current versions/sizes in `docs/development/state.md`
 
 ## Role
 
@@ -23,7 +23,7 @@ This repo is the **genesis layer** — meta, narrative, and the infrastructure t
 - **docker/** — Dockerfiles for dev/edge/installer
 
 **Does NOT own (extracted):**
-- **AGNOS kernel** → `agnos` repo (260KB, 33 subsystems, Cyrius-native — current version in `state.md`)
+- **AGNOS kernel** → `agnos` repo (33 subsystems, Cyrius-native — current version/size in `state.md`)
 - **Cyrius compiler** → `cyrius` repo (self-hosting from 29KB seed — current toolchain in `state.md`)
 - **Recipes** → `zugot` repo (421 base + 90 bazaar recipes)
 - **Production code** → 130+ standalone repos under `/home/macro/Repos/{name}/`

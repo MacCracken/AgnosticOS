@@ -279,7 +279,7 @@ syscall(60, exit_code);
 
 **Building**:
 ```bash
-# Always use cyrius build, never raw cc3
+# Always use cyrius build, never raw cc5 (cc3 was the v3.x/v4.x binary; cc5 is current)
 cyrius build src/main.cyr build/output
 ```
 

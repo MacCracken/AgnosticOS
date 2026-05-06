@@ -1,25 +1,25 @@
 # Space Infrastructure — Orbital & Deep Space AGNOS Nodes
 
-> **Status**: Vision | **Last Updated**: 2026-04-05
+> **Status**: Vision | **Last Updated**: 2026-04-05 (size figures refreshed 2026-05-06)
 >
-> AGNOS at 204KB fits on hardware that's already in orbit. The library doesn't just
+> AGNOS kernel at ~248KB fits on hardware that's already in orbit. The library doesn't just
 > survive on the ground — it survives in space, on hardware no authority can reach.
 
 ---
 
 ## The Size Advantage
 
-The entire Cyrius sovereign toolchain — from 29KB seed to running OS with virtual memory, processes, and syscalls — is **204KB**. This creates opportunities that no other operating system can access:
+The AGNOS kernel is **~248KB at v1.26.1** (live size in [`development/state.md`](../../state.md)). Combined with the Cyrius compiler (~741KB) and a minimal userland, the full sovereign stack is small enough to run on space hardware that orthodox modern OSes cannot reach:
 
 | Hardware | Available RAM | AGNOS Fits? | Modern Linux? |
 |----------|--------------|-------------|---------------|
-| Voyager CCS (1977) | 70KB | Kernel only (62KB) | No |
-| Early cubesat (2000s) | 256KB–1MB | Full toolchain | No |
+| Voyager CCS (1977) | 70KB | Kernel slice only (subset) | No |
+| Early cubesat (2000s) | 256KB–1MB | Kernel + minimal userland | No |
 | Planet Labs Dove | ~256MB | Full OS + library | Barely |
-| Modern cubesat | 512MB–2GB | Full OS + all 82 crates | Yes, but bloated |
+| Modern cubesat | 512MB–2GB | Full OS + the full crate stack | Yes, but bloated |
 | ISS experiments | 4GB+ | Everything | Yes |
 
-At 204KB, AGNOS runs on space hardware spanning **five decades** of technology.
+At kernel sizes well under 1MB, AGNOS runs on space hardware spanning **five decades** of technology. (Earlier versions of this doc cited "204KB" — that figure predates the v1.21.0 → v1.22.0 → v1.26.1 progression. Verify exact size against state.md before quoting.)
 
 ---
 

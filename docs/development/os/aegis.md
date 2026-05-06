@@ -1,6 +1,5 @@
 # Aegis — Security Daemon
 
-- **Version**: 0.1.0
 - **Repo**: [MacCracken/aegis](https://github.com/MacCracken/aegis)
 - **License**: GPL-3.0-only
 - **Tests**: 55

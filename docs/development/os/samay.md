@@ -1,6 +1,5 @@
 # Samay — Task Scheduler
 
-- **Version**: 0.1.0
 - **Repo**: [MacCracken/samay](https://github.com/MacCracken/samay)
 - **License**: GPL-3.0-only
 - **Tests**: 53

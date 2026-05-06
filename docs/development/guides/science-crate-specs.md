@@ -1,5 +1,7 @@
 # Science Crate Scaffolding Specs
 
+> **Fossil notice (2026-05-06)**: This document is a Rust-era scaffolding spec from before the 2026-04-04 Cyrius pivot ([ADR-008](../../adr/adr-008-cyrius-as-sovereign-systems-language.md)). All references to `Cargo.toml`, `MSRV 1.89`, `criterion`, `cargo-tarpaulin`, `cargo test`, `cargo clippy`, `crates.io`, `rust-toolchain.toml`, `deny.toml`, `codecov.yml` are **historical**. Current scaffolding is Cyrius-native: `cyrius.cyml` manifest, `cyrius build`/`cyrius test`/`cyrius bench`, `.tcyr` test files, no third-party registry. The science crates whose scaffolding is described below have since been ported to Cyrius — see [`development/state.md`](../state.md) for current shipped versions and [`applications/shared-crates.md`](../applications/shared-crates.md) for the registry. Domain content (modules, physics, math) below remains useful as reference; toolchain content is preserved as a dated snapshot only.
+>
 > Paste the relevant section into a fresh Claude session in each repo directory.
 > All directories already created with full structure (src/, tests/, benches/, examples/, scripts/, docs/, .github/workflows/).
 > Tell the agent: "Scaffold this crate. Use the P(-1) development loop from CLAUDE.md. All implementations must use REAL physics — no todo!() or unimplemented!()."

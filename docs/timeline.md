@@ -1,6 +1,6 @@
 # AGNOS — Project Timeline
 
-> **Status**: Active | **Last Updated**: 2026-04-15
+> **Status**: Active | **Last Updated**: 2026-05-06
 >
 > All dates verified from git commit history (`git log --format="%ai"`).
 > Times are Pacific (PT).
@@ -126,13 +126,27 @@
 | hisab 2.2.0, shravan 2.3.2 | 2026-04-15 | 63 |
 | **Cyrius 5.0.0 shipped** | **2026-04-15 12:31 PT** | **63** |
 
+### Cyrius Stdlib Foldin Cycle (Apr 22 – May 6+)
+
+| Date | Day | Event | Source |
+|------|-----|-------|--------|
+| **2026-04-22** | 70 | Cyrius v5.5.x — **multi-platform byte-identical** (x86_64 Linux, aarch64 Linux on real Pi, Apple Silicon Mach-O, Windows PE32+) | `cyrius` repo |
+| **2026-04-25** | 73 | Cyrius v5.6.45 — optimization arc closeout (O1 instrumentation + FNV-1a; O2 peephole; linear-scan regalloc default-on) | `cyrius` repo |
+| **2026-04-25** | 73 | **Cyrius v5.7.0 — sandhi-fold** (first stdlib absorption: `lib/sandhi.cyr` 9,649 lines vendored byte-identical from sandhi v1.0.0; sandhi enters maintenance mode per ADR 0002) | `agnosticos/CHANGELOG.md`, `sandhi` repo ADR 0002 |
+| **2026-04-27** | 75 | Boot pipeline rebuilt against Cyrius 5.7.21; sigil 2.9.4; ISO `--iso-check` reports 26-of-26 components ready | `agnosticos/CHANGELOG.md` |
+| **2026-04-28** | 76 | **AGNOS kernel v1.26.1 (248KB)** — replaces v1.26.0's CI/release-hygiene workaround with a real fix | `agnosticos/CHANGELOG.md` |
+| **2026-05-01 → 2026-05-05** | 79–83 | **Cyrius v5.8.x — 66 patches in 4 days** (3-phase: audit closeout, language vocabulary, stdlib foldin sweep with vani-fold at slot 1) | `cyrius` repo, `agnosticos/docs/development/state.md` |
+| **2026-05-06** | 84 | **Cyrius v5.9.0 cut — niyama-fold opener** (8th sibling distfile, 5 regex engines: bre/re2/pcre/fuzzy/vim, 6,664 lines vendored). cc5 binary at 741,048 B | `cyrius` repo, `agnosticos/docs/development/state.md` |
+| **2026-05-06** | 84 | **Beta rescoped — two-stage**: closed beta (early June 2026, 13A + friend-tester cohort) + public beta (Q4 2026, adds audit + community testing) | `agnosticos/docs/development/roadmap.md` |
+| **2026-05-06** | 84 | **ADR-008 catch-up** — Cyrius pivot (2026-04-04) formally recorded; ADR-001 marked partially superseded (language only) | `agnosticos/docs/adr/adr-008-cyrius-as-sovereign-systems-language.md` |
+
 ### Pace
 
 - **Rust era** (51 days): initial commit → monolith → ISO → multi-arch release → dismantled
-- **Cyrius era** (12 days): nothing → self-hosting compiler → kernel → DOOM → 28 ports → compression that beats C → 5.0 shipped
-- **Language versions in 12 days**: 1.0 → 2.0 → 3.0 → 4.0 → 4.8.5-1 → 5.0.0
-- **29KB seed to 5.0 platform release**: 12 days
+- **Cyrius era week 1** (12 days, Apr 3–15): nothing → self-hosting compiler → kernel → DOOM → 28 ports → compression that beats C → 5.0 shipped
+- **Cyrius era weeks 2–4** (Apr 16 – May 6, 21 days): multi-platform byte-identical → optimization arc → 3 stdlib fold-ins (sandhi/vani/niyama) → kernel hardening to 248KB → 30+ ports
+- **Language versions in ~12 weeks**: 1.0 → 2.0 → 3.0 → 4.0 → 5.0 → 5.5.x → 5.6.x → 5.7.x → 5.8.x → 5.9.0
 
 ---
 
-*All timestamps from `git log`. No estimates, no approximations.*
+*All timestamps from `git log` or canonical CHANGELOG/state.md sources. No estimates, no approximations. Last updated 2026-05-06.*

@@ -1,8 +1,10 @@
 # Security Guide
 
-**Last Updated**: 2026-03-16
+**Last Updated**: 2026-03-16 (CVE pointer added 2026-05-06)
 
 AGNOS is designed with security as a foundational principle. This guide documents the security architecture, threat model, and best practices.
+
+> **Notable structural-immunity entry (2026-04 / 2026-05)**: AGNOS-native kernel (`agnos` v1.26.1) is **structurally immune** to **CVE-2026-31431** (Linux LPE in `algif_aead`/AF_ALG via `splice()`). The 26-syscall AGNOS kernel exposes no `socket`, no `splice`, no AF_ALG family — the bug class is unreachable. Verified at `agnos/kernel/core/syscall.cyr:32-36`. See [`development/state.md` § CVE-2026-31431](../development/state.md#cve-2026-31431-copy-fail-cleanup--audit) for the host-defconfig cleanup status. This is the canonical example of the "absence-by-design" security pattern.
 
 ## Security Architecture
 

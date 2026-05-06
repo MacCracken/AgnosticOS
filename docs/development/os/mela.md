@@ -1,6 +1,5 @@
 # Mela — App Marketplace
 
-- **Version**: 0.1.0
 - **Repo**: [MacCracken/mela](https://github.com/MacCracken/mela)
 - **License**: GPL-3.0-only
 - **Tests**: 204

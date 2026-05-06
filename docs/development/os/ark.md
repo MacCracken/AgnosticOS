@@ -1,6 +1,5 @@
 # Ark — Package Manager
 
-- **Version**: 0.1.0
 - **Repo**: [MacCracken/ark](https://github.com/MacCracken/ark)
 - **License**: GPL-3.0-only
 - **Tests**: 71

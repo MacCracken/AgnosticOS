@@ -4,12 +4,15 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Scaffolded (0.1.0) |
+| Status | **Released — Cyrius-native v1.0.0** (was "Scaffolded 0.1.0" pre-2026-04). 50 cultures, 85 practices, 84 art forms, 25 figures, 21 inter-culture relations, BFS graph traversal, evolution tracking, HTTP JSON API. 329 assertions, 33 benchmarks. Academic citations throughout. |
 | Priority | 3 — cultural infrastructure for bhava, joshua, natya, time-machine, jnana |
 | Crate | `hadara` |
-| Repository | `MacCracken/hadara` |
-| Runtime | library crate |
+| Repository | [MacCracken/hadara](https://github.com/MacCracken/hadara) |
+| Runtime | Cyrius-native (built from day one in Cyrius — no Rust era) |
 | Domain | Cultural modeling — cultures as first-class entities with practices, values, art forms, lineage, evolution, and relationship to other cultures |
+| Live version | see [`development/state.md`](../state.md) |
+
+> **Status note (2026-05-06)**: This planning doc predates the v1.0.0 ship. Sections below describe the design rationale that drove the v1.0 implementation — they remain useful as architectural context. For shipped capabilities and current API, see the hadara repo's own docs.
 
 ---
 

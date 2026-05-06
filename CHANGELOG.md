@@ -5,6 +5,42 @@ All notable changes to AGNOS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026.5.6] - 2026-05-06
+
+### Changed — Beta scope rescoped to two-stage (closed + public)
+
+- **Closed beta** target: **early June 2026** (~1 month). Gate: Phase 13A (OS Independence) complete + small private cohort of trusted testers (5–15 friends), no formal community-program enrollment, no marketing.
+- **Public beta** target: Q4 2026 (preserved). Adds the third-party security audit + community testing program (formal enrollment) — items previously listed as mandatory beta gates that are now public-beta gates. Honest framing: "the OS rebuilds itself; broader testing comes next."
+- **Gating dependency**: closed beta is gated on Cyrius v5.10.x landing the bare-metal target (queued; v5.9.0 cut today). Slips by week, not by month.
+- Roadmap restructured (`docs/development/roadmap.md`): Beta — Q4 2026 → split into Closed Beta + Public Beta with explicit gate philosophies; Phase 13A target moved from "May 1, 2026 (Beltane)" → "early June 2026 (closed beta cut)".
+
+### Added — Documentation health surface
+
+- **New living doc**: `docs/development/doc-health.md` — ledger of doc currency across the 265-file corpus (fresh / stale / archive / open-question buckets, refreshed in place as docs are touched). Pattern parallels `state.md` (volatile-state ledger).
+- **New ADR**: [ADR-008 — Cyrius as Sovereign Systems Language](docs/adr/adr-008-cyrius-as-sovereign-systems-language.md). Catches up the biggest unrecorded decision (the 2026-04-04 Cyrius pivot), records context (4 problems with Rust dep), 5 specific decisions, and explicit consequences. ADR-001 marked **partially superseded** (language only; daimon/hoosh/cross-project decisions remain in force).
+
+### Changed — Documentation audit cleanup
+
+- **Entry-point docs refreshed**: `README.md`, `docs/AGNOS.md`, `docs/architecture.md`, `docs/installation/README.md`. Kernel 1.22.0 → 1.26.1 (260KB → 248KB), Cyrius 4.8.5-1 → 5.9.0, sigil 2.1.2 → 2.9.4, libro 1.0.3 → 2.0.5, ark/nous version refresh, cc3 → cc5. Beltane target line replaced with closed-beta target. Pointers to `state.md` added so future drift goes against state.md, not these entry-points.
+- **App index honesty**: `docs/applications/README.md` — added Status column (18 Released, 1 Planned per per-doc headers), fixed Vidhana drift ("File manager" → "System settings"), corrected Ifran display name (filename `irfan.md` predates Synapse → Irfan → Ifran rename).
+- **Lib doc cleanup**: removed `- **Version**: X.Y.Z` lines from 56 of ~83 lib docs in `docs/applications/libs/`. Registry tables (`shared-crates.md`, `libs/README.md`) are now the single source of truth for versions; per-lib docs are pure pointers (role + repo + license + status + registry pointer). Cuts the per-lib drift surface to zero.
+- **release-vision.md fossil pointer fix**: the 2026-04-11 fossil notice promised a separate "compass document" alongside the fossil; that promise is closed by declaring `roadmap.md` the canonical forward-looking compass and pointing the fossil notice at it.
+- **CLAUDE.md drift fix**: removed inline kernel size (was "260KB"; current is 248KB per `state.md`). Per CLAUDE.md's own principle ("volatile state lives in state.md, never in CLAUDE.md"), inline sizes/versions removed in favor of state.md pointers.
+
+### Cyrius cycle progression (post-2026-04-27)
+
+- **Cyrius v5.7.x** — closed at 5.7.48. 51 patches in 36 days. Sandhi-fold (v5.7.0) + cyrius-ts P1–P10. Optimization work incidental.
+- **Cyrius v5.8.x** — 3-phase, 66 patches in 4 days (2026-05-01 → 2026-05-05). Phase 1 closed v5.8.0 audit (lint/fmt cap, f64_log2 polyfill, sys_stat/fstat backfill, _SC_ARITY cross-arch gate, NI-class dupe, cc5_aarch64 packaging + cyrc_check orphan); Phase 2 language vocabulary (var X; diagnostic, fmt --check exit code, vidya audit at v5.8.40); Phase 3 stdlib foldin sweep (vani audio at slot 1).
+- **Cyrius v5.9.0 cut 2026-05-06** — niyama fold-in (8th sibling distfile, 5 regex engines: bre/re2/pcre/fuzzy/vim, 6,664 lines vendored byte-identical from niyama 1.0.1). cc5 binary at 741,048 B (net unchanged from v5.8.65 — foldin is `lib/` content). v5.9.x scope = catchup + fixes; v5.10.x reservation holds AGNOS bare-metal target + RISC-V rv64 backend.
+
+### Added — Articles
+
+- **["What Justifies a Stdlib Foldin"](docs/articles/what-justifies-a-stdlib-foldin.md)** (2026-05-06) — meta-process article on the foldin gate framework, anti-criteria, mechanism, and three-instance pattern across sandhi/vani/niyama. Subsumes per-instance article slots; per-fold articles optional if a different angle wants its own piece.
+
+### Notes
+
+- This entry consolidates the Cyrius v5.7.x → v5.9.0 cycle progression and the post-Beltane doc-currency cleanup. Per-cycle Cyrius receipts live in the cyrius repo CHANGELOG; the cyrius repo state is the receipt for the Cyrius cycle, not this file.
+
 ## [2026.4.27] - 2026-04-27
 
 ### Changed — Boot pipeline brought current with the public Cyrius release
