@@ -126,7 +126,7 @@ The trade is recoverable cost against unrecoverable cost. That's the whole argum
 
 ## Case Study — AGNOS / Cyrius (2026)
 
-AGNOS's Cyrius is a contemporary example of this sequencing applied deliberately. Cyrius shipped v1.0 on 2026-04-04. In the next 16 days it went through:
+AGNOS's Cyrius is a contemporary example of this sequencing applied deliberately. Cyrius shipped v1.0 on 2026-04-04. In the next ~5 weeks it went through:
 
 - **v4.7–v4.8.x** — u128 integer type
 - **v4.8.5** — hardware `u64_mulmod` fast-path (12× speedup on number theory, requested by a downstream port)
@@ -134,10 +134,14 @@ AGNOS's Cyrius is a contemporary example of this sequencing applied deliberately
 - **v5.3.15+** — aarch64 byte-identical
 - **v5.5.3–5.5.4** — Windows PE32+ with Win64 ABI, byte-identical cross-build
 - **v5.5.10** — Windows native self-host byte-identical fixpoint
-- **v5.6.x (in flight)** — optimization arc: constant folding, inlining, regalloc, peephole, maximal-munch
-- **v5.7.0 (queued)** — RISC-V
+- **v5.5.40** — multi-platform closeout (40 patches, longest minor in Cyrius history)
+- **v5.6.x** — optimization arc opened: O1 (instrumentation + FNV-1a), O2 (five peephole categories closed v5.6.11), O3a (IR instrumentation v5.6.12), linear-scan regalloc default-on (v5.6.20–v5.6.24)
+- **v5.7.0** — sandhi-fold (first stdlib foldin: HTTP/TLS/JSON-RPC, 9,649 lines vendored byte-identical)
+- **v5.8.x** — 66 patches in 4 days; vani-fold (audio I/O); language-vocabulary arc
+- **v5.9.0** (cut 2026-05-06) — niyama-fold (regex engines: bre/re2/pcre/fuzzy/vim, 6,664 lines)
+- **v5.10.x reserved** — RISC-V rv64 + AGNOS bare-metal target (both slipped from earlier cycles as foldin work compounded)
 
-That's the same shape Rust showed in its post-1.0 years, compressed into weeks. Any port written against v4.x codegen will re-measure differently once v5.6.x lands.
+That's the same shape Rust showed in its post-1.0 years, compressed into weeks. Any port written against v4.x codegen will re-measure differently once the v5.6.x → v5.8.x optimization-arc work and the three stdlib foldins propagate through consumers.
 
 **The feedback loop in its complete form — abaco:**
 

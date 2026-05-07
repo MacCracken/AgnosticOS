@@ -44,6 +44,13 @@ Numbers approximate; rolls up from the per-tier tables below.
 - ✅ Stage 13 — history.md, timeline.md, sprint-history.md: history.md and timeline.md got post-Beltane milestone entries (Cyrius v5.5.x multi-platform → v5.6.x optimization arc → v5.7.0 sandhi-fold → kernel 1.26.1 → v5.8.x 66-patch arc → v5.9.0 niyama-fold → beta rescope), footer dates refreshed to 2026-05-06; sprint-history.md fine as-is (already pairs with CHANGELOG per its footer).
 - ✅ Stage 14 — `docs/security/` batch (5 files): 4 already had accurate fossil notices; security-guide.md got CVE-2026-31431 structural-immunity note pointing to state.md.
 - ✅ Stage 15 — CONTRIBUTING.md (`cc3` → `cc5` reference fix), SECURITY.md verified (mostly evergreen), iso-pipeline.md status note refreshed (Stage 0 implemented + Stage-4-only first cut planned + CHANGELOG 2026.4.27 26/26 components ready).
+- ✅ Stage 17 — article review pass (19 files in `docs/articles/`, ~38K words total):
+  - **Batch A — mechanical 248 KB drift fix**: `the-2-dollar-sd-card.md`, `python-in-the-bootstrap.md`, `sovereign-compiler-vs-brute-force.md` — kernel size in "Since This Was Written" footers corrected from 260 KB to 248 KB.
+  - **Batch B — light tech refresh**: `why-gpu-belongs-in-the-stdlib.md` got a "Since This Was Written" footer noting the v5.6.x → v5.9.0 progression and the three stdlib fold-ins. `the-price-of-porting-early.md` Cyrius timeline block (Case Study section) refreshed from "v5.7.0 (queued)" tail through to v5.9.0 + v5.10.x reservation. `memory-should-be-sovereign-too.md` got a "Since This Was Written" footer with body-table currency notes (sigil 2.9.1→2.9.4, Cyrius v5.6.17→v5.9.0, sankoch 2.0.1→2.2.4, kernel 1.22.0/260KB→1.26.1/248KB).
+  - **Batch C — structural tightening**: `micro-work-and-agent-deferment.md` "How to cite" section reduced from 9-bullet anchor enumeration to a 1-paragraph note pointing at the most-cited section. ~10% length reduction; intent preserved.
+  - **Held outlines (deliberately untouched)**: `entity-vs-skynet-doom.md`, `why-gigacenters.md` — explicitly held until trigger events fire.
+  - **Working file untouched**: `_outlines.md`.
+
 - ✅ Stage 16 — index/registry refresh + broken-link sweep:
   - `docs/architecture/kernel-layers.md` status line: v1.22.0/260KB → v1.26.1/248KB with state.md pointer.
   - `docs/development/README.md` index refreshed: added state.md, doc-health.md, summer-2026-arc.md, iso-pipeline.md, iso-stage4-plan.md, first-party-documentation.md to active lists; removed "78-crate registry" stale; updated os/ description.

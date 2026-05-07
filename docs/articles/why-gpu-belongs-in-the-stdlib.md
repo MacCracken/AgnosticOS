@@ -119,5 +119,11 @@ Until then, this one states the refusal and names the exception.
 
 ---
 
+## Since This Was Written
+
+**Refreshed 2026-05-06.** Body refers to "v5.6.x stdlib" because that was current at write-time. **Cyrius is now at v5.9.0 cut day** — three stdlib fold-ins have shipped since (sandhi v5.7.0 service-boundary, vani v5.8.0 audio I/O, niyama v5.9.0 regex engines), each via the explicit gate framework now documented in [*What Justifies a Stdlib Foldin*](what-justifies-a-stdlib-foldin.md). The mabda native-path arc continues alongside this; the wgpu line in `cyrius.cyml` is still the named exception, still scoped, still closing. The receipts article ships when the line disappears from the manifest. Current state: [`development/state.md`](../development/state.md).
+
+---
+
 *AGNOS project — [agnosticos.org](https://agnosticos.org)*
-*April 2026*
+*April 2026 (refreshed footer May 2026)*

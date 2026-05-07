@@ -134,5 +134,17 @@ Until then, this one states the refusal.
 
 ---
 
+## Since This Was Written
+
+**Refreshed 2026-05-06.** Body table version columns are pinned to article date — current values live in [`development/state.md`](../development/state.md) and [`shared-crates.md`](../development/applications/shared-crates.md). Notable updates since the body was written:
+
+- **Cyrius**: v5.6.17 → v5.9.0 (cut today). Three stdlib fold-ins shipped: sandhi (v5.7.0 service-boundary), vani (v5.8.0 audio I/O), niyama (v5.9.0 regex engines). The fold-in pattern, born during the post-write window, is now a documented decision framework — see [*What Justifies a Stdlib Foldin*](what-justifies-a-stdlib-foldin.md).
+- **AGNOS kernel**: v1.22.0 → v1.26.1 (248 KB; CI-hygiene replaced a workaround with a real fix at v1.26.1).
+- **sigil**: v2.9.1 → v2.9.4 (output-binary rename for ISO `--iso-check` compatibility).
+- **sankoch**: v2.0.1 → v2.2.4 (continued layer additions).
+- **sit itself**: still scaffold. The receipts article still writes itself the day sit clones and hosts its own log; that day still hasn't arrived. Per the article's own framing, this is fine — the milestone isn't "sit is written."
+
+---
+
 *AGNOS project — [agnosticos.org](https://agnosticos.org)*
-*April 2026*
+*April 2026 (refreshed footer May 2026)*

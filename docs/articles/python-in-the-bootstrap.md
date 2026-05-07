@@ -180,7 +180,7 @@ What it grew from was a compass, a team of two, and the realization that the Pyt
 **Refreshed 2026-05-06 — five weeks past the original cut.** Rewrite-in-place per [*Docs Go Stale Before the Commit*](docs-go-stale-before-the-commit.md) — git history is authoritative for prior figures.
 
 - **Cyrius v5.9.0** — cc5 at 741,048 B; multi-platform self-host closed (x86_64 Linux, aarch64 Linux, Apple Silicon Mach-O, Windows PE32+); still bootstrapping byte-identically from the same 29 KB seed.
-- **AGNOS kernel v1.26.1** — 260 KB, 33 subsystems, 26 syscalls, three hardening passes (14 buffer overflows found and fixed).
+- **AGNOS kernel v1.26.1** — 248 KB, 33 subsystems, 26 syscalls, three hardening passes (14 buffer overflows found and fixed).
 - **Optimization arc shipped through v5.8.x** as outlined above; **stdlib-fold pattern compounded three times** (sandhi v5.7.0 service-boundary, vani v5.8.0 audio I/O, niyama v5.9.0 regex engines). Each fold is a multi-consumer-gated maturation of a sibling distfile into the canonical stdlib `lib/` (see [*What Justifies a Stdlib Foldin*](what-justifies-a-stdlib-foldin.md) for the gate framework).
 - **v5.9.x is the catchup arc** — consumer rollup, optimization-debt audit, dangling-item closeout. v5.10.x reserved for AGNOS bare-metal target + RISC-V rv64 backend (both slipped from earlier cycles as foldin work compounded).
 

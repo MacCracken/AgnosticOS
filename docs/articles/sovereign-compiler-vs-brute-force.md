@@ -167,7 +167,7 @@ For context: GCC is ~100MB, Clang/LLVM is ~500MB.
 **Refreshed 2026-05-06 — five weeks past this article's original Day-4 cut.** The numbers above are that Day-4 snapshot; the numbers below are current. Rewrite-in-place per [*Docs Go Stale Before the Commit*](docs-go-stale-before-the-commit.md) — git history is authoritative for prior figures.
 
 - **Cyrius v5.9.0** — cc5 at 741,048 B self-hosting compiler on Linux x86_64; multi-platform closed (aarch64, Windows PE32+, Apple Silicon Mach-O) — all bootstrapping byte-identically from the same 29 KB seed.
-- **AGNOS kernel v1.26.1** — 260 KB, 33 subsystems, 26 syscalls, three hardening passes (14 buffer overflows found and fixed).
+- **AGNOS kernel v1.26.1** — 248 KB, 33 subsystems, 26 syscalls, three hardening passes (14 buffer overflows found and fixed).
 - **Optimization arc shipped through v5.8.x** — Phase O1 (FNV-1a hashing) and O2 (five peephole categories) closed in v5.6.x; O3a IR instrumentation landed v5.6.12; O4a/b/c register-allocation incl. Poletto-Sarkar linear-scan picker shipped through v5.7.x and v5.8.x; O5/O6 (codebuf compaction with NOP harvest) referenced through v5.8.x with status sweep pending in v5.9.x.
 - **Stdlib-fold pattern compounded three times** — sandhi (v5.7.0, service-boundary, 376 KB / 469 fns), vani (v5.8.0, audio I/O), niyama (v5.9.0, 5 regex engines / 6,664 lines). Each fold is a multi-consumer-gated maturation of a sibling distfile into the canonical stdlib `lib/`.
 - **v5.9.x is the catchup arc** — consumer rollup, optimization-debt audit, ESTORESTACKPARM and dangling-item closeout — leaving v5.10.x clean for AGNOS bare-metal target + RISC-V rv64 backend (both slipped from earlier cycles as foldin work compounded).

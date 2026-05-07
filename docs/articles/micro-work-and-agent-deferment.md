@@ -85,17 +85,7 @@ The pattern isn't strictly agent-specific — human engineers slip too, for the 
 
 ## How to cite
 
-When another AGNOS article or doc wants to refer to:
-
-- **The "ask, don't slip" principle** → link to [§Lesson — ask, don't slip](#lesson--ask-dont-slip)
-- **The deferment tell** → link to [§Lesson — the deferment tell](#lesson--the-deferment-tell)
-- **Legit-split vs. deferment classification (all four cases)** → link to [§Lesson — split legitimately, defer never](#lesson--split-legitimately-defer-never)
-- **Default: commit through** → link to [§Case 1 — Default: commit through the work](#case-1--default-commit-through-the-work)
-- **Justified: prerequisite bug surfaces** → link to [§Case 2 — Justified: a prerequisite bug surfaces](#case-2--justified-a-prerequisite-bug-surfaces)
-- **Justified: pre-planned large-effort decomposition** → link to [§Case 3 — Justified: large-effort work, pro-actively decomposed per the task-sizing rule](#case-3--justified-large-effort-work-pro-actively-decomposed-per-the-task-sizing-rule)
-- **The sleight-of-hand ("too big, I'll split mid-execution")** → link to [§Case 4 — The sleight-of-hand to reject](#case-4--the-sleight-of-hand-to-reject-this-is-too-big-ill-split-it-mid-execution)
-- **The micro-work double-edged tradeoff** → link to [§The shape of micro-work](#the-shape-of-micro-work)
-- **The general compounding-forward pattern** → link to the page, or direct to its sibling [*What v5.5.x Taught v5.6.x*](what-5.5.x-taught-5.6.x.md)
+This article is structured as a citation hub for the *"ask, don't slip"* discipline and the legit-split-vs-deferment classification. Section headers auto-generate anchors; cite by linking to the relevant header directly. The four cases under [§Lesson — split legitimately, defer never](#lesson--split-legitimately-defer-never) are the most likely citation target — they cover the full classification and are stable.
 
 ## Related
 
