@@ -44,6 +44,15 @@ Numbers approximate; rolls up from the per-tier tables below.
 - ✅ Stage 13 — history.md, timeline.md, sprint-history.md: history.md and timeline.md got post-Beltane milestone entries (Cyrius v5.5.x multi-platform → v5.6.x optimization arc → v5.7.0 sandhi-fold → kernel 1.26.1 → v5.8.x 66-patch arc → v5.9.0 niyama-fold → beta rescope), footer dates refreshed to 2026-05-06; sprint-history.md fine as-is (already pairs with CHANGELOG per its footer).
 - ✅ Stage 14 — `docs/security/` batch (5 files): 4 already had accurate fossil notices; security-guide.md got CVE-2026-31431 structural-immunity note pointing to state.md.
 - ✅ Stage 15 — CONTRIBUTING.md (`cc3` → `cc5` reference fix), SECURITY.md verified (mostly evergreen), iso-pipeline.md status note refreshed (Stage 0 implemented + Stage-4-only first cut planned + CHANGELOG 2026.4.27 26/26 components ready).
+- ✅ Stage 19 — spring-cleaning batch (8 items):
+  - **CLAUDE.md Standalone Repos table** — embedded counts/sizes in Role column ("kybernet | PID 1 binary (486KB, 140 tests, 46 benchmarks)") cleaned to pure role descriptions; added mela/seema/samay rows; added pointer note that the table is intentionally version-free with state.md / shared-crates.md as live source.
+  - **Verified clean (no audit needed)**: `Makefile`, `.github/workflows/{ci,release}.yml` — all post-Cyrius-pivot, no Rust references. `scripts/cyrius.cyml` is an active engineering pin (5.8.0); not touched.
+  - **Planning docs spot-check**: tanur/joshua/murti still at "Scaffolded (0.1.0)" — accurate, no drift.
+  - **first-party-documentation.md** — codified two new conventions: "Since This Was Written" footer pattern (with template) + "Last Updated" header convention (per doc type).
+  - **Vidya field-notes link sweep** — 1 stale URL fixed in `docs/AGNOS.md` (was pointing at `field_notes.toml` single-file path; now directory). Other vidya links in articles already had corrective parentheticals.
+  - **Forward doc-policy commitments section** added to `doc-health.md` — captures the Rust-era archive purge plan ("after a few tagged GA releases past Beta") so the compressed beta timeline doesn't leave it forgotten.
+  - **Memory saved**: `feedback_doc_audit_discipline.md` captures the ledger pattern, lib-doc precedent, "Since This Was Written" footer, tier bucketing, stage-based execution, what-to-leave-alone — so future audit sessions don't re-derive the discipline.
+
 - ✅ Stage 18 — heavy ecosystem-wide sweep (10+ files): refreshed `philosophy.md` (kernel size, Cyrius cycle paragraph, "as of" date), `thesis.md` (kernel + compiler versions, shipped/in-flight ledger including foldin pattern + closed/public beta), `design-patterns.md` (4 instances of "260 KB" → "248 KB"), `AGNOS.md` (repo-structure section, core subsystems table mabda 2.1.2 → 2.4.1 / abaco 2.0.0 → 2.2.x, pending-port table reframed with bhava added and phylax/shakti/hisab moved to "recently shipped", compiler section cc3 → cc5 / 373KB → ~741KB / stdlib reflects three foldins, kernel section 260KB → 248KB, shared-crates count → defer-to-registry pointer), `architecture.md` (diagram), `installation/system-requirements.md` (kernel row), `iso-pipeline.md` (cc3 → cc5 across 4 instances, kernel size in artifact table), `roadmap.md` (4 lines: kernel-shipped header callout, ports-table kernel row, blocker-cleared chain, named-subsystems table agnos row), `installation/troubleshooting.md` (2 cc3 references → cc5 with historical note), `architecture/kernel-layers.md` (kernel-size comparison table). Article body refreshes per user "heavy sweep" directive: `the-2-dollar-sd-card.md` "What We Know" section refreshed (kernel v1.22.0 → v1.26.1 + CVE-2026-31431 immunity note), `memory-should-be-sovereign-too.md` body table refreshed inline (kernel/compiler/sigil/sankoch versions; pointer to state.md added).
 
 - ✅ Stage 17 — article review pass (19 files in `docs/articles/`, ~38K words total):
@@ -324,6 +333,19 @@ README, AGNOS.md, architecture.md, installation/README.md all have stale version
 - Vani-fold + niyama-fold pattern docs — flagged as pending in `state.md`.
 - `cyrius-vs-rust-benchmarks.md` v5.8.x / v5.9.x rows — pending per state.md.
 - Niyama-fold-in article slot — pending per state.md.
+
+---
+
+## Forward doc-policy commitments
+
+Items that are *scheduled* doc decisions, not stale state. Surfaced here so they aren't forgotten when the trigger date arrives.
+
+| # | Commitment | Trigger | Source | Notes |
+|---|---|---|---|---|
+| 1 | **Rust-era archive purge** — delete the entire `docs/archive/` Rust-era + monolith-pre-extraction content in a single commit; tag the prior commit as `archive-final-v<N>` so historical refs use `git show <tag>:docs/archive/<file>` or a permalink to that tag's tree on GitHub. | "after a few tagged GA releases past Beta" | [`docs/archive/README.md:96-98`](../archive/README.md) | The 2026-05-06 beta rescope (closed beta early June 2026 + public beta Q4 2026) compresses the runway. Re-evaluate at v1.0 cut whether the archive is still being actively referenced; if not, execute. |
+| 2 | **CHANGELOG.md historical purge** — same shape as #1 if the historical entries (most pre-Cyrius-pivot entries before 2026-04-04) become noise. | TBD — keep as-is unless the file becomes unwieldy | none yet | Lower priority; CHANGELOG entries are dated and clearly historical. |
+
+When the trigger fires, the purge is a single commit, not a per-file decision.
 
 ---
 

@@ -393,6 +393,41 @@ Any of these in CLAUDE.md will be stale within a release. The pointer block is s
 
 **Filename convention**: `kebab-case-hook.md`. The filename is the hook.
 
+### "Since This Was Written" footer pattern
+
+Articles are dated artifacts — they describe a state at the moment of writing. As the underlying state moves (kernel size, port count, Cyrius cycle), the body becomes a **time capsule**, not a current claim. Two refresh patterns are valid:
+
+- **In-place body refresh** — only when the article *is* about the current state (registries, indexes, status pages). Update inline; rewrite-in-place per *Docs Go Stale Before the Commit*.
+- **"Since This Was Written" footer** (preferred for narrative articles) — keep the body as the dated record; append a footer noting what's changed. Pattern:
+
+  ```markdown
+  ## Since This Was Written
+
+  **Refreshed YYYY-MM-DD — N weeks past the original cut.** Body figures above are the [original date] snapshot. Rewrite-in-place per *Docs Go Stale Before the Commit* — git history is authoritative for prior figures.
+
+  - **<subsystem>** — what changed since the body
+  - **<thing>** — what changed since the body
+  - ...
+
+  Live ecosystem state in [`docs/development/state.md`](...).
+  ```
+
+  This preserves the article's voice and dated framing while keeping reader-context current. Used in `the-2-dollar-sd-card.md`, `python-in-the-bootstrap.md`, `sovereign-compiler-vs-brute-force.md`, `memory-should-be-sovereign-too.md`, `why-gpu-belongs-in-the-stdlib.md`, etc. (2026-05-06 audit).
+
+  When the footer grows long enough that it eclipses the body, that's a signal to write a successor article instead — not to keep extending the footer.
+
+### "Last Updated" header convention
+
+Inconsistent across the genesis repo today. The convention going forward:
+
+- **Operational and reference docs** (anything in `docs/` other than `archive/` and `articles/`): `> **Last Updated**: YYYY-MM-DD` in the top header block, immediately under `# Title`. Make it visible to readers landing on the doc.
+- **Articles**: `*Author Name* / *AGNOS Project — [agnosticos.org](...)* / *Month YYYY*` footer. Add `(refreshed footer Month YYYY)` if the body was preserved but a "Since This Was Written" footer was added.
+- **Archive docs**: keep the header date the doc was written; add `(ARCHIVED — short reason)` to the title.
+- **Living-state docs** (`state.md`, `doc-health.md`, etc.): `> **Last refresh**: YYYY-MM-DD | **Refresh cadence**: ...` in header. The cadence note is load-bearing — it sets reader expectations.
+- **CHANGELOG**: per-entry dates only; no global "Last Updated" — the topmost entry's date *is* the last-updated.
+
+When in doubt, top header. The footer convention from older articles persists for backward compatibility but new docs should put it up front where it's read.
+
 ---
 
 ## What Goes In Which File

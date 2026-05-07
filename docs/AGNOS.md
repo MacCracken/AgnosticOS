@@ -334,7 +334,7 @@ See [Philosophy](philosophy.md) for the full exploration.
 - [History & Timeline](history.md) — full project timeline
 - [Development Roadmap](development/roadmap.md) — phases, blockers, release targets
 - [Shared Crates Reference](development/applications/shared-crates.md) — ecosystem crate registry
-- [Cyrius Field Notes](https://github.com/MacCracken/vidya/blob/main/content/cyrius/field_notes.toml) — practitioner's manual
+- [Cyrius Field Notes](https://github.com/MacCracken/vidya/tree/main/content/cyrius/field_notes) — practitioner's manual (directory of CYML topics; was a single TOML file before the structure split)
 
 ---
 

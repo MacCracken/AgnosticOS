@@ -39,41 +39,46 @@ The role map below is for orientation. **Versions are intentionally omitted** �
 
 | Subsystem | Role | Port Status |
 |-----------|------|-------------|
-| **agnos** | AGNOS kernel (33 subsystems, 26 syscalls) | **Native** |
+| **agnos** | AGNOS kernel | **Native** |
 | **cyrius** | Sovereign compiler + stdlib + toolchain | **Native** |
-| **zugot** | Recipe repository (all takumi build recipes) | — |
+| **zugot** | Recipe repository (consumed by ark/nous/takumi) | — |
 | **agnostik** | Shared types, domain primitives | **Ported** |
 | **agnosys** | Kernel interface (Landlock, seccomp, syscalls) | **Ported** |
-| **kybernet** | PID 1 binary (486KB, 140 tests, 46 benchmarks) | **Ported** |
+| **kybernet** | PID 1 init binary | **Ported** |
 | **argonaut** | Init system library | **Ported** |
-| **sigil** | Trust/crypto boundary | **Ported** |
+| **sigil** | Trust / crypto boundary | **Ported** |
 | **libro** | Cryptographic audit chain | **Ported** |
-| **hoosh** | LLM inference gateway (15 providers) | **Ported** |
-| **avatara** | Divine archetype overlay (2,761× faster cached) | **Ported** |
-| **ai-hwaccel** | GPU detection (518 tests) | **Ported** |
-| **hadara** | Culture modeling (50 cultures, Cyrius-native) | **Native** |
+| **hoosh** | LLM inference gateway | **Ported** |
+| **avatara** | Divine archetype overlay | **Ported** |
+| **ai-hwaccel** | GPU detection | **Ported** |
+| **hadara** | Culture modeling | **Native** |
 | **shravan** | Audio codecs | **Ported** |
 | **mabda** | GPU foundation (folded into Cyrius stdlib) | **Ported** |
-| **daimon** | Agent orchestrator, 144 MCP tools | **Ported** |
+| **daimon** | Agent orchestrator, MCP tools | **Ported** |
 | **agnoshi** | AI shell | **Ported** |
 | **aethersafha** | Wayland compositor | Pending |
-| **ark** | Package manager (4× smaller than Rust) | **Ported** |
+| **ark** | Package manager | **Ported** |
 | **nous** | Package resolver | **Ported** |
-| **takumi** | Build system | Pending |
+| **takumi** | Build system | In port (rust-old/ authoritative until parity) |
 | **aegis** | Security daemon | Pending |
 | **shakti** | Privilege escalation | **Ported** |
 | **kavach** | Sandbox execution | **Ported** |
 | **bote** | MCP core + host registry | **Ported** |
 | **t-ron** | MCP security | **Ported** |
 | **phylax** | Threat detection | **Ported** |
-| **abaco** | Math/number theory library | **Ported** |
-| **itihas** | History/versioning | **Ported** |
+| **abaco** | Math / number theory library | **Ported** |
+| **itihas** | History / versioning | **Ported** |
 | **bsp** | BSP geometry library | **Ported** |
 | **cyrius-doom** | DOOM engine in Cyrius | **Native** |
 | **sankoch** | Lossless compression (LZ4, DEFLATE, zlib, gzip) | **Ported** |
-| **bhava** | Emotion/sentiment modeling | Pending port |
+| **bhava** | Emotion / sentiment modeling | Pending |
 | **hisab** | Higher math | **Ported** |
-| **agnova** | OS installer (Cyrius port from 3,656 Rust lines, base established) | **Ported** |
+| **agnova** | OS installer | **Ported** |
+| **mela** | Agent marketplace | Pending |
+| **seema** | Edge fleet management | Pending |
+| **samay** | Task scheduler | Pending |
+
+> **Live versions, sizes, test counts, and per-repo cycle state**: see [`docs/development/state.md`](docs/development/state.md) and [`docs/development/applications/shared-crates.md`](docs/development/applications/shared-crates.md). This table is intentionally version-free — embedded counts drift, and pointer-to-registry is the cleaner pattern.
 
 ## Development Process
 
