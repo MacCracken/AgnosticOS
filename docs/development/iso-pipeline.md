@@ -32,9 +32,9 @@ Locate (or build) every artifact needed for the rootfs:
 
 | Component | Source | Artifact |
 |-----------|--------|----------|
-| AGNOS kernel | `../agnos/build/agnos` | ELF binary (~260KB) |
+| AGNOS kernel | `../agnos/build/agnos` | ELF binary (~248KB at v1.26.1) |
 | kybernet (PID 1) | `../kybernet/build/kybernet` | ELF binary (~486KB) |
-| Cyrius toolchain | `../cyrius/build/cc3` | Compiler binary |
+| Cyrius toolchain | `../cyrius/build/cc5` | Compiler binary (~741KB at v5.9.0) |
 | ark (package manager) | `../ark/build/ark` | Binary |
 | nous (resolver) | `../nous/build/nous` | Binary |
 | takumi (build system) | `../takumi/` | Build tool (pending Cyrius port) |
@@ -62,11 +62,12 @@ The Rust-era pipeline followed LFS Ch. 5–6: binutils pass 1 → GCC pass 1 →
 Linux headers → glibc → libstdc++ → binutils pass 2 → GCC pass 2. This
 produced `x86_64-agnos-linux-gnu-gcc` under `$LFS/tools/`.
 
-**Cyrius-era question**: Does the Cyrius toolchain (`cc3`) replace GCC for
+**Cyrius-era question**: Does the Cyrius toolchain (`cc5`) replace GCC for
 AGNOS-native packages, or do we still need GCC for the base system (glibc,
 coreutils, etc.)? Current answer: **both**. Base system packages (glibc,
 coreutils, bash, etc.) are C projects built with GCC from zugot recipes.
-AGNOS-native components (kernel, kybernet, ark, etc.) are built with cc3.
+AGNOS-native components (kernel, kybernet, ark, etc.) are built with cc5
+(Cyrius v5.9.0; cc5 → `cyc` rename queued for v6.0).
 The cross-toolchain bootstrap remains necessary for the C layer.
 
 ### Stage 2 — Build Base System
@@ -95,7 +96,7 @@ Install the AGNOS-native binaries into the rootfs. This replaces the old
 /usr/bin/ark                   ← Package manager
 /usr/bin/nous                  ← Resolver
 /usr/bin/cyrius                ← Compiler
-/usr/bin/cc3                   ← Compiler backend
+/usr/bin/cc5                   ← Compiler backend
 /usr/bin/daimon                ← Agent orchestrator
 /usr/bin/hoosh                 ← LLM gateway
 /usr/bin/agnoshi               ← AI shell
@@ -173,7 +174,7 @@ Scope: x86_64, minimal profile (headless), host-built toolchain assumed.
 
 Scope: the ISO can rebuild itself from source.
 
-1. Include Cyrius toolchain + cc3 in the rootfs
+1. Include Cyrius toolchain + cc5 in the rootfs
 2. Include zugot recipes in `/usr/src/agnos/`
 3. Include source for all AGNOS-native components
 4. `selfhost-validate --phase all` passes inside the booted ISO

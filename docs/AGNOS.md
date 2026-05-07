@@ -94,8 +94,8 @@ Total: CPU → seed → compiler → OS. Four items. Zero external dependencies.
 ### Repo Structure
 
 - **agnosticos** — the genesis layer (meta, build wrapper, documentation). Owns kernel configs, boot pipeline (Cyrius), CI/CD, articles, philosophy. Once the system boots and ark takes over, this repo's job is done.
-- **agnos** — the AGNOS kernel. 260KB, Cyrius-native, 33 subsystems, 26 syscalls, TCP/IP, FAT16, VirtIO, SMP, pipes, signals, epoll, timerfd, ELF loader, 18-command shell.
-- **cyrius** — the sovereign compiler + stdlib + toolchain. 373KB, self-hosting from 29KB seed.
+- **agnos** — the AGNOS kernel. 248KB at v1.26.1, Cyrius-native, 33 subsystems, 26 syscalls, TCP/IP, FAT16, VirtIO, SMP, pipes, signals, epoll, timerfd, ELF loader, 18-command shell.
+- **cyrius** — the sovereign compiler + stdlib + toolchain. ~741KB at v5.9.0, self-hosting from 29KB seed.
 - **zugot** — the recipe repository. 421 base + 90 bazaar community recipes. ark consumes zugot.
 - **130+ standalone repos** — all production code. Each subsystem is its own repository.
 
@@ -116,7 +116,7 @@ Total: CPU → seed → compiler → OS. Four items. Zero external dependencies.
 | Trust/crypto | **sigil** | Cyrius | Ed25519, integrity, trust delegation |
 | Audit chain | **libro** | Cyrius | SHA-256/BLAKE3 hash-linked logging |
 | Audio codecs | **shravan** | 2.0.0 | Cyrius-native |
-| GPU foundation | **mabda** | 2.1.2 | Folded into Cyrius stdlib |
+| GPU foundation | **mabda** | 2.4.1 | Folded into Cyrius stdlib |
 | Package manager | **ark** | Cyrius | Signed tarballs |
 | Resolver | **nous** | Cyrius | Dependency resolution |
 
@@ -129,18 +129,20 @@ Total: CPU → seed → compiler → OS. Four items. Zero external dependencies.
 | Sandbox | **kavach** | 3.0.0 | 344KB (was 2.4MB), 9 CWE fixes, 500× faster |
 | MCP core | **bote** | 2.5.1 | ~5µs/message, streamable HTTP |
 | MCP security | **t-ron** | 2.0.0 | Tool call auditing |
-| Math/number theory | **abaco** | 2.0.0 | -52% lines, 12× faster Miller-Rabin |
+| Math/number theory | **abaco** | 2.2.x | -52% lines, 12× faster Miller-Rabin |
 | History/versioning | **itihas** | 2.2.0 | — |
 
-### Subsystems (Cyrius port pending)
+### Subsystems (Cyrius port pending or in-flight)
 
 | Subsystem | Name | Version | Role |
 |-----------|------|---------|------|
-| Desktop compositor | **aethersafha** | 0.1.0 | Wayland compositor |
-| Build system | **takumi** | 0.1.0 | TOML recipe-based package builds |
-| Security daemon | **aegis** | 0.1.0 | System hardening |
-| Threat detection | **phylax** | 0.22.3 | YARA, ML binary analysis |
+| Desktop compositor | **aethersafha** | 0.1.0 (scaffold) | Wayland compositor |
+| Build system | **takumi** | 0.8.0 (in port; `rust-old/` authoritative until parity) | TOML recipe-based package builds |
+| Security daemon | **aegis** | 0.1.0 (scaffold) | System hardening |
+| Emotion/sentiment | **bhava** | 2.0.0 (Rust; port can start) | Affective computing substrate |
 | Container runtime | **stiva** | 2.0.0 | OCI-compatible, daemonless |
+
+Recently shipped (no longer pending): **phylax** v1.0.0 (Cyrius-native, threat detection), **shakti** v0.2.2 (Cyrius), **hisab** v2.2.0 (Cyrius). See [`development/state.md`](development/state.md) for live status.
 
 ### Cyrius — The Language
 
@@ -152,15 +154,15 @@ Sovereign systems language. Named after **Cyrus the Great** — the king who dec
 - **29KB seed** — first hand-auditable sovereign seed that produces a self-hosting systems language and a working OS. No prior modern occupant of this category.
 - **Zero dependencies** — CPU → seed → compiler → everything. Four items. Every other modern compiler has a bootstrap graph (rustc needs Python + LLVM + C++ + libc).
 
-**Compiler:** cc3 v4.8.5-1, 373KB, self-hosting from 29KB seed. Byte-exact reproducibility. `cyrius build` with auto-include and dep resolution from `cyrius.cyml` (falls back to `cyrius.toml`). Register allocation, jump tables, PIC codegen, u128, cross-unit DCE.
+**Compiler:** cc5 v5.9.0, ~741KB, self-hosting from 29KB seed. Byte-exact reproducibility. `cyrius build` with auto-include and dep resolution from `cyrius.cyml`. Register allocation (linear-scan, default-on), jump tables, PIC codegen, u128, cross-unit DCE. Optimization arc shipped through v5.6.x (O1/O2 peephole), v5.7.x–v5.8.x (O3a IR + O4a/b/c regalloc with Poletto-Sarkar picker); O5/O6 codebuf compaction queued for v5.9.x. cc5 → `cyc` rename queued for v6.0 (single one-and-done cleanup).
 
-**Stdlib:** 42 modules — string, alloc, io, fmt, vec, str, args, syscalls, process, fs, toml, json, csv, net, http, http_server, ws, tls, thread, async, math, regex, hashmap, bench, tagged unions, mmap, cffi, u128, and more. All built from scratch in Cyrius.
+**Stdlib:** 42+ modules including the three sibling-folded artifacts — string, alloc, io, fmt, vec, str, args, syscalls, process, fs, toml/cyml, json, csv, net, http, http_server, ws, tls, thread, async, math, regex, hashmap, bench, tagged unions, mmap, cffi, u128, **sandhi** (service-boundary, v5.7.0 fold), **vani** (audio I/O, v5.8.0 fold), **niyama** (regex engines: bre/re2/pcre/fuzzy/vim, v5.9.0 fold). All built from scratch in Cyrius.
 
 **Developer tools:** cyrius (build/test/bench/fuzz/deps/init), cyrfmt, cyrlint, cyrdoc, cyrc, ark. All written in Cyrius.
 
 **Bootstrap chain:**
 ```
-seed (29KB) → cyrc (12KB) → bridge → cc3 (373KB)
+seed (29KB) → cyrc (12KB) → bridge → cc5 (~741KB)
 No Rust. No LLVM. No Python. No libc. Just sh + Linux x86_64.
 ```
 
@@ -178,7 +180,7 @@ All Rust versions preserved as git tags with benchmark CSVs for ongoing comparis
 
 ### AGNOS Kernel
 
-260KB. Cyrius-native. 33 subsystems. 26 syscalls. Not a microkernel — a monolithic kernel with everything in it:
+248KB at v1.26.1. Cyrius-native. 33 subsystems. 26 syscalls. Not a microkernel — a monolithic kernel with everything in it:
 
 | Category | Subsystems |
 |----------|-----------|
@@ -225,9 +227,9 @@ make status       # show component status (kernel, compiler, recipes)
 
 ### Shared Crates
 
-78 shared crates — 56 at v1.0+ stable. Spanning OS infrastructure (11), science & knowledge (25), media & audio (10), language & navigation (5), physics & engineering (5), culture & knowledge (1), plus pre-1.0 and planned crates.
+The shared crate ecosystem spans OS infrastructure, science & knowledge, media & audio, language & navigation, physics & engineering, and culture & knowledge — most at v1.0+ stable. Live count and per-crate versions in the registry (numbers omitted here to avoid drift).
 
-Full registry: [shared-crates.md](development/applications/shared-crates.md).
+Full registry: [shared-crates.md](development/applications/shared-crates.md). Live cycle/pin state: [state.md](development/state.md).
 
 ### Security Model
 

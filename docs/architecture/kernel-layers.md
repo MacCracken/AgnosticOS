@@ -70,7 +70,7 @@ The kernel was originally planned as five layers — "boots," "runs programs," "
 | + Layer 5 (shell) | ~42–45 KB | — |
 | + VFS + signals + pipes | ~50 KB | — |
 | + VirtIO + basic TCP | ~65 KB | — |
-| Full Layer 1–5 | ~70–80 KB | **260 KB (v1.22.0)** |
+| Full Layer 1–5 | ~70–80 KB | **248 KB (v1.26.1)** |
 
 The shipped kernel is ~3× the original estimate because it carries features outside the original 5-layer shortest-path plan:
 

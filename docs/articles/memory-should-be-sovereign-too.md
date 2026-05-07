@@ -23,19 +23,21 @@ Walk through an AGNOS install disk in 2026:
 
 | Layer | Incumbent being replaced | Status |
 |-------|---------------------------|--------|
-| Kernel | Linux | Cyrius-native (`agnos` v1.22.0, 260KB, 33 subsystems) |
-| Compiler | LLVM / gcc | Cyrius self-hosts from a 29KB seed (v5.6.17) |
+| Kernel | Linux | Cyrius-native (`agnos` v1.26.1, 248 KB, 33 subsystems) |
+| Compiler | LLVM / gcc | Cyrius self-hosts from a 29 KB seed (cc5 at v5.9.0) |
 | Shell | bash / zsh | `agnoshi` v1.0.0 |
-| Init | systemd | `kybernet` v1.0.1 (486KB, 140 tests) |
+| Init | systemd | `kybernet` v1.0.1 (486 KB, 140 tests) |
 | Package manager | apt / pacman / dnf | `ark` v0.8.0 (Cyrius) + `nous` v1.1.1 |
 | Sandbox | bubblewrap / firejail | `kavach` v3.0.0 (500× faster on sandbox lifecycle) |
 | Audit chain | syslog / systemd-journald | `libro` v2.0.5 |
 | Audio codecs | libavcodec | `shravan` v2.3.2 |
 | LLM gateway | OpenAI SDKs | `hoosh` v2.0.0 (15 providers) |
-| Compression | zlib / liblz4 / libdeflate | `sankoch` v2.0.1 |
-| Crypto / hashing | OpenSSL | `sigil` v2.9.1 |
-| Structured storage | SQLite / BerkeleyDB | `patra` v1.5.5 |
+| Compression | zlib / liblz4 / libdeflate | `sankoch` (LZ4, DEFLATE, zlib, gzip — beats C zlib on compressible data) |
+| Crypto / hashing | OpenSSL | `sigil` v2.9.4 |
+| Structured storage | SQLite / BerkeleyDB | `patra` |
 | **Version control** | **git + libgit2 + zlib + OpenSSL** | **still C** |
+
+> Live versions for any row above: see [`development/state.md`](../development/state.md). The drift surface here is intentional — the Cyrius-native column is a moving target by design.
 
 One row not like the others. Everything AGNOS commits is committed through a foreign C binary that depends on two other C libraries the rest of the OS has already replaced first-party.
 

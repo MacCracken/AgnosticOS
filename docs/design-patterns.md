@@ -35,7 +35,7 @@ This is the layer that lets a cold reader in 2030 reconstruct *why* the decision
 - **hoosh 40 crates → 0, 70× compile.** Refused the Python-dominant-inference-stack era. Its scaffolding supports an ecosystem AGNOS isn't in.
 - **kavach 448 crates → 1, 500× sandbox lifecycle.** Refused pre-Landlock sandboxing (seccomp workarounds, cgroup isolation tricks). Dead once Landlock is a first-class primitive.
 - **ark 4× smaller than cargo.** Refused serde + format! + alloc/dealloc as the baseline dep-graph paradigm.
-- **AGNOS kernel 260 KB.** Refused Linux's decomposition, which carries driver models and device support spanning 30 years of hardware most users never touch.
+- **AGNOS kernel 248 KB at v1.26.1.** Refused Linux's decomposition, which carries driver models and device support spanning 30 years of hardware most users never touch.
 - **mabda v3 ~3× smaller API than wgpu.** Refused pre-2018 GPU hardware support. VMA's 20 K lines exist to support every GPU-memory combination since 2016. wgpu's 7 buffer variants carry DX9 / OpenGL shape that nothing new uses. 30-stage pipeline bitmask carries transform-feedback, conditional-rendering, and legacy fixed-function stages no modern workload hits.
 - **yantra in Cyrius stdlib — UI automation as a library, not an ecosystem.** Refused the inherited "UI automation is a third-party concern" default that Selenium, Playwright, Appium, Cypress, and Puppeteer all ride. Every other mainstream language draws its own boundary short of the pixel surface — Rust, Go, Zig, Swift, Python, JS all expect you to pull a separate registry dep when `.tcyr`-style tests need to drive a browser or a mobile device. The headline: ***"Every other language draws the line before what you can see. Cyrius draws it after."*** Stdlib-folded UI automation is the receipt; the refused inheritance is the entire ecosystem-as-governance-boundary pattern.
 - **Librarian role (§5).** Refused extending into applier — which inherits the scope-creep drift that kills every sovereignty project.
@@ -45,7 +45,7 @@ This is the layer that lets a cold reader in 2030 reconstruct *why* the decision
 
 The refusal move: **confirm what is actually alive; refuse to carry the rest.** You don't cut the 20 K-line allocator — you never write it, because the hardware it was supporting has been unplugged. You don't delete 40 Python crates — you never add them, because the Python inference era isn't what AGNOS is shipping into. You don't subtract systemd's compat layers — you never inherit them.
 
-The receipts — 14×, 10.8×, 500×, 59×, 4×, 260 KB, 29 KB, 3× smaller API — are not accomplishments. They are the *measurement of what AGNOS refused to support.* The number gets large when the thing being refused is large.
+The receipts — 14×, 10.8×, 500×, 59×, 4×, 248 KB, 29 KB, 3× smaller API — are not accomplishments. They are the *measurement of what AGNOS refused to support.* The number gets large when the thing being refused is large.
 
 **How to apply.** Before porting, writing, or designing anything: enumerate what the incumbent shape is keeping alive. For each item, ask *"is this actually alive in AGNOS's target world?"* If not, refuse to inherit it. The smaller API, fewer deps, faster builds, and cleaner scope fall out automatically. You aren't engineering subtraction — you are declining to inherit.
 
@@ -216,7 +216,7 @@ AGNOS runs the same way. Every subsystem, every API surface, every deletion — 
 - **kavach** is not "bubblewrap in Cyrius." It's a sandbox designed with Landlock as a first-class primitive rather than an afterthought. → 500× sandbox lifecycle, 448 crates → 1
 - **ark** is not "cargo in Cyrius." It's a package manager designed around bump allocator + str_builder instead of serde + format! + alloc/dealloc. → 4× smaller, 40× compile
 - **Cyrius** is not "C++ in Cyrius." It's C's successor designed after 50 years of watching what went wrong with the C family. → 29KB seed, zero deps, byte-identical self-host
-- **AGNOS kernel** is not "Linux in Cyrius." It's 260KB across 33 subsystems — a completely different decomposition of the kernel problem.
+- **AGNOS kernel** is not "Linux in Cyrius." It's 248KB across 33 subsystems — a completely different decomposition of the kernel problem.
 - **mabda v3** (in flight) is not "wgpu in Cyrius." It's a GPU API designed around a render-graph orchestrator, a modern hardware floor, and Cyrius idioms — dropping 20 years of Vulkan/legacy-device accretion.
 - **abaco** is not "GMP in Cyrius." It's a number-theory library designed to drive hardware-primitive feedback into the compiler (→ `u64_mulmod` intrinsic in Cyrius 4.8.5 → 12× end-to-end on Miller-Rabin).
 
@@ -238,7 +238,7 @@ AGNOS runs the same way. Every subsystem, every API surface, every deletion — 
 - **Bhava's compositional framework** — SY's YAML traits were already doing compositional-personality work before there was a name for it. Bhava formalized what the prototype was already proving out.
 - **Hadara as first Cyrius-native crate** — emerged from the port work as a natural first test case, not from a planned *"let's prove Cyrius-native on hadara"* roadmap item.
 - **abaco → Cyrius `u64_mulmod` feedback loop** — the abaco port surfaced a missing hardware primitive; Cyrius shipped the primitive; abaco re-measured ~12× end-to-end on Miller-Rabin. The optimization opportunity was received, not planned.
-- **The kernel going from zero to 260 KB in days** — not a *"plan for rapid kernel development."* A consequence of having a sovereign compiler ready and needing a kernel to run on it.
+- **The kernel going from zero to 248 KB in weeks (v1.26.1)** — not a *"plan for rapid kernel development."* A consequence of having a sovereign compiler ready and needing a kernel to run on it.
 
 **Why.** Projects that force their shape end up fighting themselves — every decision has to be defended against the shape instead of flowing with it. Projects that work with attention, noticing when something fits unexpectedly, compound faster: each happy accident reduces the next design's cost, because the structure has been quietly building itself. Bob Ross's "happy accidents": you weren't planning that cloud, but now that it's there, the painting is better. The discipline is *noticing* — and promoting the incidental-that-became-load-bearing to first-class, rather than leaving it as an incidental.
 

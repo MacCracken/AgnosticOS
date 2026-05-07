@@ -43,7 +43,7 @@ If they disagree, install the pinned version (`cyriusly install <version>`) or r
 
 ### `stdout` or `println` doesn't print
 
-You are calling raw `cc3` instead of `cyrius build`. Raw `cc3` does not auto-prepend stdlib includes. Always use:
+You are calling raw `cc5` (or its predecessor `cc3`) instead of `cyrius build`. Raw `cc5` does not auto-prepend stdlib includes. Always use:
 
 ```sh
 cyrius build <source.cyr> <output>
@@ -82,7 +82,7 @@ Common causes:
 
 ### `./build/boot --help` prints nothing
 
-The binary built but wasn't linked with stdlib. Re-run via `cyrius build` (not raw `cc3`).
+The binary built but wasn't linked with stdlib. Re-run via `cyrius build` (not raw `cc5`).
 
 ### `make boot` fails
 

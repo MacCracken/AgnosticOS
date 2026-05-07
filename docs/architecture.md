@@ -201,7 +201,7 @@ User Request -> agnoshi -> daimon -> Agent Process (kavach-sandboxed)
 ### Boot Flow
 
 ```
-AGNOS kernel (260KB, Cyrius-native)
+AGNOS kernel (248KB at v1.26.1, Cyrius-native)
   -> kybernet PID 1 (486KB)
   -> argonaut init sequence
   -> daimon agent runtime

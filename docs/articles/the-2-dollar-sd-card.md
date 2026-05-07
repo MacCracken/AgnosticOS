@@ -49,7 +49,7 @@ Moonshots are expensive, centralized, and fragile. This is a dandelion. The seed
 - Cyrius-compiled `kybernet` (PID 1, production v1.0.1) is **486KB** vs Rust's **6.7MB** — 14× smaller, with 140 tests and 46 benchmarks (the early-port prototype was 48KB / 81× — production carries the full feature surface)
 - The compiler self-hosts byte-identically from 29KB on x86_64 Linux, aarch64 Pi, and Apple Silicon Mach-O
 - Ten production ports ship with full receipts — Rust git tag + benchmark CSV preserved in every repo ([Port Ledger Volume 1](port-ledger-volume-1.md))
-- AGNOS kernel v1.22.0 boots — 260KB, 33 subsystems, 26 syscalls, hardened pass
+- AGNOS kernel v1.26.1 boots — 248KB, 33 subsystems, 26 syscalls, three hardening passes (14 buffer overflows found and fixed); structurally immune to Linux's CVE-2026-31431 by design (no AF_ALG / splice surface)
 
 **Not yet proven:**
 - The full desktop stack (aethersafha compositor, creative apps) under Cyrius

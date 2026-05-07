@@ -12,7 +12,7 @@
 > **read the plan, then resolve D1–D4 with Robert.**
 >
 > **May 1 V1 release** has passed. Per [`state.md`](state.md), kernel is at **1.26.1** (past the 1.22.x predicted in the original V1 line), Cyrius cut **v5.9.0** today (2026-05-06), and v5.10.x reservation holds the **AGNOS bare-metal target + RISC-V rv64 backend**. V1 status itself: verify against ISO/CI receipts before re-asserting in any public copy. Biweekly cadence through August DEF CON distribution (see [Near-Term Cadence](#near-term-cadence--may-1-v1-to-def-con)).
-> **Kernel 1.22.0 shipped** (2026-04-13) — 260KB, 33 subsystems, 26 syscalls, hardened pass.
+> **Kernel 1.26.1 shipped** (2026-04-28) — 248KB, 33 subsystems, 26 syscalls. Three hardening passes through the v1.22.0 (260KB) → v1.26.1 (248KB) progression. Replaced v1.26.0's CI-hygiene workaround with a real fix.
 > **Cyrius 5.7.0 shipped** (2026-04-25) — **THE SANDHI FOLD**. `lib/sandhi.cyr` adds (vendored byte-identical from sandhi v1.0.0, 376,037 B / 9,649 lines, 469 fns); `lib/http_server.cyr` deletes; sandhi repo enters maintenance mode per [ADR 0002](https://github.com/MacCracken/sandhi/blob/main/docs/adr/0002-clean-break-fold-at-cyrius-v5-7-0.md). Cyrius-side gates 1, 2, 3, 5, 6 ✅; gate 4 (downstream sweep) is separate user-organized work — only **vidya** actually `include`s `lib/http_server.cyr`; yantra and sit have orphan pre-fold copies (cleanup-only); the originally-listed `sit-remote`/`ark-remote` don't exist. v5.6.x closed at v5.6.45 on 2026-04-25 (45 patches — new longest-minor record). v5.6.0 opened the compiler-optimization arc on 2026-04-22 (**Phase O1** v5.6.0–v5.6.4 instrumentation + FNV-1a symbol hashing; **Phase O2** v5.6.11 partial strength reduction, flag-result reuse, push/pop elim, commutative + aarch64 combine-shuttle; **regalloc** v5.6.20–v5.6.24 default-on linear-scan; **closeout** v5.6.43 sigil 2.9.3 / sankoch 2.1.0 / output_buf 2MB).
 > **Multi-platform closed.** x86_64 Linux byte-identical; aarch64 Linux byte-identical on real Pi (stdlib shakedown v5.5.18); Apple Silicon Mach-O self-host closed (v5.5.17); Windows PE32+ native self-host byte-identical on real Windows 11 (v5.5.10). NSS/PAM real-fix arc shipped v5.5.23–v5.5.27; `lib/fdlopen.cyr` landed in v5.5.x arc. **v5.7.x shipped** sandhi-fold (lib/sandhi.cyr) + cyrius-ts P1–P10 across 51 patches in 36 days. **v5.8.x shipped** (2026-05-01 → 2026-05-05, 66 patches in 4 days) as a 3-phase cycle: Phase 1 (slots 1-8) closed the v5.8.0 audit (lint/fmt cap, f64_log2 polyfill, sys_stat/fstat backfill, _SC_ARITY cross-arch gate, NI-class dupe, cc5_aarch64 packaging + cyrc_check orphan); Phase 2 (slots 9-26) handled language vocabulary (var X; diagnostic, fmt --check exit code, vidya audit at v5.8.40); Phase 3 (slots 27-65) was the **stdlib foldin sweep** (sandhi-pattern continuation, vani audio at slot 1). **v5.9.0 opened** (2026-05-06) with niyama fold-in (8th sibling distfile, 5 regex engines). **v5.9.x scope** = catchup + fixes: consumer rollup of pin-lag tail, optimization-debt audit (O5/O6), dangling-item closeout (cyim→niyama integration, ESTORESTACKPARM held, cyrlint multi-line assert non-repro). **v5.10.x reserved**: AGNOS bare-metal target + RISC-V rv64 backend (both slipped from earlier cycles).
 > **ISO pipeline started** — Stage 0 (component verification) implemented: `make iso-check`. See `docs/development/iso-pipeline.md`.
@@ -160,7 +160,7 @@ Full milestone history lives in `cyrius/CLAUDE.md` + `cyrius/CHANGELOG.md`. Live
 | libro | 0.92.0 → 2.0.5 | **Done** | Audit chain |
 | argonaut | 0.90.0 → 1.2.0 | **Done** | Init system library |
 | kybernet | 0.51.0 → 1.0.1 | **Done** | PID 1 (14× smaller, 486KB) |
-| AGNOS kernel | — → 1.22.0 | **Done** | 260KB, 33 subsystems, Cyrius-native |
+| AGNOS kernel | — → 1.26.1 | **Done** | 248KB, 33 subsystems, 26 syscalls, Cyrius-native |
 | hoosh | 1.2.0 → 2.0.0 | **Done** | LLM gateway (10.8× smaller) |
 | ai-hwaccel | 1.0.0 → 2.0.0 | **Done** | GPU detection (3.3× smaller) |
 | avatara | 1.0.1 → 2.3.0 | **Done** | Archetype overlay (2,761× faster cached) |
@@ -204,7 +204,7 @@ Full details: [sprint-history.md](sprint-history.md#monolith-extraction--complet
 
 **This is the single most important remaining work.** Without it, AGNOS is a Debian overlay.
 
-**Previous blocker (CLEARED)**: kybernet Cyrius port. Dependency chain completed 2026-04-13: libro ✅ → argonaut ✅ → kybernet 1.0.1 ✅ → kernel 1.22.0 ✅ → boot pipeline (Cyrius, 56KB) ✅.
+**Previous blocker (CLEARED)**: kybernet Cyrius port. Dependency chain completed 2026-04-13: libro ✅ → argonaut ✅ → kybernet 1.0.1 ✅ → kernel 1.22.0 (later hardened to 1.26.1, 248KB) ✅ → boot pipeline (Cyrius, ~67KB) ✅.
 
 **Current work**: Sovereign boot pipeline active. Kernel boots in QEMU via `make boot-test`. Remaining items are self-hosting validation (can AGNOS rebuild itself from source without a host distro).
 
@@ -377,7 +377,7 @@ All subsystems are standalone repos at `/home/macro/Repos/{name}/`.
 
 | Name | Role | Repo | Version | Cyrius Port |
 |------|------|------|---------|-------------|
-| **agnos** | AGNOS kernel | `MacCracken/agnos` | 1.22.0 | **Native** |
+| **agnos** | AGNOS kernel | `MacCracken/agnos` | 1.26.1 | **Native** |
 | **cyrius** | Sovereign compiler | `MacCracken/cyrius` | 5.5.27 | **Native** |
 | **kybernet** | PID 1 binary | `MacCracken/kybernet` | 1.0.1 | **Done** |
 | **argonaut** | Init system (library) | `MacCracken/argonaut` | 1.2.0 | **Done** |
