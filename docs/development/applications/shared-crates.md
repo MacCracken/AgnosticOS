@@ -1,8 +1,8 @@
 # Shared Crates — Registry & Status
 
-> **Status**: Active | **Last Updated**: 2026-05-06
+> **Status**: Active | **Last Updated**: 2026-05-07
 >
-> **109 entries** — 83 at v1.0+ stable (75 libs + 6 binaries + **2 stdlib-folded** with niyama added v5.9.0), 20 pre-1.0 libs, 8 pre-1.0 binaries/tools, 10 non-library, 3 planned, plus the Audio I/O / Video Codec / GitHub-only sub-sections (overlap with the v1.0+/pre-1.0 counts above where applicable).
+> **110 entries** — 83 at v1.0+ stable (75 libs + 6 binaries + **2 stdlib-folded** with niyama added v5.9.0), 20 pre-1.0 libs, 10 pre-1.0 binaries/tools (chakshu / `shu` added 2026-05-07), 10 non-library, 3 planned, plus the Audio I/O / Video Codec / GitHub-only sub-sections (overlap with the v1.0+/pre-1.0 counts above where applicable).
 >
 > **Classification rule**: pre-v1.0 crates are tracked in [`docs/development/applications/`](README.md). v1.0+ stable crates have their docs in [`docs/applications/libs/`](../../applications/libs/) (libraries) or [`docs/applications/`](../../applications/) (consumer apps).
 > See [First-Party Standards](first-party-standards.md) for versioning and publishing conventions.
@@ -172,7 +172,7 @@ Full documentation for each library: [docs/applications/libs/](../../application
 
 ---
 
-## Binaries & Tools (pre-1.0, 9 entries)
+## Binaries & Tools (pre-1.0, 10 entries)
 
 | Binary | Version | Description | Depends On |
 |--------|---------|-------------|------------|
@@ -185,6 +185,7 @@ Full documentation for each library: [docs/applications/libs/](../../application
 | [agnova](https://github.com/MacCracken/agnova) | 0.1.0 | OS installer (Cyrius port from 3,656 Rust lines, base established) | ark, kavach |
 | [seema](https://github.com/MacCracken/seema) | 0.1.0 | Edge fleet management | daimon, bote |
 | [samay](https://github.com/MacCracken/samay) | 0.1.0 | Task scheduler | szal |
+| [chakshu](https://github.com/MacCracken/chakshu) | 0.1.0 | AI-augmented system monitor (Sanskrit चक्षु — *the eye*; binary `shu` — **S**ystem **H**ealth **U**tility, per ADR 0001). Cyrius-native, reads `/proc` directly. Replaces htop/btop Bazaar packages at v1.0; adds AI explanations via daimon/hoosh at M3+. | sandhi (M3), niyama (M3), daimon (M3) |
 
 ---
 
@@ -255,4 +256,4 @@ See [k8s-roadmap.md](../vision/architecture/k8s-roadmap.md) for stiva + nein + m
 
 ---
 
-*Last Updated: 2026-04-30*
+*Last Updated: 2026-05-07*
