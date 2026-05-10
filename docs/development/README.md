@@ -8,7 +8,7 @@
 |----------|-------------|
 | [roadmap.md](roadmap.md) | Master development roadmap — phases, blockers, release targets |
 | [state.md](state.md) | **Live ecosystem state** — Cyrius cycle, pin-lag, sweeps, carry-forward debt |
-| [doc-health.md](doc-health.md) | **Living doc-health ledger** — fresh / stale / archived / open-question buckets |
+| [doc-health.md](../doc-health.md) | **Living doc-health ledger** (relocated to `docs/doc-health.md` 2026-05-09 — sweeps the whole `docs/` tree, not just `development/`) |
 | [sprint-history.md](sprint-history.md) | Completed phase archive |
 | [monolith-extraction.md](monolith-extraction.md) | Extraction from monolith to standalone repos (complete) |
 | [summer-2026-arc.md](summer-2026-arc.md) | Summer 2026 narrative arc (DEF CON / Black Hat distribution beats) |
@@ -19,11 +19,11 @@
 
 | Document | Description |
 |----------|-------------|
-| [applications/shared-crates.md](applications/shared-crates.md) | Shared crate registry — full (incl. pre-1.0); refresh from state.md drift list |
-| [applications/first-party-standards.md](applications/first-party-standards.md) | Standards for all AGNOS projects |
-| [applications/first-party-documentation.md](applications/first-party-documentation.md) | Doc-tree standards (companion to first-party-standards.md) |
-| [applications/example_claude.md](applications/example_claude.md) | CLAUDE.md template for new projects |
-| [applications/roadmap.md](applications/roadmap.md) | Consumer application roadmap (forward planning, pre-v1) |
+| [planning/shared-crates.md](planning/shared-crates.md) | Shared crate registry — full (incl. pre-1.0); refresh from state.md drift list |
+| [planning/first-party-standards.md](planning/first-party-standards.md) | Standards for all AGNOS projects |
+| [planning/first-party-documentation.md](planning/first-party-documentation.md) | Doc-tree standards (companion to first-party-standards.md) |
+| [planning/example_claude.md](planning/example_claude.md) | CLAUDE.md template for new projects |
+| [planning/roadmap.md](planning/roadmap.md) | Consumer application roadmap (forward planning, pre-v1) |
 
 ## Guides
 
@@ -55,7 +55,7 @@ Future architecture, theoretical exploration, and long-range planning.
 | **vision/architecture/** | |
 | [k8s-roadmap.md](vision/architecture/k8s-roadmap.md) | Kubernetes-equivalent orchestration |
 | [network-evolution.md](vision/architecture/network-evolution.md) | TCP → QUIC → binary agent protocol |
-| *kernel-layers moved* → | [../architecture/kernel-layers.md](../architecture/kernel-layers.md) (shipped, no longer vision) |
+| *kernel-layers moved* → | [`docs/architecture.md` § Kernel Layers](../architecture.md#kernel-layers) (was `architecture/kernel-layers.md`; inlined 2026-05-09) |
 | **vision/applications/** | |
 | [holodeck.md](vision/applications/holodeck.md) | Immersive simulation architecture |
 | [time-machine.md](vision/applications/time-machine.md) | Temporal simulation engine |
@@ -70,4 +70,4 @@ Future architecture, theoretical exploration, and long-range planning.
 
 | Directory | Description |
 |-----------|-------------|
-| [os/](os/) | OS subsystems categorization map — repos + roles. Live versions in [state.md](state.md) and [shared-crates.md](applications/shared-crates.md). |
+| [os/](os/) | OS subsystems categorization map — repos + roles. Live versions in [state.md](state.md) and [shared-crates.md](planning/shared-crates.md). |

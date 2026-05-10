@@ -25,6 +25,7 @@ Each artifact answers a different question. Writing in the wrong layer is the mo
 | Source citation | `docs/sources/` or `docs/sources.md` | *Where does this algorithm/formula/constant come from?* |
 | Roadmap | `docs/development/roadmap.md` | *What's done, next, and future?* |
 | Current state snapshot | `docs/development/state.md` | *What's the live status right now (version, tests, blockers)?* |
+| Doc-health ledger | `docs/doc-health.md` | *Which docs are fresh / stale / archive / open-question, and when were they last touched?* (Lives at `docs/` root, not under `development/` — its scope is the whole `docs/` tree plus root files.) |
 | Completed milestones | `docs/development/completed-phases.md` or `sprint-history.md` | *What's already shipped, in chronological order?* |
 | Known issues / backlog | `docs/development/issues/` | *What's broken, deferred, or under investigation?* |
 | Process notes | `docs/development/process-notes.md` | *How does dev on this repo actually work day-to-day?* |
@@ -242,6 +243,7 @@ The home for *how the work happens on this repo*. Distinct from `docs/architectu
 **Added when earned**:
 
 - **`state.md`** — current live status snapshot. Cheap substitute for "what's going on right now?" Always reflects the tip of the branch — update it in the same PR that changes the state.
+- **`docs/doc-health.md`** (note: at `docs/` root, **not** under `development/`) — fresh / stale / archive / open-question ledger across the whole doc tree. Pattern parallels `state.md` (state.md = code-state ledger; doc-health.md = doc-state ledger). Refreshed in place when docs are touched. Worth scaffolding once a repo has more than ~30 docs or any meaningful drift surface; smaller repos can defer until the surface justifies it. Earn it before you create it — but the convention is the same wherever it lands: `> **Last refresh**: YYYY-MM-DD | **Refresh cadence**: ...` header, tier tables (root files / development / articles / etc.), buckets (✅ Fresh / 🟡 Stale / 🟠 Read-through / 🔵 Evergreen / 📦 Archive). **Location matters**: it goes at `docs/doc-health.md`, not `docs/development/doc-health.md` — the ledger sweeps the whole tree and the location should match the scope.
 - **`completed-phases.md`** — chronological record of shipped phases / sprints. Useful when `CHANGELOG.md` gets too dense to read at a glance.
 - **`sprint-history.md`** — time-bound dev log for repos that work in named sprints (genesis pattern).
 - **`issues/`** — one file per known-but-deferred issue. Complements the GitHub issue tracker when an issue needs durable, in-repo prose (design context, rejected fixes, invariants to preserve).
@@ -447,6 +449,7 @@ Quick reference for when an agent is about to write the wrong kind of doc:
 | *"This formula comes from Paper P"* | source citation (inline + `docs/sources.md`) |
 | *"What's shipped, next, and future"* | `docs/development/roadmap.md` |
 | *"What's the current status right now"* | `docs/development/state.md` |
+| *"Which docs are fresh / stale / archive"* | `docs/doc-health.md` (whole-tree ledger; lives at `docs/` root, not under `development/`) |
 | *"What's already shipped, chronologically"* | `docs/development/completed-phases.md` or `sprint-history.md` |
 | *"Here's a deferred bug with design context"* | `docs/development/issues/*.md` |
 | *"How the work actually happens on this repo"* | `docs/development/process-notes.md` |
@@ -478,4 +481,4 @@ When in doubt, default to the smaller / more specific layer and let it graduate 
 
 ---
 
-*Last Updated: 2026-04-23*
+*Last Updated: 2026-05-09 (doc-health.md convention codified — small-repo scaffolding guidance + correct location)*

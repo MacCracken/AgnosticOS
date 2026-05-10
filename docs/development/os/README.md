@@ -2,7 +2,7 @@
 
 > **Last Updated**: 2026-05-06 (Version columns removed — defer to live registries)
 >
-> Every OS-level subsystem in AGNOS. Each is a standalone repo at `github.com/MacCracken/{name}` and locally at `/home/macro/Repos/{name}/`. The repo's own `CLAUDE.md` is the authoritative source for each subsystem's behavior; live version + cycle state lives in [`docs/development/state.md`](../state.md); the full versioned registry lives in [`shared-crates.md`](../applications/shared-crates.md).
+> Every OS-level subsystem in AGNOS. Each is a standalone repo at `github.com/MacCracken/{name}` and locally at `/home/macro/Repos/{name}/`. The repo's own `CLAUDE.md` is the authoritative source for each subsystem's behavior; live version + cycle state lives in [`docs/development/state.md`](../state.md); the full versioned registry lives in [`shared-crates.md`](../planning/shared-crates.md).
 >
 > This file is the **categorization map** — what subsystems exist and what role each plays. Versions were previously inlined here and drifted; per the lib-doc precedent (2026-05-06 audit), version columns are stripped to remove drift surface.
 
@@ -121,4 +121,4 @@
 
 Detailed dev docs for in-progress subsystems: [aegis](aegis.md), [aethersafha](aethersafha.md), [agnova](agnova.md), [ark](ark.md), [mela](mela.md), [nous](nous.md), [phylax](phylax.md), [samay](samay.md), [seema](seema.md), [takumi](takumi.md), [zugot](zugot.md).
 
-Stable crate profiles: [`docs/os/README.md`](../../os/README.md). Shared libraries: [`shared-crates.md`](../applications/shared-crates.md).
+Stable subsystem overview: [`docs/architecture.md` § Named Subsystems](../../architecture.md#named-subsystems). Full crate registry: [`shared-crates.md`](../planning/shared-crates.md).

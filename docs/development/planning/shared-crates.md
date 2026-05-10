@@ -1,15 +1,15 @@
 # Shared Crates — Registry & Status
 
-> **Status**: Active | **Last Updated**: 2026-05-07
+> **Status**: Active | **Last Updated**: 2026-05-09
 >
-> **109 entries** — 83 at v1.0+ stable (75 libs + 6 binaries + **2 stdlib-folded** with niyama added v5.9.0), 20 pre-1.0 libs, 10 pre-1.0 binaries/tools (chakshu / `shu` added 2026-05-07), 9 non-library, 3 planned, plus the Audio I/O / Video Codec / GitHub-only sub-sections (overlap with the v1.0+/pre-1.0 counts above where applicable).
+> **111 entries** — 84 at v1.0+ stable (75 libs + 7 binaries + **2 stdlib-folded** with niyama added v5.9.0; cyim-lsp added 2026-05-09), 21 pre-1.0 libs (darshana added 2026-05-09 — TTY/raw-mode primitives extracted from cyim), 10 pre-1.0 binaries/tools (chakshu / `shu` added 2026-05-07), 9 non-library, 3 planned, plus the Audio I/O / Video Codec / GitHub-only sub-sections (overlap with the v1.0+/pre-1.0 counts above where applicable).
 >
-> **Classification rule**: pre-v1.0 crates are tracked in [`docs/development/applications/`](README.md). v1.0+ stable crates have their docs in [`docs/applications/libs/`](../../applications/libs/) (libraries) or [`docs/applications/`](../../applications/) (consumer apps).
+> **Classification rule**: pre-v1.0 crates are tracked in [`docs/development/planning/`](README.md). v1.0+ stable crates have their docs in [`docs/applications/libs/`](../../applications/libs/) (libraries) or [`docs/applications/`](../../applications/) (consumer apps).
 > See [First-Party Standards](first-party-standards.md) for versioning and publishing conventions.
 
 ---
 
-## v1.0+ Stable Index (83 entries)
+## v1.0+ Stable Index (84 entries)
 
 Full documentation for each library: [docs/applications/libs/](../../applications/libs/README.md). Consumer apps live one level up at [docs/applications/](../../applications/README.md).
 
@@ -18,8 +18,8 @@ Full documentation for each library: [docs/applications/libs/](../../application
 | Crate | Version | Domain |
 |-------|---------|--------|
 | agnosai | 1.1.0 | AI orchestration |
-| agnostik | 1.0.0 | Shared types & domain primitives (Cyrius, GitHub-release only) — foundation for all AGNOS crates |
-| agnosys | 1.0.4 | Kernel interface — Landlock, seccomp, syscall bindings (Cyrius, GitHub-release only) |
+| agnostik | 1.2.0 | Shared types & domain primitives (Cyrius, GitHub-release only) — foundation for all AGNOS crates |
+| agnosys | 1.2.1 | Kernel interface — Landlock, seccomp, syscall bindings (Cyrius, GitHub-release only) |
 | ai-hwaccel | 2.0.0 | GPU detection |
 | bote | 2.5.1 | MCP core (~5us/message, streamable HTTP) |
 | daimon | 1.1.4 | Agent orchestrator (144 MCP tools, GitHub-release only) |
@@ -34,12 +34,12 @@ Full documentation for each library: [docs/applications/libs/](../../application
 | phylax | 1.1.0 | Threat detection — YARA, entropy, magic bytes, ML |
 | sakshi | 2.2.3 | Tracing, error handling, structured logging (Cyrius-native) |
 | sankoch | 2.2.4 | Lossless compression — LZ4, DEFLATE, zlib, gzip |
-| sigil | 3.0.1 | Trust verification & crypto — AES-NI + SHA-NI hardware accel |
+| sigil | 3.1.0 | Trust verification & crypto — AES-NI + SHA-NI hardware accel |
 | soorat | 1.0.0 | GPU rendering |
 | stiva | 2.0.0 | Container runtime |
 | szal | 1.1.0 | Workflow engine |
 | t-ron | 2.0.0 | MCP security |
-| vidya | 2.6.4 | Programming reference |
+| vidya | 2.7.0 | Programming reference |
 | yukti | 2.2.2 | Device abstraction (USB, block, udev) |
 
 ### Science & Knowledge (27 crates)
@@ -105,7 +105,7 @@ Full documentation for each library: [docs/applications/libs/](../../application
 |-------|---------|--------|
 | raasta | 1.0.0 | Pathfinding |
 | varna | 1.0.0 | Multilingual language engine |
-| vyakarana | 1.0.2 | Source-code grammar + tokenizer (Cyrius-native, ten-kind palette, CYML grammars) |
+| vyakarana | 2.2.1 | Source-code grammar + tokenizer (Cyrius-native, ten-kind palette, CYML grammars) |
 
 ### Physics & Engineering (6 crates)
 
@@ -118,22 +118,23 @@ Full documentation for each library: [docs/applications/libs/](../../application
 | tanmatra | 1.2.1 | Atomic physics |
 | ushma | 1.3.0 | Thermodynamics |
 
-### Binaries & Tools (6 crates)
+### Binaries & Tools (7 crates)
 
 | Crate | Version | Domain |
 |-------|---------|--------|
 | [agnoshi](https://github.com/MacCracken/agnoshi) | 1.0.0 | AI shell (Cyrius) — depends on hoosh, daimon |
 | [argonaut](https://github.com/MacCracken/argonaut) | 1.5.0 | Init system library (Cyrius) — depends on agnosys |
-| [cyim](https://github.com/MacCracken/cyim) | 1.2.1 | Sovereign modal text editor (Cyrius-native, VIM-inspired, zero attack surface, no embedded scripting). Consumes vyakarana + niyama (regex via stdlib fold v5.9.0); consumers: agnoshi, aethersafha, daimon-orchestrated agents (the AI-agent edit loop closes through cyim). |
+| [cyim](https://github.com/MacCracken/cyim) | 1.6.7 | Sovereign modal text editor (Cyrius-native, VIM-inspired, zero attack surface, no embedded scripting). Consumes vyakarana + niyama (regex via stdlib fold v5.9.0); consumers: agnoshi, aethersafha, daimon-orchestrated agents (the AI-agent edit loop closes through cyim). |
+| [cyim-lsp](https://github.com/MacCracken/cyim-lsp) | 1.5.0 | Language Server Protocol companion to cyim (Cyrius-native). Editor-agnostic LSP backend serving cyim's grammar/regex/symbol surfaces over LSP. |
 | [kybernet](https://github.com/MacCracken/kybernet) | 1.0.2 | PID 1 init binary (486KB, Cyrius, 140 tests) — depends on argonaut |
 | [nous](https://github.com/MacCracken/nous) | 1.1.2 | Package resolver (Cyrius) |
-| [owl](https://github.com/MacCracken/owl) | 1.1.9 | Watchful file viewer — `cat`/`bat` replacement (Cyrius-native, **O**bservant **W**atcher of **L**ines). `-p` byte-identical cat drop-in; decorated mode adds token highlighting + VCS gutter + paging. Consumes vyakarana for tokenization. |
+| [owl](https://github.com/MacCracken/owl) | 1.3.6 | Watchful file viewer — `cat`/`bat` replacement (Cyrius-native, **O**bservant **W**atcher of **L**ines). `-p` byte-identical cat drop-in; decorated mode adds token highlighting + VCS gutter + paging. Consumes vyakarana for tokenization. |
 
 ### Stdlib-Folded (2 crates)
 
 | Crate | Version | Domain |
 |-------|---------|--------|
-| [sandhi](https://github.com/MacCracken/sandhi) | 1.1.0 | Service-boundary layer (HTTP client+server, HTTP/2, streaming, JSON-RPC, service discovery, TLS policy). **Folded into Cyrius stdlib at v5.7.0** as `lib/sandhi.cyr` (vendored byte-identical, 376,037 B / 9,649 lines / 469 fns). Sandhi repo entered maintenance mode per [ADR 0002](https://github.com/MacCracken/sandhi/blob/main/docs/adr/0002-clean-break-fold-at-cyrius-v5-7-0.md); subsequent surface patches land via Cyrius release cycle. |
+| [sandhi](https://github.com/MacCracken/sandhi) | 1.3.0 | Service-boundary layer (HTTP client+server, HTTP/2, streaming, JSON-RPC, service discovery, TLS policy). **Folded into Cyrius stdlib at v5.7.0** as `lib/sandhi.cyr` (vendored byte-identical, 376,037 B / 9,649 lines / 469 fns). Sandhi repo entered maintenance mode per [ADR 0002](https://github.com/MacCracken/sandhi/blob/main/docs/adr/0002-clean-break-fold-at-cyrius-v5-7-0.md); subsequent surface patches land via Cyrius release cycle. |
 | [niyama](https://github.com/MacCracken/niyama) | 1.0.1 | Regex engines — bre / re2 / pcre / fuzzy / vim. **Folded into Cyrius stdlib at v5.9.0** as `lib/niyama.cyr` (vendored byte-identical, 6,664 lines / 7 modules: posix_classes, unicode_props, bre, re2, pcre, fuzzy, vim). Multi-consumer gate met by cyim (#1) + queued AGNOS bare-metal kernel (#2 → v5.10.x trigger). Public API frozen per [niyama ADR 0010](https://github.com/MacCracken/niyama); fold pattern documented in [niyama ADR 0011](https://github.com/MacCracken/niyama). |
 
 ---
@@ -168,7 +169,8 @@ Full documentation for each library: [docs/applications/libs/](../../application
 | [kshetra](https://github.com/MacCracken/kshetra) | 0.1.0 | Temporal geography — spatiotemporal database | itihas, badal, khanij, vanaspati |
 | [leela](https://github.com/MacCracken/leela) | 0.1.0 | Sport — rules, athletes, tournaments, records | hadara, itihas, avatara, jnana |
 | [nyaya](https://github.com/MacCracken/nyaya) | 0.1.0 | Structured legal knowledge — statutes, precedents, IP | hadara, itihas, jnana |
-| [sit](https://github.com/MacCracken/sit) | 0.7.2 | Sovereign version control — Cyrius-native git replacement (smriti, स्मृति — memory). Deps: sankoch (compression), sigil (hashing), patra (object store). No libgit2, no C, no FFI. | end user, owl (git-marker integration), ark |
+| [darshana](https://github.com/MacCracken/darshana) | 0.2.0 | TTY/raw-mode primitives (Sanskrit दर्शन — *viewing/showing*). Linux termios + ANSI + cursor positioning + alt-screen. Extracted from cyim's `src/tty.cyr` once chakshu became a second consumer. **Not a TUI framework** — just the syscalls and escape sequences below the framework. | cyim, chakshu |
+| [sit](https://github.com/MacCracken/sit) | 0.7.6 | Sovereign version control — Cyrius-native git replacement (smriti, स्मृति — memory). Deps: sankoch (compression), sigil (hashing), patra (object store). No libgit2, no C, no FFI. | end user, owl (git-marker integration), ark |
 
 ---
 
@@ -179,13 +181,13 @@ Full documentation for each library: [docs/applications/libs/](../../application
 | [shakti](https://github.com/MacCracken/shakti) | 0.2.2 | Privilege escalation (`sudo` replacement) | agnosys, sigil |
 | [ark](https://github.com/MacCracken/ark) | 0.8.0 | Package manager (Cyrius) | nous, sigil |
 | [takumi](https://github.com/MacCracken/takumi) | 0.8.0 | Build system — Cyrius port in progress (toolchain pinned 5.5.23; `rust-old/` authoritative until parity) | sigil |
-| [aegis](https://github.com/MacCracken/aegis) | 0.1.0 | Security daemon | sigil, phylax |
+| [aegis](https://github.com/MacCracken/aegis) | 0.8.2 | Security daemon — graduated from 0.1.0 scaffold during v5.9.x | sigil, phylax |
 | [aethersafha](https://github.com/MacCracken/aethersafha) | 0.1.0 | Wayland compositor | aethersafta, mabda |
 | [mela](https://github.com/MacCracken/mela) | 0.1.0 | Agent marketplace | daimon, sigil |
 | [agnova](https://github.com/MacCracken/agnova) | 0.1.0 | OS installer (Cyrius port from 3,656 Rust lines, base established) | ark, kavach |
 | [seema](https://github.com/MacCracken/seema) | 0.1.0 | Edge fleet management | daimon, bote |
 | [samay](https://github.com/MacCracken/samay) | 0.1.0 | Task scheduler | szal |
-| [chakshu](https://github.com/MacCracken/chakshu) | 0.1.0 | AI-augmented system monitor (Sanskrit चक्षु — *the eye*; binary `shu` — **S**ystem **H**ealth **U**tility, per ADR 0001). Cyrius-native, reads `/proc` directly. Replaces htop/btop Bazaar packages at v1.0; adds AI explanations via daimon/hoosh at M3+. | sandhi (M3), niyama (M3), daimon (M3) |
+| [chakshu](https://github.com/MacCracken/chakshu) | 0.2.0 | AI-augmented system monitor (Sanskrit चक्षु — *the eye*; binary `shu` — **S**ystem **H**ealth **U**tility, per ADR 0001). Cyrius-native, reads `/proc` directly. Replaces htop/btop Bazaar packages at v1.0; adds AI explanations via daimon/hoosh at M3+. | sandhi (M3), niyama (M3), daimon (M3) |
 
 ---
 
@@ -255,4 +257,4 @@ See [k8s-roadmap.md](../vision/architecture/k8s-roadmap.md) for stiva + nein + m
 
 ---
 
-*Last Updated: 2026-05-07*
+*Last Updated: 2026-05-09*

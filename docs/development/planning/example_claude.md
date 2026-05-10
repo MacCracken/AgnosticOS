@@ -1,6 +1,6 @@
 # {Project} — Claude Code Instructions
 
-> **Template**: copy to a new repo as `CLAUDE.md` and fill in the `{placeholders}`. Reference implementation: [cyrius/CLAUDE.md](https://github.com/MacCracken/cyrius/blob/main/CLAUDE.md) (CLAUDE.md gold standard — durable content only). Structure per [first-party-documentation.md § CLAUDE.md](https://github.com/MacCracken/agnosticos/blob/main/docs/development/applications/first-party-documentation.md#claudemd).
+> **Template**: copy to a new repo as `CLAUDE.md` and fill in the `{placeholders}`. Reference implementation: [cyrius/CLAUDE.md](https://github.com/MacCracken/cyrius/blob/main/CLAUDE.md) (CLAUDE.md gold standard — durable content only). Structure per [first-party-documentation.md § CLAUDE.md](https://github.com/MacCracken/agnosticos/blob/main/docs/development/planning/first-party-documentation.md#claudemd).
 >
 > **Core rule**: this file is **preferences, process, and procedures** — durable rules that change rarely. Volatile state (current version, binary sizes, test counts, in-flight work, consumers, verification hosts) lives in [`docs/development/state.md`](docs/development/state.md), bumped every release. Do not inline state here — inlined state rots within a minor.
 
@@ -15,8 +15,8 @@
 - **Language**: Cyrius (toolchain pinned in `cyrius.cyml [package].cyrius`, currently `{X.Y.Z}`)
 - **Version**: `VERSION` at the project root is the source of truth — do not inline the number here
 - **Genesis repo**: [agnosticos](https://github.com/MacCracken/agnosticos)
-- **Standards**: [First-Party Standards](https://github.com/MacCracken/agnosticos/blob/main/docs/development/applications/first-party-standards.md) · [First-Party Documentation](https://github.com/MacCracken/agnosticos/blob/main/docs/development/applications/first-party-documentation.md)
-- **Shared crates**: [shared-crates.md](https://github.com/MacCracken/agnosticos/blob/main/docs/development/applications/shared-crates.md)
+- **Standards**: [First-Party Standards](https://github.com/MacCracken/agnosticos/blob/main/docs/development/planning/first-party-standards.md) · [First-Party Documentation](https://github.com/MacCracken/agnosticos/blob/main/docs/development/planning/first-party-documentation.md)
+- **Shared crates**: [shared-crates.md](https://github.com/MacCracken/agnosticos/blob/main/docs/development/planning/shared-crates.md)
 
 ## Goal
 
@@ -33,7 +33,7 @@ Example shape: "Own the database. Zero deps. Pure Cyrius. SQL + B-tree + JSONL i
 > Historical release narrative lives in
 > [`docs/development/completed-phases.md`](docs/development/completed-phases.md).
 
-This file (`CLAUDE.md`) is durable rules. See [first-party-documentation § CLAUDE.md](https://github.com/MacCracken/agnosticos/blob/main/docs/development/applications/first-party-documentation.md#claudemd) for what belongs where.
+This file (`CLAUDE.md`) is durable rules. See [first-party-documentation § CLAUDE.md](https://github.com/MacCracken/agnosticos/blob/main/docs/development/planning/first-party-documentation.md#claudemd) for what belongs where.
 
 ## Scaffolding
 
@@ -108,7 +108,7 @@ CYRIUS_DCE=1 cyrius build ...                    # dead-code-eliminated release 
 
 ### Security Hardening (before every release)
 
-Every project runs a security audit pass before release — see [first-party-standards § Security Hardening](https://github.com/MacCracken/agnosticos/blob/main/docs/development/applications/first-party-standards.md#security-hardening-new--required-before-every-release) for the full list. Minimum:
+Every project runs a security audit pass before release — see [first-party-standards § Security Hardening](https://github.com/MacCracken/agnosticos/blob/main/docs/development/planning/first-party-standards.md#security-hardening-new--required-before-every-release) for the full list. Minimum:
 
 1. **Input validation** — every function accepting external data validates bounds, types, ranges
 2. **Buffer safety** — every `var buf[N]` verified; N is **bytes**, max access < N, no adjacent-variable overflow
@@ -190,7 +190,7 @@ Run a closeout pass before tagging `X.Y.0` or `X.0.0`. Ship as the last patch of
 
 New quirks and constraints land in `docs/architecture/` as numbered items (`NNN-kebab-case.md`). New decisions land in `docs/adr/` using [`template.md`](docs/adr/template.md). **Never renumber either series.**
 
-Full doc-tree convention: [first-party-documentation.md](https://github.com/MacCracken/agnosticos/blob/main/docs/development/applications/first-party-documentation.md).
+Full doc-tree convention: [first-party-documentation.md](https://github.com/MacCracken/agnosticos/blob/main/docs/development/planning/first-party-documentation.md).
 
 ## Documentation Structure
 
@@ -247,4 +247,4 @@ Thumbs.db
 
 ## CHANGELOG Format
 
-Follow [Keep a Changelog](https://keepachangelog.com/). Performance claims **must** include benchmark numbers. Breaking changes get a **Breaking** section with migration guide. Security fixes get a **Security** section with CVE references where applicable. See [first-party-documentation § CHANGELOG](https://github.com/MacCracken/agnosticos/blob/main/docs/development/applications/first-party-documentation.md#changelog) for the full conventions.
+Follow [Keep a Changelog](https://keepachangelog.com/). Performance claims **must** include benchmark numbers. Breaking changes get a **Breaking** section with migration guide. Security fixes get a **Security** section with CVE references where applicable. See [first-party-documentation § CHANGELOG](https://github.com/MacCracken/agnosticos/blob/main/docs/development/planning/first-party-documentation.md#changelog) for the full conventions.
