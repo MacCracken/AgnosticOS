@@ -164,13 +164,15 @@ For context: GCC is ~100MB, Clang/LLVM is ~500MB.
 
 ### Since This Was Written
 
-**Refreshed 2026-05-06 — five weeks past this article's original Day-4 cut.** The numbers above are that Day-4 snapshot; the numbers below are current. Rewrite-in-place per [*Docs Go Stale Before the Commit*](docs-go-stale-before-the-commit.md) — git history is authoritative for prior figures.
+**Refreshed 2026-05-09 — five-and-a-bit weeks past this article's original Day-4 cut.** The numbers above are that Day-4 snapshot; the numbers below are current. Rewrite-in-place per [*Docs Go Stale Before the Commit*](docs-go-stale-before-the-commit.md) — git history is authoritative for prior figures.
 
-- **Cyrius v5.9.0** — cc5 at 741,048 B self-hosting compiler on Linux x86_64; multi-platform closed (aarch64, Windows PE32+, Apple Silicon Mach-O) — all bootstrapping byte-identically from the same 29 KB seed.
+- **Cyrius v5.10.24** — cc5 at **783,408 B** self-hosting compiler on Linux x86_64; multi-platform closed (aarch64, Windows PE32+, Apple Silicon Mach-O) — all bootstrapping byte-identically from the same 29 KB seed.
 - **AGNOS kernel v1.26.1** — 248 KB, 33 subsystems, 26 syscalls, three hardening passes (14 buffer overflows found and fixed).
-- **Optimization arc shipped through v5.8.x** — Phase O1 (FNV-1a hashing) and O2 (five peephole categories) closed in v5.6.x; O3a IR instrumentation landed v5.6.12; O4a/b/c register-allocation incl. Poletto-Sarkar linear-scan picker shipped through v5.7.x and v5.8.x; O5/O6 (codebuf compaction with NOP harvest) referenced through v5.8.x with status sweep pending in v5.9.x.
+- **Optimization arc shipped through v5.8.x** — Phase O1 (FNV-1a hashing) and O2 (five peephole categories) closed in v5.6.x; O3a IR instrumentation landed v5.6.12; O4a/b/c register-allocation incl. Poletto-Sarkar linear-scan picker shipped through v5.7.x and v5.8.x; O5/O6 (codebuf compaction with NOP harvest) referenced through v5.8.x.
 - **Stdlib-fold pattern compounded three times** — sandhi (v5.7.0, service-boundary, 376 KB / 469 fns), vani (v5.8.0, audio I/O), niyama (v5.9.0, 5 regex engines / 6,664 lines). Each fold is a multi-consumer-gated maturation of a sibling distfile into the canonical stdlib `lib/`.
-- **v5.9.x is the catchup arc** — consumer rollup, optimization-debt audit, ESTORESTACKPARM and dangling-item closeout — leaving v5.10.x clean for AGNOS bare-metal target + RISC-V rv64 backend (both slipped from earlier cycles as foldin work compounded).
+- **v5.9.x catchup arc closed 2026-05-08** — 44 patches in 3 days. Consumer-rollup collapsed pin-lag bands (agnosys / vyakarana / sandhi / cyim / agnostik / owl all rolled forward); aegis graduated 0.1.0 → 0.8.2; **darshana** (TTY/raw-mode primitives) extracted from cyim when chakshu became second consumer.
+- **v5.10.x REAL TYPE SYSTEM arc — active.** Opened 2026-05-08 with per-phase compile-time profiling instrumentation (v5.10.0); pivoted at v5.10.5 to type vocabulary (cstring / Result / Option / Tagged); Phase 2 call-site type checking landed v5.10.24. **24 patches in 2 days.** cc5 size grew +42 KB (741 KB → 783 KB) from instrumentation + type-vocabulary annotations + call-site checking machinery.
+- **Bare-metal + RISC-V rv64 reservation slipped to v5.12.x** (was v5.10 → v5.11 → v5.12). v5.11.x reserved for type-system testing suite + agnosys-agent-surfaced bug sweep.
 
 The "young language" framing in this article is the honest one. The sprint that closes the remaining compute gaps has been operating continuously since this was written.
 
@@ -179,7 +181,7 @@ The "young language" framing in this article is the honest one. The sprint that 
 - **v5.5.x** closed at v5.5.40 on April 22 (40 patches, NSS/PAM real-fix arc, u64-hashmap rewrite, AES-NI alignment fix that unblocked sigil, `lib/fdlopen.cyr` shim, 19/19 check-gate pass).
 - **v5.8.x** ran 66 patches across 4 days (2026-05-01 → 2026-05-05) as a 3-phase cycle: Phase 1 (slots 1-8) closed the v5.8.0 audit (lint/fmt cap, f64_log2 polyfill, sys_stat/fstat backfill, _SC_ARITY cross-arch gate, NI-class dupe, cc5_aarch64 packaging); Phase 2 (slots 9-26) handled language vocabulary (var X; diagnostic, fmt --check exit code, vidya audit); Phase 3 (slots 27-65) was the stdlib foldin sweep continuing the sandhi pattern. **66-in-4-days is the velocity high-water mark.**
 
-That cadence — 40 patches to close one minor, 66 patches in the next four days, then niyama opening v5.9.x on day 5 — is the sovereignty thesis operationalized. A seed that fits on a QR sticker also ships this.
+That cadence — 40 patches to close one minor, 66 patches in the next four days, then niyama opening v5.9.x on day 5, then 44 patches in 3 days to close v5.9.x, then 24 patches in 2 days to land Phase 2 of REAL TYPE SYSTEM at v5.10.24 — is the sovereignty thesis operationalized. A seed that fits on a QR sticker also ships this.
 
 Full head-to-head benchmarks on real crate conversions: [Cyrius vs Rust Benchmarks](cyrius-vs-rust-benchmarks.md). The 10-port ledger: [Port Ledger Volume 1](port-ledger-volume-1.md).
 

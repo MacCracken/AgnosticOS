@@ -1,7 +1,7 @@
 # AGNOS Design Patterns
 
 > **Status**: Outline / accretion document — pending GA retrospective.
-> **Last Updated**: 2026-04-20
+> **Last Updated**: 2026-05-09 (date bump only — vani-fold / niyama-fold / Om-cyclone patterns already present from prior stages; absence-by-design pattern from CVE-2026-31431 still gated on host-defconfig pinning per `development/state.md`)
 > **Purpose**: Document the recurring cognitive patterns behind AGNOS decisions — the through-lines that produced many specific choices across many repos. This is the *interpretation* layer.
 
 ## What This Doc Is (And Isn't)

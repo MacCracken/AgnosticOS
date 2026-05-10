@@ -1,7 +1,7 @@
 # AGNOS System Requirements
 
 > Minimum and recommended hardware for running AGNOS across all profiles.
-> Last Updated: 2026-04-20
+> Last Updated: 2026-05-09
 >
 > **Pre-Beta note:** AGNOS is not yet installable as an end-user OS. These figures are the **targets** for the Phase 13A ISO. For what is buildable and testable today, see [README.md](README.md).
 
@@ -98,8 +98,8 @@ Minimal footprint for embedded devices — fleet management, OTA updates, teleme
 | ARM64 (AArch64) | Full support | Cyrius cross-compiler + native Pi self-host byte-identical (v5.3.15+) |
 | Apple Silicon (Mach-O) | Compiler toolchain only | Cyrius self-hosts byte-identically on M-series (v5.3.13); AGNOS kernel targets Linux ABI |
 | Windows PE32+ | Compiler toolchain only | Cyrius native self-host byte-identical on real Windows 11 (v5.5.10) |
-| RISC-V (rv64) | Queued | Cyrius v5.7.0 — see [development/roadmap.md](../development/roadmap.md) |
-| Bare-metal (no host OS) | Queued | Cyrius v5.8.0 |
+| RISC-V (rv64) | Queued | Cyrius **v5.12.x** (slipped from v5.7 → v5.10 → v5.11 → v5.12 as foldin + type-system work compounded) |
+| Bare-metal (no host OS) | Queued | Cyrius **v5.12.x** (paired with rv64 for the closed-beta self-hosting gate) |
 | x86 (32-bit) | Not supported | No kernel configs, no recipes |
 | ARM (32-bit) | Not supported | Out of scope |
 

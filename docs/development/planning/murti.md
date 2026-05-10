@@ -475,4 +475,4 @@ Exploit neuron activation locality to run large models (40B–175B) on consumer 
 
 ---
 
-*Last Updated: 2026-03-24*
+*Last Updated: 2026-03-24. Verified 2026-05-09: design intent unchanged; murti at 0.1.0 scaffold per [`shared-crates.md`](shared-crates.md). Consumer dependencies all at v1.0+ stable (hoosh 2.0.0, ifran 1.3.0, ai-hwaccel 2.0.0).*

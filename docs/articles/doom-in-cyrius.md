@@ -71,15 +71,17 @@ Cyrius doesn't just run DOOM. It rewrites DOOM smaller, hardens it against its o
 
 ## Since This Was Written
 
-The numbers above are the April 8–13 cut. Refreshed 2026-05-06.
+The numbers above are the April 8–13 cut. Refreshed 2026-05-09.
 
-**Cyrius v5.9.0** — cc5 at 741,048 B self-hosting compiler; multi-platform closed (x86_64 Linux, aarch64 Linux, Apple Silicon Mach-O, Windows PE32+) — all bootstrapping byte-identically from the same 29 KB seed. The "compiler keeps improving under it" pattern from sprint 2 hasn't stopped — it's the operating mode.
+**Cyrius v5.10.24** — cc5 at 783,408 B self-hosting compiler; multi-platform closed (x86_64 Linux, aarch64 Linux, Apple Silicon Mach-O, Windows PE32+) — all bootstrapping byte-identically from the same 29 KB seed. The "compiler keeps improving under it" pattern from sprint 2 hasn't stopped — it's the operating mode. Five weeks past this article's day-zero cut, the compiler has shipped through three more minors (v5.8.x → v5.9.x → v5.10.x).
 
-**Optimization arc shipped through v5.8.x.** Phase O1 (instrumentation + FNV-1a hashing) v5.6.0–v5.6.4. Phase O2 (five peephole categories) closed v5.6.11. Phase O3a IR instrumentation landed v5.6.12. Linear-scan regalloc shipped default-on v5.6.20–v5.6.24. Phase O4a/b/c register-allocation incl. Poletto-Sarkar linear-scan picker shipped through v5.7.x and v5.8.x. Phase O5/O6 (codebuf compaction with NOP harvest) referenced through v5.8.x; status sweep pending in v5.9.x.
+**Optimization arc shipped through v5.8.x.** Phase O1 (instrumentation + FNV-1a hashing) v5.6.0–v5.6.4. Phase O2 (five peephole categories) closed v5.6.11. Phase O3a IR instrumentation landed v5.6.12. Linear-scan regalloc shipped default-on v5.6.20–v5.6.24. Phase O4a/b/c register-allocation incl. Poletto-Sarkar linear-scan picker shipped through v5.7.x and v5.8.x. Phase O5/O6 (codebuf compaction with NOP harvest) referenced through v5.8.x; status sweep deferred to v5.11.x triage.
 
 **Stdlib-fold pattern compounded three times** — sandhi (v5.7.0, service-boundary, 376 KB / 469 fns), vani (v5.8.0, audio I/O), niyama (v5.9.0, 5 regex engines). Each fold matures a sibling distfile into the canonical stdlib `lib/` once a multi-consumer gate is met.
 
-**For DOOM specifically.** cyrius-doom is at v0.26.2, still pinned to Cyrius 5.7.48 — held with the v5.7.48 cluster (agnosys, phylax, mabda, samvada) waiting on a stdlib-stable rollup point. v5.9.x catchup arc is the natural rollup window; full-frame benchmark re-run pending an unblock release. Sprint 3 (Black Book v1.0 audit) sits behind that release. cyrius-doom's per-tag receipts live in [vidya field notes](https://github.com/MacCracken/vidya/blob/main/content/cyrius/field_notes/doom.cyml).
+**v5.9.x catchup arc closed 2026-05-08** (44 patches in 3 days; pin-lag bands collapsed for agnosys / vyakarana / sandhi / cyim / agnostik / owl). **v5.10.x REAL TYPE SYSTEM arc opened 2026-05-08** (24 patches in 2 days through 5.10.24): per-phase compile-time profiling instrumentation + cstring/Result/Option/Tagged vocabulary + call-site type checking. Bare-metal AGNOS + RISC-V rv64 reservation slipped to **v5.12.x**.
+
+**For DOOM specifically.** cyrius-doom is at v0.26.2, **still pinned to Cyrius 5.7.48** — the held cluster has thinned (agnosys exited at 5.10.19) but cyrius-doom / phylax / mabda / samvada all skipped the v5.9.x rollup window. The full-frame benchmark re-run remains pending an unblock release; the natural next window is when v5.10.x stabilizes (post Phase 2 type-system work) or when phylax/mabda roll, since DOOM's perf is more sensitive to compiler optimization than to type-system additions. Sprint 3 (Black Book v1.0 audit) sits behind that release. cyrius-doom's per-tag receipts live in [vidya field notes](https://github.com/MacCracken/vidya/blob/main/content/cyrius/field_notes/doom.cyml).
 
 ---
 

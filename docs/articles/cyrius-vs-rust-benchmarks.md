@@ -165,7 +165,7 @@ Pure compute is where Cyrius showed its early codegen ceiling. Three distinct ga
 
 **Algorithm gap (7-42×) — closed.** Number theory originally used `mod_mul` with 64 additions per multiply because Cyrius had no u128 type. **u128 shipped in Cyrius v4.7–v4.8.x.** Abaco then specified a hardware `u64_mulmod` fast-path; **Cyrius v4.8.5 shipped it**. Abaco re-measured: **Miller-Rabin end-to-end ~12× faster** than the original Cyrius port. This is the canonical closed-loop example — a downstream port drove a compiler feature, the compiler shipped it, the port then measured the result. Benchmarks here predate that cycle; the newer abaco numbers live in `abaco/benches/`, and the closed-loop pattern is documented in [design-patterns.md §3 — Port-First Sequencing: System Before Compute](../design-patterns.md#3-port-first-sequencing-system-before-compute) (which names this exact abaco → `u64_mulmod` cycle as the canonical instance).
 
-**Inlining gap (300-700×)** — DSP scalar sub-nanosecond times mean LLVM inlined the entire function. Cyrius ~400ns is function call overhead through the benchmark harness, not computation time. The batch numbers (`sanitize_4096` at 4.4×, `poly_blep` at 9.6×) reflect the real gap without SIMD. **Optimization arc shipped through v5.8.x** — O1 (FNV-1a hashing v5.6.0–v5.6.4), O2 (five peephole categories closed v5.6.11), O3a IR instrumentation (v5.6.12), linear-scan regalloc default-on (v5.6.20–v5.6.24), Phase O4a/b/c register-allocation incl. Poletto-Sarkar linear-scan picker (through v5.7.x and v5.8.x). O5/O6 codebuf compaction with NOP harvest is referenced through v5.8.x with status sweep pending in v5.9.x catchup arc.
+**Inlining gap (300-700×)** — DSP scalar sub-nanosecond times mean LLVM inlined the entire function. Cyrius ~400ns is function call overhead through the benchmark harness, not computation time. The batch numbers (`sanitize_4096` at 4.4×, `poly_blep` at 9.6×) reflect the real gap without SIMD. **Optimization arc shipped through v5.8.x** — O1 (FNV-1a hashing v5.6.0–v5.6.4), O2 (five peephole categories closed v5.6.11), O3a IR instrumentation (v5.6.12), linear-scan regalloc default-on (v5.6.20–v5.6.24), Phase O4a/b/c register-allocation incl. Poletto-Sarkar linear-scan picker (through v5.7.x and v5.8.x). O5/O6 codebuf compaction with NOP harvest referenced through v5.8.x; carry-forward audit deferred to v5.11.x (TS testing + bug-sweep cycle).
 
 **SIMD wins (3.2×)** — Explicit SSE2 intrinsics (`addpd`/`mulpd`/`subpd`) beat Rust's auto-vectorization on 4,096-element f64 arrays. Cyrius emits direct packed double instructions with no loop analysis overhead. Intent beats inference.
 
@@ -206,7 +206,7 @@ The receipt is *"measure before implementing, not after."* A 0-match bytescan is
 
 ## Known Limitations
 
-**Pure compute gap**: Branch-heavy operations show 2–42× overhead vs LLVM -O3. The compiler-optimization arc (O1–O6) shipped continuously through v5.6.x → v5.7.x → v5.8.x. O1 (instrumentation + FNV-1a) v5.6.0–v5.6.4; O2 (five peephole categories) v5.6.11; O3a IR instrumentation v5.6.12; linear-scan regalloc default-on v5.6.20–v5.6.24; O4a/b/c regalloc + Poletto-Sarkar linear-scan picker through v5.7.x–v5.8.x. **O5/O6 codebuf compaction (NOP harvest with jump+fixup) is the remaining audit work, queued for v5.9.x catchup arc.** v5.10.x reserved for AGNOS bare-metal target + RISC-V rv64.
+**Pure compute gap**: Branch-heavy operations show 2–42× overhead vs LLVM -O3. The compiler-optimization arc (O1–O6) shipped continuously through v5.6.x → v5.7.x → v5.8.x. O1 (instrumentation + FNV-1a) v5.6.0–v5.6.4; O2 (five peephole categories) v5.6.11; O3a IR instrumentation v5.6.12; linear-scan regalloc default-on v5.6.20–v5.6.24; O4a/b/c regalloc + Poletto-Sarkar linear-scan picker through v5.7.x–v5.8.x. **O5/O6 codebuf compaction (NOP harvest with jump+fixup) referenced through v5.8.x with status sweep deferred** to v5.11.x carry-forward triage. v5.9.x ran a 44-patch catchup + niyama-fold cycle (closed 2026-05-08); **v5.10.x is the REAL TYPE SYSTEM arc** (per-phase compile-time profiling instrumentation + cstring/Result/Option/Tagged vocabulary + call-site type checking — 24 patches in 2 days, in flight at v5.10.24). Bare-metal AGNOS + RISC-V rv64 reservation slipped to **v5.12.x** (was v5.10 → v5.11 → v5.12 as foldin and type-system work compounded).
 
 **No borrow checker**: Memory safety comes from testing, auditing, and a stdlib designed for the absence of hidden aliasing — not a type-system proof. Design stance, not a pending feature.
 
@@ -222,6 +222,18 @@ The receipt is *"measure before implementing, not after."* A 0-match bytescan is
 All benchmarks on the same x86_64 Linux host. Rust: `cargo build --release` (opt-level 3, LTO). Cyrius: `cc5` (direct x86_64 emission; `cc2` was the compiler at the time this article was first written — the bootstrap chain is now seed → cyrc → bridge → **cc5**). Each operation measured over 10,000+ iterations with `clock_gettime(CLOCK_MONOTONIC_RAW)`. Results are median values.
 
 The deep-dive sections (agnosys, kybernet, agnostik, abaco) were measured during their respective initial ports. The Ports Ledger numbers are pulled from each repo's current `bench-history.csv` and are re-run per release. Receipts (Rust git tags + benchmark CSVs) are preserved in every ported repo so the comparison is reproducible.
+
+---
+
+## Since This Was Written
+
+**Refreshed 2026-05-09.** Body numbers above are the original snapshots from each port's initial measurement; current per-repo `bench-history.csv` files are authoritative for current values.
+
+- **v5.9.x catchup arc closed 2026-05-08** — 44 patches in 3 days. Niyama fold (5 regex engines, 6,664 lines, 7 modules) shipped at v5.9.0; remainder ran consumer-rollup (agnosys/vyakarana/sandhi/cyim/agnostik/owl pin-lag bands collapsed). aegis graduated 0.1.0 → 0.8.2; **darshana** (TTY/raw-mode primitives, दर्शन — *viewing*) extracted from cyim's `src/tty.cyr` when chakshu became second consumer.
+- **v5.10.x REAL TYPE SYSTEM arc opened 2026-05-08, in flight at v5.10.24.** 24 patches in 2 days. v5.10.0 shipped per-phase compile-time profiling instrumentation (`CYRIUS_PROF=1`, 7 phase timestamps). v5.10.5 added type vocabulary (cstring / Result / Option / Tagged). v5.10.24 landed Phase 2 call-site type checking via per-fn param-type bitmasks; canonical-motivator stdlib fns annotated. **cc5 binary at 783,408 B** (+42 KB from instrumentation + type machinery; was 741,048 B at v5.9.0).
+- **v5.11.x reserved** for type-system testing suite + agnosys-agent-surfaced bug sweep (consolidation cycle).
+- **v5.12.x reserved** for bare-metal AGNOS target + RISC-V rv64 backend (reservation slipped twice: v5.10 → v5.11 → v5.12 as foldin and type-system work compounded).
+- **Optimization arc carry-forward**: O5/O6 codebuf compaction status sweep is now triaged into v5.11.x rather than v5.9.x. Live benchmark deltas vs the v5.6.x → v5.10.x progression should be re-pulled per port from `bench-history.csv` before quoting.
 
 ---
 

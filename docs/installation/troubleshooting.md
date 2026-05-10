@@ -1,6 +1,6 @@
 # AGNOS Troubleshooting
 
-> Last Updated: 2026-04-20
+> Last Updated: 2026-05-09
 >
 > **Pre-Beta note:** AGNOS is not yet a running end-user OS. This guide covers what is testable today — the sovereign boot pipeline, the Cyrius toolchain, per-subsystem builds, and the QEMU kernel boot test. Full system-level troubleshooting (services, networking, desktop) arrives with **Phase 13A** and the `agnova` installer.
 
@@ -99,7 +99,7 @@ Runs `cyrius build` under the hood. If it fails, `cd scripts && cyrius build src
 ### `make iso-check` reports stale artifact
 
 ```
-STALE: ../kybernet/build/kybernet (expected 1.0.1, found none)
+STALE: ../kybernet/build/kybernet (expected 1.0.2, found none)
 ```
 
 The sibling repo hasn't been built. Fix:

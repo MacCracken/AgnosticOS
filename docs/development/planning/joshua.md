@@ -341,4 +341,4 @@ This is the long game: build the abstraction right on classical hardware today s
 
 ---
 
-*Last Updated: 2026-03-22 (kiran separation)*
+*Last Updated: 2026-03-22 (kiran separation). Verified 2026-05-09: design intent unchanged; **kiran shipped 1.0.0** (game engine ECS now stable — joshua's engine dependency is no longer a forward-looking gate). joshua itself remains at 0.1.0 scaffold per [`shared-crates.md`](shared-crates.md).*

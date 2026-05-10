@@ -97,7 +97,7 @@ Numbers approximate; rolls up from the per-tier tables below.
 | `CODE_OF_CONDUCT.md` | (unverified) | 🔵 Evergreen | Standard. |
 | `docs/AGNOS.md` | 2026-05-06 | ✅ Fresh | Refreshed 2026-05-06: lead paragraph (cc5, 248KB), header table (kernel/compiler versions, status), dependency comparison rows, history table (added 5 milestones since Beltane through 2026-05-06), bootstrap chain, core subsystems table, kernel size discussion ("248KB is the honest size at v1.26.1"), statistics block (rounded values + pointer to state.md), Last Updated. |
 | `docs/architecture.md` | 2026-05-09 | ✅ Fresh | Refreshed 2026-05-06; **2026-05-09**: kernel-layers content inlined as `## Kernel Layers` section (was `docs/architecture/kernel-layers.md`; subdir deleted — singleton). TOC updated. Inbound links rewritten in CLAUDE.md / design-patterns.md / development/README.md / vision/release-vision.md. |
-| `docs/design-patterns.md` | 2026-05-06 | ✅ Fresh | Just touched. Note: state.md flags vani-fold + niyama-fold patterns + starship-prompt convention as "to add" — verify whether those landed. |
+| `docs/design-patterns.md` | 2026-05-09 | ✅ Fresh | All flagged patterns already present from Stage 19 (sibling-distfile fold covers sandhi/vani/niyama; Om-cyclone covers starship-prompt convention). Absence-by-design pattern from CVE-2026-31431 still gated on host-defconfig pinning per state.md. Date bump only. |
 | `docs/philosophy.md` | 2026-04-22 | 🔵 Evergreen | Ideology, not status. Re-read pass annually. |
 | `docs/thesis.md` | 2026-04-22 | 🔵 Evergreen | Same. |
 | `docs/history.md` | 2026-05-09 | ✅ Fresh | **Refreshed 2026-05-09**: Key Milestones table extended with v5.9.x close (44 patches) + v5.10.x REAL TYPE SYSTEM arc opener; Development Pace paragraph updated; "~76 crates" drift replaced with 80+ pointer to registry. |
@@ -126,9 +126,9 @@ Numbers approximate; rolls up from the per-tier tables below.
 | `planning/example_claude.md` | 2026-04-24 | 🟠 Read-through | CLAUDE.md template — verify current Cyrius patterns. |
 | `planning/agnostic-integration.md` | 2026-04-14 | 🟠 Read-through | |
 | `planning/hadara.md` | 2026-04-13 | 🟠 Read-through | |
-| `planning/joshua.md` | 2026-03-26 | 🟠 Oldest | 6+ weeks. Likely needs full re-read. |
-| `planning/murti.md` | 2026-04-07 | 🟠 Read-through | |
-| `planning/pdf-suite.md` | 2026-04-07 | 🟠 Read-through | Per applications/roadmap.md, pdf-suite is P0 active — verify status. |
+| `planning/joshua.md` | 2026-05-09 | ✅ Fresh | Verified 2026-05-09: design intent unchanged; **kiran shipped 1.0.0** noted in footer (engine dependency no longer a forward-looking gate); joshua itself still at 0.1.0 scaffold. |
+| `planning/murti.md` | 2026-05-09 | ✅ Fresh | Verified 2026-05-09: design intent unchanged; consumer deps all at v1.0+ noted in footer. |
+| `planning/pdf-suite.md` | 2026-05-09 | ✅ Fresh | Verified 2026-05-09: design intent unchanged; P0 status retained; design-phase footer note added. |
 | `planning/tanur.md` | 2026-04-07 | 🟠 Read-through | |
 | `planning/bullshift-split.md` | 2026-04-07 | 🟠 Read-through | |
 | `planning/roadmap.md` | 2026-04-07 | 🟡 Stale | Crate count "76 total" / "55 at v1.0+" — drifted. **Refresh** counts from state.md. |
@@ -175,12 +175,12 @@ Numbers approximate; rolls up from the per-tier tables below.
 | File | Last touched | Status |
 |---|---|---|
 | `_outlines.md` | 2026-05-06 | ✅ Fresh — working file |
-| `cyrius-vs-rust-benchmarks.md` | 2026-05-06 | ✅ Fresh — but state.md flags v5.8.x/v5.9.x rows as still pending |
-| `doom-in-cyrius.md` | 2026-05-06 | ✅ Fresh — pending v5.9.x rebuild numbers per state.md |
+| `cyrius-vs-rust-benchmarks.md` | 2026-05-09 | ✅ Fresh — Since-This-Was-Written footer added (v5.9.x close + v5.10.x REAL TYPE SYSTEM arc + v5.11/v5.12 reservation slip + cc5 size 783,408 B); Pure-compute-gap and inlining-gap notes refreshed |
+| `doom-in-cyrius.md` | 2026-05-09 | ✅ Fresh — Since-This-Was-Written refreshed: cc5 783KB / v5.10.24; v5.9.x close + v5.10.x type-system arc; cyrius-doom still on 5.7.48 (held cluster thinned but DOOM didn't roll); next benchmark window noted |
 | `entity-vs-skynet-doom.md` | 2026-05-06 | ✅ Fresh |
-| `port-ledger-volume-1.md` | 2026-05-06 | ✅ Fresh — *Where Rust Still Wins* needs v5.8.x sweep per state.md |
+| `port-ledger-volume-1.md` | 2026-05-09 | ✅ Fresh — State-of-the-Language section refreshed (O5/O6 deferred to v5.11.x triage); Where-Rust-Still-Wins inlining-gap row updated; Sprint-That-Runs-Out-In-Front cycle sequencing extended through v5.12.x reservation; cc5 size 741→783 KB |
 | `python-in-the-bootstrap.md` | 2026-05-06 | ✅ Fresh |
-| `sovereign-compiler-vs-brute-force.md` | 2026-05-06 | ✅ Fresh — cc5 size: 741,048 B baseline (v5.9.0) per state.md |
+| `sovereign-compiler-vs-brute-force.md` | 2026-05-09 | ✅ Fresh — Since-This-Was-Written: cc5 783,408 B / v5.10.24; v5.9.x close + v5.10.x REAL TYPE SYSTEM arc; v5.11/v5.12 reservation slip; cadence paragraph extended through 5.10.24 |
 | `the-2-dollar-sd-card.md` | 2026-05-06 | ✅ Fresh |
 | `what-justifies-a-stdlib-foldin.md` | 2026-05-06 | ✅ Fresh — shipped 2026-05-06 per state.md |
 | `why-gigacenters.md` | 2026-05-06 | ✅ Fresh |
@@ -244,8 +244,8 @@ This is fine *if* no architecturally significant decisions have been made since.
 | File | Last touched | Status | Notes |
 |---|---|---|---|
 | `docs/installation/README.md` | 2026-05-06 | ✅ Fresh | Refreshed 2026-05-06: header (date + closed/public beta status line), what-works-today (kernel 1.26.1/248KB, boot.cyr ~67KB), Beltane target → closed-beta target, `.cyrius-toolchain` → `cyrius.cyml` per current pin convention, cc3 → cc5 troubleshooting, Phase 13B framing → current. |
-| `docs/installation/system-requirements.md` | 2026-04-21 | 🟠 Read-through | |
-| `docs/installation/troubleshooting.md` | 2026-04-21 | 🟠 Read-through | |
+| `docs/installation/system-requirements.md` | 2026-05-09 | ✅ Fresh | RISC-V + bare-metal target rows updated to **v5.12.x** (was v5.7 / v5.8); date bumped. |
+| `docs/installation/troubleshooting.md` | 2026-05-09 | ✅ Fresh | kybernet expected-version 1.0.1 → 1.0.2; date bumped. |
 | `docs/security/security-guide.md` | 2026-03-16 | 🟠 Oldest | 7+ weeks. Add CVE-2026-31431 reference. |
 | `docs/security/cis-benchmarks.md` | 2026-04-14 | 🟠 Read-through | |
 | `docs/security/penetration-testing.md` | 2026-04-14 | 🟠 Read-through | |

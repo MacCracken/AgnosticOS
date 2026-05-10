@@ -227,4 +227,4 @@ scriba/                              # Desktop GUI — AGPL-3.0-only
 
 ---
 
-*Last Updated: 2026-03-30*
+*Last Updated: 2026-03-30. Verified 2026-05-09: design intent unchanged; sahifa + scriba still at design-phase (not yet scaffolded). All consumer dependencies (hoosh / daimon / phylax) at v1.0+ stable. P0 status retained per [`roadmap.md`](roadmap.md).*
