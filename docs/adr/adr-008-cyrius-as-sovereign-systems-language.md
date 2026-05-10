@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-04-04
-**Recorded:** 2026-05-06 (catch-up entry — see [doc-health.md](../development/doc-health.md))
+**Recorded:** 2026-05-06 (catch-up entry — see [doc-health.md](../doc-health.md))
 **Supersedes:** [ADR-001](adr-001-foundation-and-architecture.md) — *Rust as Primary Language* section only. Other ADR-001 decisions (daimon orchestration, hoosh gateway, cross-project integration) remain in force.
 
 ---

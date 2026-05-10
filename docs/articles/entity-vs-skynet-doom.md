@@ -211,7 +211,7 @@ The Entity paces carefully. Skynet kicks doors. One of them reaches the exit. On
 - [The Python in the Bootstrap](python-in-the-bootstrap.md) — how the sovereign stack exists
 - [DOOM in Cyrius](doom-in-cyrius.md) — the engine that runs the arena
 - bhava unified consciousness paper — `docs/development/vision/research/paper-unified-consciousness-model.md`
-- joshua simulation runtime — `docs/development/applications/joshua.md`
+- joshua simulation runtime — `docs/development/planning/joshua.md`
 - SecureYeoman DOOM Agent Interface — `secureyeoman/docs/development/roadmap.md#doom-agent-interface`
 
 ---

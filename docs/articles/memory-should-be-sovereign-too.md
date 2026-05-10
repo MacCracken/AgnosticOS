@@ -138,7 +138,7 @@ Until then, this one states the refusal.
 
 ## Since This Was Written
 
-**Refreshed 2026-05-06.** Body table version columns are pinned to article date — current values live in [`development/state.md`](../development/state.md) and [`shared-crates.md`](../development/applications/shared-crates.md). Notable updates since the body was written:
+**Refreshed 2026-05-06.** Body table version columns are pinned to article date — current values live in [`development/state.md`](../development/state.md) and [`shared-crates.md`](../development/planning/shared-crates.md). Notable updates since the body was written:
 
 - **Cyrius**: v5.6.17 → v5.9.0 (cut today). Three stdlib fold-ins shipped: sandhi (v5.7.0 service-boundary), vani (v5.8.0 audio I/O), niyama (v5.9.0 regex engines). The fold-in pattern, born during the post-write window, is now a documented decision framework — see [*What Justifies a Stdlib Foldin*](what-justifies-a-stdlib-foldin.md).
 - **AGNOS kernel**: v1.22.0 → v1.26.1 (248 KB; CI-hygiene replaced a workaround with a real fix at v1.26.1).

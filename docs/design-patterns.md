@@ -179,7 +179,7 @@ AGNOS runs the same way. Every subsystem, every API surface, every deletion — 
 - Technical docs (`docs/architecture/`, subsystem tables, benchmarks) open with tables / numbers / code, not origin story
 - Articles (`docs/articles/`) and philosophy (`philosophy.md`) live in separate doc families, not embedded in every technical page
 - Cross-references point to the tour from the art ("for the *why*, see X") — never the reverse
-- [`docs/architecture/kernel-layers.md`](architecture/kernel-layers.md) stands alone without requiring `philosophy.md` or the Temple framing to be useful
+- [`docs/architecture.md` § Kernel Layers](architecture.md#kernel-layers) stands alone without requiring `philosophy.md` or the Temple framing to be useful
 - Receipts (CSVs, git tags) are preserved in each ported repo — reproducible without reading any narrative
 
 **Why.** Gating art on reading the tour turns a museum into a lecture hall. The Librarian displays the library; he doesn't force visitors to read his memoir before they can see the exhibits.

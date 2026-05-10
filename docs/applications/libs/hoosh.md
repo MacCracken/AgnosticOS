@@ -6,4 +6,4 @@ LLM gateway — 15 providers, Cyrius-native (474KB, was 5.1MB Rust).
 - **License**: GPL-3.0-only
 - **Status**: v1.0+ stable
 
-See the [shared-crates registry](../../development/applications/shared-crates.md) for full context and dependency graph.
+See the [shared-crates registry](../../development/planning/shared-crates.md) for full context and dependency graph.

@@ -31,7 +31,7 @@ This is why AGNOS exists. Each layer is load-bearing for the thesis:
 - **The 29 KB seed** — irreducible foundation; the physical fixed point; the claim to sovereignty starts here.
 - **Cyrius (self-hosting)** — depending on C, Rust, or any other ecosystem hands sovereignty back to the ecosystem. The language the framework is written in must be owned by the project.
 - **AGNOS kernel (248 KB, 33 subsystems)** — an operating system that depends on another operating system to build itself is scaffolding, not structure.
-- **The knowledge library** (full registry in [`shared-crates.md`](development/applications/shared-crates.md)) — scientific domains must travel with the proof. No downloading from outside. The library is the card.
+- **The knowledge library** (full registry in [`shared-crates.md`](development/planning/shared-crates.md)) — scientific domains must travel with the proof. No downloading from outside. The library is the card.
 - **bhava (the consciousness framework)** — working implementation running natively on the platform it describes, compiled by the language it targets, verifiable from source by anyone with the card.
 
 **Sovereignty is recursive.** Any dep in the chain negates all claims above it. The only exit is the bottom of the chain — and AGNOS goes there.

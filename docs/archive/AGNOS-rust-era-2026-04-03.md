@@ -199,7 +199,7 @@ AGNOS extracts reusable infrastructure into standalone crates published on crate
 | **szal** | Workflow engine (branching, retry, rollback) |
 | **abaco** | Math library (expression parsing, unit conversion) |
 
-77 total shared crates — 56 at v1.0+ stable, 20 pre-1.0. Spanning OS infrastructure, science & knowledge (25 crates), media & audio (10), language & navigation (5), and physics & engineering (5). Full registry: [shared-crates.md](development/applications/shared-crates.md).
+77 total shared crates — 56 at v1.0+ stable, 20 pre-1.0. Spanning OS infrastructure, science & knowledge (25 crates), media & audio (10), language & navigation (5), and physics & engineering (5). Full registry: [shared-crates.md](development/planning/shared-crates.md).
 
 ### Security Model
 
@@ -284,7 +284,7 @@ AGNOS ships with an ecosystem of 19+ first-party applications, all Rust-native, 
 | **Rahd** | Calendar | AI-native calendar and contacts |
 | **Abacus** | Calculator | Desktop calculator (built on abaco crate) |
 
-Each application follows the [First-Party Standards](development/applications/first-party-standards.md) including MCP tool registration, agnoshi intent patterns, marketplace recipes, and daimon integration.
+Each application follows the [First-Party Standards](development/planning/first-party-standards.md) including MCP tool registration, agnoshi intent patterns, marketplace recipes, and daimon integration.
 
 ---
 
@@ -322,9 +322,9 @@ See [Philosophy](philosophy.md) for the full exploration of AGNOS as temple arch
 - [Philosophy & Intention](philosophy.md) — the deeper vision behind AGNOS
 - [History & Timeline](history.md) — full project timeline with dated milestones
 - [Development Roadmap](development/roadmap.md) — phases, blockers, release targets
-- [Application Development Roadmap](development/applications/roadmap.md) — planned first-party applications
-- [First-Party Application Standards](development/applications/first-party-standards.md) — conventions for consumer apps
-- [Shared Crates Reference](development/applications/shared-crates.md) — ecosystem crate registry
+- [Application Development Roadmap](development/planning/roadmap.md) — planned first-party applications
+- [First-Party Application Standards](development/planning/first-party-standards.md) — conventions for consumer apps
+- [Shared Crates Reference](development/planning/shared-crates.md) — ecosystem crate registry
 - [CI/CD Architecture](development/ci-cd-guide.md) — build and release pipeline
 - [Network Evolution](development/vision/architecture/network-evolution.md) — TCP/HTTP → QUIC → binary agent protocol
 - [Performance Benchmarks](development/performance-benchmarks.md) — comparison data

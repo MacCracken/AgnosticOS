@@ -5,6 +5,32 @@ All notable changes to AGNOS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026.5.9] - 2026-05-09
+
+### Changed — Doc audit sweep (3-day delta since 2026-05-06 audit)
+
+- **`docs/development/doc-health.md` relocated to `docs/doc-health.md`** — the ledger sweeps the entire `docs/` tree plus root files, not just `docs/development/`. Location now reflects scope. Internal paths re-anchored; external refs updated in `README.md`, `CONTRIBUTING.md`, `docs/development/README.md`, ADR-008.
+- **`docs/development/state.md` refreshed for v5.10.x mid-cycle** — toolchain pin `5.9.0 → 5.10.24`; cycle banner re-cast (was "v5.9.x — niyama-fold opener", now "v5.10.x REAL TYPE SYSTEM arc — active"). v5.9.x demoted to 1-paragraph closeout (44 patches, 2026-05-06 → 2026-05-08). v5.11.x reservation slot added (TS testing suite + bug sweep from agnosys-agent-surfaced items). v5.12.x reservation slot added (bare-metal + RISC-V rv64; slipped v5.8 → v5.10 → v5.11 → **v5.12**). cc5 size `741,048 B → 783,408 B`. Pin-lag spectrum fully re-sampled across ~46 local + remote tail: held-cluster 5 → 4 (agnosys exited at 5.10.19), deep-lag tail 7 → 6 (vyakarana exited at 5.10.5), **darshana** + **cyim-lsp** + **aegis** + **chakshu** added. **kiran shipped to 1.0.0** noted (pin field still missing).
+- **`docs/development/planning/first-party-standards.md` full Cyrius-first rewrite** — 1109 lines (mid-transition, ~70% Rust still) → 972 lines (Cyrius-only). Rust-era standards already preserved at `docs/archive/first-party-standards-rust-era.md`. Replaced: Cargo.toml metadata → cyrius.cyml manifest section; Rust CI/release workflows → kybernet-pattern Cyrius CI (deps + fmt + lint + vet + build + test + bench, security pattern scan, docs job); criterion → `cyrius bench` + `bench-history.sh`; thiserror+anyhow+tracing → sakshi (canonical error/tracing/logging); cargo commands in P(-1) and Development Loop boxes → cyrius commands; Makefile cargo targets → cyrius targets. Removed: duplicated `.gitignore` block (Rust + Cyrius both present), `deny.toml` section, "Flat vs Workspace (Rust)" section.
+- **`docs/development/planning/shared-crates.md`** — `trump_epstein` removed (entry + nyaya consumer-list ref); section header `82 entries → 83 entries` to match summary count; total `110 → 109` and non-library `10 → 9` after removal.
+- **`docs/development/planning/README.md` rewrite** — pre-1.0 only; v1.0+ entries link to `docs/applications/libs/` (lib-doc precedent — version columns dropped to avoid drift); shared-crates.md cited for live state.
+- **`docs/development/planning/roadmap.md`** — footer date `2026-04-01 → 2026-05-09` (matches header); stripped stale "77 crates (56 stable)" count.
+- **`docs/development/planning/tanur.md`** — 39 occurrences of `Irfan/IrfanConnection/irfan.sock/irfan.local` → `Ifran/IfranConnection/ifran.sock/ifran.local` (canonical name from registry).
+- **`README.md`** — Cyrius badge `5.9.0 → 5.10.24`; compiler size `~741KB → ~783KB`; stack-table version cells refreshed (Cyrius 5.10.24, kybernet 1.0.2, argonaut 1.5.0, sigil 3.1.0, daimon 1.1.4, nous 1.1.2); self-hosting blocker note updated to v5.12.x bare-metal target (slipped twice).
+- **`docs/AGNOS.md`** — same version-cell sweep (cc5 `~783KB`, kybernet 1.0.2, argonaut 1.5.0, daimon 1.1.4, mabda 3.0.0-rc.2, phylax 1.1.0, shakti 0.3.0, hisab 2.2.2); compiler section reframed for v5.10.x REAL TYPE SYSTEM arc; recently-shipped list expanded with **aegis 0.8.2** (graduated from scaffold), **chakshu 0.2.0**, **darshana 0.2.0** (new TTY/terminal observability lane); history table appended with v5.9.x close + v5.10.x arc opener.
+
+### Cyrius cycle progression (post-2026-05-06)
+
+- **Cyrius v5.9.x close — 2026-05-08 at 5.9.43**. 44 patches over 3 days. Catchup + niyama-fold cycle. v5.9.0 shipped niyama fold-in (8th sibling distfile, 6,664 lines, 7 regex modules byte-identical from niyama 1.0.1). Remainder ran consumer-rollup + optimization-debt closeout. Pin-lag bands collapsed materially (agnosys, vyakarana, sandhi, agnostik, owl, cyim, vidya all rolled forward).
+- **Cyrius v5.10.x open — 2026-05-08, REAL TYPE SYSTEM arc, active.** Cycle opened with v5.10.0 (per-phase compile-time profiling instrumentation as the optimization-arc opener) and pivoted at v5.10.5 into the type-vocabulary work that now defines the cycle: cstring / Result / Option / Tagged annotations on stdlib functions plus call-site type checking (Phase 2 closes 5.10.5's false-positive flood). **24 patches in 2 days** (5.10.0 → 5.10.24). cc5 at 783,408 B (+42 KB from instrumentation + type vocabulary + checking machinery). Self-host two-step byte-identical confirmed.
+- **v5.11.x reservation** — type-system testing suite + bug sweeping (agnosys-agent-update sweep surfaced material debt list). Consolidation cycle.
+- **v5.12.x reservation** — bare-metal AGNOS target + RISC-V rv64 backend. Reservation slipped v5.8 → v5.10 → v5.11 → v5.12.
+
+### Notes
+
+- Per-cycle Cyrius receipts live in the cyrius repo CHANGELOG; this file consolidates the genesis-repo doc cleanup + ecosystem-context summary.
+- `doc-health.md` relocation chosen over rename because the ledger's scope was always the whole repo; the `development/` location was a misnomer.
+
 ## [2026.5.6] - 2026-05-06
 
 ### Changed — Beta scope rescoped to two-stage (closed + public)
@@ -327,14 +353,14 @@ The userland monolith is fully dismantled. `agent-runtime/`, `ai-shell/`, `llm-g
 - **`docs/AGNOS.md`** — Project overview document
 - **`docs/applications/abacus.md`** — Abacus desktop calculator app doc
 - **`docs/applications/sutra.md`** — Sutra infrastructure orchestrator app doc
-- **`docs/development/applications/impetus.md`** — Impetus physics engine spec
-- **`docs/development/applications/joshua.md`** — Joshua game manager spec
-- **`docs/development/applications/muharrir.md`** — Muharrir text editor spec
-- **`docs/development/applications/murti.md`** — Murti core model runtime spec
-- **`docs/development/applications/stiva.md`** — Stiva container runtime spec
-- **`docs/development/applications/t-ron.md`** — T-ron MCP security monitor spec
-- **`docs/development/applications/tanur.md`** — Tanur desktop LLM studio spec
-- **`docs/development/applications/shared-crates.md`** — Shared crate registry and version table
+- **`docs/development/planning/impetus.md`** — Impetus physics engine spec
+- **`docs/development/planning/joshua.md`** — Joshua game manager spec
+- **`docs/development/planning/muharrir.md`** — Muharrir text editor spec
+- **`docs/development/planning/murti.md`** — Murti core model runtime spec
+- **`docs/development/planning/stiva.md`** — Stiva container runtime spec
+- **`docs/development/planning/t-ron.md`** — T-ron MCP security monitor spec
+- **`docs/development/planning/tanur.md`** — Tanur desktop LLM studio spec
+- **`docs/development/planning/shared-crates.md`** — Shared crate registry and version table
 - **`docs/development/k8s-roadmap.md`** — Kubernetes-equivalent orchestration roadmap
 - **`docs/development/monolith-extraction.md`** — Monolith extraction plan (agnosys)
 - **`docs/development/network-evolution.md`** — Network evolution (TCP → QUIC → AAP)
@@ -377,11 +403,11 @@ The userland monolith is fully dismantled. `agent-runtime/`, `ai-shell/`, `llm-g
 
 ### Added — Documentation Restructure
 
-- **First-party application standards** — `docs/development/applications/first-party-standards.md`: scaffolding, versioning (CalVer), CI/CD, MCP integration, daimon integration tiers, testing conventions, naming conventions, release checklist
-- **Application development roadmap** — `docs/development/applications/roadmap.md`: future apps (Priority 1-6) extracted from os_long_term.md
+- **First-party application standards** — `docs/development/planning/first-party-standards.md`: scaffolding, versioning (CalVer), CI/CD, MCP integration, daimon integration tiers, testing conventions, naming conventions, release checklist
+- **Application development roadmap** — `docs/development/planning/roadmap.md`: future apps (Priority 1-6) extracted from os_long_term.md
 - **18 individual app docs** — `docs/applications/*.md`: ADR-style docs for all released consumer projects (jalwa, tarang, shruti, rasa, tazama, mneme, synapse, bullshift, delta, aequi, agnostic, secureyeoman, photisnadi, nazar, selah, abaco, rahd, vidhana)
 - **Third-party package docs** — `docs/applications/thirdparty/README.md`: packaged software strategy (OS vs Bazaar)
-- **Sutra** (Sanskrit: सूत्र — thread, rule, formula) — AI-native infrastructure orchestrator. Spec: `docs/development/applications/sutra.md`. Scaffolded at `/home/macro/Repos/sutra` with 5 crates, 36 tests, 6 MCP tools, YAML canonical format with TOML/Markdown/NL input, dry-run-by-default, IaC user ownership
+- **Sutra** (Sanskrit: सूत्र — thread, rule, formula) — AI-native infrastructure orchestrator. Spec: `docs/development/planning/sutra.md`. Scaffolded at `/home/macro/Repos/sutra` with 5 crates, 36 tests, 6 MCP tools, YAML canonical format with TOML/Markdown/NL input, dry-run-by-default, IaC user ownership
 
 ### Added — Claude Code Hooks
 
@@ -448,7 +474,7 @@ The userland monolith is fully dismantled. `agent-runtime/`, `ai-shell/`, `llm-g
 
 ### Removed
 
-- `os_long_term.md` — content migrated to `docs/applications/` (released) and `docs/development/applications/roadmap.md` (planned). References in roadmap.md updated
+- `os_long_term.md` — content migrated to `docs/applications/` (released) and `docs/development/planning/roadmap.md` (planned). References in roadmap.md updated
 - Debian debootstrap fallback from build scripts (B4)
 
 ## [2026.3.17] - 2026-03-18

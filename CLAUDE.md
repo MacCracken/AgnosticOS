@@ -33,7 +33,7 @@ This repo is the **genesis layer** — meta, narrative, and the infrastructure t
 
 > **Volatile state lives in [`docs/development/state.md`](docs/development/state.md)** — current versions, Cyrius pins, port status, active sweeps, carry-forward debt. Refresh that file, not this section.
 >
-> **Crate registries** (versions + roles): [`docs/development/applications/shared-crates.md`](docs/development/applications/shared-crates.md) is the full registry (incl. pre-1.0); [`docs/applications/libs/README.md`](docs/applications/libs/README.md) is the v1.0+ stable subset.
+> **Crate registries** (versions + roles): [`docs/development/planning/shared-crates.md`](docs/development/planning/shared-crates.md) is the full registry (incl. pre-1.0); [`docs/applications/libs/README.md`](docs/applications/libs/README.md) is the v1.0+ stable subset.
 
 The role map below is for orientation. **Versions are intentionally omitted** — they drift fast; consult state.md or the registries.
 
@@ -78,7 +78,7 @@ The role map below is for orientation. **Versions are intentionally omitted** �
 | **seema** | Edge fleet management | Pending |
 | **samay** | Task scheduler | Pending |
 
-> **Live versions, sizes, test counts, and per-repo cycle state**: see [`docs/development/state.md`](docs/development/state.md) and [`docs/development/applications/shared-crates.md`](docs/development/applications/shared-crates.md). This table is intentionally version-free — embedded counts drift, and pointer-to-registry is the cleaner pattern.
+> **Live versions, sizes, test counts, and per-repo cycle state**: see [`docs/development/state.md`](docs/development/state.md) and [`docs/development/planning/shared-crates.md`](docs/development/planning/shared-crates.md). This table is intentionally version-free — embedded counts drift, and pointer-to-registry is the cleaner pattern.
 
 ## Development Process
 
@@ -142,13 +142,13 @@ Root files (required):
 
 docs/ (required):
   architecture.md — system architecture overview (module map, data flow, tech stack)
-  architecture/kernel-layers.md — kernel layer decomposition
+  architecture.md (Kernel Layers section) — kernel layer decomposition (was architecture/kernel-layers.md, inlined 2026-05-09)
   design-patterns.md — recurring cognitive patterns across AGNOS decisions (through-line layer; accretion doc, becomes GA retrospective spine)
   philosophy.md — ideological basis (sovereignty, Temple, Hermetic role)
   history.md, timeline.md — project history and dated milestones
   development/state.md — live ecosystem state (Cyrius cycle, pin-lag, active sweeps, carry-forward)
   development/roadmap.md — completed, backlog, future, v1.0 criteria
-  development/applications/shared-crates.md — crate registry (full, incl. pre-1.0)
+  development/planning/shared-crates.md — crate registry (full, incl. pre-1.0)
   applications/libs/README.md — v1.0+ stable library registry
   articles/ — thematic engineering articles (port sequencing, sovereign compiler, etc.)
 

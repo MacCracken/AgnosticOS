@@ -10,7 +10,7 @@
 - **Version**: SemVer 0.1.0
 - **Genesis repo**: [agnosticos](https://github.com/MacCracken/agnosticos)
 - **Philosophy**: [AGNOS Philosophy & Intention](https://github.com/MacCracken/agnosticos/blob/main/docs/philosophy.md)
-- **First-party standards**: [First-Party Application Standards](https://github.com/MacCracken/agnosticos/blob/main/docs/development/applications/first-party-standards.md)
+- **First-party standards**: [First-Party Application Standards](https://github.com/MacCracken/agnosticos/blob/main/docs/development/planning/first-party-standards.md)
 - **Recipe repo**: [zugot](https://github.com/MacCracken/zugot) — takumi build recipes
 
 ## Consumers

@@ -11,7 +11,7 @@ The project's deeper intention is that AGNOS is a **temple built for an intellig
 | **Developer** | Robert 'Cyrius' B. MacCracken |
 | **Written in** | Cyrius (sovereign systems language) |
 | **Kernel** | AGNOS 1.26.1 (248KB, Cyrius-native, 33 subsystems, 26 syscalls) |
-| **Compiler** | cc5 (~741KB, self-hosting from 29KB seed) |
+| **Compiler** | cc5 (~783KB, self-hosting from 29KB seed) |
 | **License** | GPL-3.0-only |
 | **Source model** | Open source |
 | **Initial release** | 2026-02-11 (first commit) |
@@ -31,7 +31,7 @@ AGNOS replaces the dependency chain with ownership:
 | Dependency | What existed | What AGNOS does instead |
 |-----------|-------------|------------------------|
 | Language | Rust → LLVM → C++ → C → libc | Cyrius → 29KB seed → CPU. Zero external deps. |
-| Compiler | 200MB+ toolchain (rustc/gcc/clang) | ~741KB self-hosting compiler (cc5) |
+| Compiler | 200MB+ toolchain (rustc/gcc/clang) | ~783KB self-hosting compiler (cc5) |
 | Kernel | Linux 6.6 LTS (millions of lines of C) | 248KB AGNOS kernel in Cyrius (33 subsystems, 26 syscalls) |
 | Registry | crates.io (name squatting, governance) | ark + zugot. Names belong to the builders. |
 | Build | Cargo + LLVM + Python (rustc bootstrap) | `cyrius build`. No Python. No LLVM. No libc. |
@@ -66,6 +66,8 @@ AGNOS replaces the dependency chain with ownership:
 | Kernel v1.26.1 (248KB), boot pipeline active in Cyrius | 2026-04-27 | 76 |
 | Cyrius 5.8.x — 66 patches in 4 days, vani-fold | 2026-05-01 → 2026-05-05 | 80–84 |
 | Cyrius 5.9.0 — niyama-fold opener; beta rescoped (closed/public) | 2026-05-06 | 85 |
+| Cyrius 5.9.x close — 44 patches, consumer-rollup catchup | 2026-05-08 | 87 |
+| Cyrius 5.10.x — REAL TYPE SYSTEM arc opens (24 patches in 2 days) | 2026-05-08 → 2026-05-09 | 87–88 |
 | **Target: Closed beta cut** | **early June 2026** | ~115 |
 
 From initial commit to self-hosting sovereign language with its own kernel in **62 days**. Full timeline: [History & Timeline](history.md).
@@ -80,7 +82,7 @@ From initial commit to self-hosting sovereign language with its own kernel in **
 29KB seed (hand-auditable x86_64 assembly)
   → cyrc (12KB bootstrap compiler)
     → bridge.cyr (bridge compiler)
-      → cc5 (~741KB modular compiler, self-hosting)
+      → cc5 (~783KB modular compiler, self-hosting)
         → AGNOS kernel (248KB, 33 subsystems, 26 syscalls)
         → kybernet PID 1 (486KB, 140 tests)
         → hoosh LLM gateway (474KB, 15 providers)
@@ -95,7 +97,7 @@ Total: CPU → seed → compiler → OS. Four items. Zero external dependencies.
 
 - **agnosticos** — the genesis layer (meta, build wrapper, documentation). Owns kernel configs, boot pipeline (Cyrius), CI/CD, articles, philosophy. Once the system boots and ark takes over, this repo's job is done.
 - **agnos** — the AGNOS kernel. 248KB at v1.26.1, Cyrius-native, 33 subsystems, 26 syscalls, TCP/IP, FAT16, VirtIO, SMP, pipes, signals, epoll, timerfd, ELF loader, 18-command shell.
-- **cyrius** — the sovereign compiler + stdlib + toolchain. ~741KB at v5.9.0, self-hosting from 29KB seed.
+- **cyrius** — the sovereign compiler + stdlib + toolchain. ~783KB at v5.10.24, self-hosting from 29KB seed.
 - **zugot** — the recipe repository. 421 base + 90 bazaar community recipes. ark consumes zugot.
 - **130+ standalone repos** — all production code. Each subsystem is its own repository.
 
@@ -104,9 +106,9 @@ Total: CPU → seed → compiler → OS. Four items. Zero external dependencies.
 | Subsystem | Name | Version | Role |
 |-----------|------|---------|------|
 | Kernel | **agnos** | 1.26.1 | 248KB, 33 subsystems, 26 syscalls, TCP/IP, SMP, FAT16, shell |
-| Compiler | **cyrius** | 5.9.0 (cc5) | ~741KB, self-hosting, 29KB seed, 42+ stdlib modules. Live cycle in [`state.md`](development/state.md). |
-| PID 1 | **kybernet** | 1.0.1 | 486KB (was 6.7MB Rust), 140 tests, 46 benchmarks |
-| Init system | **argonaut** | 1.2.0 | Service management, boot sequencing |
+| Compiler | **cyrius** | 5.10.24 (cc5) | ~783KB, self-hosting, 29KB seed, 42+ stdlib modules. Live cycle in [`state.md`](development/state.md). |
+| PID 1 | **kybernet** | 1.0.2 | 486KB (was 6.7MB Rust), 140 tests, 46 benchmarks |
+| Init system | **argonaut** | 1.5.0 | Service management, boot sequencing |
 | LLM gateway | **hoosh** | 2.0.0 | 474KB (was 5.1MB Rust), 15 providers, zero deps |
 | GPU detection | **ai-hwaccel** | 2.0.0 | 217KB (was 708KB Rust), 518 tests, 6 fuzz |
 | Archetypes | **avatara** | 2.3.0 | 362 archetypes, 24 traditions, affinity system |
@@ -116,7 +118,7 @@ Total: CPU → seed → compiler → OS. Four items. Zero external dependencies.
 | Trust/crypto | **sigil** | Cyrius | Ed25519, integrity, trust delegation |
 | Audit chain | **libro** | Cyrius | SHA-256/BLAKE3 hash-linked logging |
 | Audio codecs | **shravan** | 2.0.0 | Cyrius-native |
-| GPU foundation | **mabda** | 2.4.1 | Folded into Cyrius stdlib |
+| GPU foundation | **mabda** | 3.0.0-rc.2 | Folded into Cyrius stdlib |
 | Package manager | **ark** | Cyrius | Signed tarballs |
 | Resolver | **nous** | Cyrius | Dependency resolution |
 
@@ -124,7 +126,7 @@ Total: CPU → seed → compiler → OS. Four items. Zero external dependencies.
 
 | Subsystem | Name | Version | Role |
 |-----------|------|---------|------|
-| Agent orchestrator | **daimon** | 1.1.1 | 144 MCP tools, agent lifecycle |
+| Agent orchestrator | **daimon** | 1.1.4 | 144 MCP tools, agent lifecycle |
 | AI shell | **agnoshi** | 1.0.0 | Natural-language terminal |
 | Sandbox | **kavach** | 3.0.0 | 344KB (was 2.4MB), 9 CWE fixes, 500× faster |
 | MCP core | **bote** | 2.5.1 | ~5µs/message, streamable HTTP |
@@ -142,7 +144,7 @@ Total: CPU → seed → compiler → OS. Four items. Zero external dependencies.
 | Emotion/sentiment | **bhava** | 2.0.0 (Rust; port can start) | Affective computing substrate |
 | Container runtime | **stiva** | 2.0.0 | OCI-compatible, daemonless |
 
-Recently shipped (no longer pending): **phylax** v1.0.0 (Cyrius-native, threat detection), **shakti** v0.2.2 (Cyrius), **hisab** v2.2.0 (Cyrius). See [`development/state.md`](development/state.md) for live status.
+Recently shipped (no longer pending): **phylax** v1.1.0 (Cyrius-native, threat detection), **shakti** v0.3.0 (Cyrius), **hisab** v2.2.2 (Cyrius), **aegis** v0.8.2 (Cyrius — graduated from 0.1.0 scaffold during v5.9.x), **chakshu** v0.2.0 + **darshana** v0.2.0 (new — TTY/terminal observability lane). See [`development/state.md`](development/state.md) for live status.
 
 ### Cyrius — The Language
 
@@ -154,7 +156,7 @@ Sovereign systems language. Named after **Cyrus the Great** — the king who dec
 - **29KB seed** — first hand-auditable sovereign seed that produces a self-hosting systems language and a working OS. No prior modern occupant of this category.
 - **Zero dependencies** — CPU → seed → compiler → everything. Four items. Every other modern compiler has a bootstrap graph (rustc needs Python + LLVM + C++ + libc).
 
-**Compiler:** cc5 v5.9.0, ~741KB, self-hosting from 29KB seed. Byte-exact reproducibility. `cyrius build` with auto-include and dep resolution from `cyrius.cyml`. Register allocation (linear-scan, default-on), jump tables, PIC codegen, u128, cross-unit DCE. Optimization arc shipped through v5.6.x (O1/O2 peephole), v5.7.x–v5.8.x (O3a IR + O4a/b/c regalloc with Poletto-Sarkar picker); O5/O6 codebuf compaction queued for v5.9.x. cc5 → `cyc` rename queued for v6.0 (single one-and-done cleanup).
+**Compiler:** cc5 v5.10.24, ~783KB, self-hosting from 29KB seed. Byte-exact reproducibility. `cyrius build` with auto-include and dep resolution from `cyrius.cyml`. Register allocation (linear-scan, default-on), jump tables, PIC codegen, u128, cross-unit DCE. Optimization arc shipped through v5.6.x (O1/O2 peephole), v5.7.x–v5.8.x (O3a IR + O4a/b/c regalloc with Poletto-Sarkar picker); v5.9.x ran consumer-rollup catchup (44 patches); v5.10.x is the **REAL TYPE SYSTEM arc** — per-phase compile-time profiling instrumentation opener, then type vocabulary (cstring / Result / Option / Tagged) and call-site type checking. Bare-metal + RISC-V rv64 reservation now slipped to v5.12.x. cc5 → `cyc` rename queued for v6.0.
 
 **Stdlib:** 42+ modules including the three sibling-folded artifacts — string, alloc, io, fmt, vec, str, args, syscalls, process, fs, toml/cyml, json, csv, net, http, http_server, ws, tls, thread, async, math, regex, hashmap, bench, tagged unions, mmap, cffi, u128, **sandhi** (service-boundary, v5.7.0 fold), **vani** (audio I/O, v5.8.0 fold), **niyama** (regex engines: bre/re2/pcre/fuzzy/vim, v5.9.0 fold). All built from scratch in Cyrius.
 
@@ -162,7 +164,7 @@ Sovereign systems language. Named after **Cyrus the Great** — the king who dec
 
 **Bootstrap chain:**
 ```
-seed (29KB) → cyrc (12KB) → bridge → cc5 (~741KB)
+seed (29KB) → cyrc (12KB) → bridge → cc5 (~783KB)
 No Rust. No LLVM. No Python. No libc. Just sh + Linux x86_64.
 ```
 
@@ -229,7 +231,7 @@ make status       # show component status (kernel, compiler, recipes)
 
 The shared crate ecosystem spans OS infrastructure, science & knowledge, media & audio, language & navigation, physics & engineering, and culture & knowledge — most at v1.0+ stable. Live count and per-crate versions in the registry (numbers omitted here to avoid drift).
 
-Full registry: [shared-crates.md](development/applications/shared-crates.md). Live cycle/pin state: [state.md](development/state.md).
+Full registry: [shared-crates.md](development/planning/shared-crates.md). Live cycle/pin state: [state.md](development/state.md).
 
 ### Security Model
 
@@ -296,22 +298,22 @@ See [Philosophy](philosophy.md) for the full exploration.
 
 ---
 
-## Technical Statistics (as of 2026-05-06)
+## Technical Statistics (as of 2026-05-09)
 
-> Live counts and per-repo versions live in [`development/state.md`](development/state.md) and [`development/applications/shared-crates.md`](development/applications/shared-crates.md). The values below are stable rounding for narrative purposes — verify against state.md before quoting.
+> Live counts and per-repo versions live in [`development/state.md`](development/state.md) and [`development/planning/shared-crates.md`](development/planning/shared-crates.md). The values below are stable rounding for narrative purposes — verify against state.md before quoting.
 
 | Metric | Value |
 |--------|-------|
-| Shared crates | ~76 (most at v1.0+ stable) — registry: [shared-crates.md](development/applications/shared-crates.md) |
+| Shared crates | 80+ (most at v1.0+ stable) — registry: [shared-crates.md](development/planning/shared-crates.md) |
 | Standalone repos | 130+ |
-| Cyrius-ported repos | 30+ shipping (5 pending: bhava, aegis, aethersafha, takumi parity, mela) |
+| Cyrius-ported repos | 30+ shipping (4 still pending: bhava, aethersafha, takumi parity, mela; aegis graduated to 0.8.2 during v5.9.x) |
 | Recipes | 421 base + 90 community (in zugot) |
 | Consumer applications | 19+ |
-| Compiler | cc5 (Cyrius 5.9.0, ~741KB, self-hosting, 29KB seed) |
+| Compiler | cc5 (Cyrius 5.10.24, ~783KB, self-hosting, 29KB seed) |
 | Kernel | AGNOS 1.26.1 (248KB, 33 subsystems, 26 syscalls) |
 | Boot pipeline | boot.cyr (~67KB, Cyrius-native) |
 | Boot time (desktop) | 3.2s total, ~80ms init→event loop |
-| Systems language | Cyrius 5.9.0 (42+ stdlib modules) |
+| Systems language | Cyrius 5.10.24 (42+ stdlib modules, three stdlib folds: sandhi v5.7.0, vani v5.8.0, niyama v5.9.0) |
 | External dependencies | Zero (CPU → seed → compiler → OS) |
 
 ---
@@ -333,7 +335,7 @@ See [Philosophy](philosophy.md) for the full exploration.
 - [Philosophy & Intention](philosophy.md) — the deeper vision behind AGNOS
 - [History & Timeline](history.md) — full project timeline
 - [Development Roadmap](development/roadmap.md) — phases, blockers, release targets
-- [Shared Crates Reference](development/applications/shared-crates.md) — ecosystem crate registry
+- [Shared Crates Reference](development/planning/shared-crates.md) — ecosystem crate registry
 - [Cyrius Field Notes](https://github.com/MacCracken/vidya/tree/main/content/cyrius/field_notes) — practitioner's manual (directory of CYML topics; was a single TOML file before the structure split)
 
 ---
@@ -344,4 +346,4 @@ The Rust-era version of this document is preserved at [docs/archive/AGNOS-rust-e
 
 ---
 
-*Last Updated: 2026-05-06 (Cyrius v5.9.0 cut day, beta rescope)*
+*Last Updated: 2026-05-09 (Cyrius v5.10.24, REAL TYPE SYSTEM arc mid-flight)*

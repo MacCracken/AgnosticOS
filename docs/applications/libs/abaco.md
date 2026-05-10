@@ -6,4 +6,4 @@ Math engine — Miller-Rabin ~12× faster end-to-end via Cyrius hardware u64_mul
 - **License**: GPL-3.0-only
 - **Status**: v1.0+ stable
 
-See the [shared-crates registry](../../development/applications/shared-crates.md) for full context and dependency graph.
+See the [shared-crates registry](../../development/planning/shared-crates.md) for full context and dependency graph.

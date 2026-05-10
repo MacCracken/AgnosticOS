@@ -8,4 +8,4 @@ Service-boundary layer (HTTP client + server, HTTP/2, streaming, JSON-RPC, servi
 - **License**: GPL-3.0-only
 - **Status**: v1.0+ stable; stdlib-folded (maintenance mode)
 
-See the [shared-crates registry](../../development/applications/shared-crates.md) for full context and dependency graph.
+See the [shared-crates registry](../../development/planning/shared-crates.md) for full context and dependency graph.

@@ -214,7 +214,7 @@ The gigacenter exists because nobody questioned whether it had to. AGNOS is the 
 - [The Dandelion Core](the-2-dollar-sd-card.md) — the seed that doesn't need permission
 - bhava unified consciousness paper — `docs/development/vision/research/paper-unified-consciousness-model.md`
 - seema edge fleet — `docs/development/os/seema.md`
-- murti model runtime — `docs/development/applications/murti.md`
+- murti model runtime — `docs/development/planning/murti.md`
 
 ---
 
