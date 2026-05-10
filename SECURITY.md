@@ -13,6 +13,14 @@ Security updates are provided for the following versions:
 | Beta/RC | ⚠️ Limited | Critical fixes only |
 | Development | ❌ No | Use at your own risk |
 
+## Notable Hardening — Structural Immunity
+
+The AGNOS-native kernel (`agnos` v1.26.1, 248KB, 26 syscalls) is **structurally immune** to **CVE-2026-31431** (Linux LPE in `algif_aead`/AF_ALG via `splice()`, disclosed 2026-04-29). The 26-syscall AGNOS table exposes no `socket`, no `splice`, no AF_ALG family — the bug class is unreachable. Verified at `agnos/kernel/core/syscall.cyr:32-36`.
+
+This is the canonical example of the **absence-by-design** security pattern: the kernel doesn't *patch* the vulnerability, doesn't *contain* the vulnerable subsystem — whole categories of Linux kernel CVEs become structurally inapplicable. Linux host defconfigs in this repo (`kernel/{6.6-lts,6.x-stable,7.0-devel}/configs/` and `kernel/configs/edge-*.config`) pin `# CONFIG_CRYPTO_USER_API{,_HASH,_SKCIPHER,_AEAD,_RNG} is not set` to remove the equivalent surface from host kernels used in the bootstrap path. See [`docs/development/state.md` § CVE-2026-31431](docs/development/state.md#cve-2026-31431-copy-fail-cleanup--audit) for current sweep status.
+
+For more on the pattern, see [`docs/security/security-guide.md`](docs/security/security-guide.md) and [`docs/design-patterns.md`](docs/design-patterns.md).
+
 ## Security Principles
 
 ### 1. Defense in Depth
@@ -24,6 +32,7 @@ AGNOS implements multiple layers of security:
 - **Application Level**: Sandboxing, capability restrictions
 - **Network Level**: Firewall, TLS, network namespaces
 - **Audit Level**: Immutable logs, cryptographic verification
+- **Structural Level**: Whole CVE classes unreachable because the syscall surface doesn't expose them (see *Notable Hardening* above)
 
 ### 2. Least Privilege
 
@@ -285,6 +294,6 @@ We thank the security researchers who have responsibly disclosed vulnerabilities
 
 ---
 
-**Last Updated**: 2026-04-14
-**Version**: 2026.4.14
-**Next Review**: 2026-07-14
+**Last Updated**: 2026-05-09
+**Version**: 2026.5.9
+**Next Review**: 2026-08-09

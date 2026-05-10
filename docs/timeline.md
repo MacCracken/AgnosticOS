@@ -1,6 +1,6 @@
 # AGNOS — Project Timeline
 
-> **Status**: Active | **Last Updated**: 2026-05-06
+> **Status**: Active | **Last Updated**: 2026-05-09
 >
 > All dates verified from git commit history (`git log --format="%ai"`).
 > Times are Pacific (PT).
@@ -139,14 +139,19 @@
 | **2026-05-06** | 84 | **Cyrius v5.9.0 cut — niyama-fold opener** (8th sibling distfile, 5 regex engines: bre/re2/pcre/fuzzy/vim, 6,664 lines vendored). cc5 binary at 741,048 B | `cyrius` repo, `agnosticos/docs/development/state.md` |
 | **2026-05-06** | 84 | **Beta rescoped — two-stage**: closed beta (early June 2026, 13A + friend-tester cohort) + public beta (Q4 2026, adds audit + community testing) | `agnosticos/docs/development/roadmap.md` |
 | **2026-05-06** | 84 | **ADR-008 catch-up** — Cyrius pivot (2026-04-04) formally recorded; ADR-001 marked partially superseded (language only) | `agnosticos/docs/adr/adr-008-cyrius-as-sovereign-systems-language.md` |
+| **2026-05-08** | 87 | **Cyrius v5.9.x cycle close at 5.9.43** — 44 patches over 3 days. Catchup + niyama-fold cycle. Pin-lag bands collapse: agnosys / vyakarana / sandhi / cyim / agnostik / owl roll forward. **aegis graduates** 0.1.0 → 0.8.2. **darshana** (TTY/raw-mode primitives, दर्शन — *viewing*) extracted from cyim's `src/tty.cyr` when chakshu became second consumer | `cyrius/CHANGELOG.md` |
+| **2026-05-08 → 2026-05-09** | 87–88 | **Cyrius v5.10.x — REAL TYPE SYSTEM arc** opens. v5.10.0 ships per-phase compile-time profiling instrumentation; v5.10.5 pivots to type vocabulary (cstring / Result / Option / Tagged); v5.10.24 lands Phase 2 call-site type checking. 24 patches in 2 days. cc5 binary at **783,408 B** (+42 KB from instrumentation + type machinery) | `cyrius/CHANGELOG.md`, `agnosticos/docs/development/state.md` |
+| **2026-05-09** | 88 | **Cycle reservations slip** — bare-metal + RISC-V rv64 → v5.12.x (was v5.10 → v5.11 → v5.12); v5.11.x reserved for TS testing suite + agnosys-agent-surfaced bug sweep | `agnosticos/docs/development/state.md` |
+| **2026-05-09** | 88 | **Doc tree re-org** — `docs/development/doc-health.md` → `docs/doc-health.md` (whole-tree scope); `docs/architecture/kernel-layers.md` inlined into `docs/architecture.md`; `docs/development/applications/` → `docs/development/planning/` (73 files / 108 cross-refs); `docs/os/README.md` deleted (redundant with architecture § Named Subsystems) | `agnosticos/CHANGELOG.md` |
 
 ### Pace
 
 - **Rust era** (51 days): initial commit → monolith → ISO → multi-arch release → dismantled
 - **Cyrius era week 1** (12 days, Apr 3–15): nothing → self-hosting compiler → kernel → DOOM → 28 ports → compression that beats C → 5.0 shipped
 - **Cyrius era weeks 2–4** (Apr 16 – May 6, 21 days): multi-platform byte-identical → optimization arc → 3 stdlib fold-ins (sandhi/vani/niyama) → kernel hardening to 248KB → 30+ ports
-- **Language versions in ~12 weeks**: 1.0 → 2.0 → 3.0 → 4.0 → 5.0 → 5.5.x → 5.6.x → 5.7.x → 5.8.x → 5.9.0
+- **Cyrius era week 5** (May 7–9, 3 days): v5.9.x close (44 patches; consumer-rollup catchup; aegis graduates; darshana extracted) → v5.10.x REAL TYPE SYSTEM arc opens (24 patches in 2 days)
+- **Language versions in ~12 weeks**: 1.0 → 2.0 → 3.0 → 4.0 → 5.0 → 5.5.x → 5.6.x → 5.7.x → 5.8.x → 5.9.x → 5.10.x
 
 ---
 
-*All timestamps from `git log` or canonical CHANGELOG/state.md sources. No estimates, no approximations. Last updated 2026-05-06.*
+*All timestamps from `git log` or canonical CHANGELOG/state.md sources. No estimates, no approximations. Last updated 2026-05-09.*

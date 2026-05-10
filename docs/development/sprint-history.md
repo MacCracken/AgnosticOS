@@ -87,6 +87,83 @@
 
 ---
 
+## Cyrius Era — Cycle Summaries (2026-04-03 onwards)
+
+### Cyrius v5.10.x — REAL TYPE SYSTEM arc (2026-05-08 → in flight, currently 5.10.24)
+
+| Category | Summary |
+|----------|---------|
+| Cycle theme | Type-system rollout: cstring / Result / Option / Tagged vocabulary + call-site type checking |
+| Volume | 24 patches in 2 days |
+| Phase 0 | v5.10.0 — per-phase compile-time profiling instrumentation (CYRIUS_PROF=1, 7 phase timestamps, ~0.7 µs total overhead) |
+| Phase 1B | v5.10.5 — type vocabulary additions (cstring / Result / Option / Tagged); false-positive flood discovered |
+| Phase 2 | v5.10.24 — call-site type checking via per-fn param-type bitmasks; canonical-motivator stdlib fns annotated (`println` / `strlen` / `streq` / `atoi` / `strchr` / `strstr` / `str_lower_cstr` / `str_upper_cstr` / `file_open` / `file_open_r`) |
+| cc5 size | 741,048 B → 783,408 B (+42 KB from instrumentation + type machinery) |
+| Reservations | v5.11.x = TS testing suite + agnosys-agent-surfaced bug sweep; v5.12.x = bare-metal AGNOS target + RISC-V rv64 (slipped from v5.10.x → v5.11.x → v5.12.x) |
+
+### Cyrius v5.9.x — Catchup + niyama-fold close (2026-05-06 → 2026-05-08)
+
+| Category | Summary |
+|----------|---------|
+| Cycle theme | Niyama fold-in opener + consumer-rollup catchup |
+| Volume | 44 patches in 3 days |
+| Slot 1 | v5.9.0 — niyama fold-in (8th sibling distfile, 6,664 lines / 7 modules: posix_classes, unicode_props, bre, re2, pcre, fuzzy, vim) byte-identical from niyama 1.0.1 dist |
+| Pin-lag collapse | agnosys 5.7.48 → 5.10.19 (out of held-cluster); vyakarana 5.6.0 → 5.10.5 (out of deep-lag tail); sandhi/agnostik/owl/cyim/agnova/vidya all rolled forward |
+| Repo graduations | aegis 0.1.0 scaffold → 0.8.2 (real implementation underway); chakshu 0.1.0 → 0.2.0 |
+| New repos | **darshana** (TTY/raw-mode primitives, दर्शन — *viewing*) extracted from cyim's `src/tty.cyr` when chakshu became second consumer; **cyim-lsp** 1.5.0 (LSP server companion to cyim) |
+| Closeout | 5.9.43 (2026-05-08) |
+
+### Cyrius v5.8.x — 3-phase, 66 patches in 4 days (2026-05-01 → 2026-05-05)
+
+| Category | Summary |
+|----------|---------|
+| Cycle theme | Audit closeout + language vocabulary + stdlib foldin sweep |
+| Volume | 66 patches across 4 days (velocity high-water mark) |
+| Phase 1 | v5.8.1–v5.8.8 — closed 8 of 12 v5.8.0 audit items (lint/fmt cap raise, cc5_aarch64 packaging + cyrc_check orphan, ts/parse.cyr fmt sweep, f64_log2 polyfill, sys_stat/fstat backfill, _SC_ARITY cross-arch gate, NI-class dupe, phylax #4 closeout) |
+| Phase 2 | v5.8.9–v5.8.26 — language vocabulary arc (`var X;` bare-decl diagnostic, `cyrius fmt --check` exit code, vidya audit pattern at v5.8.40, exhaustive match / Result+? / allocators) |
+| Phase 3 | v5.8.27–v5.8.65 — stdlib foldin sweep (sandhi-pattern continuation, 27 foldin slots, **vani audio** at slot 1 as `lib/vani.cyr` v5.8.0 fold) |
+| Slip | Original v5.8.0 plan was bare-metal — slipped to v5.9.0 then v5.10.x (ultimately v5.12.x) as foldin work compounded |
+
+### Cyrius v5.7.x — Sandhi-fold + cyrius-ts + 51 patches (2026-04-25 → 2026-05-31)
+
+| Category | Summary |
+|----------|---------|
+| Cycle theme | First stdlib absorption (sandhi-fold pattern established) + cyrius-ts proposals |
+| Volume | 51 patches over 36 days |
+| Slot 1 | v5.7.0 — **sandhi fold-in** (`lib/sandhi.cyr` 9,649 lines / 376,037 B / 469 fns vendored byte-identical from sandhi 1.0.0). sandhi repo enters maintenance mode per [sandhi ADR 0002](https://github.com/MacCracken/sandhi/blob/main/docs/adr/0002-clean-break-fold-at-cyrius-v5-7-0.md). Pattern set for vani (v5.8.0) and niyama (v5.9.0) |
+| cyrius-ts | P1–P10 proposals (type-system precursors that informed the v5.10.x arc) |
+| Optimization | Incidental — main optimization arc was v5.6.x; v5.7.x continued partial follow-on (O3a IR, O4a–c regalloc) |
+
+### Cyrius v5.6.x — Optimization arc (2026-04-22 → 2026-04-25)
+
+| Category | Summary |
+|----------|---------|
+| Cycle theme | Compiler optimization passes |
+| O1 | IR instrumentation + FNV-1a hashing |
+| O2 | Strength reduction + commutative-combine-shuttle |
+| Regalloc | Linear-scan picker default-on |
+| Closeout | v5.6.45; **O3–O6 deferred** (partial follow-on shipped through v5.7.x and v5.8.x: O3a IR; O4a/b/c register-allocation including Poletto-Sarkar linear-scan picker; O5 referenced; O6 codebuf compaction) |
+
+### Cyrius v5.5.x — Multi-platform byte-identical (2026-04-22)
+
+| Category | Summary |
+|----------|---------|
+| Achievement | Byte-identical reproducible builds across x86_64 Linux, aarch64 Linux on real Pi, Apple Silicon Mach-O, Windows PE32+ |
+
+### Cyrius v1.0 → v5.0 — Self-hosting + ecosystem boot (2026-04-04 → 2026-04-15)
+
+| Category | Summary |
+|----------|---------|
+| v1.0 (2026-04-04) | Self-hosting compiler from 29KB seed in 44 hours after scaffold. Variables, arithmetic, if/else, while, factorial. Beats GNU on size (10–233×) and speed (wc 2.4× faster) |
+| v1.0 → kernel | Same day: AGNOS kernel boots (VGA, 64-bit, page tables, keyboard, memory management). 23:16 PT — "kernel solid" |
+| v2.0 (2026-04-08) | DOOM Sprint 1 — black screen at 21:31, BSP by 21:35, textures by 22:24, sprites by 22:38. v0.17.0 / 129KB / Episode 1 renderable |
+| v3.0 (2026-04-09) | Stdlib growth, dep system maturing, Patra in stdlib |
+| v4.0 (2026-04-13) | DOOM Sprint 2 — gameplay end-to-end, P(-1) security audit, 5 CVE-class findings fixed. AGNOS kernel hardening (6 buffer overflow fixes, security phases 1–3). Kernel v1.21.0 (220KB). kybernet 1.0.1 ported. Boot pipeline active |
+| v4.8.5-1 (2026-04-14) | 22+ Cyrius ports complete. kavach 3.0.0, abaco 2.0.0, bote 2.5.1 shipped. Kernel v1.22.0 (260KB). Independent audit on Anthropic infrastructure (bootstrap verified, kernel booted, benchmarks green). Sankoch named as last git blocker |
+| v5.0 (2026-04-15) | cc5 IR, CFG, cyrius.cyml, patra v1.0, sankoch in stdlib (beats C zlib). 5,762 assertions passing. cc3 → cc5 rename (cc4 skipped). hisab 2.2.0, shravan 2.3.2 modernized |
+
+---
+
 ## Monolith Extraction — Complete (2026-04-01 to 2026-04-07)
 
 The original monolith (`userland/`) contained agent-runtime, ai-shell, llm-gateway, desktop-environment, agnos-common, and agnos-sys. All have been extracted.
@@ -130,3 +207,5 @@ The original monolith (`userland/`) contained agent-runtime, ai-shell, llm-gatew
 ---
 
 *This file is maintained alongside [CHANGELOG.md](/CHANGELOG.md). The changelog has full details; this file provides quick reference summaries.*
+
+*Last updated: 2026-05-09 (Cyrius v5.7.x → v5.10.x cycles appended)*

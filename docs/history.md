@@ -1,6 +1,6 @@
 # AGNOS — Project History & Timeline
 
-> **Status**: Active | **Last Updated**: 2026-04-14
+> **Status**: Active | **Last Updated**: 2026-05-09
 
 ---
 
@@ -48,9 +48,9 @@ AGNOS went from initial commit to first bootable ISO in **39 days** (2026-02-11 
 
 From first commit to sovereign self-hosting language with its own kernel in **53 days** (2026-02-11 to 2026-04-04).
 
-The Cyrius language went from nothing to a self-hosting compiler with a kernel in **one day** (2026-04-04), and through major-version cuts (1.0 → 2.0 → 3.0 → 4.0 → 5.0) reaching the v5.x stdlib-foldin cycle by week 12. The AGNOS kernel hardened from 143KB (with 14 buffer overflows — "The 143KB Lie") through 220KB (v1.21.0) → 260KB (v1.22.0) → 248KB (v1.26.1, current). 30+ subsystems ported from Rust to Cyrius, each measured against its Rust predecessor.
+The Cyrius language went from nothing to a self-hosting compiler with a kernel in **one day** (2026-04-04), and through major-version cuts (1.0 → 2.0 → 3.0 → 4.0 → 5.0) reaching the v5.x stdlib-foldin cycle (sandhi v5.7.0, vani v5.8.0, niyama v5.9.0) by week 12, then the **REAL TYPE SYSTEM arc** at v5.10.x (24 patches in 2 days). The AGNOS kernel hardened from 143KB (with 14 buffer overflows — "The 143KB Lie") through 220KB (v1.21.0) → 260KB (v1.22.0) → 248KB (v1.26.1, current). 30+ subsystems ported from Rust to Cyrius, each measured against its Rust predecessor.
 
-The shared crate ecosystem reached ~76 crates (most at v1.0+ stable), with 19+ consumer applications developed in parallel. Live counts and per-repo versions in [`development/state.md`](development/state.md) and [`development/planning/shared-crates.md`](development/planning/shared-crates.md).
+The shared crate ecosystem now spans 80+ crates (most at v1.0+ stable), with 19+ consumer applications developed in parallel. Live counts and per-repo versions in [`development/state.md`](development/state.md) and [`development/planning/shared-crates.md`](development/planning/shared-crates.md).
 
 ---
 
@@ -80,6 +80,8 @@ The shared crate ecosystem reached ~76 crates (most at v1.0+ stable), with 19+ c
 | Cyrius v5.8.x — **66 patches in 4 days** (3-phase: audit closeout, language vocabulary, stdlib foldin sweep with vani-fold at slot 1) | 2026-05-01 → 2026-05-05 | 79–83 |
 | **Cyrius v5.9.0 cut — niyama-fold opener** (8th sibling distfile, 5 regex engines, 6,664 lines vendored). cc5 binary at 741,048 B | 2026-05-06 | 84 |
 | **Beta rescoped — two-stage**: closed beta (early June 2026, 13A + friend-tester cohort) + public beta (Q4 2026, adds audit + community testing); ADR-008 catch-up records the Cyrius pivot | 2026-05-06 | 84 |
+| **Cyrius v5.9.x close — 44 patches over 3 days** (catchup + niyama-fold cycle); pin-lag bands collapse — agnosys/vyakarana/sandhi/cyim/agnostik/owl all roll forward; aegis graduates 0.1.0 → 0.8.2; **darshana** extracted from cyim's TTY layer when chakshu became second consumer | 2026-05-08 | 87 |
+| **Cyrius v5.10.x — REAL TYPE SYSTEM arc** opens with per-phase compile-time profiling instrumentation (v5.10.0), pivots at v5.10.5 to type vocabulary (cstring / Result / Option / Tagged) and call-site type checking (Phase 2 at v5.10.24); 24 patches in 2 days. cc5 binary at 783,408 B (+42 KB). Bare-metal + RISC-V rv64 reservation slips to v5.12.x; v5.11.x reserved for TS testing suite + bug sweep | 2026-05-08 → 2026-05-09 | 87–88 |
 | **Target: Closed beta cut** | **early June 2026** | ~115 |
 
 ---
@@ -100,4 +102,4 @@ Four renames total across four language-major transitions. The `cc5` → `cyc` e
 
 ---
 
-*Last Updated: 2026-05-06*
+*Last Updated: 2026-05-09*

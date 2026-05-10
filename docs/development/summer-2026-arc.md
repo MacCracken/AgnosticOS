@@ -121,7 +121,7 @@ Each audience is warmer than the next in receptiveness and colder than the next 
 |---|------|-------|
 | B8  | [ ] **Independent cold-clone audit** — security researcher (not Robert) clones AGNOS from scratch, bootstraps, boots, runs fuzz harnesses, publishes findings | Second instance of the [Anthropic April 14 audit](https://github.com/MacCracken/agnosticos/blob/main/docs/articles/end-of-4x-independent-audit.md) pattern. Third-party validation is the strongest form of credibility at a security con. |
 | B9  | [ ] **Agent observability knife article drafted** (topic-backlog #1) | *"Your observability stack was built for services, not agents."* Security researchers increasingly care about agent-infrastructure observability — this lands a specifically-interested sub-audience. |
-| B10 | [ ] **v5.9.x TLS arc progress** — at least one patch of pure-Cyrius TLS 1.3 landed even if v5.9.0 isn't shipped | Signals the last FFI bridge is actively closing, not aspirationally closing. |
+| B10 | [✅] **TLS already in stdlib via sandhi-fold (v5.7.0)** — superseded; pure-Cyrius TLS 1.3 + HTTP shipped as `lib/sandhi.cyr` (376KB / 9,649 lines / 469 fns) at v5.7.0 (2026-04-25). The "last FFI bridge closing" signal is the **v5.10.x REAL TYPE SYSTEM arc** + **v5.12.x bare-metal target** instead. | Original B10 retired; substitute item: at least one patch of v5.10.x type-system or v5.11.x TS-testing arc landed pre-Black Hat. |
 | B11 | [ ] **Signed-release pipeline** — sigil-signed binaries for everything downstream audiences might pull | Demonstrates the trust-chain story in practice. |
 
 ### Can land
@@ -201,7 +201,7 @@ cyrius-brynns-tale A1.W1 (world 1 gray-box, base rewind) ─── Beat 1 (S2 �
     ↓
 cyrius-brynns-tale A1.W2/W3 (variant worlds) ──────────── Beat 1 (S9, S10 — should)
 
-Cyrius v5.9.x (TLS arc, partial)
+Cyrius v5.10.x (REAL TYPE SYSTEM arc) → v5.11.x (TS testing) → v5.12.x (bare-metal + RISC-V rv64)
     ↓
 sit self-hosting ─────────────────── Beat 2 (B2 — must)
 
@@ -214,7 +214,7 @@ $5K budget → sticker + SD production ── Beat 3 (D1, D2 — must)
 Flashing pipeline + testing ────────── Beat 3 (D3 — must)
 ```
 
-**The biggest risk** *(retired — v5.6.x closed 2026-04-25; v5.7.x sandhi-fold shipped tls.cyr/http.cyr/json.cyr into stdlib; v5.8.x ran 66-patch foldin + audit cycle to closeout 2026-05-05; v5.9.x catchup arc opened 2026-05-06)*: original framing was Cyrius v5.6.x closeout drifting past mid-May, which would have cascaded into v5.7.x stdlib slip and pressured the supply-chain story at Black Hat. Cycle outcomes overshot the timeline — TLS landed via sandhi-fold (v5.7.0); v5.10.x bare-metal + RISC-V are the live cycle dependency for late-summer beats now, not v5.9.x.
+**The biggest risk** *(retired — v5.6.x closed 2026-04-25; v5.7.x sandhi-fold shipped tls.cyr/http.cyr/json.cyr into stdlib; v5.8.x 66-patch foldin + audit cycle closed 2026-05-05; v5.9.x catchup + niyama-fold cycle ran 44 patches in 3 days, closed 2026-05-08; v5.10.x REAL TYPE SYSTEM arc opened 2026-05-08, in flight at v5.10.24 with 24 patches in 2 days)*: original framing was Cyrius v5.6.x closeout drifting past mid-May, which would have cascaded into v5.7.x stdlib slip and pressured the supply-chain story at Black Hat. Cycle outcomes overshot the timeline — TLS landed via sandhi-fold (v5.7.0); **bare-metal + RISC-V rv64 reservation slipped to v5.12.x** (was v5.10 → v5.11 → v5.12), which is the live cycle dependency for closed-beta cut and the late-summer beats now.
 
 **Second-biggest risk**: cyrius-brynns-tale M1 (time-rewind ring buffer determinism). Every other *Brynn's Tale* milestone stacks on it. A two-week slip on M1 cascades into "no Beat 1 demo."
 
@@ -243,11 +243,12 @@ Flashing pipeline + testing ────────── Beat 3 (D3 — must)
 
 | AGNOS milestone | Arc relationship |
 |-----------------|------------------|
-| May 1 V1 | Pre-arc foundation — stable baseline for the summer to build on |
+| ~~May 1 V1~~ → **Closed beta cut (early June 2026)** | Pre-arc foundation — closed-beta cohort prep is the stable baseline summer builds on (May 1 Beltane target retired in 2026-05-06 rescope) |
 | Biweekly cadence | Structural — each biweekly release feeds an article beat |
-| v5.6.x closeout | Dependency — gates v5.7.x work |
-| v5.7.x (cyrius init, http.cyr, json.cyr) | Beat 1 support (yantra); Beat 2 support (supply-chain claims need the stack moving) |
-| v5.9.x TLS arc | Beat 2 narrative (last FFI bridge closing) |
+| v5.6.x → v5.7.x → v5.8.x → v5.9.x | All shipped (closed 2026-05-08); collectively delivered sandhi-fold + vani-fold + niyama-fold + 30+ Cyrius ports + multi-platform byte-identical builds |
+| v5.10.x REAL TYPE SYSTEM | In flight — type-system arc strengthens the "last FFI bridge closing" Beat 2 narrative (call-site type checking for cstring / Result / Option / Tagged) |
+| v5.11.x TS testing + bug sweep | Carry-forward consolidation cycle |
+| v5.12.x bare-metal + RISC-V rv64 | **Closed-beta blocker.** Self-hosting "AGNOS builds AGNOS" gate. Reservation slipped twice (v5.10 → v5.11 → v5.12). |
 | August DEF CON | Beat 3 is already planned per existing memory |
 
 No new work is introduced by the arc that wasn't already queued. The arc is a **timing discipline** across existing items, not new scope.
@@ -256,7 +257,7 @@ No new work is introduced by the arc that wasn't already queued. The arc is a **
 
 ## What could derail this (and what to do)
 
-- **Cyrius v5.6.x closeout slips past May 15** → pull Beat 2 B10 (TLS arc progress) from "must" to "should"; supply-chain article B1 still lands because it's retrospective on existing receipts
+- ~~**Cyrius v5.6.x closeout slips past May 15**~~ — *retired*. v5.6.x closed 2026-04-25; v5.7.x → v5.8.x → v5.9.x all shipped through 2026-05-08. Live derail risk now is **Cyrius v5.12.x bare-metal slipping past closed-beta target (early June)** → push closed-beta to mid-June; Beat 2 narrative still lands because supply-chain receipts (sandhi/vani/niyama folds + 30+ Cyrius ports) are already in hand independent of bare-metal status.
 - **cyrius-brynns-tale M1 takes >3 weeks** → reduce Beat 1 scope to M1-only demo + launch article; no world-breadth promises
 - **Health / attention disruption** → Beat 1 can slide to June 28 (still Steam Summer Sale window) or July 4 (Handmade Day, less ambient attention but still thematic). Beat 2 date is less flexible (Black Hat is fixed). Beat 3 similarly (DEF CON is fixed).
 - **Sticker/SD production delays** → tolerable if base ISO image ships on-time; physical distribution can be mailed post-con to sign-ups collected at the event
@@ -272,4 +273,4 @@ No new work is introduced by the arc that wasn't already queued. The arc is a **
 
 ---
 
-*Opened 2026-04-23. Rewrite-in-place as beats land. Archive at 2026-08-15 or supersede with `fall-2026-arc.md`.*
+*Opened 2026-04-23. Last refresh 2026-05-09 (v5.9.x close + v5.10.x REAL TYPE SYSTEM arc + v5.11/v5.12 reservation slip reflected). Rewrite-in-place as beats land. Archive at 2026-08-15 or supersede with `fall-2026-arc.md`.*

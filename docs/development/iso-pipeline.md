@@ -1,6 +1,6 @@
 # ISO Pipeline — Extraction Completion Plan
 
-> **Status**: Stage 0 implemented; Stage-4-only first cut planned next | **Last Updated**: 2026-04-15 (status note refreshed 2026-05-06)
+> **Status**: Stage 0 implemented; Stage-4-only first cut planned next | **Last Updated**: 2026-04-15 (status note refreshed 2026-05-09)
 >
 > Per [`iso-stage4-plan.md`](iso-stage4-plan.md), the next active work is the **Stage-4-only first cut** (live image with pre-built binaries) — D1–D4 decisions pending user input. Per [CHANGELOG 2026.4.27](../../CHANGELOG.md), `make iso-check` reports 26-of-26 components ready (Stage 0 cleanly passes); ISO assembly is unblocked. LFS Stages 1–3 (cross-toolchain + base-system build) are deferred to Phase 2 of the ISO arc.
 >
@@ -34,7 +34,7 @@ Locate (or build) every artifact needed for the rootfs:
 |-----------|--------|----------|
 | AGNOS kernel | `../agnos/build/agnos` | ELF binary (~248KB at v1.26.1) |
 | kybernet (PID 1) | `../kybernet/build/kybernet` | ELF binary (~486KB) |
-| Cyrius toolchain | `../cyrius/build/cc5` | Compiler binary (~741KB at v5.9.0) |
+| Cyrius toolchain | `../cyrius/build/cc5` | Compiler binary (~783KB at v5.10.24) |
 | ark (package manager) | `../ark/build/ark` | Binary |
 | nous (resolver) | `../nous/build/nous` | Binary |
 | takumi (build system) | `../takumi/` | Build tool (pending Cyrius port) |
@@ -67,7 +67,7 @@ AGNOS-native packages, or do we still need GCC for the base system (glibc,
 coreutils, etc.)? Current answer: **both**. Base system packages (glibc,
 coreutils, bash, etc.) are C projects built with GCC from zugot recipes.
 AGNOS-native components (kernel, kybernet, ark, etc.) are built with cc5
-(Cyrius v5.9.0; cc5 → `cyc` rename queued for v6.0).
+(Cyrius v5.10.24; cc5 → `cyc` rename queued for v6.0).
 The cross-toolchain bootstrap remains necessary for the C layer.
 
 ### Stage 2 — Build Base System
@@ -139,15 +139,18 @@ Boot the ISO in QEMU and run `selfhost-validate`:
 
 ## Blockers
 
+Status verified 2026-05-09. Several previously-pending blockers have shipped — see [`state.md`](state.md) for live versions.
+
 | Blocker | Status | Impact |
 |---------|--------|--------|
-| **takumi** not ported to Cyrius | Pending | Can't build recipes natively. Workaround: shell-based `ark-build` |
-| **aegis** not ported | Pending | No security daemon in ISO. Non-blocking for first boot |
-| **shakti** not ported | Pending | No privilege escalation. Non-blocking for first boot |
+| **takumi** not ported to Cyrius | In port (5.5.23 pin; rust-old/ authoritative until parity) | Can't build recipes natively. Workaround: shell-based `ark-build` |
+| **aegis** | ✅ Graduated 0.1.0 → 0.8.2 (real implementation underway during v5.9.x) | Security daemon now scaffolded with real code; full integration pending |
 | **aethersafha** not ported | Pending | No Wayland compositor. Desktop profile blocked |
-| **phylax** not ported | Pending | No threat detection. Non-blocking for first boot |
-| **Cyrius 5.0** (multi-platform) | Held | Current ISO is x86_64 only, which is fine for first boot |
-| **sankoch** not at v1.0 | In progress | Compression for squashfs/initramfs. Can use host tools initially |
+| **shakti** | ✅ Shipped v0.3.0 | Privilege escalation available |
+| **phylax** | ✅ Shipped v1.1.0 (Cyrius-native) | Threat detection available |
+| **Cyrius multi-platform** | ✅ Shipped v5.5.x (byte-identical builds across x86_64 Linux / aarch64 Linux on real Pi / Apple Silicon Mach-O / Windows PE32+) | Multi-arch ISO unblocked at the toolchain layer |
+| **sankoch** | ✅ Shipped v2.2.4 | Compression for squashfs/initramfs available |
+| **Bare-metal AGNOS target** (Cyrius v5.12.x) | Reservation slipped from v5.10 → v5.11 → v5.12 | Self-hosting ISO (Phase 2) gated on this. v5.10.x = type-system arc; v5.11.x = TS testing + bug sweep; v5.12.x = bare-metal + RISC-V rv64 |
 
 ---
 
@@ -189,7 +192,7 @@ Blocked on aethersafha Cyrius port. Desktop recipes exist in `zugot/desktop/`.
 
 Scope: aarch64, RISC-V.
 
-Blocked on Cyrius 5.0 (multi-platform codegen).
+aarch64 multi-platform codegen shipped at Cyrius v5.5.x (byte-identical Linux + Apple Silicon Mach-O). RISC-V rv64 backend reserved for Cyrius v5.12.x — that's the gate for full RISC-V ISO. aarch64 ISO can begin earlier.
 
 ---
 
@@ -205,11 +208,8 @@ Carried forward from the Rust era, adapted for current component names:
 
 ---
 
-## Relation to Boot Target (May 1)
+## Relation to Beta Target
 
-The May 1 boot target is **kernel boots in QEMU with kybernet as PID 1** —
-that's `make boot-test`, which works today. The ISO pipeline is the next
-milestone after that: packaging a complete, installable system.
+The original "May 1 (Beltane)" boot target is **superseded** by the two-stage beta rescope (2026-05-06): closed beta in **early June 2026** with a 5–15 trusted-tester cohort, public beta in **Q4 2026** with audit + community testing.
 
-The extraction branch stays open until at least Phase 1 is implemented and
-`make boot-iso` produces a real artifact.
+The boot-in-QEMU milestone (`make boot-test` — kernel + kybernet PID 1) works today. The ISO pipeline (`make boot-iso` producing a real bootable artifact) is the next gate, and it's the closed-beta dependency. Phase 1 (minimum viable ISO) is what closes the extraction branch.
