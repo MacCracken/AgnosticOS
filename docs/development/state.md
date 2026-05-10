@@ -7,7 +7,7 @@ type: state
 # AGNOS Ecosystem — Current State
 
 > **Cyrius toolchain**: 5.10.24 | **Cycle**: v5.10.x — REAL TYPE SYSTEM arc (active; opened 2026-05-08 with profiling instrumentation, pivoted at 5.10.5 to type-vocabulary work)
-> **Last refresh**: 2026-05-09 | **Refresh cadence**: bundle with each v5.10.x patch close, full sweep when minor cuts
+> **Last refresh**: 2026-05-10 | **Refresh cadence**: bundle with each v5.10.x patch close, full sweep when minor cuts
 > **Crate registries** (versions + roles): [`planning/shared-crates.md`](planning/shared-crates.md) is the full registry (incl. pre-1.0); [`docs/applications/libs/README.md`](../applications/libs/README.md) is the v1.0+ stable subset. This file holds cycle / pin / sweep state only.
 
 This doc holds **volatile state** — what's currently true across the AGNOS dev surface. CLAUDE.md is preferences/process/procedures; this is the live picture. Per [*Docs Go Stale Before the Commit*](../articles/docs-go-stale-before-the-commit.md): rewrite in place when state changes; don't preserve historical snapshots — git history is authoritative.
@@ -223,6 +223,7 @@ Root [`CLAUDE.md`](../../CLAUDE.md) "Standalone Repos" table also drifted (same 
 | **NEW** ✅ Phase-3-stdlib-foldin retrospective | Landed 2026-05-06 in vidya at `content/cyrius/field_notes/compiler/retros/foldin_arc_v57_v59.cyml`. Companion to *what-justifies-a-stdlib-foldin* (process) — the retro is the experiential ledger. |
 | **NEW** [*REAL TYPE SYSTEM in 24 patches*] (working title) | v5.10.x retro candidate — opens with profiling instrumentation, pivots at 5.10.5 to type-vocabulary work, Phase 2 closes 5.10.5 false-positive flood. Wait for cycle close before drafting. |
 | **NEW** ✅ darshana extraction note | When darshana ships 1.0.0, document the cyim-private → shared-library extraction pattern (single-consumer-private → second-consumer-triggers-extraction) alongside other extraction examples. |
+| **NEW** [*Why AGNOS-native agents can't be drained by a tweet*] (working title) | Black Hat / summer-2026-arc Beat 2 article — AGNOS agent-injection defense as second instance of the absence-by-design structural-immunity pattern (kernel CVE-2026-31431 was the first). Spec: [`planning/agent-injection-defense.md`](planning/agent-injection-defense.md). Roadmap: Phase 15A. Draft after Phase 1 ships (post-closed-beta). |
 
 ---
 

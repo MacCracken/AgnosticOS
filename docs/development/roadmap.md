@@ -367,6 +367,21 @@ Detailed items tracked in respective repos:
 
 **Subsystem**: **phylax** — standalone repo (`MacCracken/phylax`). Detailed roadmap tracked there.
 
+### Phase 15A — Agent Injection Defense (post-closed-beta, cross-cutting)
+
+**Spec**: [`planning/agent-injection-defense.md`](planning/agent-injection-defense.md) — full design spine.
+
+**Problem**: encoded prompt injection — instructions hidden in representations the LLM decodes natively (Morse, Base64, Unicode tricks, homoglyphs, foreign-language smuggling) but pre-LLM safety filters don't recognize as instructions. **Trigger event**: 2026-05 third-party AI agent drained for $200K via Morse code embedded in a tweet. The attack class is general; defense must be structural.
+
+**Approach**: six-layer defense across `phylax` (input scanning), `hoosh` (gateway pre-flight + provenance tagging), `t-ron` (capability-source policy at MCP boundary), `kavach` (irreversible-action capability gating + confirmation tokens), `libro` (audit-chain provenance), `agnostik` (`UntrustedInput<T>` shared type). L4 + L6 give **structural immunity at the agent layer** — same absence-by-design pattern as the kernel being immune to CVE-2026-31431, applied at a different boundary. Even if every detection layer misses the encoding, the wallet drain doesn't happen because the capability gate doesn't exist for unconfirmed external-input-origin calls.
+
+**Phasing** (full detail in spec):
+- **Phase 1 — Detection foundation** (post-closed-beta): phylax encoded-content scanner + hoosh middleware. Pure observability — no behavior change.
+- **Phase 2 — Capability gating** (post-public-beta): t-ron + kavach + agnostik. Structural immunity layer comes online.
+- **Phase 3 — Documentation + narrative** (parallel with Phase 2): design-patterns.md absence-by-design entry; *"Why AGNOS-native agents can't be drained by a tweet"* article paired with summer-2026-arc Beat 2 (Black Hat receipts).
+
+**Key design questions open** (see spec): confirmation token mechanism, default `irreversible` set, L1 detection thresholds, backward-compatibility migration path, L6 type-adoption mandate level.
+
 ---
 
 ## Ecosystem

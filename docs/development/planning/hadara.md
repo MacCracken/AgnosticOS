@@ -222,4 +222,4 @@ Hadara doesn't map to a single Ma'at confession — it is the **context layer** 
 
 ---
 
-*Last Updated: 2026-04-12*
+*Last Updated: 2026-04-12. Verified 2026-05-09: still accurate as architectural context for the v1.0.0 ship; fossil notice (2026-05-06) remains the right framing — for shipped capabilities and current API, see the hadara repo's own docs.*

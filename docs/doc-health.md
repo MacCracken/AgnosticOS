@@ -21,9 +21,10 @@ This is a **ledger**, not a one-time audit. Rewrite-in-place as docs change. Per
 
 | Bucket | Count | What it means |
 |---|---|---|
-| ✅ **Fresh / refreshed in this audit** | ~135 | Confirmed current or just edited. Includes ~56 lib docs cleaned (version lines removed) + ~28 fossil-noticed docs (now accurate) + 4 entry-points + ADRs + dev/os batch + history + timeline + dev/os/README.md restructure + dev/README.md index + 4 broken-link fixes (SUPPORT, CONTRIBUTING, mcp-tools-reference, joshua) + LICENSE-FIXES archived. |
-| 🟡 **Stale — refresh in place** | ~0 | Cleared — no known-stale operational docs remain. Registries verified fresh. |
-| 🟠 **Read-through outstanding** | ~10 | Light skim only on creative/, dated-artifact articles, .github templates. None known to be wrong. |
+| ✅ **Fresh / refreshed in this audit** | ~165 | Includes 2026-05-06 audit (~135 items) + 2026-05-09 sweep (+~30 items: doc-health relocation, 3 re-org actions, README/AGNOS/CHANGELOG version refresh, state.md cycle refresh, first-party-standards Cyrius-first rewrite, shared-crates 12-version bump + 2 new repos, libs/README.md, history/timeline cycle extension, SECURITY.md CVE callout, sprint-history Cyrius-era summaries, iso-pipeline blockers, summer-2026-arc cycle re-cast, 4 articles cycle-bump, planning/{joshua,murti,pdf-suite,hadara,tanur,roadmap,README,shared-crates,first-party-{standards,documentation},example_claude}). |
+| 🟡 **Stale — refresh in place** | 0 | Cleared. |
+| 🟠 **Read-through outstanding** | ~25 | Light skim remaining on guides/* (fossil-noticed), infrastructure/* (fossil-noticed), dev/os/* (Stage 8 batch), creative/, vision/* (long-range planning), .github templates. None known to be wrong. |
+| ⏸️ **Deferred** | 2 | `planning/agnostic-integration.md` + `planning/bullshift-split.md` — both deferred per user direction until desktop is shipping. |
 | 🔵 **Probably evergreen** | ~25 | Philosophy, thesis, code-of-conduct, .github templates — re-read pass annually, not weekly. |
 | 📦 **Archive — frozen by design** | ~36 | `docs/archive/`. Verified — nothing misclassified. |
 | ❓ **Open strategic question** | 0 | All 4 strategic questions (lib doc pattern, app doc inventory, ADR posture, entry-point refresh) resolved in this audit. Q4 (release-vision compass) closed in Stage 5. |
@@ -89,9 +90,9 @@ Numbers approximate; rolls up from the per-tier tables below.
 | File | Last touched | Status | Action |
 |---|---|---|---|
 | `README.md` | 2026-05-06 | ✅ Fresh | Refreshed 2026-05-06: badges, architecture diagram, stack table (kernel 1.26.1/248KB, Cyrius 5.9.0/~741KB, sigil 2.9.4, libro 2.0.5, ark 0.8.0, nous 1.1.1), security versions, beta target (closed/public split), pointer to state.md added. |
-| `CHANGELOG.md` | 2026-04-28 | 🟡 Stale | Last entry pre-dates Cyrius v5.8.x and v5.9.0. Add cycle close summaries. **Refresh** |
+| `CHANGELOG.md` | 2026-05-09 | ✅ Fresh | **New [2026.5.9] entry 2026-05-09** covering 3-day delta: doc-health relocation, state.md refresh (v5.10.x cycle), first-party-standards Cyrius-first rewrite, shared-crates sweep, README/AGNOS sweep, Cyrius v5.9.x close + v5.10.x open + v5.11/v5.12 reservations. |
 | `CLAUDE.md` | 2026-05-06 | ✅ Fresh | Just updated. State-table version cell intentionally points to state.md per established pattern. |
-| `CONTRIBUTING.md` | 2026-04-21 | 🟠 Read-through | Verify Cyrius-build instructions are still current. |
+| `CONTRIBUTING.md` | 2026-05-09 | ✅ Fresh | **Touched 2026-05-09**: doc-health row separated from Developer-docs row to surface the convention; doc-health pointed at new `docs/doc-health.md` location. |
 | `SECURITY.md` | 2026-05-09 | ✅ Fresh | **Refreshed 2026-05-09**: CVE-2026-31431 structural-immunity section added (Notable Hardening callout + 6th defense-in-depth layer + canonical absence-by-design pattern). Last Updated bumped + Next Review pushed to 2026-08-09. |
 | `SUPPORT.md` | 2026-03-11 | 🔵 Evergreen | Operational pointers. Re-check links. |
 | `CODE_OF_CONDUCT.md` | (unverified) | 🔵 Evergreen | Standard. |
@@ -120,19 +121,20 @@ Numbers approximate; rolls up from the per-tier tables below.
 | `iso-pipeline.md` | 2026-05-09 | ✅ Fresh | Refreshed 2026-05-09: cc5 size + version bump (v5.9.0/741KB → v5.10.24/783KB), blockers table updated (phylax/shakti/sankoch shipped; aegis graduated; multi-platform codegen shipped at v5.5.x), bare-metal reservation slipped to v5.12.x, May 1 boot target superseded by two-stage beta rescope. |
 | `iso-stage4-plan.md` | 2026-04-28 | 🔴 In-flight | D1–D4 decisions pending user input per roadmap callout. **Not stale — blocked.** |
 | `README.md` | 2026-05-09 | ✅ Fresh | Index doc; "78-crate registry" drift removed in earlier pass; verified clean 2026-05-09 with planning/ rename reflected. |
-| `planning/shared-crates.md` | 2026-05-06 | ✅ Fresh | Touched today. Sweep against state.md drift list before declaring authoritative. |
-| `planning/first-party-standards.md` | 2026-04-24 | 🟠 Read-through | Standards are evergreen; verify versions of cited tools. |
-| `planning/first-party-documentation.md` | 2026-04-24 | 🟠 Read-through | Same. |
-| `planning/example_claude.md` | 2026-04-24 | 🟠 Read-through | CLAUDE.md template — verify current Cyrius patterns. |
-| `planning/agnostic-integration.md` | 2026-04-14 | 🟠 Read-through | |
-| `planning/hadara.md` | 2026-04-13 | 🟠 Read-through | |
+| `planning/shared-crates.md` | 2026-05-09 | ✅ Fresh | **Refreshed 2026-05-09**: 12 version bumps (agnostik 1.2.0, sigil 3.1.0, vidya 2.7.0, agnosys 1.2.1, owl 1.3.6, vyakarana 2.2.1, sandhi 1.3.0, sit 0.7.6, cyim 1.6.7, aegis 0.8.2, chakshu 0.2.0); **darshana** added (pre-1.0 lib); **cyim-lsp** added (v1.0+ binary); count `109 → 111`; section header `83 → 84`. trump_epstein removed earlier same day. |
+| `planning/first-party-standards.md` | 2026-05-09 | ✅ Fresh | **Full Cyrius-first rewrite 2026-05-09**: 1109 lines (mid-transition, ~70% Rust) → 972 lines (Cyrius-only). Rust archive at `docs/archive/first-party-standards-rust-era.md`. Replaced Cargo.toml/cargo/criterion/thiserror/anyhow/tracing with cyrius.cyml/cyrius commands/.bcyr/sakshi. |
+| `planning/first-party-documentation.md` | 2026-05-09 | ✅ Fresh | **Refreshed 2026-05-09**: doc-health.md convention codified — table row + body section + FAQ-lookup-table entry (location at `docs/` root, header pattern, when-to-scaffold guidance for smaller repos). |
+| `planning/example_claude.md` | 2026-05-09 | ✅ Fresh | Verified 2026-05-09: fully Cyrius-current (cyrius.cyml format, sakshi, .tcyr, no Rust-era tokens). Template by design — no Last Updated footer needed. |
+| `planning/agnostic-integration.md` | 2026-03-08 | ⏸️ Deferred | Per user 2026-05-09: "same as agnostic" — defer until desktop is working. References `llm-gateway` daemon (now hoosh) and `userland/` paths (extracted 2026-04-01); rewrite scheduled for after desktop ships. |
+| `planning/hadara.md` | 2026-05-09 | ✅ Fresh | Verified 2026-05-09: fossil notice (2026-05-06) remains the right framing — design rationale that drove v1.0 ship; for shipped capabilities, see hadara repo. |
 | `planning/joshua.md` | 2026-05-09 | ✅ Fresh | Verified 2026-05-09: design intent unchanged; **kiran shipped 1.0.0** noted in footer (engine dependency no longer a forward-looking gate); joshua itself still at 0.1.0 scaffold. |
 | `planning/murti.md` | 2026-05-09 | ✅ Fresh | Verified 2026-05-09: design intent unchanged; consumer deps all at v1.0+ noted in footer. |
 | `planning/pdf-suite.md` | 2026-05-09 | ✅ Fresh | Verified 2026-05-09: design intent unchanged; P0 status retained; design-phase footer note added. |
-| `planning/tanur.md` | 2026-04-07 | 🟠 Read-through | |
-| `planning/bullshift-split.md` | 2026-04-07 | 🟠 Read-through | |
-| `planning/roadmap.md` | 2026-04-07 | 🟡 Stale | Crate count "76 total" / "55 at v1.0+" — drifted. **Refresh** counts from state.md. |
-| `planning/README.md` | 2026-04-15 | 🟠 Read-through | |
+| `planning/agent-injection-defense.md` | 2026-05-10 | ✅ Fresh | **NEW 2026-05-10**: full design spec for encoded-prompt-injection defense (six-layer plan across phylax / hoosh / t-ron / kavach / libro / agnostik). Triggered by 2026-05 incident (third-party AI agent drained $200K via Morse code in tweet). Roadmap entry at Phase 15A. |
+| `planning/tanur.md` | 2026-05-09 | ✅ Fresh | **Refreshed 2026-05-09**: 39 occurrences of `Irfan/IrfanConnection/irfan.sock/irfan.local` → `Ifran/IfranConnection/ifran.sock/ifran.local` (canonical name from registry). |
+| `planning/bullshift-split.md` | 2026-03-30 | ⏸️ Deferred | Per user 2026-05-09: "we will but its later when desktop is working" — defer until desktop is shipping. Rust-era split plan; needs Cyrius-port reframing whenever bullshift's port window opens. |
+| `planning/roadmap.md` | 2026-05-09 | ✅ Fresh | **Refreshed 2026-05-09**: footer `2026-04-01 → 2026-05-09`; header bumped to match; stale "77 crates (56 stable)" count stripped (defer to shared-crates.md). |
+| `planning/README.md` | 2026-05-09 | ✅ Fresh | **Full rewrite 2026-05-09**: pre-1.0 only; v1.0+ entries link to `docs/applications/libs/` (lib-doc precedent — version columns dropped); shared-crates.md cited for live state. |
 | `guides/agent-development.md` | 2026-04-14 | 🟠 Read-through | Verify against current daimon (1.1.1) + bote (2.5.1) APIs. |
 | `guides/kernel-guide.md` | 2026-04-14 | 🟠 Read-through | Verify against kernel 1.26.1. |
 | `guides/mcp-tools-reference.md` | 2026-04-07 | 🟠 Read-through | Verify against current 144-tool MCP set. |
@@ -246,7 +248,7 @@ This is fine *if* no architecturally significant decisions have been made since.
 | `docs/installation/README.md` | 2026-05-06 | ✅ Fresh | Refreshed 2026-05-06: header (date + closed/public beta status line), what-works-today (kernel 1.26.1/248KB, boot.cyr ~67KB), Beltane target → closed-beta target, `.cyrius-toolchain` → `cyrius.cyml` per current pin convention, cc3 → cc5 troubleshooting, Phase 13B framing → current. |
 | `docs/installation/system-requirements.md` | 2026-05-09 | ✅ Fresh | RISC-V + bare-metal target rows updated to **v5.12.x** (was v5.7 / v5.8); date bumped. |
 | `docs/installation/troubleshooting.md` | 2026-05-09 | ✅ Fresh | kybernet expected-version 1.0.1 → 1.0.2; date bumped. |
-| `docs/security/security-guide.md` | 2026-03-16 | 🟠 Oldest | 7+ weeks. Add CVE-2026-31431 reference. |
+| `docs/security/security-guide.md` | 2026-05-06 (CVE pointer) | ✅ Fresh | CVE-2026-31431 structural-immunity callout already added in Stage 14 (2026-05-06); body content still applicable; verified 2026-05-09. |
 | `docs/security/cis-benchmarks.md` | 2026-04-14 | 🟠 Read-through | |
 | `docs/security/penetration-testing.md` | 2026-04-14 | 🟠 Read-through | |
 | `docs/security/security-checklist.md` | 2026-04-14 | 🟠 Read-through | |
