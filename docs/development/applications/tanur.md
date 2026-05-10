@@ -5,7 +5,7 @@
 | Field | Value |
 |-------|-------|
 | Status | Scaffolded (0.1.0) |
-| Priority | 2 — desktop experience for Irfan, LM Studio replacement |
+| Priority | 2 — desktop experience for Ifran, LM Studio replacement |
 | Repository | `MacCracken/tanur` |
 | Runtime | native-binary (egui or iced) |
 | Recipe | `zugot/marketplace/tanur.toml` |
@@ -17,16 +17,16 @@
 
 LM Studio is the gold standard for desktop LLM management — model browsing, one-click downloads, chat, GPU monitoring. But it's closed-source, Electron-based, and limited to inference. No training, no evaluation, no fleet management, no marketplace. It also can't integrate with an OS-level agent runtime or respect per-agent token budgets.
 
-AGNOS already has Irfan — a full LLM management server with 21 REST endpoint groups covering model lifecycle, training (6 methods), evaluation (5 benchmarks), RLHF, experiments, RAG, fleet management, marketplace, distributed training, lineage tracking, and an OpenAI-compatible API. Irfan even has a nascent Tauri desktop crate (`ifran-desktop`) with 5 command modules.
+AGNOS already has Ifran — a full LLM management server with 21 REST endpoint groups covering model lifecycle, training (6 methods), evaluation (5 benchmarks), RLHF, experiments, RAG, fleet management, marketplace, distributed training, lineage tracking, and an OpenAI-compatible API. Ifran even has a nascent Tauri desktop crate (`ifran-desktop`) with 5 command modules.
 
-**Tanur replaces `ifran-desktop` as a standalone consumer project.** It's a pure GUI client that connects to Irfan over Unix socket. All intelligence lives in Irfan (which embeds murti for model runtime and connects to hoosh for inference routing). Tanur just renders the experience.
+**Tanur replaces `ifran-desktop` as a standalone consumer project.** It's a pure GUI client that connects to Ifran over Unix socket. All intelligence lives in Ifran (which embeds murti for model runtime and connects to hoosh for inference routing). Tanur just renders the experience.
 
-This separation means Tanur can be installed independently, updated on its own release cycle, and run on machines where Irfan runs headless — connecting remotely to an Irfan instance on a GPU server.
+This separation means Tanur can be installed independently, updated on its own release cycle, and run on machines where Ifran runs headless — connecting remotely to an Ifran instance on a GPU server.
 
 ## Design Principles
 
-1. **Pure client** — Tanur has no model runtime, no inference engine, no training logic. It connects to Irfan over Unix socket and renders UI. All state lives server-side.
-2. **Socket-first** — Default connection is `/run/agnos/irfan.sock`. TCP fallback for remote Irfan instances (`irfan.local:8420`).
+1. **Pure client** — Tanur has no model runtime, no inference engine, no training logic. It connects to Ifran over Unix socket and renders UI. All state lives server-side.
+2. **Socket-first** — Default connection is `/run/agnos/ifran.sock`. TCP fallback for remote Ifran instances (`ifran.local:8420`).
 3. **Real-time** — SSE streams for inference chunks, training progress, experiment trials, and fleet health. No polling.
 4. **Native** — Rust + egui or iced. No Electron, no web runtime. Lightweight, fast startup.
 5. **Progressive disclosure** — Model browsing and chat are front-and-center. Training, eval, RLHF, fleet are discoverable but not overwhelming.
@@ -37,20 +37,20 @@ This separation means Tanur can be installed independently, updated on its own r
 
 ```
 Tanur (GUI)
-  └──socket──→ Irfan (server)
+  └──socket──→ Ifran (server)
                   ├── murti (embedded, model lifecycle + backends)
                   └──socket──→ Hoosh (inference routing, budgets, cloud)
                                   └── murti (embedded, local inference)
 ```
 
-Tanur connects to exactly one endpoint: Irfan's Unix socket (or TCP for remote). Everything flows through Irfan's API. Tanur never touches murti, hoosh, or model files directly.
+Tanur connects to exactly one endpoint: Ifran's Unix socket (or TCP for remote). Everything flows through Ifran's API. Tanur never touches murti, hoosh, or model files directly.
 
-### Irfan API Surface (what Tanur consumes)
+### Ifran API Surface (what Tanur consumes)
 
-Every panel in Tanur maps to existing Irfan endpoints:
+Every panel in Tanur maps to existing Ifran endpoints:
 
 #### Model Hub Panel
-| Feature | Irfan Endpoint | Notes |
+| Feature | Ifran Endpoint | Notes |
 |---------|---------------|-------|
 | Browse local models | `GET /models` | Paginated, shows format/quant/size/params |
 | Model details | `GET /models/{id}` | Architecture, SHA, path, pulled date |
@@ -58,21 +58,21 @@ Every panel in Tanur maps to existing Irfan endpoints:
 | Delete model | `DELETE /models/{id}` | |
 | Discover local servers | `GET /models/discover` | Auto-find Ollama/LM Studio/LocalAI models |
 | Search marketplace | `GET /marketplace/search` | Query, filter by format/size |
-| Pull from peer | `POST /marketplace/pull` | Remote Irfan instances |
+| Pull from peer | `POST /marketplace/pull` | Remote Ifran instances |
 | Publish model | `POST /marketplace/publish` | Share to marketplace |
 
 #### Chat Panel
-| Feature | Irfan Endpoint | Notes |
+| Feature | Ifran Endpoint | Notes |
 |---------|---------------|-------|
 | Send message | `POST /v1/chat/completions` | OpenAI-compatible |
 | Stream response | `POST /v1/chat/completions` `stream: true` | SSE chunks |
 | System prompt | `system` field in request | Per-conversation |
 | Temperature/top_p/top_k | Request params | Per-message or per-conversation |
-| Multiple conversations | Client-side state | Irfan is stateless for chat |
+| Multiple conversations | Client-side state | Ifran is stateless for chat |
 | Model selector | `GET /models` | Switch model mid-conversation |
 
 #### Training Panel
-| Feature | Irfan Endpoint | Notes |
+| Feature | Ifran Endpoint | Notes |
 |---------|---------------|-------|
 | Create job | `POST /training/jobs` | Method, dataset, hyperparams, LoRA config |
 | List jobs | `GET /training/jobs` | Filter by status |
@@ -83,7 +83,7 @@ Every panel in Tanur maps to existing Irfan endpoints:
 | Training events | `GET /system/training/events` | Global SSE stream |
 
 #### Distributed Training Panel
-| Feature | Irfan Endpoint | Notes |
+| Feature | Ifran Endpoint | Notes |
 |---------|---------------|-------|
 | Create distributed job | `POST /training/distributed/jobs` | Strategy: data/model/pipeline parallel |
 | List distributed jobs | `GET /training/distributed/jobs` | |
@@ -93,7 +93,7 @@ Every panel in Tanur maps to existing Irfan endpoints:
 | Aggregate checkpoints | `POST .../aggregate` | Average or weighted average |
 
 #### Experiments Panel
-| Feature | Irfan Endpoint | Notes |
+| Feature | Ifran Endpoint | Notes |
 |---------|---------------|-------|
 | Create experiment | `POST /experiments` | Hyperparameter search program |
 | List experiments | `GET /experiments` | Filter by status |
@@ -102,7 +102,7 @@ Every panel in Tanur maps to existing Irfan endpoints:
 | Stop experiment | `POST /experiments/{id}/stop` | |
 
 #### Evaluation Panel
-| Feature | Irfan Endpoint | Notes |
+| Feature | Ifran Endpoint | Notes |
 |---------|---------------|-------|
 | Create eval run | `POST /eval/runs` | MMLU, HellaSwag, HumanEval, perplexity, custom |
 | List eval runs | `GET /eval/runs` | |
@@ -110,7 +110,7 @@ Every panel in Tanur maps to existing Irfan endpoints:
 | Compare models | Client-side | Side-by-side eval results |
 
 #### Dataset Panel
-| Feature | Irfan Endpoint | Notes |
+| Feature | Ifran Endpoint | Notes |
 |---------|---------------|-------|
 | Preview dataset | `POST /datasets/preview` | |
 | Validate dataset | `POST /datasets/validate` | |
@@ -119,7 +119,7 @@ Every panel in Tanur maps to existing Irfan endpoints:
 | Label job status | `GET /datasets/auto-label/jobs/{id}` | |
 
 #### RAG Panel
-| Feature | Irfan Endpoint | Notes |
+| Feature | Ifran Endpoint | Notes |
 |---------|---------------|-------|
 | Create pipeline | `POST /rag/pipelines` | Chunk size, overlap, embedding model |
 | List pipelines | `GET /rag/pipelines` | |
@@ -128,7 +128,7 @@ Every panel in Tanur maps to existing Irfan endpoints:
 | Delete pipeline | `DELETE /rag/pipelines/{id}` | |
 
 #### RLHF Panel
-| Feature | Irfan Endpoint | Notes |
+| Feature | Ifran Endpoint | Notes |
 |---------|---------------|-------|
 | Create session | `POST /rlhf/sessions` | Model + name |
 | List sessions | `GET /rlhf/sessions` | |
@@ -139,7 +139,7 @@ Every panel in Tanur maps to existing Irfan endpoints:
 | Export annotations | `POST /rlhf/sessions/{id}/export` | For DPO training |
 
 #### Fleet Panel
-| Feature | Irfan Endpoint | Notes |
+| Feature | Ifran Endpoint | Notes |
 |---------|---------------|-------|
 | Register node | `POST /fleet/nodes` | ID, endpoint, GPU info |
 | List nodes | `GET /fleet/nodes` | Filter by health |
@@ -149,7 +149,7 @@ Every panel in Tanur maps to existing Irfan endpoints:
 | GPU telemetry | `GET /system/gpu/telemetry` | Utilization, memory, temperature |
 
 #### Lineage Panel
-| Feature | Irfan Endpoint | Notes |
+| Feature | Ifran Endpoint | Notes |
 |---------|---------------|-------|
 | Record node | `POST /lineage` | Stage: DataPrep→Training→Eval→Deploy |
 | View lineage | `GET /lineage` | Filter by stage |
@@ -158,7 +158,7 @@ Every panel in Tanur maps to existing Irfan endpoints:
 | Version lineage | `GET /versions/{id}/lineage` | Parent/child DAG |
 
 #### System Panel
-| Feature | Irfan Endpoint | Notes |
+| Feature | Ifran Endpoint | Notes |
 |---------|---------------|-------|
 | System status | `GET /system/status` | Version, models, backends, hardware |
 | Hardware info | `GET /system/status` → cpu/gpu | CPU cores, GPU name/VRAM |
@@ -177,7 +177,7 @@ tanur/
 ├── src/
 │   ├── main.rs               # Entry point, app lifecycle
 │   ├── app.rs                 # TanurApp — top-level egui/iced app state
-│   ├── connection.rs          # IrfanConnection — Unix socket + TCP client
+│   ├── connection.rs          # IfranConnection — Unix socket + TCP client
 │   ├── stream.rs              # SSE stream handling (inference, training, events)
 │   ├── panels/
 │   │   ├── mod.rs
@@ -210,17 +210,17 @@ tanur/
 ### Connection Layer
 
 ```rust
-pub struct IrfanConnection {
+pub struct IfranConnection {
     transport: Transport,
     base_url: String,          // Constructed from socket or TCP
 }
 
 pub enum Transport {
-    Unix { path: PathBuf },    // /run/agnos/irfan.sock (default)
-    Tcp { host: String, port: u16 },  // Remote: irfan.local:8420
+    Unix { path: PathBuf },    // /run/agnos/ifran.sock (default)
+    Tcp { host: String, port: u16 },  // Remote: ifran.local:8420
 }
 
-impl IrfanConnection {
+impl IfranConnection {
     /// Auto-detect: try socket first, fall back to localhost:8420
     pub async fn auto_connect() -> Result<Self>;
 
@@ -241,12 +241,12 @@ impl IrfanConnection {
 
 ## AGNOS Integration
 
-- **Daimon**: Registers as agent for MCP tool access; no direct daimon API calls (everything through Irfan)
-- **Hoosh**: No direct connection — inference flows through Irfan → hoosh socket chain
+- **Daimon**: Registers as agent for MCP tool access; no direct daimon API calls (everything through Ifran)
+- **Hoosh**: No direct connection — inference flows through Ifran → hoosh socket chain
 - **Aethersafha**: Theme bridge for consistent AGNOS look and feel
 - **MCP Tools**: `tanur_open` (launch with panel), `tanur_chat` (send message), `tanur_status` (connection status), `tanur_models` (list models), `tanur_train` (create training job)
 - **Agnoshi Intents**: `tanur open`, `tanur chat <prompt>`, `tanur train <model>`, `tanur pull <model>`, `tanur eval <model>`
-- **Marketplace**: Desktop/AI category; sandbox profile allows Unix socket access to `/run/agnos/irfan.sock`, network for remote Irfan, no filesystem access (all files go through Irfan API)
+- **Marketplace**: Desktop/AI category; sandbox profile allows Unix socket access to `/run/agnos/ifran.sock`, network for remote Ifran, no filesystem access (all files go through Ifran API)
 
 ## What Replaces `ifran-desktop`
 
@@ -260,7 +260,7 @@ Tanur supersedes the existing `ifran-desktop` Tauri crate. The mapping:
 | `pull_model(repo_id, quant)` | Models panel pull | Progress bar, registry browse |
 | `send_message(...)` | Chat panel | Multi-conversation, streaming |
 | `get_status()` | System panel | GPU meters, backend status |
-| `get_hardware()` | System panel | No longer local — via Irfan API |
+| `get_hardware()` | System panel | No longer local — via Ifran API |
 | `list_jobs()` | Training panel | With progress streams |
 | `create_job(config)` | Training panel | Form-based job creation |
 | `cancel_job(id)` | Training panel | |
@@ -279,7 +279,7 @@ Tanur supersedes the existing `ifran-desktop` Tauri crate. The mapping:
 | *(not in ifran-desktop)* | Lineage panel | **New** |
 | *(not in ifran-desktop)* | Marketplace panel | **New** |
 
-Once Tanur reaches feature parity, `ifran-desktop` can be removed from the Irfan workspace.
+Once Tanur reaches feature parity, `ifran-desktop` can be removed from the Ifran workspace.
 
 ## Dependencies
 
@@ -298,15 +298,15 @@ No murti dependency. No ai-hwaccel dependency. Tanur is a pure client.
 
 ## Security
 
-- **No model access**: Tanur never touches model files. All model operations go through Irfan's API.
-- **Socket permissions**: `/run/agnos/irfan.sock` is permission-controlled. Tanur runs under user context.
+- **No model access**: Tanur never touches model files. All model operations go through Ifran's API.
+- **Socket permissions**: `/run/agnos/ifran.sock` is permission-controlled. Tanur runs under user context.
 - **No network by default**: Marketplace and remote fleet features require explicit network sandbox permission.
 - **No secrets**: API keys for cloud providers live in hoosh's config, not Tanur.
 
 ## Roadmap
 
 ### Phase 1 — Core Experience
-- [ ] `IrfanConnection` with Unix socket + TCP transport
+- [ ] `IfranConnection` with Unix socket + TCP transport
 - [ ] Models panel (list, detail, delete, discover)
 - [ ] Chat panel (multi-conversation, streaming, model selector)
 - [ ] System panel (hardware, health, GPU telemetry)
@@ -320,7 +320,7 @@ No murti dependency. No ai-hwaccel dependency. Tanur is a pure client.
 - [ ] Evaluation panel (run benchmarks, compare models)
 - [ ] Datasets panel (preview, validate, auto-label, augment)
 - [ ] Loss curve chart widget
-- [ ] Model pull with progress bar (requires Irfan streaming pull endpoint)
+- [ ] Model pull with progress bar (requires Ifran streaming pull endpoint)
 
 ### Phase 3 — Advanced
 - [ ] RLHF panel (annotation sessions, A/B comparison UI)
@@ -330,7 +330,7 @@ No murti dependency. No ai-hwaccel dependency. Tanur is a pure client.
 - [ ] Lineage panel (DAG visualization, version tree)
 - [ ] Marketplace panel (search, publish, pull from peers)
 - [ ] MCP tools + agnoshi intents
-- [ ] Remove `ifran-desktop` from Irfan workspace
+- [ ] Remove `ifran-desktop` from Ifran workspace
 
 ### Phase 4 — Inference Optimization UX (ties to Roadmap Phase 17)
 
@@ -346,4 +346,4 @@ When murti gains activation sparsity and advanced inference (Phase 17), Tanur su
 
 ---
 
-*Last Updated: 2026-03-24*
+*Last Updated: 2026-05-09 (Ifran spelling normalized)*

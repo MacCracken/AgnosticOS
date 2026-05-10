@@ -1,73 +1,98 @@
 # AGNOS Pre-1.0 Development — Libraries, Tools & Applications
 
-> Crates and applications that have not yet reached v1.0 stable release.
-> Released libraries (v1.0+): [docs/applications/libs/](../../applications/libs/README.md).
-> Full registry: [shared-crates.md](shared-crates.md).
+> Crates, binaries, and applications that have **not yet** reached v1.0 stable release.
 >
-> **Last Updated**: 2026-04-15
+> **For v1.0+ stable libraries**: see [docs/applications/libs/](../../applications/libs/README.md) — that's the canonical location for any released library.
+> **For consumer apps shipped to v1.0+**: see [docs/applications/](../../applications/README.md).
+> **For the full registry with current versions and lifecycle status**: see [shared-crates.md](shared-crates.md) — single source of truth, refreshed as crates ship.
+>
+> This README is a stage-based index for *pre-1.0 only*. Versions are intentionally omitted — they drift fast; consult `shared-crates.md`.
+>
+> **Last Updated**: 2026-05-09
 
 ---
 
-## Near-Stable (v0.5.0+)
+## Lifecycle Stages
 
-| Crate | Version | Domain | Notes |
-|-------|---------|--------|-------|
-| agnosys | 0.97.2 | Kernel interface (Landlock, seccomp, syscalls) | Cyrius-ported, 59x smaller |
-| agnostik | 0.97.1 | Shared types & domain primitives | Cyrius-ported, GitHub-release only |
-| sakshi | 0.9.0 | Tracing, error handling, structured logging | Cyrius-native, zero-alloc hot path |
-| aethersafta | 0.50.0 | Media compositing (scene graph, capture, HW encoding) | |
-| phylax | 0.5.0 | Threat detection (YARA, entropy, magic bytes, ML) | |
-| jnana | 0.5.0 | Unified knowledge system (offline corpus) | |
+Crates are bucketed by where they sit in the path to v1.0. Once a crate reaches v1.0+, it leaves this index and gets a doc page under [`docs/applications/libs/`](../../applications/libs/README.md) (libraries) or [`docs/applications/`](../../applications/README.md) (consumer apps).
 
-## In Progress (v0.1.0 - v0.49.x)
+### Near-Stable Libraries (v0.5.0+)
 
-| Crate | Version | Domain | Notes |
-|-------|---------|--------|-------|
-| cyrius-doom | 0.24.5 | DOOM engine in Cyrius | Hardened, 5 CVEs fixed, 2.59ms/frame |
-| muharrir | 0.23.5 | Editor primitives (text buffer, undo/redo) | |
-| selah | 0.29.4 | Screenshot capture & annotation | |
-| patra | 0.14.0 | Structured storage & SQL queries | Cyrius-native, B+ tree, WAL, 243 tests |
-| sankoch | 0.1.0 | Lossless compression (LZ4, DEFLATE, zlib, gzip) | Gate to sovereign git |
-| vani | 0.1.0 | Audio device I/O (ALSA/OSS direct syscalls) | Cyrius-native |
+Approaching v1.0 — surface largely settled, hardening and consumer adoption underway.
+
+- **aethersafta** — media compositing (scene graph, capture, HW encoding)
+- **jnana** — unified knowledge system (offline-accessible corpus)
+
+### In-Progress Libraries (v0.1.0–v0.49.x)
+
+Active development; surface still moving.
+
+- **selah** — screenshot capture, annotation, PII redaction
+- **cyrius-doom** — DOOM engine in Cyrius (hardened reference port)
+- **muharrir** — editor primitives (text buffer, undo/redo, command pattern)
+- **samvada** — DBus client (Cyrius-native, minimal logind subset)
+- **vani** — audio device I/O (direct ALSA/OSS syscalls; vendored into Cyrius stdlib at v5.8.0)
+- **sit** — sovereign version control (Cyrius-native git replacement, smriti)
+
+### Scaffolded Libraries (v0.1.0)
+
+Repo created, structure in place, implementation pending.
+
+- **yantra** — sovereign UI automation (browser + mobile, as a Cyrius library)
+- **mudra** — token/value primitives (asset identity, ownership, type)
+- **vinimaya** — transaction layer (atomic transfers, escrow, settlement)
+- **taal** — music theory (scales, intervals, chords, rhythm)
+- **natya** — theater/drama/narrative (dramatic structure, archetypes)
+- **kshetra** — temporal geography (spatiotemporal database)
+- **leela** — sport (rules, athletes, tournaments, records)
+- **nyaya** — structured legal knowledge (statutes, precedents, IP)
+
+### Planned Libraries (not yet scaffolded)
+
+- **krishi** — agriculture (crop science, soil, irrigation, yield modeling)
+- **prakriti** — ecology (ecosystem modeling, food webs, biodiversity)
+
+---
 
 ## System Tools & Binaries (pre-1.0)
 
-| Crate | Version | Domain | Notes |
-|-------|---------|--------|-------|
-| ark | 0.1.0 | Package manager | Cyrius-ported |
-| nous | 0.1.0 | Package resolver | Cyrius-ported |
-| takumi | 0.1.0 | Build system | Pending Cyrius port |
-| aegis | 0.1.0 | Security daemon | Pending Cyrius port |
-| shakti | 0.1.0 | Privilege escalation | Pending Cyrius port |
-| aethersafha | 0.1.0 | Wayland compositor | Pending Cyrius port |
+- **ark** — package manager (Cyrius)
+- **takumi** — build system (Cyrius port in progress; rust-old/ authoritative until parity)
+- **shakti** — privilege escalation (sudo replacement)
+- **aegis** — security daemon
+- **aethersafha** — Wayland compositor
+- **agnova** — OS installer (Cyrius port from 3,656 Rust lines)
+- **mela** — agent marketplace
+- **seema** — edge fleet management
+- **samay** — task scheduler
+- **chakshu** — AI-augmented system monitor (binary `shu`; replaces htop/btop at v1.0)
+
+---
 
 ## Applications (pre-1.0)
 
-| App | Version | Domain | Notes |
-|-----|---------|--------|-------|
-| murti | 0.1.0 | Core model runtime (Ollama replacement) | Scaffolded |
-| tanur | 0.1.0 | Desktop LLM studio (LM Studio replacement) | Scaffolded |
-| joshua | 0.1.0 | Game manager & AI simulation | Scaffolded |
-| salai | 0.1.0 | Game editor (egui, kiran) | Scaffolded |
-| mela | 0.1.0 | Agent marketplace | Scaffolded |
-| agnova | 0.1.0 | OS installer | Scaffolded |
-| seema | 0.1.0 | Edge fleet management | Scaffolded |
-| samay | 0.1.0 | Task scheduler | Scaffolded |
+Design docs in this folder where present:
 
-## Scaffolded — Planned Libraries (0.1.0)
+- **murti** — core model runtime (Ollama replacement) — [murti.md](murti.md)
+- **tanur** — desktop LLM studio (LM Studio replacement) — [tanur.md](tanur.md)
+- **joshua** — game manager & AI simulation — [joshua.md](joshua.md)
+- **salai** — game editor (egui visual editor for kiran)
 
-| Crate | Version | Domain | Notes |
-|-------|---------|--------|-------|
-| mudra | 0.1.0 | Token/value primitives | |
-| vinimaya | 0.1.0 | Transaction layer | |
-| taal | 0.1.0 | Music theory | |
-| natya | 0.1.0 | Theater/drama/narrative | |
-| kshetra | 0.1.0 | Temporal geography | |
-| leela | 0.1.0 | Sport as divine play | |
-| nyaya | 0.1.0 | Structured legal knowledge | |
+---
 
 ## Non-Library Projects (pre-1.0)
 
-| Project | Version | Domain | Notes |
-|---------|---------|--------|-------|
-| trump_epstein | 0.1.0 | Evidence database | Scaffolded |
+Game catalog: see the **Non-Library Projects** section of [shared-crates.md](shared-crates.md) for the full list (cyrius-nba-jam, cyrius-brynns-tale, cyrius-grapevine, cyrius-super-plumber-twins, cyrius-stellar-swarm, cyrius-sunset-drive, cyrius-bb, cyrius-chellys-beach-adventure, cyrius-chelly-beach-dash, cyrius-mine-cart, etc.).
+
+---
+
+## See Also
+
+- [shared-crates.md](shared-crates.md) — complete registry across all stages with current versions
+- [roadmap.md](roadmap.md) — application roadmap and priorities
+- [first-party-standards.md](first-party-standards.md) — code conventions
+- [first-party-documentation.md](first-party-documentation.md) — doc conventions
+
+---
+
+*Last Updated: 2026-05-09*

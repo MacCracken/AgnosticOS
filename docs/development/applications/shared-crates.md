@@ -2,14 +2,14 @@
 
 > **Status**: Active | **Last Updated**: 2026-05-07
 >
-> **110 entries** — 83 at v1.0+ stable (75 libs + 6 binaries + **2 stdlib-folded** with niyama added v5.9.0), 20 pre-1.0 libs, 10 pre-1.0 binaries/tools (chakshu / `shu` added 2026-05-07), 10 non-library, 3 planned, plus the Audio I/O / Video Codec / GitHub-only sub-sections (overlap with the v1.0+/pre-1.0 counts above where applicable).
+> **109 entries** — 83 at v1.0+ stable (75 libs + 6 binaries + **2 stdlib-folded** with niyama added v5.9.0), 20 pre-1.0 libs, 10 pre-1.0 binaries/tools (chakshu / `shu` added 2026-05-07), 9 non-library, 3 planned, plus the Audio I/O / Video Codec / GitHub-only sub-sections (overlap with the v1.0+/pre-1.0 counts above where applicable).
 >
 > **Classification rule**: pre-v1.0 crates are tracked in [`docs/development/applications/`](README.md). v1.0+ stable crates have their docs in [`docs/applications/libs/`](../../applications/libs/) (libraries) or [`docs/applications/`](../../applications/) (consumer apps).
 > See [First-Party Standards](first-party-standards.md) for versioning and publishing conventions.
 
 ---
 
-## v1.0+ Stable Index (82 entries)
+## v1.0+ Stable Index (83 entries)
 
 Full documentation for each library: [docs/applications/libs/](../../applications/libs/README.md). Consumer apps live one level up at [docs/applications/](../../applications/README.md).
 
@@ -167,7 +167,7 @@ Full documentation for each library: [docs/applications/libs/](../../application
 | [natya](https://github.com/MacCracken/natya) | 0.1.0 | Theater/drama/narrative — dramatic structure, archetypes | bhava, agnoshi, hoosh, joshua |
 | [kshetra](https://github.com/MacCracken/kshetra) | 0.1.0 | Temporal geography — spatiotemporal database | itihas, badal, khanij, vanaspati |
 | [leela](https://github.com/MacCracken/leela) | 0.1.0 | Sport — rules, athletes, tournaments, records | hadara, itihas, avatara, jnana |
-| [nyaya](https://github.com/MacCracken/nyaya) | 0.1.0 | Structured legal knowledge — statutes, precedents, IP | trump_epstein, hadara, itihas, jnana |
+| [nyaya](https://github.com/MacCracken/nyaya) | 0.1.0 | Structured legal knowledge — statutes, precedents, IP | hadara, itihas, jnana |
 | [sit](https://github.com/MacCracken/sit) | 0.7.2 | Sovereign version control — Cyrius-native git replacement (smriti, स्मृति — memory). Deps: sankoch (compression), sigil (hashing), patra (object store). No libgit2, no C, no FFI. | end user, owl (git-marker integration), ark |
 
 ---
@@ -193,7 +193,6 @@ Full documentation for each library: [docs/applications/libs/](../../application
 
 | Project | Version | Description | Key Consumers |
 |---------|---------|-------------|---------------|
-| [trump_epstein](https://github.com/MacCracken/trump_epstein) | 0.1.0 | Evidence database — court filings, depositions, flight logs | nyaya, patra, sigil, libro |
 | [cyrius-nba-jam](https://github.com/MacCracken/cyrius-nba-jam) | 0.5.0 | NBA Jam reimplementation in Cyrius | standalone game |
 | [encom-hits](https://github.com/MacCracken/encom-hits) | 1.0.0 | ENCOM retro arcade collection in Cyrius | standalone game |
 | [cyrius-brynns-tale](https://github.com/MacCracken/cyrius-brynns-tale) | 0.1.0 | ***Brynn's Tale*** — original mythic-modern game in Cyrius. A wife uses a time-rewind power to save her husband from dying; the cost is herself. **Three-act diptych-becoming-triptych**: Act 1 backward-narrative descent (Memento-form, six rewind variants per world); Act 2 forward-irreversible survival (Bleed mechanic + every choice final); Act 3 NG+ as the integrated being THEM (alchemical *rebis* after Phoenix-rebirth, full toolkit, climaxes in cosmic-test rubedo). Selectively Souls-like (soft-fail everyday + hard-fail bosses). Pivoted 2026-04-26 from `cyrius-braid` Braid-reimplementation; original IP per ADR 0003. Formerly registered as `cyrius-braid`. | standalone game |

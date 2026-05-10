@@ -1,6 +1,6 @@
 # Application Development Roadmap
 
-> **Status**: Active | **Last Updated**: 2026-05-06
+> **Status**: Active | **Last Updated**: 2026-05-09
 >
 > Future first-party applications planned for the AGNOS ecosystem.
 > All follow the [First-Party Standards](first-party-standards.md).
@@ -400,9 +400,9 @@ Library crates are documented in [docs/applications/libs/](../../applications/li
 - Priority 1 items before beta
 - Priority 2-3 strengthen daily-driver story
 - Priority 4-6 are post-v1.0 or community-contributed
-- Shared crate registry: [shared-crates.md](shared-crates.md) — 77 crates (56 stable)
+- Shared crate registry: [shared-crates.md](shared-crates.md) (counts live there to avoid drift)
 - Orchestration platform: [k8s-roadmap.md](../vision/architecture/k8s-roadmap.md)
 
 ---
 
-*Last Updated: 2026-04-01*
+*Last Updated: 2026-05-09*
