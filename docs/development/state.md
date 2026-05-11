@@ -6,46 +6,60 @@ type: state
 
 # AGNOS Ecosystem — Current State
 
-> **Cyrius toolchain**: 5.10.24 | **Cycle**: v5.10.x — REAL TYPE SYSTEM arc (active; opened 2026-05-08 with profiling instrumentation, pivoted at 5.10.5 to type-vocabulary work)
-> **Last refresh**: 2026-05-10 | **Refresh cadence**: bundle with each v5.10.x patch close, full sweep when minor cuts
+> **Cyrius toolchain**: 5.11.0 | **Cycle**: v5.11.x — stdlib annotation arc + consumer-issue closeout (active; opened 2026-05-11 with kavach P1 sandbox syscall wrappers)
+> **Last refresh**: 2026-05-11 | **Refresh cadence**: bundle with each v5.11.x patch close, full sweep when minor cuts
 > **Crate registries** (versions + roles): [`planning/shared-crates.md`](planning/shared-crates.md) is the full registry (incl. pre-1.0); [`docs/applications/libs/README.md`](../applications/libs/README.md) is the v1.0+ stable subset. This file holds cycle / pin / sweep state only.
 
 This doc holds **volatile state** — what's currently true across the AGNOS dev surface. CLAUDE.md is preferences/process/procedures; this is the live picture. Per [*Docs Go Stale Before the Commit*](../articles/docs-go-stale-before-the-commit.md): rewrite in place when state changes; don't preserve historical snapshots — git history is authoritative.
 
-**Drift caveat applies to this doc too** — always verify against actual `VERSION` + `cyrius.cyml`/`cyrius.toml` files before acting on any single item. Repo data was sampled 2026-05-09 from local clones (~46 repos) plus `raw.githubusercontent.com` for the remote tail (avatara, ai-hwaccel, hadara, itihas, takumi, bsp, scaffolded apps).
+**Drift caveat applies to this doc too** — always verify against actual `VERSION` + `cyrius.cyml`/`cyrius.toml` files before acting on any single item. Repo data was sampled 2026-05-09 from local clones (~46 repos) plus `raw.githubusercontent.com` for the remote tail (avatara, ai-hwaccel, hadara, itihas, takumi, bsp, scaffolded apps); a user-driven pin-update sweep is in progress at refresh time (a few repos rolled, several kernel-adjacent repos still pending, agnosticos/scripts boot update queued behind them).
 
 ---
 
-## Cyrius cycle — v5.10.x (active)
+## Cyrius cycle — v5.11.x (active)
 
-**REAL TYPE SYSTEM arc.** Cycle opened 2026-05-08 with v5.10.0 (per-phase compile-time profiling instrumentation as the optimization-arc opener) and pivoted at v5.10.5 into the type-vocabulary work that now defines the cycle: cstring / Result / Option / Tagged annotations on stdlib functions plus call-site type checking. **24 patches in 2 days** (5.10.0 → 5.10.24), velocity comparable to v5.8.x's 66-in-4-days but on tighter scope.
+**Stdlib annotation arc + consumer-issue closeout.** Cycle opened 2026-05-11 with v5.11.0 — kavach P1 sandbox syscall wrappers (`sys_fchmod`, `sys_setresuid/gid`, `sys_prctl`, `sys_seccomp`, `sys_execveat` — async-signal-safe, both x86_64 + aarch64 backends) plus roadmap restructure mapping the v5.11.x arc. The chapter-open lands real code, not bookkeeping (per `feedback_release_needs_code_not_just_docs`).
 
-### v5.9.x retrospective (closed 2026-05-08 at 5.9.43)
+### v5.11.x cycle theme
 
-Catchup + niyama-fold cycle, **44 patches** (5.9.0 → 5.9.43, 2026-05-06 → 2026-05-08). v5.9.0 shipped the niyama fold-in (8th sibling distfile, 6,664 lines, 7 regex modules vendored byte-identical from niyama 1.0.1). The remainder ran consumer-rollup against the pin-lag tail and optimization-debt closeout. Pin-lag bands collapsed materially: agnosys exited the held-cluster, vyakarana exited the deep-lag tail, sandhi/agnostik/owl/cyim all rolled to 5.10.x, vidya bumped to 2.7.0 with content refresh. Bare-metal slot deferred again — see v5.12.x reservation below.
+v5.10.x left three carry-forward classes that define the v5.11.x scope:
 
-### v5.10.x slot list — in-flight scope
+1. **Stdlib annotation arc** (pinned 2026-05-10) — 1,010 unannotated public fns across ~75 % stdlib coverage. 7-phase breakout: foundational core / I/O / strings / collections / big consumers / closeout / compiler internals. Phase 1 (alloc/vec/fmt/freelist/fnptr/result/tagged/assert) lands at **v5.11.1**.
+2. **7 consumer-filed issues** (bote / daimon / kavach 2026-05-10 wave): P1 kavach sandbox wrappers ✅ landed v5.11.0; P2×4 daimon aarch64 epoll_wait, bote net recv_timeout + getaddrinfo, bote arena fl_free, bote streaming/async; Low×2 bote ws_server RFC 6455 key validation + parser assert/string-literal quirk.
+3. **Held-forward items** — Class B FFI/wgpu fncall6, cyim regex, float.cyr peephole. Surface-on-ask.
+
+Plus infrastructure carry-forward: `cyrius deps` symlink → file-copy (v5.10.37 pin), `tests/regression-*.sh` → cyrius port + Cyriusly cmdtools port (v5.10.36 pin), TS test harness program promotion.
+
+### v5.11.x slot tracking
 
 | # | Item | Status | Notes |
 |---|------|--------|-------|
-| 1 | Per-phase compile-time profiling instrumentation | ✅ v5.10.0 | 7 phase timestamps gated on `CYRIUS_PROF=1`; ~0.7 µs total overhead |
-| 2 | REAL TYPE SYSTEM Phase 1 — type vocabulary (cstring / Result / Option / Tagged) | ✅ v5.10.5 | Vocabulary additions, no enforcement yet (false-positive flood discovered) |
-| 3 | REAL TYPE SYSTEM Phase 2 — call-site type checking | ✅ v5.10.24 | Per-fn param-type bitmasks; canonical motivator stdlib fns annotated |
-| 4 | REAL TYPE SYSTEM Phase 3+ — remaining phases of 5-phase arc | 🔄 In-flight | Phases 3–5 scope per cycle planning |
-| 5 | TLS items batch (5.10.21 — *"remaining tls items missing from first batch"*) | ✅ v5.10.21 | Pre-pivot batch closeout |
-| 6 | cyim → niyama integration verification | ✅ Done | `cyim/src/main.cyr:51` includes `lib/niyama.cyr` directly |
+| 1 | kavach P1 sandbox syscall wrappers | ✅ v5.11.0 | 6 wrappers, both backends, async-signal-safe; closes kavach 3.1.1 raw-syscall workaround |
+| 2 | Stdlib annotation arc Phase 1 (alloc/vec/fmt/freelist/fnptr/result/tagged/assert) | 🔄 In-flight | Lands at v5.11.1 |
+| 3 | Stdlib annotation arc Phases 2–7 | [ ] Queued | Through v5.11.x |
+| 4 | Consumer-filed P2 wave (daimon/bote) | [ ] Queued | Interleave per slot-ordering heuristic |
+| 5 | Infrastructure (deps copy fix, regression port, TS test harness) | [ ] Queued | Later in v5.11.x |
 
-### v5.10.x cc5 cut state
+### v5.10.x retrospective (closed 2026-05-11 at 5.10.50)
 
-cc5 at **783,408 B** (up from 741,048 B at v5.9.0 — net +42,360 B from profiling instrumentation, type-vocabulary additions, call-site checking machinery). Self-host two-step byte-identical confirmed at v5.10.24.
+**50 patches in 5 days** (2026-05-06 → 2026-05-11). THREE completed arcs plus a compile-perf miniarc:
 
-### v5.11.x reservation — TS testing suite + bug sweeping
+- **Typed-simd ABI arc — 11 phases** (closeout v5.10.39). `lib/simd.cyr` rewrite: every math op exists in value-form + pointer-form siblings with parser-side `&IDENT → _ptr` overload routing; f64v2 args in XMM0/XMM1 (SysV) / V0/V1 (aarch64), f64v4 in register pairs; PE-gated via `CYRIUS_HAS_VAL_SIMD_PARAMS`. **This is the substrate for Cyrius-native codec work long-term** — typed SIMD primitives + cross-platform ABI-aware register routing is the floor of any handwritten-SIMD codec port (tarang's current dav1d/openh264/libvpx C-FFI layer is the placeholder until that future arc opens).
+- **REAL TYPE SYSTEM arc — 5 phases** (Phase 2 v5.10.24, Phase 3 v5.10.25 overload generalize). Per-fn param-type bitmasks, call-site type checking, cstring / Result / Option / Tagged vocabulary on stdlib.
+- **Struct-byval ABI arc — 3 phases** (.45 + .46 + .47). Cross-backend struct-byval return surface.
+- **Compile-time-perf miniarc** (.40 + .41) — **2.7× total compile speedup**.
 
-The v5.11.x cycle is reserved for **type-system testing suite** plus **bug sweeping** of items surfaced by the agnosys agent's repo-update sweep — that work dragged up a meaningful debt list across the ecosystem. Focus is consolidation, not new features.
+Plus one TLS contract pin (.42), one PE premise debunk (.49 — 15-slot phantom pin closed by empirical re-test), 4 open issues closed (str_split, exec_*, parser cosmetics, kernel-reserved-word), and 9+ in-cycle pin re-scopings driven by premise-check discipline.
+
+api-surface 2,769 → 2,876 (+107 public fns). cc5 (x86) 741,048 B → **804,472 B**. check.sh 66 gates stable. cyrius test count 132 → ~146.
+
+### cc5 cut state
+
+cc5 at **804,472 B** (v5.11.0 byte-identical to v5.10.50 — v5.11.0 was a stdlib-only addition; cc5 doesn't include `lib/syscalls_*_linux.cyr`). api-surface 2,876 → **2,888** at v5.11.0 (+12). Self-host 3-step fixpoint clean.
 
 ### v5.12.x reservation — bare-metal + RISC-V rv64
 
-Bare-metal AGNOS target + RISC-V rv64 backend now slot at **v5.12.x**. Slipped: v5.8.x → v5.10.x → v5.11.x → **v5.12.x**. The v5.10.x type-system work is partial prerequisite (call-site checking helps catch ABI mismatches before they reach a foreign target); v5.11.x's testing-suite work is the rest.
+Bare-metal AGNOS target + RISC-V rv64 backend now slot at **v5.12.x**. Slip path: v5.8.x → v5.10.x → v5.11.x → **v5.12.x**. The v5.10.x typed-simd ABI + REAL TYPE SYSTEM + struct-byval ABI together form the substrate prerequisite (call-site checking catches ABI mismatches before they reach a foreign target; typed-simd primitives are needed for SIMD-aware backends); v5.11.x's stdlib annotation arc is the remaining prereq.
 
 ### Genuinely dangling — carry-forward into v5.11.x triage
 
@@ -64,7 +78,7 @@ Bare-metal AGNOS target + RISC-V rv64 backend now slot at **v5.12.x**. Slipped: 
 
 ## Pin-lag spectrum
 
-Each repo's `cyrius = "X.Y.Z"` pin (verified 2026-05-09). Bundle pin-bumps to v5.10.x with each repo's natural next patch — don't force a rebuild slot just for the sweep. **Eleven repos still on `cyrius.toml`** (pre-`.cyml` format) with v3.x–v4.x pins — these need format migration *and* pin bump.
+Each repo's `cyrius = "X.Y.Z"` pin (verified 2026-05-09 — **stale against the 2026-05-11 v5.10.25 → v5.11.0 burst; user pin-update sweep in progress, kernel-adjacent repos still pending, agnosticos/scripts boot update queued behind them**). Bundle pin-bumps to v5.11.x with each repo's natural next patch — don't force a rebuild slot just for the sweep. **Eleven repos still on `cyrius.toml`** (pre-`.cyml` format) with v3.x–v4.x pins — these need format migration *and* pin bump.
 
 ```
 PRE-CYML format (cyrius.toml, v3.x–v4.x — needs format migration):
@@ -209,19 +223,20 @@ Root [`CLAUDE.md`](../../CLAUDE.md) "Standalone Repos" table also drifted (same 
 
 | File | Action |
 |------|--------|
-| [`roadmap.md`](roadmap.md) | v5.7.x / v5.8.x / v5.9.x phase definitions are now historical; v5.10.x = REAL TYPE SYSTEM arc; v5.11.x = TS testing + bug sweep; v5.12.x = bare-metal + rv64. Re-touch on each v5.10.x ship. |
-| [`summer-2026-arc.md`](summer-2026-arc.md) | Cycle-theme references need re-anchoring against v5.10.x type-system framing. |
-| [`articles/cyrius-vs-rust-benchmarks.md`](../articles/cyrius-vs-rust-benchmarks.md) | Add v5.9.x and v5.10.x rows; sweep "Pure compute gap" language for closed items |
+| [`roadmap.md`](roadmap.md) | v5.7.x / v5.8.x / v5.9.x / v5.10.x phase definitions are now historical; v5.11.x = stdlib annotation arc + consumer-issue closeout (active); v5.12.x = bare-metal + rv64. Re-touch on each v5.11.x ship. |
+| [`summer-2026-arc.md`](summer-2026-arc.md) | Cycle-theme references need re-anchoring against v5.10.x three-arc retro + v5.11.x stdlib-annotation framing. |
+| [`articles/cyrius-vs-rust-benchmarks.md`](../articles/cyrius-vs-rust-benchmarks.md) | Add v5.9.x / v5.10.x / v5.11.x rows; sweep "Pure compute gap" language for closed items |
 | [`articles/port-ledger-volume-1.md`](../articles/port-ledger-volume-1.md) | *Where Rust Still Wins* — confirm which categories closed under v5.8.x / v5.9.x / v5.10.x |
-| [`articles/doom-in-cyrius.md`](../articles/doom-in-cyrius.md) | v5.10.x rebuild numbers when cyrius-doom ships an unblock release (still on pin 5.7.48) |
-| [`articles/sovereign-compiler-vs-brute-force.md`](../articles/sovereign-compiler-vs-brute-force.md) | cc5 size at **783,408 B** (v5.10.24 — was 741,048 B at v5.9.0; +42 KB from profiling instrumentation + type-vocabulary + call-site checking) |
+| [`articles/doom-in-cyrius.md`](../articles/doom-in-cyrius.md) | v5.11.x rebuild numbers when cyrius-doom ships an unblock release (still on pin 5.7.48) |
+| [`articles/sovereign-compiler-vs-brute-force.md`](../articles/sovereign-compiler-vs-brute-force.md) | cc5 size at **804,472 B** (v5.11.0 — was 741,048 B at v5.9.0; +63 KB across v5.10.x three-arc cycle + v5.11.0 sandbox syscalls) |
 | [`planning/shared-crates.md`](planning/shared-crates.md) | ✅ Refreshed 2026-05-09 (versions bumped, darshana + cyim-lsp added). Re-verify on next cycle close. |
 | [`docs/applications/libs/README.md`](../applications/libs/README.md) | Bump versions for v1.0+ subset; "Last Updated 2026-04-15" predates three minors |
 | [`planning/first-party-documentation.md`](planning/first-party-documentation.md) | Re-read at each v5.10.x patch — meta-irony from *Docs Go Stale Before the Commit* |
 | [`planning/first-party-standards.md`](planning/first-party-standards.md) | ✅ Refreshed 2026-05-09 — full Cyrius-first rewrite; Rust-era archive at `docs/archive/first-party-standards-rust-era.md` |
 | **NEW** ✅ [*What Justifies a Stdlib Foldin*](../articles/what-justifies-a-stdlib-foldin.md) | Shipped 2026-05-06 — meta-process article covering the gate framework, anti-criteria, mechanism, and three-instance pattern across sandhi/vani/niyama. Subsumes per-instance article slots. |
 | **NEW** ✅ Phase-3-stdlib-foldin retrospective | Landed 2026-05-06 in vidya at `content/cyrius/field_notes/compiler/retros/foldin_arc_v57_v59.cyml`. Companion to *what-justifies-a-stdlib-foldin* (process) — the retro is the experiential ledger. |
-| **NEW** [*REAL TYPE SYSTEM in 24 patches*] (working title) | v5.10.x retro candidate — opens with profiling instrumentation, pivots at 5.10.5 to type-vocabulary work, Phase 2 closes 5.10.5 false-positive flood. Wait for cycle close before drafting. |
+| **NEW** [*v5.10.x: three arcs in five days*] (working title) | v5.10.x retro candidate — reframe past *REAL TYPE SYSTEM in 24 patches* working title. Cycle closed 2026-05-11 at .50 with three completed arcs (typed-simd ABI 11 phases, REAL TYPE SYSTEM 5 phases, struct-byval ABI 3 phases) + 2.7× compile-perf miniarc + PE premise debunk. Draftable now. |
+| **NEW** [*Typed SIMD: the substrate for native codec ports*] (working title) | Companion to *port-ledger* — the typed-simd ABI arc (v5.10.28 → v5.10.39) is the foundation that turns tarang's "framework-only, codecs via C FFI" placeholder into an eventual handwritten-SIMD-codec lane (dav1d/FFmpeg territory). Frame as the *prerequisite landed; codec arc is future-arc work post-bare-metal*. Tarang competition framing piece. |
 | **NEW** ✅ darshana extraction note | When darshana ships 1.0.0, document the cyim-private → shared-library extraction pattern (single-consumer-private → second-consumer-triggers-extraction) alongside other extraction examples. |
 | **NEW** [*Why AGNOS-native agents can't be drained by a tweet*] (working title) | Black Hat / summer-2026-arc Beat 2 article — AGNOS agent-injection defense as second instance of the absence-by-design structural-immunity pattern (kernel CVE-2026-31431 was the first). Spec: [`planning/agent-injection-defense.md`](planning/agent-injection-defense.md). Roadmap: Phase 15A. Draft after Phase 1 ships (post-closed-beta). |
 
@@ -229,7 +244,7 @@ Root [`CLAUDE.md`](../../CLAUDE.md) "Standalone Repos" table also drifted (same 
 
 ## Refresh procedure
 
-When a v5.10.x patch closes:
+When a v5.11.x patch closes:
 
 1. Pull current `VERSION` + `cyrius.cyml`/`cyrius.toml` for affected repos
 2. Update the pin-lag spectrum if any repo crossed a band
@@ -237,10 +252,10 @@ When a v5.10.x patch closes:
 4. Re-anchor "Last refresh" date in the header
 5. Re-anchor "Cyrius toolchain" if a new minor cut
 
-When v5.10.x cycle closes:
+When v5.11.x cycle closes:
 
-1. Move v5.10.x slot list closeout summary into a brief retrospective (one paragraph)
-2. Repoint all `5.9.x` / `5.10.x` references to whichever cycle is next (likely v5.11.x — TS testing suite)
+1. Move v5.11.x slot list closeout summary into a brief retrospective (one paragraph)
+2. Repoint all `5.10.x` / `5.11.x` references to whichever cycle is next (likely v5.12.x — bare-metal + rv64)
 3. Don't archive — rewrite in place. Git history is the snapshot.
 
 ---
@@ -257,4 +272,4 @@ When v5.10.x cycle closes:
 
 ---
 
-*Refreshed 2026-05-09 (v5.10.24 day, mid-cycle). Rewrite-in-place as state changes. v5.9.x history captured here is closeout-context only — Cyrius CHANGELOG is the receipt.*
+*Refreshed 2026-05-11 (v5.11.0 day — v5.10.x closed at .50 same day, v5.11.0 opened with kavach P1 sandbox wrappers; pin-update sweep in progress). Rewrite-in-place as state changes. v5.10.x history captured here is closeout-context only — Cyrius CHANGELOG is the receipt.*
