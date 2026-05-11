@@ -185,6 +185,23 @@ That cadence — 40 patches to close one minor, 66 patches in the next four days
 
 Full head-to-head benchmarks on real crate conversions: [Cyrius vs Rust Benchmarks](cyrius-vs-rust-benchmarks.md). The 10-port ledger: [Port Ledger Volume 1](port-ledger-volume-1.md).
 
+### Update 2026-05-11 — direct reply to *"Agentic Coding is a Trap"*
+
+Lars Faye's [*Agentic Coding is a Trap*](https://larsfaye.com/articles/agentic-coding-is-a-trap) (May 2026; [HN #48002442](https://news.ycombinator.com/item?id=48002442)) argues that agentic coding produces cognitive debt, skill atrophy, LGTM-level code reviews ("vibe coding"), and vendor-stranded workflows. The diagnosis is partly right. The prescription — demote agents to reference tools, rely on personal vigilance — treats a methodology failure as a tool failure.
+
+This article is the receipt that **the trap is the methodology, not the tools.** The same Claude Opus produced Anthropic's $20,000 parallel-Claude C compiler and Project B's $400 self-hosting language + OS kernel. The variable was method:
+
+- **Sequential over parallel** — 3 agents (Meta / Language / Kernel) one at a time, not 16 in parallel. The developer holds the vision; the tightened decision loop keeps every design call human.
+- **Reference-staged over context-fresh** — Vidya pre-distills 36 topics so the agent walks in senior, not a perpetual junior. The "Vidya Effect" section above shows the gap directly: struct support (pre-Vidya) took hours of false starts; pointer support (post-Vidya) shipped in minutes with 48/48 first-run test pass. Same developer, same agent, same week.
+- **Single-focus-per-patch over slot-narrowing** — the cyrius CLAUDE.md rule *"when stuck, ASK — never decide to defer, slip, or re-slot work"* (see [`micro-work-and-agent-deferment.md`](micro-work-and-agent-deferment.md)). Every patch is one complete thought; reduced-scope patches carry an explicit *"reduced scope because: <reason>"* paragraph. That's the audit trail Faye's "LGTM teams" don't keep.
+- **Five-layer surface over wishlist-CLAUDE.md** — preferences / state / memory / ADRs / docs each carrying a distinct lifecycle (see [`your-claude-md-isnt-lying.md`](your-claude-md-isnt-lying.md)). The agent isn't asked to navigate a 10K-token wishlist; it follows index pointers and re-reads the relevant layer at task boundaries.
+
+**Cyrius is now at v5.11.0** as of today, 2026-05-11. The v5.10.x cycle closed earlier today at .50 with **50 patches in 5 days and three completed compiler arcs**: typed-simd ABI (11 phases), REAL TYPE SYSTEM (5 phases), struct-byval ABI (3 phases), plus a 2.7× compile-time-perf miniarc. Self-host byte-identical confirmed at .50 and at v5.11.0. The locname-staleness bug class surfaced *three times* across the cycle — and was caught all three times. Not because someone was personally vigilant. Because the methodology demands duplicate-audit on bug-class fixes during major-arc churn. That's the *institutional artifact* answer (Mateusz Tuszynski's [reply piece](https://www.mpt.solutions/agentic-coding-isnt-the-trap-supervising-from-your-head-is/) reaches the same diagnosis), and AGNOS shipped the surface for it eight months before the debate landed.
+
+**The aphorism:** *Tools don't make the craftsman. Method does. The same chisel makes a simple box or a home — whether the result is one or the other is downstream of how the chisel is held, not which chisel is in the drawer.*
+
+The trap Faye names is real. It's just not in agentic coding *as such* — it's in agentic coding *without methodology.* A dedicated reply piece (*Methodology is the Trap*, outlined in [`_outlines.md` §7](_outlines.md)) ships paired with the v5.11.x cycle-structure article.
+
 ---
 
 ## Limitations

@@ -318,6 +318,195 @@ The sovereignty-stack argument carries from previous articles in the series; the
 
 ---
 
+## 6. Structuring Major Work During Release Cycles — *infrastructure-first, tailing-bugs, and ports as compass*
+
+**Status**: outline | **Trigger**: v5.11.x cycle close (lets the article land "two cycles into the pattern" — v5.10.x three-arc parallel + v5.11.x stdlib-annotation closeout — rather than mid-cycle handwaving). Anchored 2026-05-11 at v5.11.0 open.
+
+### Headline thesis (locked)
+
+> *"REAL TYPE SYSTEM didn't ship a feature. It shipped the permission for the next three years of features to be writable. That's the shape of a release cycle done right."*
+
+### Subtitle / hook
+
+*Why the v5.10.x cycle had to land two heavy arcs in parallel, why one bug class surfaced three times, and why consumer-filed deviations are signal, not noise.*
+
+### Context this article writes against
+
+The industry default for managing a language compiler's release cycle is the *feature-roadmap* shape: one cycle, one or two named features, ship-and-iterate. That works when downstream consumers don't really care which order capabilities arrive, and when the language has decoupled subsystems that don't compose.
+
+Cyrius doesn't. Every capability in the stack composes through the type system and the ABI surface. **You cannot ship a typed-simd ABI without first having type vocabulary to describe `f64v2` at parse time. You cannot enforce type discipline at call sites without the vocabulary to annotate stdlib functions. You cannot do bare-metal codegen without struct-byval discipline + REAL TYPE SYSTEM enforcement + typed-simd primitives in the same compiler.**
+
+So the cycle structure has to be *infrastructure-first* — the foundational arc lands BEFORE the consumer-facing arc that depends on it. v5.10.x is the canonical example of this pattern at work, and the v5.10.x retro tells us *how* it worked, *what tailed it*, and *what role consumer deviations played in shaping it.*
+
+### Sections
+
+1. **The Wrong Pattern: Feature-Roadmap Cycles** — Industry default. Rust's 6-week train, Go's release notes, Zig's per-minor highlight reel. Works when subsystems are loosely coupled. Doesn't work when every consumer composes through the type system. Frame: "you cannot ship feature B until infrastructure A is in the same compiler."
+
+2. **The v5.10.x Setup: Two Heavy Arcs in Parallel** —
+   - REAL TYPE SYSTEM (Phase 1-5 across v5.10.1-.26) — type vocabulary + bulk annotation + call-site checking + registry overload dispatch + default-on enforcement with silent-regression repair.
+   - Typed-simd value-type ABI (Phase 1-11 across v5.10.28-.39) — `f64v2`/`f64v4` as first-class primitives, end-to-end consumer ABI across five backends (XMM0 SysV / V0 NEON / r0+r1 cx / inheritance for macho-arm / PE retptr), value-form param ABI, overload dispatch + typed wrappers closing the arc.
+   - **The dependency is real**: the typed-simd ABI Phase 1 *could not have started* without the type vocabulary from REAL TYPE SYSTEM Phase 1B. The parser literally has nothing to dispatch on without `f64v2` being a named type.
+
+3. **What "Infrastructure-First" Means** — Generalize. Historical pattern enumeration:
+   - Multi-platform closed (v5.5.x) → unblocked Apple Silicon Mach-O + Windows PE self-host work
+   - Optimization arc Phase O1 instrumentation (v5.6.x) → enabled per-phase profiling much later in v5.10.0
+   - Sandhi-fold (v5.7.0) → unblocked TLS work via sandhi 1.3.x consumer filings hitting v5.10.13/.21/.27/.34
+   - REAL TYPE SYSTEM (v5.10.x Phase 1-5) → unblocked typed-simd ABI (v5.10.28-.39)
+   - Typed-simd ABI (v5.10.28-.39) → substrate for future Cyrius-native codec work (tarang's eventual dav1d/FFmpeg-lane entry; currently C-FFI as placeholder)
+   - Stdlib annotation arc (v5.11.x in flight) → enables the *enforcement* layer of REAL TYPE SYSTEM at compile time
+   - Bare-metal + rv64 (v5.12.x reservation) → needs typed-simd + RTS enforcement + struct-byval ABI all in the same compiler
+
+4. **The Tailing Bugs Pattern: Locname-Staleness Three Surfacings** — One bug class surfaced THREE distinct times across v5.10.x as the typed-simd arc churned the parser locname slots:
+   - **v5.10.35 — PARSE_SIMD_EXT 3-arg intrinsics**: stash slots from EFLSTORE didn't clear locname; stale "r" from a prior fn's parse caused FINDLOCAL to pick up a stash-slot pointer-value instead of the real var. Fixed with `_SIMD_STASH` helper that clears `locname[idx] = -1`.
+   - **v5.10.38 ship verification — ptyp 89-91 missed**: the v5.10.35 fix patched PARSE_SIMD_EXT but f64v_add/sub/mul live at a *different* dispatch (ptyp 89-91 in parse_expr.cyr). v5.10.35's fix missed them. The bug stayed *latent* because pre-v5.10.39 lib/simd.cyr's pointer-form-only wrappers had a stable locname layout that didn't trigger the stale collision.
+   - **v5.10.39 fix-in-slot**: the v5.10.39 rewrite of lib/simd.cyr (adding value-form siblings, doubling fn count, churning locname slots) made the stale-collision reliable. Same `_SIMD_STASH` pattern applied to ptyp 89-91; bisection diagnosis isolated to lib/simd.cyr body, not to overload dispatch.
+   - **Lesson**: when fixing a bug class, *audit for duplicates across the codebase*. parse_expr.cyr has multiple intrinsic dispatch sites. A single-site fix is a half-fix.
+   - **Frame for the article**: heavy infrastructure arcs *churn* the substrate. Latent bug classes that depended on the substrate's stability *will* surface once the substrate moves. Plan for this — don't be surprised by it. The cycle's discipline has to include "audit for duplicates" as a first-class step on any bug-class fix during a major arc.
+
+5. **Ports as Compass: Deviation Is Often Information** — Consumer-filed issues are *not* interruptions to the planned arc. They are *signal* about which parts of the substrate need exercising:
+   - **TLS surface completion** (4 slots: v5.10.13, .21, .27, .34) — driven entirely by sandhi 1.3.x consumer filings. Each filing exposed a missing primitive (typed wrappers around libssl, session cache + 0-RTT, staged-connect timing, client-side acceptance-status). The pre-planned v5.10.x arc list didn't include TLS at slot-0 — the consumer compass added it.
+   - **hisab keystone-consumer-driven SIMD expansion** (v5.10.16, .17) — added dot/scale/axpy primitives + paid 3.5 years of latent aarch64-stub + x86-codegen debt that `programs/simd_expand_test.cyr` had hidden because it was never wired into `check.sh`. Without hisab's pressure, the debt would still be latent.
+   - **kavach 3.1.1 raw-syscall workaround → v5.11.0 P1 wrappers** — kavach's `SYS_FCHMOD` raw-syscall workaround was the *symptom*; the v5.11.0 P1 work (6 sandbox syscall wrappers, async-signal-safe, both backends) was the *cure*. The cure couldn't have been correctly specified without the consumer having field-tested which 6 syscalls actually mattered.
+   - **install.sh symlink collision** (user-side discovery during v5.10.37 work) — `cp -L` + parallel symlink + `set -e` left `~/.cyrius/bin` stale across version bumps; symptom looked like "starship.toml corruption" from user perspective. Two version-discovery paths (cyrius --version vs cyrius-prompt-info) had diverged silently. *Wasn't on any roadmap.* Closeout fix pinned at v5.10.46.
+   - **Frame**: a planned arc tells you *what you think you need*. Consumer deviations tell you *what you actually need*. Both are real signal. The discipline is to *accept* the deviation when it's pointing at the substrate (TLS, SIMD primitives, syscall wrappers) and to *defer* it when it's pointing past the substrate (a new feature unrelated to the arc).
+
+6. **The Cycle-Structure Discipline That Made v5.10.x Work** — What kept two heavy arcs + four port-driven sub-arcs + one bug-class-with-three-surfacings coherent across 50 patches in 5 days:
+   - **v5.10.0 P(-1) hardening as cycle opener** — foundation, not feature. The cycle starts by reinforcing the rules.
+   - **Premise-check at slot entry** — v5.7.x heritage. Empirical re-test of pinned assumptions before committing scope. v5.10.45 (struct-byval re-cast) + v5.10.49 (PE pin debunked entirely) both paid for themselves twice.
+   - **Pre-planned split as replacement for lazy deferment** — "A+B in .38, C as .39" specified at slot entry, not after the fact. 11-phase typed-simd arc closed in 12 slots with no mid-flight reshuffles.
+   - **Cross-arch propagation in-slot** — every ABI change verified on pi (aarch64 Linux) / ecb (macOS Mach-O) / cass (Win64 PE) BEFORE ship. Not deferred. v5.10.37 f64v4 LDUR Q imm9 overflow caught at slot-entry test; fix landed in-slot.
+   - **Closeout pass as the LAST patch of the minor** — mechanical fail-fast checks → judgment passes → compliance → doc sync. v5.10.50 was a pure-closeout slot; cc5 byte-identical to .49.
+   - **Slot acceptance principle** — no bookkeeping-only slots. "Updated 1 doc to plan next steps" is HELL NO. The minor-open chapter (v5.11.0) lands real code (kavach P1 wrappers) plus the roadmap restructure, not the restructure alone.
+
+7. **What This Means for v5.11.x and v5.12.x** — Pattern-extension to the in-flight and reserved cycles:
+   - **v5.11.x** is the *enforcement layer* atop v5.10.x's vocabulary layer. Stdlib annotation arc Phase 1 (alloc/vec/fmt/freelist/fnptr/result/tagged/assert) at v5.11.1 starts wiring the type vocabulary into stdlib enforcement. The P2 consumer wave (daimon aarch64 epoll_wait, bote primitives) is the deviation surface — accept the ones that exercise the substrate.
+   - **v5.12.x** is downstream of *both* prior cycles. Bare-metal target needs RTS enforcement + struct-byval ABI + typed-simd substrate + stdlib annotation. Each was a separate arc in v5.10.x or v5.11.x. None of them could have been delivered in v5.12.x alongside bare-metal itself.
+   - **The pattern repeats**: infrastructure-first arc lands → enables the next-tier consumer-facing work → consumer-filed deviations surface tail bugs and missing primitives → arc closes with retroactive fixes baked into the substrate → next cycle's infrastructure-first arc starts from a higher floor.
+
+### Receipts the article pre-commits to
+
+- v5.10.x cycle stats: **50 patches in 5 days** (2026-05-06 → 2026-05-11), THREE completed arcs + compile-perf miniarc + TLS pin + PE premise debunk, api-surface 2,769 → 2,876 (+107 public fns), cc5 741,048 → 804,472 B
+- Locname-staleness three-surfacing timeline: v5.10.35 (PARSE_SIMD_EXT) → v5.10.38 (ptyp 89-91 missed) → v5.10.39 (fix-in-slot)
+- TLS port-driven sequence: v5.10.13 (typed wrappers) → .21 (session cache + 0-RTT) → .27 (staged-connect) → .34 (client acceptance-status) — all sandhi 1.3.x consumer-filed
+- agnosys 1.1.12 cascade: v5.10.7, .8, .10, .12, .14 (5 follow-on slots driven by v5.9.x carry-forward)
+- v5.11.0 P1 receipts: 6 kavach sandbox syscall wrappers (`sys_fchmod`, `sys_setresuid/gid`, `sys_prctl`, `sys_seccomp`, `sys_execveat`), both x86_64 + aarch64 backends, async-signal-safe, 6 new syscall enum entries per backend
+- Infrastructure-first chain: v5.5.x multi-platform → v5.6.x optimization → v5.7.0 sandhi-fold → v5.10.x three-arc → v5.11.x annotation → v5.12.x bare-metal (each cycle's deliverable is the next cycle's substrate)
+
+### Related (existing articles it extends)
+
+- [`what-justifies-a-stdlib-foldin.md`](what-justifies-a-stdlib-foldin.md) — closest companion. Process article on the foldin gate framework. This article does the same for cycle structuring: when to start a major arc, when to interrupt for ports, when to close out.
+- [`port-ledger-volume-1.md`](port-ledger-volume-1.md) — port sequencing as architecture. This article extends to: ports also *spur deviation* in the compiler cycle, and that's a feature not a bug.
+- [`sovereign-compiler-vs-brute-force.md`](sovereign-compiler-vs-brute-force.md) — cc5 size as discipline. This article uses cc5 cycle-growth (741→804 KB across v5.10.x) as a *visible* signal that infrastructure-first arcs cost real bytes and that's correct.
+- [`what-5.5.x-taught-5.6.x.md`](what-5.5.x-taught-5.6.x.md) — cycle-to-cycle inheritance pattern. Direct ancestor of this article's thesis at a smaller-scope cycle.
+- [`docs-go-stale-before-the-commit.md`](docs-go-stale-before-the-commit.md) — cycle discipline shapes doc currency. Adjacent: the state.md / doc-health.md ledger pattern is itself a manifestation of cycle-aware doc structure.
+- [`design-patterns.md §2 Staged Optimization / No Deferred Debt`](../design-patterns.md#2-staged-optimization--no-deferred-debt) — through-line layer for the pattern.
+- [`design-patterns.md §8 Pain → Procedure`](../design-patterns.md#8-pain--procedure-encode-lessons-as-first-class) — locname-staleness lesson encoded as a slot-discipline rule fits this pattern exactly.
+
+### Captured anchors (won't drift)
+
+- [`cyrius/CHANGELOG.md` v5.10.0 → v5.10.50 entries](https://github.com/MacCracken/cyrius/blob/main/CHANGELOG.md) — primary receipt for all v5.10.x claims
+- [`vidya/content/cyrius/field_notes/compiler/retros/v510x.cyml`](https://github.com/MacCracken/vidya/blob/main/content/cyrius/field_notes/compiler/retros/v510x.cyml) — narrative retro, source of the "three locname-staleness surfacings" framing
+- [`vidya/content/cyrius/field_notes/compiler/retros/foldin_arc_v57_v59.cyml`](https://github.com/MacCracken/vidya/blob/main/content/cyrius/field_notes/compiler/retros/foldin_arc_v57_v59.cyml) — pattern-companion for stdlib-foldin arc structure
+- [`docs/development/state.md` v5.11.x cycle section + v5.10.x retro section](../development/state.md) — current state-of-the-cycle pointer
+- [`docs/articles/what-justifies-a-stdlib-foldin.md`](what-justifies-a-stdlib-foldin.md) — process-article precedent and structural template
+
+### Working sub-thesis candidates (sharpen at draft time)
+
+- *"Infrastructure isn't a phase. It's a prerequisite."*
+- *"The cycles where you ship a feature are downstream of the cycles where you shipped the permission to write it."*
+- *"Latent bugs surface when the substrate moves. Plan for the audit, not just the fix."*
+- *"Consumer-filed issues are the compass. Pre-planned slots are the map. You need both."*
+- *"A cycle that closes cleanly didn't avoid the deviations — it absorbed them."*
+
+---
+
+## 7. Methodology is the Trap — *direct reply to Lars Faye, "Agentic Coding is a Trap"*
+
+**Status**: ✅ **DRAFT SHIPPED 2026-05-11** — full draft at [`methodology-is-the-trap.md`](methodology-is-the-trap.md). Outline kept here for reference. Pair-ship with outline #6 (still outline-only) intended at v5.11.x close. | **Original Trigger**: paired ship with outline #6 (*Structuring Major Work During Release Cycles*) so the methodology-public-argument piece and the methodology-internal-cycle-structure piece land together. Alternative trigger: a second high-traffic anti-agentic piece in the same vein where AGNOS's existence proof gains rhetorical leverage. Anchored 2026-05-11 against Faye's article + HN #48002442 + Tuszynski's reply.
+
+### Headline thesis (locked)
+
+> *"Tools don't make the craftsman. Method does. The same chisel makes a simple box or a home — whether the result is one or the other is downstream of how the chisel is held, not which chisel is in the drawer."*
+
+### TLDR (locked)
+
+The "trap" Faye names is real. It's just not located where he points it. The failure mode he describes — cognitive debt, LGTM reviews, vibe coding, vendor-stranded teams — is **methodology failure**, not **tool failure**. Same agentic-coding stack produces $20K throwaway capability-demos in one shop and a $400 self-hosting OS in another. The differentiator is method. Faye's prescription (demote agents to reference tools; rely on personal vigilance) treats the symptom; AGNOS's existing trio of articles (*Sovereign Compiler vs Brute Force*, *Your CLAUDE.md Isn't Lying*, *Micro-Work and Agent Deferment*) already treats the cause.
+
+### Subtitle / hook
+
+*Same chisel. Different result. The variable was never the tool.*
+
+### Context this article writes against
+
+[Faye's article](https://larsfaye.com/articles/agentic-coding-is-a-trap) + [HN thread #48002442](https://news.ycombinator.com/item?id=48002442) + the broader May 2026 wave of "AI coding is destroying engineers" pieces. The genre treats agentic coding as a unit and indicts the unit. AGNOS exists as the existence-proof that the unit *isn't a unit* — it's a stack with a tool layer and a methodology layer, and the methodology is what determines whether the output is craft or junk.
+
+### Sections
+
+1. **The Aphorism** — Tools don't make the craftsman. Open with the chisel image: junior carpenter and master carpenter with identical chisel kits; output diverges by craft, not by chisel. Apply to agentic coding: same Claude Code instance, same agent capabilities, same context window. The variable is method.
+
+2. **What Faye Got Right** — Honest reading. Atrophy is real if you don't engage. Cognitive debt is real when there's no audit trail. Hallucinations exist. Vendor outages happen. The diagnosis is accurate. The prescription is what misses.
+
+3. **The Methodology Variables** — Enumerate the four AGNOS methodology choices that distinguish $400 from $20K:
+   - **Sequential over parallel** — 3 agents (Meta / Language / Kernel) one at a time, not 16 in parallel. Tightens the decision loop; the developer holds the vision.
+   - **Reference-staged over context-fresh** — Vidya (36 topics, ~200K words pre-distilled) so the agent walks in senior, not as a perpetual junior. Cost-per-token plummets when rediscovery is staged away. *Struct support* (pre-Vidya) took hours of false starts; *pointer support* (post-Vidya) shipped in minutes with 48/48 first-run test pass. Same dev, same agent, same week.
+   - **Single-focus-per-patch over vibe-shipping** — Each commit is one complete thought. No silent slot-narrowing. *"When stuck, ASK, never slip"* as the load-bearing CLAUDE.md rule. Reduced-scope patches carry an explicit *"reduced scope because: <reason>"* line in the CHANGELOG. That's the audit trail Faye's "LGTM teams" don't keep.
+   - **Five-layer surface over single-CLAUDE.md** — CLAUDE.md / state.md / memory / ADRs / docs each carry a specific lifecycle. The agent isn't asked to navigate a wishlist; it follows index pointers.
+
+4. **Faye's Prescription, Examined** — "Demote agents to reference tools; rely on personal vigilance" treats LLMs as opt-out. Won't scale. **Personal vigilance is exactly the failure mode** — humans skim, forget, ship-pressure-collapse, swap personnel. Tuszynski's reply names it: institutional artifacts that survive personnel changes are the answer (tests, types, linters, runtime hooks, code review, append-only mistake logs). AGNOS shipped that institutional surface eight months before the debate landed — and named the layers explicitly: state.md is the volatile-state institutional artifact; memory files are the cross-session behavior-anchor institutional artifact; ADRs are the per-decision institutional artifact; design-patterns.md is the through-line institutional artifact.
+
+5. **The Receipt Stack** —
+   - Cyrius v5.11.0, 50-patch v5.10.x cycle in 5 days, three completed compiler arcs (typed-simd ABI / REAL TYPE SYSTEM / struct-byval ABI). Three arcs, not three vibe-checks.
+   - Self-hosting compiler, byte-identical reproduction, 29 KB hand-auditable seed → 804 KB cc5 at v5.11.0 across two-and-a-half months of agentic-driven development.
+   - The locname-staleness bug class surfaced three times across v5.10.x — and was **caught all three times** because the methodology demanded duplicate-audit on bug-class fixes (v5.10.x retro, vidya field-notes). The "LGTM team" caricature Faye describes would have shipped the first fix and let the latent collisions sleep until customer-reported.
+   - One developer. Three sequential agent sessions. $400. Every design decision human. Vidya for context. No vibe coding.
+
+6. **The Same Chisel Cuts Both Ways** — Anthropic's $20,000 parallel-Claude C compiler is the same agentic-coding methodology *with different choices*: horizontal scaling, no reference-staging, no sequential discipline, no single-focus patches. It's not "agentic coding done wrong" — it's a *different methodology*, made with the same tool, optimizing for a different goal (throughput / capability demo, not sovereignty). Both work for what they're trying to do. Neither is "the trap." The trap is the shop that doesn't specify the methodology and still expects engineering output.
+
+7. **What the Trap Actually Is** — Refusing to admit that *method* is a load-bearing variable. The trap is treating "agentic coding" as monolithic — pro or con. The discipline is to specify the methodology, then measure the output. AGNOS specifies; Anthropic-C-compiler specifies; Faye's "trap" is whatever shop doesn't specify.
+
+8. **Closing — Pick Your Chisel** — Same tool, two outputs. Box or home. The aphorism repeated as the close. The trap is method-shaped, not tool-shaped. Choose the method; the output follows.
+
+### Receipts the article pre-commits to
+
+- The $400-vs-$20K cost line (already shipped in [`sovereign-compiler-vs-brute-force.md`](sovereign-compiler-vs-brute-force.md)).
+- The Vidya Effect contrast (struct support without Vidya vs pointer support with Vidya — same dev, same agent, same week, same compiler; minutes vs hours).
+- The locname-staleness three-surfacings catch (already shipped in [`state.md` v5.10.x retro](../development/state.md)).
+- The cyrius CLAUDE.md "When stuck, ASK" rule as the explicit anti-vibe-coding discipline.
+- The five-layer surface specification (already shipped in [`your-claude-md-isnt-lying.md`](your-claude-md-isnt-lying.md)).
+- v5.10.x → v5.11.0 cycle close mid-write — 50 patches in 5 days, three completed arcs, self-host byte-identical.
+
+### Related (existing articles it extends)
+
+- **[`sovereign-compiler-vs-brute-force.md`](sovereign-compiler-vs-brute-force.md)** — the receipt-piece this article argues *from*. The new article is the methodology argument that the existing piece's numbers already support. (Already updated 2026-05-11 with a direct-reply section pointing here.)
+- **[`your-claude-md-isnt-lying.md`](your-claude-md-isnt-lying.md)** — the surface-discipline piece. Names the five-layer structure that makes the receipt possible.
+- **[`micro-work-and-agent-deferment.md`](micro-work-and-agent-deferment.md)** — the slot-discipline piece. Names "ask, don't slip" as the explicit anti-vibe rule.
+- **[`docs-go-stale-before-the-commit.md`](docs-go-stale-before-the-commit.md)** — the doc-discipline companion. State-doc rot is the same drift class that Faye misdiagnoses as cognitive debt.
+- **[`memory-should-be-sovereign-too.md`](memory-should-be-sovereign-too.md)** — the cross-tool-vendor sovereignty argument applied at the memory layer. Faye's vendor-lock-in concern lives here.
+- **[`design-patterns.md §8 Pain → Procedure`](../design-patterns.md#8-pain--procedure-encode-lessons-as-first-class)** — through-line. The locname-staleness catch, the "ask, don't slip" rule, the five-layer surface — each is a lesson encoded as procedure.
+
+### Captured anchors (won't drift)
+
+- [Lars Faye, *Agentic Coding is a Trap*](https://larsfaye.com/articles/agentic-coding-is-a-trap) — primary respondent
+- [HN thread #48002442](https://news.ycombinator.com/item?id=48002442) — public-discussion anchor
+- [Mateusz Tuszynski, *Agentic Coding Isn't the Trap. Supervising From Your Head Is.*](https://www.mpt.solutions/agentic-coding-isnt-the-trap-supervising-from-your-head-is/) — friendly co-respondent; same methodology-not-tools diagnosis from a different angle (institutional-artifact framing)
+- [Anthropic, *Building a C Compiler with Claude*](https://www.anthropic.com/engineering/building-c-compiler) — the $20K side of the same chisel
+- [`docs/articles/sovereign-compiler-vs-brute-force.md`](sovereign-compiler-vs-brute-force.md) — the $400 side; carries the receipt this article argues from
+
+### Working sub-thesis candidates (sharpen at draft time)
+
+- *"The same chisel makes a simple box or a home."*
+- *"Tools don't make the craftsman. Method does."*
+- *"$20K and $400 used the same tool. The variable was method."*
+- *"'Vibe coding' isn't an indictment of agents. It's an indictment of methodology absence."*
+- *"The trap is refusing to specify the method, then expecting the output to specify itself."*
+- *"Personal vigilance is the failure mode, not the cure. Institutional artifacts are the cure."*
+
+### Pairing with outline #6
+
+Outline #6 covers cycle-structuring methodology *internally* — how Cyrius cycles structure major arcs + tail bugs + port deviations. Outline #7 covers methodology *as a public argument* — replying to Faye and the broader anti-agentic wave. Same thesis at two surfaces. Best shipped paired so they reinforce.
+
+---
+
 ## Topical backlog (surfaced by 2026-04-23 research survey)
 
 Four topics that current (2024–2026) AI-engineering blogs are covering where AGNOS is on-thesis but not-yet-covered. Listed here so they don't fall out of memory; not yet promoted to full outlines because the receipts (or the provocation) aren't ripe. Each gets 2–3 sentences plus a trigger condition.

@@ -6,7 +6,7 @@ type: state
 
 # Documentation Health — agnosticos
 
-> **Last refresh**: 2026-05-09 (relocated to `docs/` root + sweep in progress) | **Refresh cadence**: when docs are touched, update the affected row.
+> **Last refresh**: 2026-05-11 (v5.10.x close + v5.11.x open + state.md + roadmap + CLAUDE + CHANGELOG + outlines touched) | **Refresh cadence**: when docs are touched, update the affected row.
 > **Scope**: This repo only (`agnosticos`) — the entire `docs/` tree plus root-level files (README, CHANGELOG, CLAUDE.md, etc.). Per-subsystem docs live in their own repos and are not audited here. State of cross-repo Cyrius pin/version drift lives in [`development/state.md`](development/state.md), not here.
 >
 > **Relocated 2026-05-09**: previously at `docs/development/doc-health.md`. Moved to `docs/doc-health.md` so the location reflects the actual scope (the whole genesis-repo doc tree, not just `docs/development/`).
@@ -90,8 +90,8 @@ Numbers approximate; rolls up from the per-tier tables below.
 | File | Last touched | Status | Action |
 |---|---|---|---|
 | `README.md` | 2026-05-06 | ✅ Fresh | Refreshed 2026-05-06: badges, architecture diagram, stack table (kernel 1.26.1/248KB, Cyrius 5.9.0/~741KB, sigil 2.9.4, libro 2.0.5, ark 0.8.0, nous 1.1.1), security versions, beta target (closed/public split), pointer to state.md added. |
-| `CHANGELOG.md` | 2026-05-09 | ✅ Fresh | **New [2026.5.9] entry 2026-05-09** covering 3-day delta: doc-health relocation, state.md refresh (v5.10.x cycle), first-party-standards Cyrius-first rewrite, shared-crates sweep, README/AGNOS sweep, Cyrius v5.9.x close + v5.10.x open + v5.11/v5.12 reservations. |
-| `CLAUDE.md` | 2026-05-06 | ✅ Fresh | Just updated. State-table version cell intentionally points to state.md per established pattern. |
+| `CHANGELOG.md` | 2026-05-11 | ✅ Fresh | **New [2026.5.11] entry 2026-05-11** covering v5.10.x cycle close (50 patches, three arcs) + v5.11.x open (stdlib annotation arc + kavach P1 sandbox wrappers at .0); state.md refresh; typed-simd ABI substrate framing; new article slots (v5.10.x three-arc retro + typed SIMD codec-substrate piece); outline #6 added to `_outlines.md`. Earlier `[2026.5.9]` entry retained. |
+| `CLAUDE.md` | 2026-05-11 | ✅ Fresh | **Touched 2026-05-11**: Cyrius release line refreshed (was "v5.8.x active — optimization, math, language fixes cycle"; now "v5.11.x active — stdlib annotation arc + consumer-issue closeout" with v5.10.x three-arc retro callout). State-table version cell still intentionally points to state.md per established pattern. |
 | `CONTRIBUTING.md` | 2026-05-09 | ✅ Fresh | **Touched 2026-05-09**: doc-health row separated from Developer-docs row to surface the convention; doc-health pointed at new `docs/doc-health.md` location. |
 | `SECURITY.md` | 2026-05-09 | ✅ Fresh | **Refreshed 2026-05-09**: CVE-2026-31431 structural-immunity section added (Notable Hardening callout + 6th defense-in-depth layer + canonical absence-by-design pattern). Last Updated bumped + Next Review pushed to 2026-08-09. |
 | `SUPPORT.md` | 2026-03-11 | 🔵 Evergreen | Operational pointers. Re-check links. |
@@ -113,8 +113,8 @@ Numbers approximate; rolls up from the per-tier tables below.
 
 | File | Last touched | Status | Action |
 |---|---|---|---|
-| `roadmap.md` | 2026-05-06 | ✅ Fresh | Just rescoped (closed/public beta). Stale subsystem version table left intentionally — pattern is per-repo refresh via state.md drift list. |
-| `state.md` | 2026-05-06 | ✅ Fresh | Refreshed for v5.9.0 cut day. |
+| `roadmap.md` | 2026-05-11 | ✅ Fresh | **Touched 2026-05-11**: cycle-progression callouts updated (Cyrius v5.10.x close + v5.11.0 open; bare-metal target slipped to v5.12.x in three places — header callout, cycle-history paragraph, closed-beta cadence dependency). |
+| `state.md` | 2026-05-11 | ✅ Fresh | **Refreshed 2026-05-11**: cycle transition v5.10.x → v5.11.x; v5.10.x demoted to retrospective (50 patches, three arcs: typed-simd ABI 11p + REAL TYPE SYSTEM 5p + struct-byval ABI 3p + 2.7× compile miniarc); typed-simd ABI substrate framing added (foundation for Cyrius-native codec work long-term); cc5 size `783,408 → 804,472 B`; new article slots queued. Pin-update sweep in progress (kernel-adjacent repos pending). |
 | `summer-2026-arc.md` | 2026-05-09 | ✅ Fresh | **Refreshed 2026-05-09**: TLS-arc framing retired (TLS shipped via sandhi-fold v5.7.0); B10 superseded; Critical-path graph updated to v5.10.x → v5.11.x → v5.12.x; Alignment table re-cast for current cycle reality; biggest-risk and derail sections updated; May 1 Beltane target replaced with closed-beta-cut framing. |
 | `sprint-history.md` | 2026-05-09 | ✅ Fresh | **Refreshed 2026-05-09**: Cyrius Era cycle summaries appended (v1.0 → v5.0 + ecosystem boot; v5.5.x multi-platform; v5.6.x optimization arc; v5.7.x sandhi-fold + 51 patches; v5.8.x 66-in-4-days; v5.9.x catchup + niyama; v5.10.x REAL TYPE SYSTEM arc in flight). |
 | `monolith-extraction.md` | 2026-04-17 | 🔵 Evergreen | Extraction is **complete** (per CLAUDE.md). Doc is now historical record. Confirm framing reflects done-state. |
@@ -176,17 +176,18 @@ Numbers approximate; rolls up from the per-tier tables below.
 
 | File | Last touched | Status |
 |---|---|---|
-| `_outlines.md` | 2026-05-06 | ✅ Fresh — working file |
+| `_outlines.md` | 2026-05-11 | ✅ Fresh — working file. **2026-05-11**: TWO new outlines added — #6 *Structuring Major Work During Release Cycles* (REAL TYPE SYSTEM as canonical infrastructure-first example; locname-staleness three-surfacing tailing-bug pattern; ports-as-compass deviation framing) [outline only]; #7 *Methodology is the Trap — direct reply to Lars Faye* [**outline → draft same day**; full draft shipped to `methodology-is-the-trap.md`]. Both pair-ship intended (internal-methodology + public-argument surfaces of the same thesis). |
+| `methodology-is-the-trap.md` | 2026-05-11 | ✅ Fresh — **NEW 2026-05-11**: full draft taken from outline #7 same day. ~270 lines / ~3,500 words. Direct reply to Lars Faye's *Agentic Coding is a Trap*. Locks the chisel aphorism, TL;DR, four-methodology-variables core (sequential/reference-staged/single-focus/five-layer), Faye-prescription-examined section with Tuszynski cross-link, receipt stack with v5.11.0 cycle close + locname-staleness three-catch + $400-vs-$20K, "same chisel cuts both ways" Anthropic comparison, and aphorism-restated close. Related-articles map covers all four anti-drift companion pieces + design-patterns §8. Anchors: Faye article + HN #48002442 + Tuszynski reply + Anthropic C-compiler post. Ready for review/polish; not yet linked from articles/README or external surfaces. |
 | `cyrius-vs-rust-benchmarks.md` | 2026-05-09 | ✅ Fresh — Since-This-Was-Written footer added (v5.9.x close + v5.10.x REAL TYPE SYSTEM arc + v5.11/v5.12 reservation slip + cc5 size 783,408 B); Pure-compute-gap and inlining-gap notes refreshed |
 | `doom-in-cyrius.md` | 2026-05-09 | ✅ Fresh — Since-This-Was-Written refreshed: cc5 783KB / v5.10.24; v5.9.x close + v5.10.x type-system arc; cyrius-doom still on 5.7.48 (held cluster thinned but DOOM didn't roll); next benchmark window noted |
 | `entity-vs-skynet-doom.md` | 2026-05-06 | ✅ Fresh |
 | `port-ledger-volume-1.md` | 2026-05-09 | ✅ Fresh — State-of-the-Language section refreshed (O5/O6 deferred to v5.11.x triage); Where-Rust-Still-Wins inlining-gap row updated; Sprint-That-Runs-Out-In-Front cycle sequencing extended through v5.12.x reservation; cc5 size 741→783 KB |
 | `python-in-the-bootstrap.md` | 2026-05-06 | ✅ Fresh |
-| `sovereign-compiler-vs-brute-force.md` | 2026-05-09 | ✅ Fresh — Since-This-Was-Written: cc5 783,408 B / v5.10.24; v5.9.x close + v5.10.x REAL TYPE SYSTEM arc; v5.11/v5.12 reservation slip; cadence paragraph extended through 5.10.24 |
+| `sovereign-compiler-vs-brute-force.md` | 2026-05-11 | ✅ Fresh — **2026-05-11**: added "Update 2026-05-11 — direct reply to *Agentic Coding is a Trap*" section as new dated subsection (didn't rewrite the 2026-05-09 snapshot per article-as-dated-artifact convention). Names the four methodology variables ($400 vs $20K), the v5.10.x cycle close (50 patches, three arcs), the locname-staleness three-surfacings catch as institutional-artifact receipt. Carries the "Tools don't make the craftsman; method does" aphorism + points at outline #7 for the standalone reply article. |
 | `the-2-dollar-sd-card.md` | 2026-05-06 | ✅ Fresh |
 | `what-justifies-a-stdlib-foldin.md` | 2026-05-06 | ✅ Fresh — shipped 2026-05-06 per state.md |
 | `why-gigacenters.md` | 2026-05-06 | ✅ Fresh |
-| `your-docs-are-about-to-rot.md` | 2026-05-06 | ✅ Fresh — meta-relevant to this audit |
+| `your-docs-are-about-to-rot.md` | 2026-05-11 | ✅ Fresh — **2026-05-11** (multi-touch same day): (1) added doc-health ledger as 6th mechanism in *What Sovereign Stacks Get That Most Teams Don't* section (was 5); (2) updated "What to Do Now" item 4 to point at the ledger pattern as concrete institutionalization of audit-pass discipline; (3) appended recursive-irony paragraph to *For the Receipts* — doc-health pattern emerged after the article shipped, article had to drift to acknowledge the tool it prescribed; (4) updated Cyrius version refs (5.6.0 → 5.11.0) + tempo example (v5.5.x close → v5.10.x .50-in-five-days three-arc); (5) **NEW section** *File Types and Lifecycles — Concretely* added after *Scope: Three Different Doc Problems* — 9-row per-file taxonomy table (CLAUDE.md / state.md / CHANGELOG / history+timeline+retros / ADRs / articles / design-patterns / doc-health) with lifecycle + holds + doesn't-hold columns; three conflation-closing rules; doc-health framed as audit-surface for the taxonomy itself. |
 | `your-claude-md-isnt-lying.md` | 2026-04-25 | 🔵 Dated artifact |
 | `why-gpu-belongs-in-the-stdlib.md` | 2026-04-24 | 🔵 Dated artifact |
 | `what-5.5.x-taught-5.6.x.md` | 2026-04-24 | 🔵 Dated artifact |

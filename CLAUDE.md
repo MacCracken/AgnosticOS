@@ -132,7 +132,7 @@ cyrius build src/boot.cyr build/boot
 **Deps are declared in `scripts/cyrius.cyml`** — do NOT manually include stdlib.
 Source files only need project includes (`src/types.cyr` etc.).
 
-**Current Cyrius release:** see `cyrius/VERSION` (verify at session start; **v5.8.x active — optimization, math, language fixes cycle**). Toolchain pinned in `scripts/cyrius.cyml` via the `cyrius = "<version>"` field — manifest is single source of truth (no separate `.cyrius-toolchain` file). Cycle status, pin-lag spectrum, and active sweeps live in [`docs/development/state.md`](docs/development/state.md).
+**Current Cyrius release:** see `cyrius/VERSION` (verify at session start; **v5.11.x active — stdlib annotation arc + consumer-issue closeout cycle** as of 2026-05-11; v5.10.x closed at .50 with three completed arcs — typed-simd ABI 11 phases, REAL TYPE SYSTEM 5 phases, struct-byval ABI 3 phases). Toolchain pinned in `scripts/cyrius.cyml` via the `cyrius = "<version>"` field — manifest is single source of truth (no separate `.cyrius-toolchain` file). Cycle status, pin-lag spectrum, and active sweeps live in [`docs/development/state.md`](docs/development/state.md).
 
 ## Documentation Structure
 

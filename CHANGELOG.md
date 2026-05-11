@@ -5,6 +5,23 @@ All notable changes to AGNOS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026.5.11] - 2026-05-11
+
+### Changed — v5.10.x cycle close + v5.11.x open (state.md refresh)
+
+- **`docs/development/state.md` refreshed for cycle transition** — toolchain pin `5.10.24 → 5.11.0`; cycle banner re-cast from "v5.10.x REAL TYPE SYSTEM arc (active)" to "v5.11.x stdlib annotation arc + consumer-issue closeout (active)". v5.10.x demoted to retrospective: closed 2026-05-11 at .50, **50 patches in 5 days** (2026-05-06 → 2026-05-11), THREE completed arcs (typed-simd ABI 11 phases, REAL TYPE SYSTEM 5 phases, struct-byval ABI 3 phases) + compile-perf miniarc (.40 + .41, **2.7× total compile speedup**) + TLS contract pin (.42) + PE premise debunk (.49). cc5 size `783,408 B → 804,472 B`. api-surface 2,769 → 2,888 (+119 public fns across cycle).
+- **v5.11.x slot list opened** — kavach P1 sandbox syscall wrappers ✅ landed at v5.11.0 (6 wrappers: `sys_fchmod`, `sys_setresuid/gid`, `sys_prctl`, `sys_seccomp`, `sys_execveat`; async-signal-safe; both x86_64 + aarch64 backends). Stdlib annotation arc Phase 1 (alloc/vec/fmt/freelist/fnptr/result/tagged/assert) queued for v5.11.1. P2 consumer wave (daimon aarch64 epoll_wait, bote net recv_timeout + getaddrinfo, bote arena fl_free, bote streaming) + infrastructure work (deps copy fix, regression port, TS test harness) queued through v5.11.x.
+- **Typed-simd ABI substrate framing added to state.md** — the v5.10.x typed-simd ABI arc (11 phases, closeout v5.10.39) is now explicitly framed as "the substrate for Cyrius-native codec work long-term." `lib/simd.cyr` rewrite ships f64v2/f64v4 value-form + pointer-form sibling pairs with parser-side `&IDENT → _ptr` overload routing; ABI-aware register routing (XMM0/XMM1 SysV, V0/V1 aarch64, pair-quad return, PE-gated value-form via `CYRIUS_HAS_VAL_SIMD_PARAMS`). Tarang's current dav1d/openh264/libvpx C-FFI layer flagged as placeholder until codec-native arc opens (gated on v5.12.x bare-metal + future codec-native arc).
+- **v5.12.x reservation re-anchored** — bare-metal AGNOS target + RISC-V rv64 backend remain at v5.12.x. Substrate prereq updated: now lists typed-simd ABI + REAL TYPE SYSTEM + struct-byval ABI from v5.10.x (was just type-system); v5.11.x stdlib annotation arc is the remaining prereq.
+- **`CLAUDE.md` Cyrius release line refreshed** — was "v5.8.x active — optimization, math, language fixes cycle" (3 minors stale); now "v5.11.x active — stdlib annotation arc + consumer-issue closeout cycle" with v5.10.x three-arc retro callout.
+- **Article slots added to state.md doc/article queue** — *v5.10.x: three arcs in five days* (retro candidate, draftable now; supersedes earlier "REAL TYPE SYSTEM in 24 patches" working title which under-represented the cycle); *Typed SIMD: the substrate for native codec ports* (companion piece, frames tarang ↔ dav1d/FFmpeg positioning as prereq-landed-but-codec-arc-is-future-work).
+- **`docs/articles/_outlines.md`** — new outline #6 *Structuring Major Work During Release Cycles*. Thesis: REAL TYPE SYSTEM is the canonical "infrastructure-first unblocks downstream work" example (typed-simd ABI required type vocabulary to even describe f64v2/f64v4 at parse time). Companion themes: tailing-bug class (locname-staleness surfaced THREE times across v5.10.x) and port-driven deviation as feature-not-bug (sandhi 1.3.x drove TLS surface work; kavach 3.1.1 raw-syscall workaround drove v5.11.0 P1 wrappers; install.sh symlink discovery drove user-side workflow improvements).
+
+### Notes
+
+- Per-cycle Cyrius receipts live in the cyrius repo CHANGELOG (`/home/macro/Repos/cyrius/CHANGELOG.md`); this file consolidates the genesis-repo ecosystem-context summary.
+- Pin-update sweep across consumer repos is **in progress** at refresh time — user is rolling kernel-adjacent repos before updating `scripts/cyrius.cyml` boot pin. Per-repo pin spectrum in state.md is stale-by-design until sweep completes.
+
 ## [2026.5.9] - 2026-05-09
 
 ### Changed — Doc audit sweep (3-day delta since 2026-05-06 audit)
