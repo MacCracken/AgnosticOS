@@ -83,7 +83,7 @@ CYRIUS_DCE=1 cyrius build ...                    # dead-code-eliminated release 
 
 ## Process
 
-### P(-1): Scaffold / Project Hardening (before any new features)
+### P(-1): Hardening (before any new features, and at minor / v1.0 cuts)
 
 1. **Cleanliness** — `cyrius build`, `cyrius lint`, `cyrius audit`; all tests pass
 2. **Benchmark baseline** — `cyrius bench`, save CSV for comparison
@@ -186,6 +186,7 @@ Run a closeout pass before tagging `X.Y.0` or `X.0.0`. Ship as the last patch of
 - [`docs/examples/`](docs/examples/) — runnable examples.
 - [`docs/development/roadmap.md`](docs/development/roadmap.md) — completed, backlog, future, v1.0 criteria.
 - [`docs/development/state.md`](docs/development/state.md) — **live state snapshot, refreshed every release**.
+- [`docs/doc-health.md`](docs/doc-health.md) — fresh / stale / archive / open-question ledger across the whole doc tree (location: `docs/` root, **not** under `development/` — its scope is the whole tree). Refreshed in place when docs are touched. Earn it before scaffolding (worth it past ~30 docs or any meaningful drift surface).
 - [`CHANGELOG.md`](CHANGELOG.md) — source of truth for all changes.
 
 New quirks and constraints land in `docs/architecture/` as numbered items (`NNN-kebab-case.md`). New decisions land in `docs/adr/` using [`template.md`](docs/adr/template.md). **Never renumber either series.**
@@ -210,6 +211,7 @@ docs/ (minimum):
     state.md — live state snapshot (volatile; release-hook-bumped)
 
 docs/ (when earned):
+  doc-health.md — whole-tree doc-currency ledger (lives at docs/ root, NOT under development/)
   audit/ — security audit reports (YYYY-MM-DD-audit.md)
   sources/ or sources.md — academic/domain citations (required for science/math crates)
   proposals/ — pre-ADR design drafts

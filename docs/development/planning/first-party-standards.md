@@ -812,13 +812,13 @@ hardening = ["pie", "fullrelro", "fortify", "stackprotector", "bindnow"]
     e. Bundle test           → ark-bundle.sh {recipe}
 ```
 
-### P(-1): Scaffold Hardening
+### P(-1): Hardening
 
-Before any feature work begins, every scaffolded project goes through hardening. The scaffold gets you compiling — P(-1) makes it production-grade. Build features on an unaudited foundation and every feature inherits the scaffold's shortcuts. P(-1) pays the debt before it compounds.
+P(-1) is the audit-and-tighten pass that runs at three points: before any feature work on a fresh scaffold (the scaffold gets you compiling — P(-1) makes it production-grade); before each minor cut (closes any debt the slot accreted); before the v1.0 freeze (last sweep before the API contract becomes load-bearing). Build features on an unaudited foundation and every feature inherits the foundation's shortcuts — P(-1) pays the debt before it compounds.
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│                  P(-1): SCAFFOLD HARDENING                   │
+│                       P(-1): HARDENING                       │
 │                                                              │
 │  1. TEST + BENCHMARK SWEEP                                   │
 │     Comprehensive coverage of existing scaffold code         │
