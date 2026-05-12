@@ -50,7 +50,8 @@ Future architecture, theoretical exploration, and long-range planning.
 
 | Document | Description |
 |----------|-------------|
-| [vision/release-vision.md](vision/release-vision.md) | Release milestones v2-v4 (fossil — pre-Cyrius kernel) |
+| [vision/conscious-objects.md](vision/conscious-objects.md) | Quantum substrate / Layer 0 / companion-agent pattern (long-horizon vision) |
+| [vision/creator-economy.md](vision/creator-economy.md) | Sovereign-distribution thesis (bootable USB / artifact ownership) |
 | [vision/maat-42.md](vision/maat-42.md) | Ma'at 42 Confessions mapped to AGNOS crates |
 | **vision/architecture/** | |
 | [k8s-roadmap.md](vision/architecture/k8s-roadmap.md) | Kubernetes-equivalent orchestration |

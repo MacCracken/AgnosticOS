@@ -27,7 +27,7 @@
 > **Phylax 1.0.0** / **Shakti 0.2.2** — threat detection + privilege escalation ported to Cyrius.
 > **New shared crates (Apr 22–23)**: **owl** v0.1.0 (Cyrius-native `cat`/`bat` replacement, M0–M5 shipped) and **vyakarana** v0.1.0 (source-code grammar / tokenizer library — ten-kind palette locked; M1 agent started). owl M3b highlighting consumes vyakarana when M1 lands.
 > **Critical path CLEARED**: libro ✅ argonaut ✅ kybernet ✅ kernel ✅ boot pipeline ✅ kavach ✅ ark ✅ nous ✅
-> **Shared ecosystem**: 30+ repos ported to Cyrius. In port (partial, `rust-old/` still authoritative): takumi 0.8.0. Pending port: bhava, aegis, aethersafha.
+> **Shared ecosystem**: 30+ repos ported to Cyrius. In port (partial, `rust-old/` still authoritative): takumi 0.8.0. Pending port: bhava, aethersafha. (aegis hit **1.0.0** in the v5.10.x window — out of pending.)
 > **Next milestone**: **May 1 V1** — bootable ISO runs DOOM from Cyrius; kernel + toolchain + 30+ ports + science library shipped. Then biweekly cadence to DEF CON.
 
 ---
@@ -105,8 +105,9 @@ Phase 13A items 1–3 (boot → shell on hardware) ──→ CLOSED BETA (MVP)
 - [ ] All consumer apps published to mela
 - [ ] 6 months of beta testing with no critical bugs
 
-Long-term vision (v2.0 kernel, v3.0 Cyrius, v4.0 conscious objects, Foundation): [vision/release-vision.md](vision/release-vision.md)
-Creator economy (sovereign distribution, bootable USB media): [vision/creator-economy.md](vision/creator-economy.md)
+Long-term vision: [`vision/conscious-objects.md`](vision/conscious-objects.md) — the quantum-substrate / Layer-0 horizon (post-v3.0, multi-year). Foundation governance is now [`planning/foundation-structure.md`](planning/foundation-structure.md) (promoted from vision → planning 2026-05-12). v2.0 Rust-kernel and v3.0 Cyrius-pivot vision sections were retired 2026-05-12 — both happened ahead of schedule (Cyrius kernel shipped 2026-04-04; Cyrius language at v5.11.24 already).
+Creator economy (sovereign distribution, bootable USB media): [`vision/creator-economy.md`](vision/creator-economy.md)
+Knowledge-completeness mapping (42 confessions of Ma'at ↔ AGNOS crates): [`vision/maat-42.md`](vision/maat-42.md)
 
 ---
 
@@ -120,7 +121,7 @@ Each beat is still a release, not a blog post. The beats are the right work; the
 |---|---|---|
 | **May 1 2026** *(shipped, partial — historical)* | V1: Boots, runs DOOM, all Cyrius. ISO Stage 0+ cut; kernel 1.26.1 (predicted 1.22.x — shipped ahead) + Cyrius toolchain + 30+ ports + science library. ISO Stage-4 cut + first hardware boot remain — the actual MVP gate. | `agnos`, `cyrius`, `agnosticos` |
 | **Fall 2026** | **Library for Humanity.** Reference library + knowledge corpus (vidya + abaco + 27-crate science tier) shipped as a browseable first release. | `vidya`, `abaco`, science tier |
-| **Fall 2026** | **Multi-platform byte-identical.** x86_64 + aarch64 + Apple Silicon + Windows PE32+ reproducible cross all four. *Per state.md, this is largely closed already at v5.5.x; this beat is more announcement than build.* | `cyrius` |
+| ~~Fall 2026~~ **Already shipped (v5.5.x)** | **Multi-platform byte-identical.** x86_64 Linux byte-identical (Cyrius core); aarch64 Linux byte-identical on real Pi (v5.5.18 stdlib shakedown); Apple Silicon Mach-O self-host (v5.5.17); Windows PE32+ native self-host (v5.5.10). **No future work required** — beat retained as a public-announcement event if marketing wants it; otherwise this row can be retired from the cadence. | `cyrius` |
 | **Fall 2026** | **Self-hosting in action.** Cyrius compiles itself from tarball on a booted AGNOS ISO, end-to-end. **This is the public-beta technical milestone**, not a separate beat. | `cyrius`, `agnos`, `agnosticos` |
 | **Fall 2026 (winter solstice 2026-12-21)** | **Solstice: higher-order items.** TBD gift — agent-tooling article + capstone receipts. (Date shifted from summer to winter solstice given the fall rescope.) | `agnosticos/docs/articles` |
 | **Fall 2026** | **Distribution at scale.** Ark OTA pipeline live; recipes buildable from zugot by third parties. | `ark`, `nous`, `zugot` |
@@ -344,9 +345,9 @@ Repo-specific backlog items tracked in their respective repos.
 | 9 | ESP32 devices (multiple) | xtensa | IoT/Edge | Available |
 | 10 | ASIC miners | — | Crypto accel | Available |
 | 11 | Gaming cabinet (GTX 1060 OC) | x86_64 | Desktop + kavach | Available — low-end NVIDIA / Pascal; dual-purpose: AGNOS host + Windows guest |
-| 12 | Skytech Legacy 4 (Ultra 9 285K, RTX 5080, 64GB DDR5, 2TB NVMe) | x86_64 | Desktop / GPU+AI workload | **Arriving 2026-05-04** — high-end NVIDIA bring-up: ai-hwaccel, hoosh, mabda, aethersafha. Upgrade vectors: Intel Arc GPU swap, next-gen NVIDIA late-2026/early-2027, DDR5 capacity bump |
+| 12 | Skytech Legacy 4 (Ultra 9 285K, RTX 5080, 64GB DDR5, 2TB NVMe) | x86_64 | Desktop / GPU+AI workload | **Available** (arrived 2026-05-04) — high-end NVIDIA bring-up: ai-hwaccel, hoosh, mabda, aethersafha. Secondary closed-beta hardware-matrix target (NUC row 14 is primary for first-boot install). Upgrade vectors: Intel Arc GPU swap, next-gen NVIDIA late-2026/early-2027, DDR5 capacity bump |
 | 13 | Vaio all-in-one (older NVIDIA CUDA) | x86_64 | Desktop / legacy CUDA floor | Available — oldest CUDA-capable target, validates ai-hwaccel low-end fallback |
-| 14 | AMD NUC devbox (Ryzen 7 5800H, Radeon Vega/Cezanne) | x86_64 | Primary dev environment | **Active** — daily-driver dev box; covers AMD CPU (Zen 3) + `amdgpu` driver stack (integrated GCN/Vega) |
+| 14 | AMD NUC devbox (Ryzen 7 5800H, Radeon Vega/Cezanne) | x86_64 | Primary dev environment | **Active** — daily-driver dev box; covers AMD CPU (Zen 3) + `amdgpu` driver stack (integrated GCN/Vega). **Closed-beta MVP first-hardware-boot target**: open 2TB SSD on this box gets AGNOS installed via GRUB-chain (per Phase 13A item 3.5; install.cyr provisions partition + initramfs + GRUB entry). |
 | 15 | MacBook Pro 2018 (Intel + T2) | x86_64 | Laptop / Apple EFI | Available — laptop form factor (battery, lid-suspend, hybrid graphics); validates Apple EFI + T2 security chip quirks |
 | 16 | MacBook Pro M5 | aarch64 | Laptop / Apple Silicon | Pending — blocked on Asahi-class reverse-engineered driver support for M5 generation |
 | 17 | Mac Mini 2025 (Apple Silicon) | aarch64 | Desktop / Apple Silicon | Pending — same Asahi-driver dependency; closes aarch64 desktop-class coverage when ready |
@@ -575,7 +576,7 @@ Unified Consciousness Model paper and bhava roadmap tracked in `MacCracken/bhava
 
 ## Meta
 
-- **Long-term vision**: [vision/release-vision.md](vision/release-vision.md) — v2.0 kernel, v3.0 Cyrius, v4.0 conscious objects, Phase 20, Foundation
+- **Long-term vision**: [`vision/conscious-objects.md`](vision/conscious-objects.md) (quantum substrate / Layer 0), [`vision/creator-economy.md`](vision/creator-economy.md) (sovereign distribution), [`vision/maat-42.md`](vision/maat-42.md) (42-domain completeness mapping). Foundation governance moved to [`planning/foundation-structure.md`](planning/foundation-structure.md) 2026-05-12. v2.0/v3.0 release-ladder vision retired 2026-05-12 (those milestones happened ahead of schedule).
 - **Sprint history**: [sprint-history.md](sprint-history.md)
 - **App roadmap**: [applications/roadmap.md](applications/roadmap.md)
 - **Changelog**: [CHANGELOG.md](/CHANGELOG.md)

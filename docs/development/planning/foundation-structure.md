@@ -399,7 +399,7 @@ common pre-Foundation failure modes.
 - **Companion**: [`parallel-pki.md`](parallel-pki.md) — the cryptographic-identity layer; this doc holds the *legal-identity* layer that the parallel PKI needs to be defensible. Each depends on the other.
 - **Companion**: [`cross-platform-compat-subsystem.md`](cross-platform-compat-subsystem.md) and [`dpi-resistance.md`](dpi-resistance.md) — together with this doc, form the four-layer empire-protection planning surface (compat / wire / trust / governance).
 - **Outreach framework memory** ([`../../../../../.claude/projects/-home-macro-Repos-agnosticos/memory/project_outreach_framework.md`](../../../../../.claude/projects/-home-macro-Repos-agnosticos/memory/project_outreach_framework.md)) — the two-track NPO/commercial split directly informs Foundation funding strategy (commitment 5).
-- **`vision/release-vision.md`** — mentions "Foundation" as a long-term concept; this doc is the *immediate planning* layer for that vision concept.
+- ~~`vision/release-vision.md`~~ — retired 2026-05-12 (was fossil from pre-Cyrius-pivot era). Foundation governance content lived there as long-term concept; *this doc supersedes it* as the immediate planning layer.
 
 ---
 
