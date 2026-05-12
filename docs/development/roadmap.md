@@ -4,12 +4,15 @@
 >
 > 🔴 **BETA RESCOPED (2026-05-06)**: Two-stage beta. **Closed beta** targets early June 2026 — Phase 13A complete, exercised by a small private cohort of trusted testers (friend-network), no formal community-program enrollment. **Public beta** retains the original Q4 2026 window and adds the third-party security audit + community testing program. This is a deliberate compression: previously-mandatory beta gates (audit, community program) move to the public-beta gate so the closed-beta line is honest about what shipped.
 >
-> 🔴 **NEXT ACTIVE WORK**: ISO Stage-4-only first cut — see
-> **[`iso-stage4-plan.md`](iso-stage4-plan.md)**. This is the next-up item
-> after the 2026-04-27 boot-pipeline updates (sigil 2.9.4 cut, agnostik
-> reverted, scripts pinned to Cyrius 5.7.21). The plan has four open
-> decisions (D1–D4) that need user input before coding begins. Next agent:
-> **read the plan, then resolve D1–D4 with Robert.**
+> 🔴 **MVP GATE — NEXT ACTIVE WORK**: ISO Stage-4-only first cut — see
+> **[`iso-stage4-plan.md`](iso-stage4-plan.md)**. **This is the
+> closed-beta MVP gate**: pre-built kernel + kybernet + agnoshi on a live
+> image that boots to a shell on real iron. After the 2026-04-27
+> boot-pipeline updates (sigil 2.9.4 cut, agnostik reverted, scripts
+> pinned to Cyrius 5.7.21 — pin bump to 5.11.x queued). The plan has four
+> open decisions (D1–D4) that need user input before coding begins. Next
+> agent: **read the plan, then resolve D1–D4 with Robert.** MVP target:
+> shell prompt on Pi 4 or Skytech Legacy 4 inside ~3 weeks.
 >
 > **May 1 V1 release** has passed. Per [`state.md`](state.md), kernel is at **1.26.1** (past the 1.22.x predicted in the original V1 line), Cyrius is at **v5.11.0** (cut today 2026-05-11; v5.10.x closed at .50 with three completed arcs — typed-simd ABI, REAL TYPE SYSTEM, struct-byval ABI), and **v5.12.x** now holds the **AGNOS bare-metal target + RISC-V rv64 backend** (slipped v5.8 → v5.10 → v5.11 → v5.12). V1 status itself: verify against ISO/CI receipts before re-asserting in any public copy. Biweekly cadence through August DEF CON distribution (see [Near-Term Cadence](#near-term-cadence--may-1-v1-to-def-con)).
 > **Kernel 1.26.1 shipped** (2026-04-28) — 248KB, 33 subsystems, 26 syscalls. Three hardening passes through the v1.22.0 (260KB) → v1.26.1 (248KB) progression. Replaced v1.26.0's CI-hygiene workaround with a real fix.
@@ -31,13 +34,15 @@
 
 ## Strategic Vision
 
-AGNOS becomes a real operating system in two stages:
+AGNOS becomes a real operating system in three stages — **rubber-hits-the-road, then independence, then completeness.**
 
-1. **OS Independence** (Beta) — AGNOS boots and builds itself without any host distro. Self-hosting LFS-style base, takumi recipes for the full stack, ark as sole package manager. This is the foundation.
+1. **MVP — Boot to Shell on Hardware** (Closed Beta) — AGNOS kernel + kybernet (PID 1) + agnoshi (shell) + sovereign boot pipeline reach a shell prompt on real iron. Pre-built binaries; self-hosting NOT required. This is the line where AGNOS stops being a slide deck and starts being a thing that runs.
 
-2. **Desktop Completeness** (v1.0) — Ship a complete desktop experience by packaging existing open-source tools first, then progressively replace with AI-native alternatives where the AI is the primary value.
+2. **OS Independence** (Public Beta) — AGNOS rebuilds itself without a host distro. Self-hosting LFS-style base, takumi recipes for the full stack, ark as sole package manager. Adds "and it can grow itself" to the MVP.
 
-**Priority order**: OS identity → desktop essentials via recipes → AI-native apps
+3. **Desktop Completeness** (v1.0+) — Ship a complete desktop experience by packaging existing open-source tools first, then progressively replace with AI-native alternatives where the AI is the primary value.
+
+**Priority order**: boot to shell on iron → self-hosting → desktop essentials → AI-native apps. Desktop ambitions do not gate the MVP; the MVP is what proves the kernel + init + shell stack is real on hardware.
 
 ---
 
@@ -48,18 +53,24 @@ Cyrius ports (agnostik → agnosys → libro → argonaut → kybernet)
   ↓
 kybernet folds into AGNOS kernel as PID 1
   ↓
-Phase 13A (self-hosting boot) ──→ Phase 16 (desktop) ──→ Phase 13C (community) ──→ BETA
+Phase 13A items 1–3 (boot → shell on hardware) ──→ CLOSED BETA (MVP)
+                                                       ↓
+                                  Phase 13A items 4–7 (self-hosting) ──→ PUBLIC BETA
+                                                       ↓
+                                  Phase 13C (community) + Phase 16 (desktop) ──→ v1.0
 ```
 
-### Closed Beta — Early June 2026 (~1 month)
+### Closed Beta — Early June 2026 (~3 weeks)
 
-- [ ] **OS Independence (13A)** — PRIMARY BLOCKER
-- [ ] Small private tester cohort (friend-network), 5–15 testers, exercising the bootable system on real hardware
+**MVP scope: AGNOS boots to a shell prompt on real hardware.** That's the line. Self-hosting, package builds from source, and full userland validation against the AGNOS kernel ABI are NOT required for this gate — they're Public Beta.
+
+- [ ] **Boot-to-Shell MVP (13A items 1–3)** — kernel boots, kybernet (PID 1) runs, agnoshi (shell) prompt reachable on real hardware
+- [ ] Small private tester cohort (friend-network), 5–15 testers, sitting at a shell prompt on iron running AGNOS
 - [ ] No public enrollment. No formal community program. No marketing.
 
-**Gate philosophy**: closed beta is the honest "the OS rebuilds itself, and humans other than the founder have run it" milestone. Audit and broad community testing are deliberately deferred to public beta — a cleaner, smaller line that ships on the date.
+**Gate philosophy**: closed beta is the honest "the kernel + init + shell stack runs on real iron, and humans other than the founder have sat at the prompt" milestone. Self-hosting, audit, and broad community testing are deliberately deferred to public beta — a cleaner, smaller line that ships on the date. The MVP proves the *base* OS is real; sovereignty of the rest of the userland against the AGNOS-kernel ABI is the next milestone.
 
-**Cadence dependency**: gated on Cyrius v5.12.x landing the bare-metal target (v5.10.x closed 2026-05-11 with three arcs; v5.11.x now active on stdlib annotation arc; bare-metal slipped to v5.12.x), then 1–2 weeks of 13A self-hosting validation. Slips by week, not by month.
+**Cadence dependency**: gated on Cyrius v5.12.x landing the bare-metal target (v5.10.x closed 2026-05-11 with three arcs; v5.11.x now active on stdlib annotation arc; bare-metal slipped to v5.12.x), then Stage-4 ISO cut + hardware boot session. Recent Cyrius cadence is **3–5 days per minor cycle**, so the bare-metal slot is closer than "v5.12.x" sounds. Slips by week, not by month.
 
 ### Public Beta — Q4 2026
 
@@ -195,34 +206,41 @@ Full details: [sprint-history.md](sprint-history.md#monolith-extraction--complet
 | Metric | Target | Current | Status |
 |--------|--------|---------|--------|
 | Boot Time | <10s | **3.2s** (kernel+init), **~80ms** init→event loop | **Achieved** |
-| OS Independence | Yes | Pending | Phase 13A — critical path cleared, self-hosting validation remaining |
+| Boot-to-Shell on Hardware (MVP) | Yes | Pending | Phase 13A items 1–3 — kernel + kybernet + agnoshi on iron; Stage-4 ISO is the gate |
+| OS Independence (full self-hosting) | Yes | Pending | Phase 13A items 4–7 — explicitly post-MVP, Public Beta scope |
 | DOOM | Playable | **2.59ms/frame**, cyrius-doom 0.26.1, hardened (5 CVEs fixed) | **Unblocked** — Cyrius Phase O2 closed v5.6.11; regalloc v5.6.13 in flight. Full-frame benchmark re-run pending v5.6.x closeout. |
 
 ---
 
 ## Active Work
 
-### Phase 13A — OS Independence Validation (BETA BLOCKER)
+### Phase 13A — Boot-to-Shell MVP + OS Independence (BETA BLOCKER)
 
-**This is the single most important remaining work.** Without it, AGNOS is a Debian overlay.
+**Two scopes in one phase.** The MVP (items 1–3 + 8) is the closed-beta line. The self-hosting block (items 4–7) is public-beta scope and is explicitly *post-MVP*.
+
+**MVP ship test** — when this passes, closed beta cuts:
+> Boot the Stage-4 ISO on a Pi 4 (or Skytech, or any matrix-row machine). The kernel comes up. kybernet runs as PID 1. agnoshi prints a prompt. A tester other than the founder sits at that prompt.
+
+That's it. No package builds, no recipe sweeps, no self-host loop. Those come after.
 
 **Previous blocker (CLEARED)**: kybernet Cyrius port. Dependency chain completed 2026-04-13: libro ✅ → argonaut ✅ → kybernet 1.0.1 ✅ → kernel 1.22.0 (later hardened to 1.26.1, 248KB) ✅ → boot pipeline (Cyrius, ~67KB) ✅.
 
-**Current work**: Sovereign boot pipeline active. Kernel boots in QEMU via `make boot-test`. Remaining items are self-hosting validation (can AGNOS rebuild itself from source without a host distro).
+**Current MVP work**: Sovereign boot pipeline active. Kernel boots in QEMU via `make boot-test`. ISO Stage-4 cut + first hardware boot session remain.
 
-| # | Item | Status | Notes |
-|---|------|--------|-------|
-| 1 | Kernel boots in QEMU | **Done** | boot.cyr (67KB Cyrius binary, rebuilt against 5.7.21 on 2026-04-27), kernel 1.26.1 (248KB, real CI hygiene fix replaced 1.26.0 workaround) |
-| 2 | Sovereign boot pipeline | **Done** | `make boot-test` from genesis repo |
-| 2.5 | ISO `--iso-check` (Stage 0 component verification) | **Done** | 26-of-26 components READY (2026-04-27 audit), ISO assembly unblocked |
-| **3** | **ISO Stage-4-only first cut (live image, pre-built binaries)** | **🔴 NEXT** — planned, awaiting D1–D4 | See [`iso-stage4-plan.md`](iso-stage4-plan.md). Days, not weeks. **Phase 1 of the May 1 V1 ISO story.** |
-| 4 | LFS Stage 1: bootstrap-toolchain.sh end-to-end | Deferred to Phase 2 | Build cross-compiler from source tarballs. Not blocking first ISO. |
-| 5 | LFS Stage 2: build base system in chroot | Deferred to Phase 2 | ark-build all 109 base recipes. Phase 2 = self-hosting story. |
-| 6 | LFS Stage 3: build AGNOS userland on target | Deferred to Phase 2 | Cyrius-compiled binaries inside AGNOS (Stage-4-only ships pre-built). |
-| 7 | Selfhost-validate passes all phases | Deferred to Phase 2 | Run `selfhost-validate --phase all` on booted ISO |
-| 8 | CI automation | In progress | GitHub Actions workflows |
+| # | Item | Scope | Status | Notes |
+|---|------|-------|--------|-------|
+| 1 | Kernel boots in QEMU | **MVP** | **Done** | boot.cyr (67KB Cyrius binary, rebuilt against 5.7.21 on 2026-04-27 — pin update to 5.11.x queued), kernel 1.26.1 (248KB, real CI hygiene fix replaced 1.26.0 workaround) |
+| 2 | Sovereign boot pipeline | **MVP** | **Done** | `make boot-test` from genesis repo |
+| 2.5 | ISO `--iso-check` (Stage 0 component verification) | **MVP** | **Done** | 26-of-26 components READY (2026-04-27 audit), ISO assembly unblocked |
+| **3** | **ISO Stage-4-only first cut (live image, pre-built binaries)** | **MVP** | **🔴 NEXT** — planned, awaiting D1–D4 | See [`iso-stage4-plan.md`](iso-stage4-plan.md). Days, not weeks. **The MVP gate.** |
+| **3.5** | **First hardware boot session — kernel + kybernet + agnoshi shell prompt** | **MVP** | 🔴 Pending Stage-4 | Pi 4 ready (matrix row 3); Skytech Legacy 4 arrived 2026-05-04 (row 12). Either is a valid first target. |
+| 8 | CI automation | **MVP-adjacent** | In progress | GitHub Actions workflows — supports MVP and beyond |
+| 4 | LFS Stage 1: bootstrap-toolchain.sh end-to-end | **Post-MVP** (Public Beta) | Deferred | Build cross-compiler from source tarballs. Not in MVP scope — pre-built binaries ship in the Stage-4 ISO. |
+| 5 | LFS Stage 2: build base system in chroot | **Post-MVP** (Public Beta) | Deferred | ark-build all 109 base recipes. Public Beta = self-hosting story. |
+| 6 | LFS Stage 3: build AGNOS userland on target | **Post-MVP** (Public Beta) | Deferred | Cyrius-compiled binaries inside AGNOS. Also where userland ↔ AGNOS-kernel ABI bridge gets exercised end-to-end. |
+| 7 | Selfhost-validate passes all phases | **Post-MVP** (Public Beta) | Deferred | Run `selfhost-validate --phase all` on booted ISO |
 
-**Target**: Closed beta cut, **early June 2026** (~3 weeks from 2026-05-11). Gated on Cyrius v5.12.x bare-metal target landing.
+**MVP target**: Closed beta cut, **early June 2026** (~3 weeks from 2026-05-11). Gated on (a) Cyrius v5.12.x bare-metal target landing — recent Cyrius cadence is 3–5 days per minor, so this is closer than the version number implies; (b) ISO Stage-4 D1–D4 resolved; (c) first hardware boot session producing a shell prompt.
 
 ### P0 — Other Active Blockers
 
