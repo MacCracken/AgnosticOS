@@ -44,14 +44,15 @@ AGNOS becomes a real operating system in three stages — **rubber-hits-the-road
 
 **Priority order**: boot to shell on iron → self-hosting → desktop essentials → AI-native apps. Desktop ambitions do not gate the MVP; the MVP is what proves the kernel + init + shell stack is real on hardware.
 
-**The agnostic + empire-defense commitments** (running in parallel after public beta, not gating MVP): AGNOS protects users from the empire by giving them **exit options without total disconnection** — parallel infrastructure that doesn't pay the empire's rent, plus sandboxed bridges for the moments where empire services are genuinely needed. Four parallel-infrastructure / bounded-coupling commitments:
+**The agnostic + empire-defense commitments** (running in parallel after public beta, not gating MVP): AGNOS protects users from the empire by giving them **exit options without total disconnection** — parallel infrastructure that doesn't pay the empire's rent, plus sandboxed bridges for the moments where empire services are genuinely needed. Five parallel-infrastructure / bounded-coupling commitments:
 
 - **Phase 20 — Cross-Platform Compat Subsystem** ([spec](planning/cross-platform-compat-subsystem.md)): foreign-platform work runs transparently via a kavach-sandboxed Linux personality container. Kernel grows organically per native workload; the interpretive layer stays permanently separate.
 - **Phase 21 — DPI Resistance** ([spec](planning/dpi-resistance.md)): the AGNOS network stack normalizes traffic to mainstream-browser fingerprints by default. The empire cannot selectively act against AGNOS-on-the-wire without acting against Chrome-on-Windows users at scale.
 - **Phase 22 — Parallel PKI** ([spec](planning/parallel-pki.md)): trust root anchored in physical artifacts (bumper sticker / SD card / paper QR). Commercial CAs serve as opportunistic bridges, never as the load-bearing trust. The empire cannot revoke a sticker.
 - **Phase 23 — Foundation Structure** ([spec](planning/foundation-structure.md)): multi-jurisdictional, mission-locked, contributor-protecting governance layer that holds project assets in a way no single state actor or commercial entity can coerce. The meta-defense — without it, all the technical sovereignty is undone in a courtroom.
+- **Phase 24 — Identity & Authorization Model** ([spec](planning/identity-and-authorization-model.md)): recognition over interrogation; authorization > authentication. AGNOS rejects the Unix-login-by-default + federated-IDP empire pattern in favor of a layered model (theft / presence / identity / capability) with pluggable mechanisms per layer. The user owns the device; sensitive operations are gated by capability-per-action, not by session-grants-all-powers.
 
-Native ports + native sovereignty remain the preferred path. The four phases above are the bridges, the wire-layer cover, the parallel trust root, and the legal substrate that make sovereignty actually defensible against an adversary-class threat model. **The boundary between the kernel and the interpretive layers is permanent** — the kernel never absorbs foreign ABIs, the trust root never depends on commercial PKI, the Foundation never sits in a single coercible jurisdiction.
+Native ports + native sovereignty remain the preferred path. The five phases above are the compat bridges, the wire-layer cover, the parallel trust root, the legal substrate, and the user-boundary security posture that make sovereignty actually defensible against an adversary-class threat model. **The boundary between the kernel and the interpretive layers is permanent** — the kernel never absorbs foreign ABIs, the trust root never depends on commercial PKI, the Foundation never sits in a single coercible jurisdiction, authentication never grants authorization.
 
 ---
 
@@ -485,6 +486,24 @@ Detailed items tracked in respective repos:
 **Pre-Foundation immediate actions** (Robert can do now, no legal counsel needed): trademark filings (`AGNOS`, `Cyrius`, key subsystem names); DCO sign-off in contribution docs + CI; CONTRIBUTING.md IP model documentation; quiet outreach to 2-4 candidate founding board members; project bank account separate from personal finances; signing-key custody documentation. These six are time-sensitive — Phase 1 (trademark) should happen *before* public adoption, not after.
 
 **Phasing**: pre-Foundation (current; Robert holds everything) → trademark filings + DCO + contributor docs (pre-closed-beta) → legal counsel engagement → primary Foundation formation (at v1.0) → asset transfer → secondary-jurisdiction mirror → mature governance (TSC elections, founder emeritus transition at v2.0).
+
+### Phase 24 — Identity & Authorization Model (cross-cutting, fluid framework)
+
+**Spec**: [`planning/identity-and-authorization-model.md`](planning/identity-and-authorization-model.md) — full design spine.
+
+**Commitment**: AGNOS rejects the Unix-login-by-default + federated-IDP empire pattern. The user *owns* the device; proving identity to your own device is security theater. AGNOS's posture: **recognition over interrogation; authorization > authentication**. The device tries to *know* who's there (ambient, continuous); sensitive operations are gated by *capability-per-action* that fires regardless of who the system thinks is at the keyboard. Authentication is best-effort; authorization is rigorous.
+
+**Four-layer model**: theft (encryption at rest), presence (auto-lock + re-presence), identity (multi-user differentiation), capability (per-action authorization). Each layer has its own threat model and its own pluggable mechanism stack. **Don't conflate them under a single "login."**
+
+**Why this matters now (even though full implementation is post-MVP)**: closed-beta MVP is single-user no-auth (current behavior), which is compatible with this framework (Layers 1-3 deferred, Layer 4 nascent). What this doc *prevents* is anyone retrofitting `/etc/passwd` / `getty` / `login` into kybernet "because that's how Linux does it." Stop the empire-pattern import at the architectural commitment, *now*.
+
+**Existing subsystem map**: `sigil` (cryptographic identity), `kavach` (capability sandboxing — primary authorization layer), `t-ron` (MCP-boundary policy), `avatara` (identity overlay → bonded recognition), `libro` (audit chain), `kula` (cross-device family/clan mesh — future), kybernet (PID 1 session setup), agnoshi (shell receiving bonded user). The architecture doesn't need new subsystems — it needs the *framework* across the existing ones to be made explicit (the planning doc).
+
+**Two principles, never collapsed**: authentication never grants authorization (empire's failure mode); even with perfect authentication, every irreversible action gets a fresh capability gate. Recognition modes evolve (mechanisms get better) but the boundary stays permanent.
+
+**Fluid-document caveat explicit**: mechanism choices per layer (biometric vs token vs behavioral vs password) are open research questions with no clean answer. The framework commits architectural shape — *layered concerns, pluggable mechanisms, recognition primary, capability-gates primary security* — and explicitly defers mechanism selection to "evolves with hardware and UX research." The planning doc updates as mechanisms mature.
+
+**Phasing**: Phase 1 (framework documented) ✅ shipped 2026-05-12. Phase 2+ (encryption at rest, lock-screen mechanisms, multi-user via avatara, capability-gate UX) lands post-public-beta as the relevant subsystems and research mature.
 
 ---
 
