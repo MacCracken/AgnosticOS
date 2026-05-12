@@ -184,7 +184,7 @@ What it grew from was a compass, a team of two, and the realization that the Pyt
 - **Optimization arc shipped through v5.8.x** as outlined above; **stdlib-fold pattern compounded three times** (sandhi v5.7.0 service-boundary, vani v5.8.0 audio I/O, niyama v5.9.0 regex engines). Each fold is a multi-consumer-gated maturation of a sibling distfile into the canonical stdlib `lib/` (see [*What Justifies a Stdlib Foldin*](what-justifies-a-stdlib-foldin.md) for the gate framework).
 - **v5.9.x is the catchup arc** — consumer rollup, optimization-debt audit, dangling-item closeout. v5.10.x reserved for AGNOS bare-metal target + RISC-V rv64 backend (both slipped from earlier cycles as foldin work compounded).
 
-Independent verification on Anthropic's hosted infrastructure documented at [*End of 4.x: An Independent Audit on Neutral Hardware*](end-of-4x-independent-audit.md). Multi-party reproducibility receipts are queued audit work.
+Independent verification on Anthropic's hosted infrastructure documented at [*End of 4.x: An Independent Audit on Neutral Hardware*](../archive/end-of-4x-independent-audit.md) (archived 2026-05-12; Bootstrap-Chain finding still holds, Kernel-Boot finding was QEMU-only and was subsequently contradicted on real iron 2026-05-12 — see [iron-boot-testing-log.md](../development/iron-boot-testing-log.md)). Multi-party reproducibility receipts are queued audit work.
 
 ---
 

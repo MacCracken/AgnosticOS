@@ -14,6 +14,13 @@
 > agent: **read the plan, then resolve D1–D4 with Robert.** MVP target:
 > shell prompt on Pi 4 or Skytech Legacy 4 inside ~3 weeks.
 >
+> 🟡 **Iron-boot attempts running log**: [`iron-boot-testing-log.md`](iron-boot-testing-log.md). Append-only per-attempt log
+> (symptom / root cause / repair / verification). Attempt 1 (2026-05-12) FAILED on the GRUB
+> `grub_elf32_get_shnum` chain; root cause was Cyrius's `EMITELF_KERNEL`
+> emitting `e_shoff=0` ELFs; repaired in Cyrius 5.11.29 (x86 kernel),
+> 5.11.30 (aarch64 kernel), 5.11.31 (cyrld); USB refreshed via the new
+> `install-usb.sh --update` mode. Attempt 2 pending.
+>
 > **May 1 V1 release** has passed. Per [`state.md`](state.md), kernel is at **1.29.0** (past the 1.22.x predicted in the original V1 line; +3 minor bumps since the 1.26.1 May-1 cut), Cyrius is at **v5.11.24** (cut day was 2026-05-11 — same-day **24-patch burst** from v5.11.0 to v5.11.24; v5.10.x closed at .50 with three completed arcs — typed-simd ABI, REAL TYPE SYSTEM, struct-byval ABI), and **v5.12.x** now holds the **AGNOS bare-metal target + RISC-V rv64 backend** (slipped v5.8 → v5.10 → v5.11 → v5.12). V1 status itself: verify against ISO/CI receipts before re-asserting in any public copy. Biweekly cadence through August DEF CON distribution (see [Near-Term Cadence](#near-term-cadence--may-1-v1-to-def-con)).
 > **Kernel 1.29.0 active** — 26 syscalls invariant, structurally immune to CVE-2026-31431 (Copy Fail). v1.26.1 (2026-04-28, 248KB) shipped through three hardening passes from v1.22.0 (260KB); v1.27.x → v1.29.0 continued the cycle on the 5.10.44 pin. Patch-level detail in `agnos/CHANGELOG.md`.
 > **Cyrius 5.7.0 shipped** (2026-04-25) — **THE SANDHI FOLD**. `lib/sandhi.cyr` adds (vendored byte-identical from sandhi v1.0.0, 376,037 B / 9,649 lines, 469 fns); `lib/http_server.cyr` deletes; sandhi repo enters maintenance mode per [ADR 0002](https://github.com/MacCracken/sandhi/blob/main/docs/adr/0002-clean-break-fold-at-cyrius-v5-7-0.md). Cyrius-side gates 1, 2, 3, 5, 6 ✅; gate 4 (downstream sweep) is separate user-organized work — only **vidya** actually `include`s `lib/http_server.cyr`; yantra and sit have orphan pre-fold copies (cleanup-only); the originally-listed `sit-remote`/`ark-remote` don't exist. v5.6.x closed at v5.6.45 on 2026-04-25 (45 patches — new longest-minor record). v5.6.0 opened the compiler-optimization arc on 2026-04-22 (**Phase O1** v5.6.0–v5.6.4 instrumentation + FNV-1a symbol hashing; **Phase O2** v5.6.11 partial strength reduction, flag-result reuse, push/pop elim, commutative + aarch64 combine-shuttle; **regalloc** v5.6.20–v5.6.24 default-on linear-scan; **closeout** v5.6.43 sigil 2.9.3 / sankoch 2.1.0 / output_buf 2MB).

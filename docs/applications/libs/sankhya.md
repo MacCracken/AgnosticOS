@@ -4,6 +4,7 @@ Ancient math systems.
 
 - **Repository**: [github.com/MacCracken/sankhya](https://github.com/MacCracken/sankhya)
 - **License**: GPL-3.0-only
-- **Status**: v1.0+ stable
+- **Status**: Stable - See Repo
+- **Language**: Rust
 
 See the [shared-crates registry](../../development/planning/shared-crates.md) for full context and dependency graph.

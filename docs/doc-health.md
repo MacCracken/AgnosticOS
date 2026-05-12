@@ -117,7 +117,7 @@ Numbers approximate; rolls up from the per-tier tables below.
 | `state.md` | 2026-05-11 | ✅ Fresh | **Refreshed 2026-05-11**: cycle transition v5.10.x → v5.11.x; v5.10.x demoted to retrospective (50 patches, three arcs: typed-simd ABI 11p + REAL TYPE SYSTEM 5p + struct-byval ABI 3p + 2.7× compile miniarc); typed-simd ABI substrate framing added (foundation for Cyrius-native codec work long-term); cc5 size `783,408 → 804,472 B`; new article slots queued. Pin-update sweep in progress (kernel-adjacent repos pending). |
 | `summer-2026-arc.md` | 2026-05-09 | ✅ Fresh | **Refreshed 2026-05-09**: TLS-arc framing retired (TLS shipped via sandhi-fold v5.7.0); B10 superseded; Critical-path graph updated to v5.10.x → v5.11.x → v5.12.x; Alignment table re-cast for current cycle reality; biggest-risk and derail sections updated; May 1 Beltane target replaced with closed-beta-cut framing. |
 | `sprint-history.md` | 2026-05-09 | ✅ Fresh | **Refreshed 2026-05-09**: Cyrius Era cycle summaries appended (v1.0 → v5.0 + ecosystem boot; v5.5.x multi-platform; v5.6.x optimization arc; v5.7.x sandhi-fold + 51 patches; v5.8.x 66-in-4-days; v5.9.x catchup + niyama; v5.10.x REAL TYPE SYSTEM arc in flight). |
-| `monolith-extraction.md` | 2026-04-17 | 🔵 Evergreen | Extraction is **complete** (per CLAUDE.md). Doc is now historical record. Confirm framing reflects done-state. |
+| `monolith-extraction.md` | 2026-04-17 | 🗄 Archived | **Moved to `docs/archive/` on 2026-05-12** — historical milestone, extraction completed 2026-04-01. Live work tracked in `state.md` + `iron-boot-testing-log.md`. |
 | `iso-pipeline.md` | 2026-05-09 | ✅ Fresh | Refreshed 2026-05-09: cc5 size + version bump (v5.9.0/741KB → v5.10.24/783KB), blockers table updated (phylax/shakti/sankoch shipped; aegis graduated; multi-platform codegen shipped at v5.5.x), bare-metal reservation slipped to v5.12.x, May 1 boot target superseded by two-stage beta rescope. |
 | `iso-stage4-plan.md` | 2026-04-28 | 🔴 In-flight | D1–D4 decisions pending user input per roadmap callout. **Not stale — blocked.** |
 | `README.md` | 2026-05-09 | ✅ Fresh | Index doc; "78-crate registry" drift removed in earlier pass; verified clean 2026-05-09 with planning/ rename reflected. |
@@ -195,7 +195,7 @@ Numbers approximate; rolls up from the per-tier tables below.
 | `memory-should-be-sovereign-too.md` | 2026-04-24 | 🔵 Dated artifact |
 | `docs-go-stale-before-the-commit.md` | 2026-04-24 | 🔵 Dated artifact |
 | `the-price-of-porting-early.md` | 2026-04-23 | 🔵 Dated artifact |
-| `end-of-4x-independent-audit.md` | 2026-04-15 | 🔵 Dated artifact |
+| `end-of-4x-independent-audit.md` | 2026-04-15 | 🗄 Archived | **Moved to `docs/archive/` on 2026-05-12** — Kernel-Boot finding was QEMU-only, contradicted on real iron 2026-05-12 (`grub_elf32_get_shnum` rejection; repair in Cyrius v5.11.29/.30/.31). Bootstrap-Chain finding still holds. |
 
 ---
 

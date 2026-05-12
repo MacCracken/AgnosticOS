@@ -4,7 +4,8 @@
 
 - **Repository**: [github.com/MacCracken/agnosai](https://github.com/MacCracken/agnosai)
 - **License**: GPL-3.0-only
-- **Status**: v1.0+ stable
+- **Status**: Stable - See Repo
+- **Language**: Rust
 
 See the [shared-crates registry](../../development/planning/shared-crates.md) for full context and dependency graph.
 

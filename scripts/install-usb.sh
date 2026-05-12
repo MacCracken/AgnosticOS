@@ -1,14 +1,19 @@
 #!/bin/bash
-# install-usb.sh — Provision a USB drive as an AGNOS boot device
+# install-usb.sh — Provision or refresh a USB drive as an AGNOS boot device
 #
-# Wipes the target device, creates a GPT layout with a 256MB FAT32 ESP,
-# installs GRUB in EFI removable mode, copies AGNOS kernel + initramfs,
-# and writes a 3-entry boot menu.
+# Two modes:
 #
-# Usage:
 #   sudo ./scripts/install-usb.sh /dev/sdX
+#     Full provision: wipes, GPT + 256MB FAT32 ESP, installs GRUB in EFI
+#     removable mode, copies kernel + initramfs, writes boot menu.
 #
-# After running: reboot, F-key boot menu, select the USB.
+#   sudo ./scripts/install-usb.sh --update /dev/sdX
+#     Iteration refresh: mounts the existing ESP, overwrites the kernel
+#     and initramfs only, unmounts. No wipe, no re-grub. Use this after
+#     `cd ../agnos && sh scripts/build.sh` to push a freshly-built
+#     kernel onto a USB that was already provisioned once.
+#
+# After either: reboot, F-key boot menu, select the USB.
 #
 # Note: this is a host-side bash script (orchestration of destructive
 # disk operations + grub-install — both need root). The Cyrius-native
@@ -21,9 +26,17 @@ set -euo pipefail
 
 # --- args ---
 
+MODE="provision"
+if [[ "${1:-}" == "--update" || "${1:-}" == "-u" ]]; then
+    MODE="update"
+    shift
+fi
+
 DEV="${1:-}"
 if [[ -z "$DEV" ]]; then
-    echo "Usage: sudo $0 /dev/sdX"
+    echo "Usage:"
+    echo "  sudo $0 /dev/sdX             # full provision (wipes the device)"
+    echo "  sudo $0 --update /dev/sdX    # refresh kernel + initramfs only"
     echo ""
     echo "Detect candidates:"
     lsblk -o NAME,SIZE,TYPE,MOUNTPOINTS,LABEL,MODEL | head -20
@@ -53,7 +66,7 @@ MOUNT_POINT="/mnt/agnos-usb"
 
 if [[ ! -f "$KERNEL_SRC" ]]; then
     echo "ERROR: AGNOS kernel not found at $KERNEL_SRC"
-    echo "  Build it first in the agnos repo: cyrius build src/main.cyr build/agnos"
+    echo "  Build it first in the agnos repo: (cd ../agnos && sh scripts/build.sh)"
     exit 1
 fi
 
@@ -62,6 +75,64 @@ if [[ ! -f "$INITRAMFS_SRC" ]]; then
     echo "  Build it first: cd $SCRIPT_DIR && ./build/install"
     exit 1
 fi
+
+# --- update mode (refresh kernel + initramfs only, no wipe) ---
+
+if [[ "$MODE" == "update" ]]; then
+    if [[ ! -b "$PART" ]]; then
+        echo "ERROR: expected partition $PART does not exist"
+        echo "  $DEV may not be provisioned yet — run without --update first."
+        exit 1
+    fi
+    echo "=== AGNOS USB Refresh ==="
+    echo ""
+    echo "Target partition: $PART (on $DEV)"
+    lsblk -o NAME,SIZE,TYPE,MOUNTPOINTS,LABEL,MODEL "$DEV" 2>/dev/null || true
+    echo ""
+    echo "Files to install:"
+    echo "  Kernel:    $KERNEL_SRC ($(stat -c%s "$KERNEL_SRC") bytes)"
+    echo "  Initramfs: $INITRAMFS_SRC ($(stat -c%s "$INITRAMFS_SRC") bytes)"
+    echo ""
+
+    mkdir -p "$MOUNT_POINT"
+    # Tolerate a previous failed run that left the partition mounted.
+    if mountpoint -q "$MOUNT_POINT"; then
+        echo "  (already mounted at $MOUNT_POINT — reusing)"
+    else
+        mount "$PART" "$MOUNT_POINT"
+    fi
+
+    if [[ ! -d "${MOUNT_POINT}/boot/grub" ]]; then
+        echo "ERROR: $PART is mounted but has no /boot/grub — not a provisioned AGNOS USB."
+        echo "  Run full provision (without --update) first."
+        umount "$MOUNT_POINT" 2>/dev/null || true
+        exit 1
+    fi
+
+    OLD_KERN_BYTES=0
+    [[ -f "${MOUNT_POINT}/boot/agnos" ]] && OLD_KERN_BYTES=$(stat -c%s "${MOUNT_POINT}/boot/agnos")
+    OLD_INIT_BYTES=0
+    [[ -f "${MOUNT_POINT}/boot/initramfs.cpio.gz" ]] && OLD_INIT_BYTES=$(stat -c%s "${MOUNT_POINT}/boot/initramfs.cpio.gz")
+
+    echo "Refreshing /boot/agnos          ${OLD_KERN_BYTES} → $(stat -c%s "$KERNEL_SRC") bytes"
+    cp "$KERNEL_SRC" "${MOUNT_POINT}/boot/agnos"
+    echo "Refreshing /boot/initramfs.cpio.gz  ${OLD_INIT_BYTES} → $(stat -c%s "$INITRAMFS_SRC") bytes"
+    cp "$INITRAMFS_SRC" "${MOUNT_POINT}/boot/initramfs.cpio.gz"
+
+    echo "Unmounting and syncing..."
+    umount "$MOUNT_POINT"
+    sync
+
+    echo ""
+    echo "============================================================"
+    echo "✓ AGNOS USB refreshed on $PART"
+    echo "============================================================"
+    echo ""
+    echo "Boot menu is unchanged — reboot and select the USB to test."
+    exit 0
+fi
+
+# --- provision-mode preflight (tools only needed for full wipe path) ---
 
 for tool in parted mkfs.fat wipefs partprobe grub-install; do
     if ! command -v "$tool" >/dev/null 2>&1; then
@@ -86,6 +157,8 @@ echo "  Kernel:    $KERNEL_SRC ($(stat -c%s "$KERNEL_SRC") bytes)"
 echo "  Initramfs: $INITRAMFS_SRC ($(stat -c%s "$INITRAMFS_SRC") bytes)"
 echo ""
 echo "*** THIS WILL WIPE ALL DATA ON $DEV ***"
+echo "  (For just refreshing the kernel/initramfs on a USB you've already"
+echo "   provisioned once, re-run with --update — no wipe.)"
 echo ""
 read -r -p "Type 'YES' to proceed: " confirm
 if [[ "$confirm" != "YES" ]]; then
@@ -191,9 +264,7 @@ echo "  2. Hit your motherboard's boot-menu key (F8/F10/F12/Esc)"
 echo "  3. Select the USB drive"
 echo "  4. At GRUB, default boots straight to AGNOS in 3 seconds"
 echo ""
-echo "Iteration loop (update kernel/initramfs without re-installing GRUB):"
-echo "  sudo mount $PART $MOUNT_POINT"
-echo "  sudo cp <new-kernel> $MOUNT_POINT/boot/agnos"
-echo "  sudo cp <new-initramfs> $MOUNT_POINT/boot/initramfs.cpio.gz"
-echo "  sudo umount $MOUNT_POINT && sudo sync"
+echo "Iteration loop (refresh kernel + initramfs without re-installing GRUB):"
+echo "  (cd ../agnos && sh scripts/build.sh)   # rebuild kernel"
+echo "  sudo $0 --update $DEV                  # push to USB"
 echo ""

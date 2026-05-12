@@ -4,6 +4,7 @@ Culture modeling — Cyrius-native, 50 cultures, 329 assertions, 33 benchmarks, 
 
 - **Repository**: [github.com/MacCracken/hadara](https://github.com/MacCracken/hadara)
 - **License**: GPL-3.0-only
-- **Status**: v1.0+ stable
+- **Status**: Stable - See Repo
+- **Language**: Cyrius
 
 See the [shared-crates registry](../../development/planning/shared-crates.md) for full context and dependency graph.

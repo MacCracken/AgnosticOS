@@ -142,7 +142,7 @@ Total: CPU → seed → compiler → OS. Four items. Zero external dependencies.
 | Build system | **takumi** | 0.8.0 (in port; `rust-old/` authoritative until parity) | TOML recipe-based package builds |
 | Security daemon | **aegis** | 0.1.0 (scaffold) | System hardening |
 | Emotion/sentiment | **bhava** | 2.0.0 (Rust; port can start) | Affective computing substrate |
-| Container runtime | **stiva** | 2.0.0 | OCI-compatible, daemonless |
+| Container runtime | **stiva** | — (Rust-era scaffold; Cyrius port pending) | Planned OCI-compatible, daemonless. GitHub `MacCracken/stiva` remote at Rust ~15% scaffold per [k8s-roadmap](development/vision/architecture/k8s-roadmap.md#container-runtime-stiva). |
 
 Recently shipped (no longer pending): **phylax** v1.1.0 (Cyrius-native, threat detection), **shakti** v0.3.0 (Cyrius), **hisab** v2.2.2 (Cyrius), **aegis** v0.8.2 (Cyrius — graduated from 0.1.0 scaffold during v5.9.x), **chakshu** v0.2.0 + **darshana** v0.2.0 (new — TTY/terminal observability lane). See [`development/state.md`](development/state.md) for live status.
 

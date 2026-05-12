@@ -34,7 +34,7 @@ See also: [First-Party Standards — Own the Stack](../../development/planning/f
 | sankoch | 2.2.4 | Lossless compression — LZ4, DEFLATE, zlib, gzip |
 | sigil | 3.1.0 | Trust verification & crypto — AES-NI + SHA-NI hardware accel |
 | soorat | 1.0.0 | GPU rendering |
-| stiva | 2.0.0 | Container runtime |
+| stiva | — | Container runtime — **Rust-era scaffold; Cyrius port pending** (GitHub remote `MacCracken/stiva` last pushed 2026-04-29) |
 | szal | 1.1.0 | Workflow engine |
 | t-ron | 2.0.0 | MCP security |
 | vidya | 2.7.0 | Programming reference |

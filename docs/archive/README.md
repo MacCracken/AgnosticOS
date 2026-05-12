@@ -34,10 +34,14 @@ docs/archive/
 | `example_claude-rust-era.md` | CLAUDE.md template for Rust-era sibling repos | 2026-04-13 | Each active repo now maintains its own Cyrius-era CLAUDE.md |
 | `first-party-standards-rust-era.md` | First-party application standards, Rust era | 2026-04-08 | `../development/planning/` docs + per-repo CONTRIBUTING.md |
 | `license-fixes-rust-era.md` | 42-item license-cleanup TODO checklist (Cargo.toml, crates.io, SPDX-string fixes) | 2026-05-06 | Moot post-Cyrius pivot — `cyrius.cyml` replaces Cargo.toml, ark/zugot replaces crates.io. Per-repo LICENSE accuracy is per-repo housekeeping. |
+| `monolith-extraction.md` | The extraction roadmap doc — code extraction completed 2026-04-01 but the doc kept describing "reassembly in progress" through April-15 | 2026-05-12 | `../development/state.md` (live ecosystem state) + `../development/iso-pipeline.md` (ISO assembly) + `../development/iron-boot-testing-log.md` (iron-boot attempts) |
+| `end-of-4x-independent-audit.md` | Neutral-infra cold-clone audit from 2026-04-14 finding "Bootstrap ✓ / Kernel Boot ✓" | 2026-05-12 | Bootstrap finding still holds; Kernel-Boot finding contradicted on real iron 2026-05-12 (GRUB rejected `e_shoff=0` ELF; repair in Cyrius v5.11.29/.30/.31). See `../development/iron-boot-testing-log.md`. |
 
 ## `libs-pre-cyrius/` — Library docs before the Cyrius port
 
 Each file documents a library as it existed in Rust before being ported (or retired) under Cyrius. Where a current successor exists, it lives as a standalone repo at `MacCracken/<name>`.
+
+> **Successor-column accuracy note (2026-05-12 sweep)**: prior cleanup passes labeled several entries "Retired" based on local-filesystem absence (`/home/macro/Repos/<name>/` missing). On a fresh-flashed devbox where only a handful of repos are recloned, that's a false-positive signal. The 2026-05-12 sweep `curl`'d every "Retired" entry against `github.com/MacCracken/<name>` — **all of them were alive**. The Successor column below reflects the corrected verdict. **Rule for future audits**: see [[feedback-github-remote-authoritative]].
 
 | File | Successor |
 |------|-----------|
@@ -49,16 +53,16 @@ Each file documents a library as it existed in Rust before being ported (or reti
 | `itihas.md` | `MacCracken/itihas` v2.2.0 (Cyrius) |
 | `kavach.md` | `MacCracken/kavach` v3.0.0 (Cyrius, 448 crates → 1) |
 | `libro.md` | `MacCracken/libro` v2.0.5 (Cyrius) |
-| `mabda.md` | Folded into Cyrius stdlib (v3.4.19) |
-| `majra.md` | Retired — functionality absorbed into Cyrius stdlib + sibling crates |
-| `nein.md` | Retired or renamed — not part of current ecosystem |
+| `mabda.md` | `MacCracken/mabda` — **currently at 3.0.0-rc.2 soaking pre-GA**; pinned at 2.5.0 in cyrius stdlib `[deps.mabda]`. 3.0 GA fold conditionally lands in cyrius v5.11.x close window (24-hour soak gate). Earlier "Folded into Cyrius stdlib v3.4.19" line was incorrect — fold has not happened yet. |
+| `majra.md` | **Not retired** (correction 2026-05-12) — `MacCracken/majra` alive on GitHub, last pushed 2026-05-11 (Concurrency Queue). Cyrius-ported. Treat as active ecosystem member. |
+| `nein.md` | **Not retired** (correction 2026-05-12) — `MacCracken/nein` alive on GitHub, last pushed 2026-05-11 (nftables firewall in Rust → Cyrius port). |
 | `shravan.md` | `MacCracken/shravan` v2.3.2 (Cyrius) |
-| `soorat.md` | Retired or pending — not in current named-subsystem roster |
-| `stiva.md` | Retired — not in current named-subsystem roster |
-| `szal.md` | Retired — not in current named-subsystem roster |
+| `soorat.md` | **Not retired** (correction 2026-05-12) — `MacCracken/soorat` alive on GitHub, last pushed 2026-03-30 (Rust era rendering engine). Cyrius port pending — same status as `stiva` below. |
+| `stiva.md` | **Not retired** (correction 2026-05-12) — `MacCracken/stiva` alive on GitHub, last pushed 2026-04-29 (Rust era container runtime). Cyrius port pending. Live successor doc: [`../applications/libs/stiva.md`](../applications/libs/stiva.md). |
+| `szal.md` | **Not retired** (correction 2026-05-12) — `MacCracken/szal` alive on GitHub, last pushed 2026-04-29 (Rust era DAG workflow engine). Cyrius port pending. |
 | `t-ron.md` | `MacCracken/t-ron` v2.0.0 (Cyrius) |
-| `vidya.md` | `MacCracken/vidya` (reference library, separately maintained) |
-| `yukti.md` | Folded into Cyrius stdlib as `yukti` hardware-enum module |
+| `vidya.md` | `MacCracken/vidya` (Cyrius-ported, alive — last pushed 2026-05-12. Reference library, separately maintained.) |
+| `yukti.md` | `MacCracken/yukti` v2.2.2 — **both folded into Cyrius stdlib `lib/yukti.cyr` (v5.8.65) AND still maintained as a standalone repo** (last pushed 2026-05-11). The stdlib copy is vendored byte-identical per the sandhi pattern; the repo continues for non-stdlib consumers. |
 
 ## `os-pre-cyrius/` — OS-layer docs before the Cyrius port
 
@@ -69,7 +73,7 @@ Each file documents a library as it existed in Rust before being ported (or reti
 | `bote.md` | `MacCracken/bote` v2.5.1 (duplicate — original lived at both layers) |
 | `daimon.md` | `MacCracken/daimon` v1.1.1 (Cyrius) |
 | `libro.md` | `MacCracken/libro` v2.0.5 (duplicate) |
-| `nein.md` | Retired (duplicate) |
+| `nein.md` | **Not retired** (correction 2026-05-12) — `MacCracken/nein` alive on GitHub (duplicate entry; see libs-pre-cyrius table for canonical status) |
 | `t-ron.md` | `MacCracken/t-ron` v2.0.0 (duplicate) |
 | `yukti.md` | Cyrius stdlib (duplicate) |
 
@@ -79,7 +83,9 @@ Module-level docs as they existed inside the `userland/` Cargo workspace, before
 
 Covered: ai-hwaccel, hoosh, kavach, mabda, majra, sigil, soorat, stiva, szal.
 
-See [`../development/monolith-extraction.md`](../development/monolith-extraction.md) for the extraction event itself.
+> **Status correction 2026-05-12**: `stiva` is NOT retired (earlier entry above said it was). GitHub remote exists, Cyrius port pending. See [`../applications/libs/stiva.md`](../applications/libs/stiva.md) for the live spec.
+
+See [`monolith-extraction.md`](monolith-extraction.md) (archived 2026-05-12) for the extraction event itself.
 
 ## Policy
 

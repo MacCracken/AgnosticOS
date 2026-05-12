@@ -7,7 +7,7 @@ type: state
 # AGNOS Ecosystem — Current State
 
 > **Cyrius toolchain**: 5.11.24 | **Cycle**: v5.11.x — stdlib annotation arc + consumer-issue closeout (active; **24 patches landed same-day** 2026-05-11 — record one-day burst rate)
-> **Last refresh**: 2026-05-11 (eve refresh — captures argonaut 1.7.0 + kybernet 1.2.1 boot-to-shell-MVP cuts) | **Refresh cadence**: bundle with each v5.11.x patch close, full sweep when minor cuts
+> **Last refresh**: 2026-05-12 (mid-day — captures cyrius 5.11.29/.30/.31 ELF section-header arc, agnos 1.29.0 re-pin, iron-boot Attempt 1 FAIL + repair, `install-usb.sh --update` mode, cyrius v5.x→v6.x tight-close decision) | **Refresh cadence**: bundle with each v5.11.x patch close, full sweep when minor cuts
 > **Crate registries** (versions + roles): [`planning/shared-crates.md`](planning/shared-crates.md) is the full registry (incl. pre-1.0); [`docs/applications/libs/README.md`](../applications/libs/README.md) is the v1.0+ stable subset. This file holds cycle / pin / sweep state only.
 
 This doc holds **volatile state** — what's currently true across the AGNOS dev surface. CLAUDE.md is preferences/process/procedures; this is the live picture. Per [*Docs Go Stale Before the Commit*](../articles/docs-go-stale-before-the-commit.md): rewrite in place when state changes; don't preserve historical snapshots — git history is authoritative.
@@ -42,6 +42,8 @@ Plus infrastructure carry-forward: `cyrius deps` symlink → file-copy (v5.10.37
 | 4 | Consumer-filed P2 wave (daimon/bote) | [ ] Queued | Interleave per slot-ordering heuristic |
 | 5 | Infrastructure (deps copy fix, regression port, TS test harness) | [ ] Queued | Later in v5.11.x |
 | 6 | **argonaut 1.7.0 + kybernet 1.2.1 (BOOT_MINIMAL agnoshi)** | ✅ Cut 2026-05-11 eve | Genesis-repo MVP path: adds agnoshi as a no-deps console service in BOOT_MINIMAL, unblocks boot-to-shell-on-iron without aethersafha. argonaut 1.7.0 = the feature; kybernet 1.2.1 = consumer pin bump. See respective CHANGELOGs. |
+| 7 | **Cyrius 5.11.29/.30/.31 — ELF section-header fix arc** | ✅ Cut 2026-05-12 | GRUB `grub_elf32_get_shnum` rejection on first iron-boot attempt traced to `EMITELF_KERNEL`/`EMITELF`/`cyrld` emitting `e_shoff=0`. Three patch releases mirrored a 5-section table (.text/.rodata/.bss/.shstrtab) across x86 kernel emitter (.29), aarch64 kernel emitter (.30), cyrld ELF64 user-binary linker (.31). agnos 1.29.0 re-pinned to 5.11.29; USB refresh via new `install-usb.sh --update` mode. |
+| 8 | **Iron-boot Attempt 1 → FAIL → repair shipped → Attempt 2 pending** | 🔄 Awaiting reboot | First attempt 2026-05-12 ~13:43 PDT hit the GRUB chain above; repair landed across cyrius 5.11.29 + agnos 1.29.0 + `install-usb.sh --update`. See [`iron-boot-testing-log.md`](iron-boot-testing-log.md) for the per-attempt running log (append-only). |
 
 ### v5.10.x retrospective (closed 2026-05-11 at 5.10.50)
 

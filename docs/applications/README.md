@@ -2,7 +2,7 @@
 
 > Documentation for all first-party AGNOS software.
 >
-> See also: [First-Party Standards](../development/planning/first-party-standards.md) | [Application Roadmap](../development/planning/roadmap.md) | [Monolith Extraction](../development/monolith-extraction.md)
+> See also: [First-Party Standards](../development/planning/first-party-standards.md) | [Application Roadmap](../development/planning/roadmap.md) | [Monolith Extraction](../archive/monolith-extraction.md) (archived 2026-05-12)
 
 ---
 

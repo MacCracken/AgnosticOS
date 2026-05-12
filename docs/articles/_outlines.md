@@ -354,7 +354,7 @@ So the cycle structure has to be *infrastructure-first* — the foundational arc
    - REAL TYPE SYSTEM (v5.10.x Phase 1-5) → unblocked typed-simd ABI (v5.10.28-.39)
    - Typed-simd ABI (v5.10.28-.39) → substrate for future Cyrius-native codec work (tarang's eventual dav1d/FFmpeg-lane entry; currently C-FFI as placeholder)
    - Stdlib annotation arc (v5.11.x in flight) → enables the *enforcement* layer of REAL TYPE SYSTEM at compile time
-   - Bare-metal + rv64 (v5.12.x reservation) → needs typed-simd + RTS enforcement + struct-byval ABI all in the same compiler
+   - Bare-metal + rv64 (v6.2.x reservation — was v5.12.x, retired 2026-05-12 at tight-close) → needs typed-simd + RTS enforcement + struct-byval ABI all in the same compiler
 
 4. **The Tailing Bugs Pattern: Locname-Staleness Three Surfacings** — One bug class surfaced THREE distinct times across v5.10.x as the typed-simd arc churned the parser locname slots:
    - **v5.10.35 — PARSE_SIMD_EXT 3-arg intrinsics**: stash slots from EFLSTORE didn't clear locname; stale "r" from a prior fn's parse caused FINDLOCAL to pick up a stash-slot pointer-value instead of the real var. Fixed with `_SIMD_STASH` helper that clears `locname[idx] = -1`.
@@ -378,9 +378,9 @@ So the cycle structure has to be *infrastructure-first* — the foundational arc
    - **Closeout pass as the LAST patch of the minor** — mechanical fail-fast checks → judgment passes → compliance → doc sync. v5.10.50 was a pure-closeout slot; cc5 byte-identical to .49.
    - **Slot acceptance principle** — no bookkeeping-only slots. "Updated 1 doc to plan next steps" is HELL NO. The minor-open chapter (v5.11.0) lands real code (kavach P1 wrappers) plus the roadmap restructure, not the restructure alone.
 
-7. **What This Means for v5.11.x and v5.12.x** — Pattern-extension to the in-flight and reserved cycles:
-   - **v5.11.x** is the *enforcement layer* atop v5.10.x's vocabulary layer. Stdlib annotation arc Phase 1 (alloc/vec/fmt/freelist/fnptr/result/tagged/assert) at v5.11.1 starts wiring the type vocabulary into stdlib enforcement. The P2 consumer wave (daimon aarch64 epoll_wait, bote primitives) is the deviation surface — accept the ones that exercise the substrate.
-   - **v5.12.x** is downstream of *both* prior cycles. Bare-metal target needs RTS enforcement + struct-byval ABI + typed-simd substrate + stdlib annotation. Each was a separate arc in v5.10.x or v5.11.x. None of them could have been delivered in v5.12.x alongside bare-metal itself.
+7. **What This Means for v5.11.x and v6.x** — Pattern-extension to the in-flight and reserved cycles (v5.12.x retired 2026-05-12 at the tight-close decision; its scope moved into v6.x platform expansion):
+   - **v5.11.x** is the *enforcement layer* atop v5.10.x's vocabulary layer AND the final 5.x minor. Stdlib annotation arc Phase 1 (alloc/vec/fmt/freelist/fnptr/result/tagged/assert) at v5.11.1 starts wiring the type vocabulary into stdlib enforcement. The P2 consumer wave (daimon aarch64 epoll_wait, bote primitives) is the deviation surface — accept the ones that exercise the substrate. Closes as a .68/.69 pair (heap-map reorg + optional dep fold).
+   - **v6.2.x** (was v5.12.x) is downstream of *both* prior cycles. Bare-metal target needs RTS enforcement + struct-byval ABI + typed-simd substrate + stdlib annotation. Each was a separate arc in v5.10.x or v5.11.x. None of them could have been delivered alongside bare-metal itself — which is why the tight-close decision pushed bare-metal across the major boundary into v6.x.
    - **The pattern repeats**: infrastructure-first arc lands → enables the next-tier consumer-facing work → consumer-filed deviations surface tail bugs and missing primitives → arc closes with retroactive fixes baked into the substrate → next cycle's infrastructure-first arc starts from a higher floor.
 
 ### Receipts the article pre-commits to
@@ -390,7 +390,7 @@ So the cycle structure has to be *infrastructure-first* — the foundational arc
 - TLS port-driven sequence: v5.10.13 (typed wrappers) → .21 (session cache + 0-RTT) → .27 (staged-connect) → .34 (client acceptance-status) — all sandhi 1.3.x consumer-filed
 - agnosys 1.1.12 cascade: v5.10.7, .8, .10, .12, .14 (5 follow-on slots driven by v5.9.x carry-forward)
 - v5.11.0 P1 receipts: 6 kavach sandbox syscall wrappers (`sys_fchmod`, `sys_setresuid/gid`, `sys_prctl`, `sys_seccomp`, `sys_execveat`), both x86_64 + aarch64 backends, async-signal-safe, 6 new syscall enum entries per backend
-- Infrastructure-first chain: v5.5.x multi-platform → v5.6.x optimization → v5.7.0 sandhi-fold → v5.10.x three-arc → v5.11.x annotation → v5.12.x bare-metal (each cycle's deliverable is the next cycle's substrate)
+- Infrastructure-first chain: v5.5.x multi-platform → v5.6.x optimization → v5.7.0 sandhi-fold → v5.10.x three-arc → v5.11.x annotation + close → **v6.2.x bare-metal** (each cycle's deliverable is the next cycle's substrate; v5.x → v6.x boundary is the "frozen vs gaining capability" line per the 2026-05-12 tight-close decision)
 
 ### Related (existing articles it extends)
 

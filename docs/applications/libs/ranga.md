@@ -4,7 +4,8 @@
 
 - **Repository**: [github.com/MacCracken/ranga](https://github.com/MacCracken/ranga)
 - **License**: GPL-3.0-only
-- **Status**: v1.0+ stable
+- **Status**: Stable - See Repo
+- **Language**: Rust
 
 See the [shared-crates registry](../../development/planning/shared-crates.md) for full context and dependency graph.
 

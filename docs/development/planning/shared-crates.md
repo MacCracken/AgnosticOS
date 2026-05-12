@@ -36,7 +36,7 @@ Full documentation for each library: [docs/applications/libs/](../../application
 | sankoch | 2.2.4 | Lossless compression — LZ4, DEFLATE, zlib, gzip |
 | sigil | 3.1.0 | Trust verification & crypto — AES-NI + SHA-NI hardware accel |
 | soorat | 1.0.0 | GPU rendering |
-| stiva | 2.0.0 | Container runtime |
+| stiva | — | Container runtime — **Rust-era scaffold; Cyrius port pending** (GitHub remote `MacCracken/stiva` last pushed 2026-04-29; no version pin until ported) |
 | szal | 1.1.0 | Workflow engine |
 | t-ron | 2.0.0 | MCP security |
 | vidya | 2.7.0 | Programming reference |
@@ -251,7 +251,7 @@ Extract when **3+ projects** implement the same pattern. Until then, keep it in-
 - Two projects have different implementations of the same algorithm
 - A bug fix in one project should automatically benefit another
 
-See [monolith-extraction.md](../monolith-extraction.md) for the daimon/hoosh/agnoshi extraction plan.
+See [monolith-extraction.md](../../archive/monolith-extraction.md) (archived 2026-05-12) for the daimon/hoosh/agnoshi extraction plan.
 
 See [k8s-roadmap.md](../vision/architecture/k8s-roadmap.md) for stiva + nein + majra + kavach orchestration platform.
 

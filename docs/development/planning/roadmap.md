@@ -6,7 +6,7 @@
 > All follow the [First-Party Standards](first-party-standards.md).
 > Released applications are documented in [docs/applications/](../../applications/).
 > Shared crates: [shared-crates.md](shared-crates.md) — count and v1.0+ subset live there (counts omitted here to avoid drift; refresh via shared-crates.md).
-> Monolith extraction: [monolith-extraction.md](../monolith-extraction.md).
+> Monolith extraction: [monolith-extraction.md](../../archive/monolith-extraction.md) (archived 2026-05-12).
 
 ---
 
