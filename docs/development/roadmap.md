@@ -110,7 +110,7 @@ to Cyrius v5.13.x as of 2026-04-25 — see
 
 ## Status
 
-### Cyrius Language — v5.9.0 (cut 2026-05-06)
+### Cyrius Language — v5.11.0 (cut 2026-05-11)
 
 Full milestone history lives in `cyrius/CLAUDE.md` + `cyrius/CHANGELOG.md`. Live cycle status in [`state.md`](state.md). Headline status for AGNOS:
 
@@ -145,9 +145,11 @@ Full milestone history lives in `cyrius/CLAUDE.md` + `cyrius/CHANGELOG.md`. Live
 | Fused ops (madd, msub, ubfx, sbfx) | **Done** — v5.6.x post-regalloc |
 | Phase O3a IR instrumentation | **Done** — v5.6.12 (referenced as pre-existing through v5.8.x) |
 | Phase O4a/b/c regalloc — Poletto-Sarkar linear-scan picker | **Done** — v5.8.x (O4b explicit) |
-| Phase O5 / O6 (NOP harvest with jump+fixup, codebuf compaction) | **Partial / audit pending** — referenced in v5.8.x; final status to be swept in v5.9.x |
-| RISC-V rv64 codegen | Queued — **v5.10.x** (slipped 7+ from v5.7.0) |
-| Bare-metal / AGNOS kernel target | Queued — **v5.10.x** (slipped from v5.8.0 → v5.9.0 → v5.10.x as stdlib foldin work compounded; multi-consumer gate triggers via niyama and queued AGNOS bare-metal kernel) |
+| Phase O5 / O6 (NOP harvest with jump+fixup, codebuf compaction) | **Done** — O5/O6 audit closed in v5.9.x |
+| v5.10.x — typed-simd ABI (11 phases), REAL TYPE SYSTEM (5 phases), struct-byval ABI (3 phases) | **Done** (v5.10.x closed 2026-05-11 at 5.10.50) |
+| v5.11.x — stdlib annotation arc + consumer-issue closeout (kavach P1 sandbox syscall wrappers landed v5.11.0) | **Active** (opened 2026-05-11) |
+| RISC-V rv64 codegen | Queued — **v5.12.x** (slipped 7+ from v5.7.0) |
+| Bare-metal / AGNOS kernel target | Queued — **v5.12.x** (slip path v5.8.0 → v5.10.x → v5.11.x → v5.12.x; v5.10.x typed-simd + REAL TYPE SYSTEM + struct-byval ABI form substrate prereq, v5.11.x stdlib annotation is the remaining prereq) |
 
 ### Cyrius Ports — Dependency Chain to Boot
 
@@ -220,7 +222,7 @@ Full details: [sprint-history.md](sprint-history.md#monolith-extraction--complet
 | 7 | Selfhost-validate passes all phases | Deferred to Phase 2 | Run `selfhost-validate --phase all` on booted ISO |
 | 8 | CI automation | In progress | GitHub Actions workflows |
 
-**Target**: Closed beta cut, **early June 2026** (~1 month from 2026-05-06). Gated on Cyrius v5.10.x bare-metal target landing.
+**Target**: Closed beta cut, **early June 2026** (~3 weeks from 2026-05-11). Gated on Cyrius v5.12.x bare-metal target landing.
 
 ### P0 — Other Active Blockers
 
@@ -258,9 +260,9 @@ Repo-specific backlog items tracked in their respective repos.
 
 ### Phase 13B — Arch-Neutral Boot Pipeline
 
-**Gate**: v5.6.x optimization arc shipped through v5.8.x (O3a IR / O4 regalloc landed; O5/O6 audit pending in v5.9.x).
-**Precedes**: Cyrius v5.10.x RISC-V rv64 + bare-metal — this work lands *during* v5.9.x catchup so v5.10.x opens clean.
-**Rationale**: Cyrius sequencing settled to v5.6.x (optimization arc) → v5.7.x (sandhi-fold + cyrius-ts) → v5.8.x (audit closeout + language vocabulary + stdlib foldins) → **v5.9.x (catchup + fixes)** → **v5.10.x (RISC-V + bare-metal)**. Agnos already did the multi-arch split at v1.1.0 (`kernel/arch/x86_64/`, `kernel/arch/aarch64/`, `kernel/core/`, `kernel/user/`). The gap is that everything downstream of boot still carries x86_64/aarch64-shaped assumptions. Neutralizing during v5.9.x means v5.10.x RISC-V + bare-metal slot in as "add a target," not "rewrite the pipeline."
+**Gate**: v5.6.x optimization arc closed through v5.8.x; O5/O6 audit closed in v5.9.x.
+**Precedes**: Cyrius v5.12.x RISC-V rv64 + bare-metal — this work lands *during* v5.11.x stdlib annotation arc so v5.12.x opens clean.
+**Rationale**: Cyrius sequencing settled to v5.6.x (optimization arc) → v5.7.x (sandhi-fold + cyrius-ts) → v5.8.x (audit closeout + language vocabulary + stdlib foldins) → v5.9.x (catchup + O5/O6 close) → v5.10.x (typed-simd ABI + REAL TYPE SYSTEM + struct-byval ABI — three completed arcs in 5 days) → **v5.11.x (stdlib annotation arc + consumer-issue closeout)** → **v5.12.x (RISC-V + bare-metal)**. Agnos already did the multi-arch split at v1.1.0 (`kernel/arch/x86_64/`, `kernel/arch/aarch64/`, `kernel/core/`, `kernel/user/`). The gap is that everything downstream of boot still carries x86_64/aarch64-shaped assumptions. Neutralizing during v5.11.x means v5.12.x RISC-V + bare-metal slot in as "add a target," not "rewrite the pipeline."
 
 **Genesis-repo items (owned here):**
 
@@ -276,7 +278,7 @@ Repo-specific backlog items tracked in their respective repos.
 - **Should-touch (build/packaging)**: ark, nous, zugot, agnova, takumi
 - **May-touch**: phylax, shakti, ai-hwaccel, seema
 
-**Target**: complete during Cyrius v5.9.x catchup arc, before v5.10.x opens RISC-V + bare-metal. The optimization-arc baselines have re-baselined across v5.6.x → v5.8.x; remaining O5/O6 audit lands in v5.9.x alongside this work.
+**Target**: complete during Cyrius v5.11.x stdlib annotation arc, before v5.12.x opens RISC-V + bare-metal. The optimization-arc baselines re-baselined across v5.6.x → v5.10.x; O5/O6 audit closed in v5.9.x.
 
 ### Phase 13C — Community & Documentation
 
@@ -393,12 +395,12 @@ All subsystems are standalone repos at `/home/macro/Repos/{name}/`.
 | Name | Role | Repo | Version | Cyrius Port |
 |------|------|------|---------|-------------|
 | **agnos** | AGNOS kernel | `MacCracken/agnos` | 1.26.1 | **Native** |
-| **cyrius** | Sovereign compiler | `MacCracken/cyrius` | 5.5.27 | **Native** |
+| **cyrius** | Sovereign compiler | `MacCracken/cyrius` | 5.11.0 | **Native** |
 | **kybernet** | PID 1 binary | `MacCracken/kybernet` | 1.0.1 | **Done** |
 | **argonaut** | Init system (library) | `MacCracken/argonaut` | 1.2.0 | **Done** |
-| **agnosys** | Kernel interface | `MacCracken/agnosys` | 1.0.0 | **Done** |
-| **agnostik** | Shared types library | `MacCracken/agnostik` | 0.97.1 | **Done** |
-| **sigil** | Trust verification & crypto | `MacCracken/sigil` | 2.9.0 | **Done** |
+| **agnosys** | Kernel interface | `MacCracken/agnosys` | 1.2.1 | **Done** |
+| **agnostik** | Shared types library | `MacCracken/agnostik` | 1.2.0 | **Done** |
+| **sigil** | Trust verification & crypto | `MacCracken/sigil` | 3.1.0 | **Done** |
 | **libro** | Audit chain | `MacCracken/libro` | 2.0.5 | **Done** |
 | **hoosh** | LLM inference gateway | `MacCracken/hoosh` | 2.0.0 | **Done** |
 | **avatara** | Divine archetype overlay | `MacCracken/avatara` | 2.3.0 | **Done** |
@@ -421,17 +423,17 @@ All subsystems are standalone repos at `/home/macro/Repos/{name}/`.
 | **phylax** | Threat detection engine | `MacCracken/phylax` | 1.0.0 | **Done** |
 | **shakti** | Privilege escalation | `MacCracken/shakti` | 0.2.2 | **Done** |
 | **hisab** | Higher math | `MacCracken/hisab` | 2.2.0 | **Done** |
-| **owl** | `cat`/`bat` replacement | `MacCracken/owl` | 0.1.0 | **Native** — M0–M5 shipped; M3b blocked on vyakarana |
-| **vyakarana** | Source-code grammar / tokenizer | `MacCracken/vyakarana` | 0.1.0 | **Native** — M0 scaffold shipped 2026-04-23; M1 shell grammar in flight |
+| **owl** | `cat`/`bat` replacement | `MacCracken/owl` | 1.3.6 | **Native** — M0–M5 shipped; M3b blocked on vyakarana |
+| **vyakarana** | Source-code grammar / tokenizer | `MacCracken/vyakarana` | 2.2.1 | **Native** — M0 scaffold shipped 2026-04-23; M1 shell grammar in flight |
 | **bhava** | Emotion/sentiment | `MacCracken/bhava` | 2.0.0 | Pending |
 | **takumi** | Package build system | `MacCracken/takumi` | 0.8.0 | **In port** — pinned Cyrius 5.5.23, parity work in flight |
-| **aegis** | System security daemon | `MacCracken/aegis` | 0.1.0 | Pending |
+| **aegis** | System security daemon | `MacCracken/aegis` | 0.8.2 | Pending |
 | **aethersafha** | Desktop compositor | `MacCracken/aethersafha` | 0.1.0 | Pending |
 | **mela** | Agent marketplace | `MacCracken/mela` | 0.1.0 | Pending |
 | **agnova** | OS installer | `MacCracken/agnova` | 0.1.0 | Pending |
 | **seema** | Edge fleet management | `MacCracken/seema` | 0.1.0 | Pending |
 | **samay** | Task scheduler | `MacCracken/samay` | 0.1.0 | Pending |
-| **cyim** | Sovereign text editor (VIM-inspired) | `MacCracken/cyim` | 0.1.0 | **Scaffolded** 2026-04-25 — M0 ships, vyakarana consumer at M2 |
+| **cyim** | Sovereign text editor (VIM-inspired) | `MacCracken/cyim` | 1.6.7 | **Native** — vyakarana consumer; cyim-lsp 1.5.0 companion shipped |
 | **bazaar** | Community package repo | `MacCracken/bazaar` | — | — |
 
 ### Cross-Cutting Concerns
@@ -482,4 +484,4 @@ Unified Consciousness Model paper and bhava roadmap tracked in `MacCracken/bhava
 
 ---
 
-*Last Updated: 2026-05-06 (Cyrius v5.9.0 cut day, beta rescope) | Next Review: closed-beta cut (~early June 2026)*
+*Last Updated: 2026-05-11 (Cyrius v5.11.0 cut day) | Next Review: closed-beta cut (~early June 2026)*
