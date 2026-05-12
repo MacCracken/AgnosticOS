@@ -53,14 +53,14 @@ The role map below is for orientation. **Versions are intentionally omitted** �
 | **ai-hwaccel** | GPU detection | **Ported** |
 | **hadara** | Culture modeling | **Native** |
 | **shravan** | Audio codecs | **Ported** |
-| **mabda** | GPU foundation (folded into Cyrius stdlib) | **Ported** |
+| **mabda** | GPU foundation (3.0.0-rc.2 soaking pre-GA stdlib fold) | **Ported** |
 | **daimon** | Agent orchestrator, MCP tools | **Ported** |
 | **agnoshi** | AI shell | **Ported** |
 | **aethersafha** | Wayland compositor | Pending |
 | **ark** | Package manager | **Ported** |
 | **nous** | Package resolver | **Ported** |
 | **takumi** | Build system | In port (rust-old/ authoritative until parity) |
-| **aegis** | Security daemon | Pending |
+| **aegis** | Security daemon | **Ported** |
 | **shakti** | Privilege escalation | **Ported** |
 | **kavach** | Sandbox execution | **Ported** |
 | **bote** | MCP core + host registry | **Ported** |
@@ -132,7 +132,7 @@ cyrius build src/boot.cyr build/boot
 **Deps are declared in `scripts/cyrius.cyml`** — do NOT manually include stdlib.
 Source files only need project includes (`src/types.cyr` etc.).
 
-**Current Cyrius release:** see `cyrius/VERSION` (verify at session start; **v5.11.x active — stdlib annotation arc + consumer-issue closeout cycle** as of 2026-05-11; v5.10.x closed at .50 with three completed arcs — typed-simd ABI 11 phases, REAL TYPE SYSTEM 5 phases, struct-byval ABI 3 phases). Toolchain pinned in `scripts/cyrius.cyml` via the `cyrius = "<version>"` field — manifest is single source of truth (no separate `.cyrius-toolchain` file). Cycle status, pin-lag spectrum, and active sweeps live in [`docs/development/state.md`](docs/development/state.md).
+**Current Cyrius release:** see `cyrius/VERSION` (verify at session start; **v5.11.x active — stdlib annotation arc + consumer-issue closeout cycle**, 24-patch same-day burst on 2026-05-11 from v5.11.0 to v5.11.24; v5.10.x closed at .50 with three completed arcs — typed-simd ABI 11 phases, REAL TYPE SYSTEM 5 phases, struct-byval ABI 3 phases). Toolchain pinned in `scripts/cyrius.cyml` via the `cyrius = "<version>"` field — manifest is single source of truth (no separate `.cyrius-toolchain` file). Cycle status, pin-lag spectrum, and active sweeps live in [`docs/development/state.md`](docs/development/state.md).
 
 ## Documentation Structure
 

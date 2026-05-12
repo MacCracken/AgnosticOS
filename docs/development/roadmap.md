@@ -14,8 +14,8 @@
 > agent: **read the plan, then resolve D1–D4 with Robert.** MVP target:
 > shell prompt on Pi 4 or Skytech Legacy 4 inside ~3 weeks.
 >
-> **May 1 V1 release** has passed. Per [`state.md`](state.md), kernel is at **1.26.1** (past the 1.22.x predicted in the original V1 line), Cyrius is at **v5.11.0** (cut today 2026-05-11; v5.10.x closed at .50 with three completed arcs — typed-simd ABI, REAL TYPE SYSTEM, struct-byval ABI), and **v5.12.x** now holds the **AGNOS bare-metal target + RISC-V rv64 backend** (slipped v5.8 → v5.10 → v5.11 → v5.12). V1 status itself: verify against ISO/CI receipts before re-asserting in any public copy. Biweekly cadence through August DEF CON distribution (see [Near-Term Cadence](#near-term-cadence--may-1-v1-to-def-con)).
-> **Kernel 1.26.1 shipped** (2026-04-28) — 248KB, 33 subsystems, 26 syscalls. Three hardening passes through the v1.22.0 (260KB) → v1.26.1 (248KB) progression. Replaced v1.26.0's CI-hygiene workaround with a real fix.
+> **May 1 V1 release** has passed. Per [`state.md`](state.md), kernel is at **1.29.0** (past the 1.22.x predicted in the original V1 line; +3 minor bumps since the 1.26.1 May-1 cut), Cyrius is at **v5.11.24** (cut day was 2026-05-11 — same-day **24-patch burst** from v5.11.0 to v5.11.24; v5.10.x closed at .50 with three completed arcs — typed-simd ABI, REAL TYPE SYSTEM, struct-byval ABI), and **v5.12.x** now holds the **AGNOS bare-metal target + RISC-V rv64 backend** (slipped v5.8 → v5.10 → v5.11 → v5.12). V1 status itself: verify against ISO/CI receipts before re-asserting in any public copy. Biweekly cadence through August DEF CON distribution (see [Near-Term Cadence](#near-term-cadence--may-1-v1-to-def-con)).
+> **Kernel 1.29.0 active** — 26 syscalls invariant, structurally immune to CVE-2026-31431 (Copy Fail). v1.26.1 (2026-04-28, 248KB) shipped through three hardening passes from v1.22.0 (260KB); v1.27.x → v1.29.0 continued the cycle on the 5.10.44 pin. Patch-level detail in `agnos/CHANGELOG.md`.
 > **Cyrius 5.7.0 shipped** (2026-04-25) — **THE SANDHI FOLD**. `lib/sandhi.cyr` adds (vendored byte-identical from sandhi v1.0.0, 376,037 B / 9,649 lines, 469 fns); `lib/http_server.cyr` deletes; sandhi repo enters maintenance mode per [ADR 0002](https://github.com/MacCracken/sandhi/blob/main/docs/adr/0002-clean-break-fold-at-cyrius-v5-7-0.md). Cyrius-side gates 1, 2, 3, 5, 6 ✅; gate 4 (downstream sweep) is separate user-organized work — only **vidya** actually `include`s `lib/http_server.cyr`; yantra and sit have orphan pre-fold copies (cleanup-only); the originally-listed `sit-remote`/`ark-remote` don't exist. v5.6.x closed at v5.6.45 on 2026-04-25 (45 patches — new longest-minor record). v5.6.0 opened the compiler-optimization arc on 2026-04-22 (**Phase O1** v5.6.0–v5.6.4 instrumentation + FNV-1a symbol hashing; **Phase O2** v5.6.11 partial strength reduction, flag-result reuse, push/pop elim, commutative + aarch64 combine-shuttle; **regalloc** v5.6.20–v5.6.24 default-on linear-scan; **closeout** v5.6.43 sigil 2.9.3 / sankoch 2.1.0 / output_buf 2MB).
 > **Multi-platform closed.** x86_64 Linux byte-identical; aarch64 Linux byte-identical on real Pi (stdlib shakedown v5.5.18); Apple Silicon Mach-O self-host closed (v5.5.17); Windows PE32+ native self-host byte-identical on real Windows 11 (v5.5.10). NSS/PAM real-fix arc shipped v5.5.23–v5.5.27; `lib/fdlopen.cyr` landed in v5.5.x arc. **v5.7.x shipped** sandhi-fold (lib/sandhi.cyr) + cyrius-ts P1–P10 across 51 patches in 36 days. **v5.8.x shipped** (2026-05-01 → 2026-05-05, 66 patches in 4 days) as a 3-phase cycle: Phase 1 (slots 1-8) closed the v5.8.0 audit (lint/fmt cap, f64_log2 polyfill, sys_stat/fstat backfill, _SC_ARITY cross-arch gate, NI-class dupe, cc5_aarch64 packaging + cyrc_check orphan); Phase 2 (slots 9-26) handled language vocabulary (var X; diagnostic, fmt --check exit code, vidya audit at v5.8.40); Phase 3 (slots 27-65) was the **stdlib foldin sweep** (sandhi-pattern continuation, vani audio at slot 1). **v5.9.0 opened** (2026-05-06) with niyama fold-in (8th sibling distfile, 5 regex engines). **v5.9.x closed** at 5.9.43 (44 patches, 2026-05-06 → 2026-05-08, catchup + fixes — consumer rollup of pin-lag tail, optimization-debt audit O5/O6, dangling-item closeout). **v5.10.x closed** at 5.10.50 (50 patches in 5 days, 2026-05-06 → 2026-05-11): three completed arcs — **typed-simd ABI** (11 phases, value-form f64v2/f64v4 with parser-side `&IDENT → _ptr` overload routing, ABI-aware register routing; this is the substrate for future Cyrius-native codec work), **REAL TYPE SYSTEM** (5 phases, cstring/Result/Option/Tagged vocabulary + call-site type checking), **struct-byval ABI** (3 phases, cross-backend return surface). Plus 2.7× compile speedup miniarc (.40 + .41), TLS contract pin, PE premise debunk. **v5.11.0 cut 2026-05-11** — stdlib annotation arc + consumer-issue closeout cycle (kavach P1 sandbox syscall wrappers landed at .0; stdlib annotation Phase 1 queued for .1). **v5.12.x reserved**: AGNOS bare-metal target + RISC-V rv64 backend (both slipped from earlier cycles; v5.10.x typed-simd + REAL TYPE SYSTEM + struct-byval ABI form substrate prereq, v5.11.x stdlib annotation is the remaining prereq).
 > **ISO pipeline started** — Stage 0 (component verification) implemented: `make iso-check`. See `docs/development/iso-pipeline.md`.
@@ -44,6 +44,15 @@ AGNOS becomes a real operating system in three stages — **rubber-hits-the-road
 
 **Priority order**: boot to shell on iron → self-hosting → desktop essentials → AI-native apps. Desktop ambitions do not gate the MVP; the MVP is what proves the kernel + init + shell stack is real on hardware.
 
+**The agnostic + empire-defense commitments** (running in parallel after public beta, not gating MVP): AGNOS protects users from the empire by giving them **exit options without total disconnection** — parallel infrastructure that doesn't pay the empire's rent, plus sandboxed bridges for the moments where empire services are genuinely needed. Four parallel-infrastructure / bounded-coupling commitments:
+
+- **Phase 20 — Cross-Platform Compat Subsystem** ([spec](planning/cross-platform-compat-subsystem.md)): foreign-platform work runs transparently via a kavach-sandboxed Linux personality container. Kernel grows organically per native workload; the interpretive layer stays permanently separate.
+- **Phase 21 — DPI Resistance** ([spec](planning/dpi-resistance.md)): the AGNOS network stack normalizes traffic to mainstream-browser fingerprints by default. The empire cannot selectively act against AGNOS-on-the-wire without acting against Chrome-on-Windows users at scale.
+- **Phase 22 — Parallel PKI** ([spec](planning/parallel-pki.md)): trust root anchored in physical artifacts (bumper sticker / SD card / paper QR). Commercial CAs serve as opportunistic bridges, never as the load-bearing trust. The empire cannot revoke a sticker.
+- **Phase 23 — Foundation Structure** ([spec](planning/foundation-structure.md)): multi-jurisdictional, mission-locked, contributor-protecting governance layer that holds project assets in a way no single state actor or commercial entity can coerce. The meta-defense — without it, all the technical sovereignty is undone in a courtroom.
+
+Native ports + native sovereignty remain the preferred path. The four phases above are the bridges, the wire-layer cover, the parallel trust root, and the legal substrate that make sovereignty actually defensible against an adversary-class threat model. **The boundary between the kernel and the interpretive layers is permanent** — the kernel never absorbs foreign ABIs, the trust root never depends on commercial PKI, the Foundation never sits in a single coercible jurisdiction.
+
 ---
 
 ## Critical Path to Beta
@@ -60,17 +69,28 @@ Phase 13A items 1–3 (boot → shell on hardware) ──→ CLOSED BETA (MVP)
                                   Phase 13C (community) + Phase 16 (desktop) ──→ v1.0
 ```
 
-### Closed Beta — Early June 2026 (~3 weeks)
+### Closed Beta — Selective Summer 2026 Program
 
-**MVP scope: AGNOS boots to a shell prompt on real hardware.** That's the line. Self-hosting, package builds from source, and full userland validation against the AGNOS kernel ABI are NOT required for this gate — they're Public Beta.
+**MVP scope: AGNOS boots to a shell prompt on real hardware.** That's the *entry* line. Closed beta is not a single cut date — it's a **selective rolling program through summer 2026**, opening with the first hardware boot (~early June 2026) and running through the summer with a growing-but-curated cohort. Self-hosting, package builds from source, and full userland validation against the AGNOS kernel ABI are NOT required for closed beta — they're Public Beta concerns.
 
+**Opening gate** (early June 2026):
 - [ ] **Boot-to-Shell MVP (13A items 1–3)** — kernel boots, kybernet (PID 1) runs, agnoshi (shell) prompt reachable on real hardware
-- [ ] Small private tester cohort (friend-network), 5–15 testers, sitting at a shell prompt on iron running AGNOS
-- [ ] No public enrollment. No formal community program. No marketing.
+- [ ] First hardware boot session on AMD NUC (matrix row 14) or Pi 4 (row 3) — non-founder tester sits at the prompt
 
-**Gate philosophy**: closed beta is the honest "the kernel + init + shell stack runs on real iron, and humans other than the founder have sat at the prompt" milestone. Self-hosting, audit, and broad community testing are deliberately deferred to public beta — a cleaner, smaller line that ships on the date. The MVP proves the *base* OS is real; sovereignty of the rest of the userland against the AGNOS-kernel ABI is the next milestone.
+**Through summer 2026** (closed-beta program proper):
+- [ ] Initial cohort: friend-network, 5–15 testers, sitting at a shell on iron
+- [ ] Selective expansion: invites only, no public enrollment, no marketing campaign
+- [ ] Cohort feedback drives hardening: bug reports, hardware-matrix gap-fill, kybernet/argonaut/agnoshi P1 issue closeout
+- [ ] **DEF CON August 2026** (contingent — see cadence table): if Phase 22 paper-PKI ships in time, this becomes the *credible public introduction event during closed beta* — stickers as cryptographic root distribution, not as marketing. Aug 2027 baseline if not ready.
 
-**Cadence dependency**: gated on Cyrius v5.12.x landing the bare-metal target (v5.10.x closed 2026-05-11 with three arcs; v5.11.x now active on stdlib annotation arc; bare-metal slipped to v5.12.x), then Stage-4 ISO cut + hardware boot session. Recent Cyrius cadence is **3–5 days per minor cycle**, so the bare-metal slot is closer than "v5.12.x" sounds. Slips by week, not by month.
+**Closeout** (early fall 2026):
+- [ ] Cohort report consolidated; critical-bug list cleared
+- [ ] Hardware matrix coverage: at least 3 different architectures booted (x86_64 NUC, aarch64 Pi 4, plus one more — Skytech or laptop)
+- [ ] Public beta criteria met (or explicitly carried as known-gap)
+
+**Gate philosophy**: closed beta is the honest "the kernel + init + shell stack runs on real iron, and humans other than the founder have sat at the prompt over a sustained selective program" milestone. Self-hosting, audit, and broad community testing are deliberately deferred to public beta — a cleaner, smaller line that ships when ready. The MVP entry proves the *base* OS is real; the summer-long program proves it's *durable* across diverse hardware and use; sovereignty of the rest of the userland against the AGNOS-kernel ABI is the next milestone.
+
+**Cadence dependency**: opening gate is **toolchain-independent** — the kernel already builds and boots against the current Cyrius (5.10.44 pin). The dependency reduces to *agnosticos-side work* (install.cyr Stage-4 cut + first hardware boot session). The earlier framing that gated MVP on Cyrius v5.12.x bare-metal target was conceptual residue from pre-monolith-extraction days; corrected 2026-05-12. Opening slips by week, not by month. **The summer-long program then runs independently of Cyrius cycles** — it's hardware-and-cohort-paced, not toolchain-paced. Cyrius work continues in parallel (v5.11.x stdlib annotation arc active; v5.12.x bare-metal formalization queued) but does not gate the MVP ship.
 
 ### Public Beta — Q4 2026
 
@@ -90,32 +110,28 @@ Creator economy (sovereign distribution, bootable USB media): [vision/creator-ec
 
 ---
 
-## Near-Term Cadence — May 1 V1 to DEF CON
+## Cadence — V1 to Public Beta (Fall 2026 arc)
 
-Biweekly beats between the May 1 V1 release and DEF CON / Black Hat
-August distribution. Each beat is a single headline — the thing
-that's true that wasn't true two weeks ago.
+**Rescope (2026-05-12)**: the original biweekly May 1 → August 2026 cadence was written from the rust/linux-era mindset and was hopeful-not-realistic. With the boot-to-shell MVP recast and the actual schedule — **closed beta = selective summer 2026 program**, **public beta = Q4 2026**, **cadence beats = fall 2026** — the realistic timeline lands the cadence work *after* the summer-long closed-beta program has produced hardening receipts. The beats ride on top of a real, multi-machine-tested MVP rather than racing parallel to one.
 
-| Date        | Beat                                                                                                | Primary repos                       |
-|-------------|-----------------------------------------------------------------------------------------------------|-------------------------------------|
-| **May 1**   | **V1: Boots, runs DOOM, all Cyrius.** ISO Stage 0+ cut; kernel 1.22.x + Cyrius toolchain + 30+ ports + science library | `agnos`, `cyrius`, `agnosticos`     |
-| **May 15**  | **Library for Humanity.** Reference library + knowledge corpus (vidya + abaco + 27-crate science tier) shipped as a browseable first release | `vidya`, `abaco`, all science crates |
-| **June 1**  | **Multi-platform byte-identical.** x86_64 + aarch64 + Apple Silicon + Windows PE32+ reproducible cross all four | `cyrius`                            |
-| **June 15** | **Self-hosting in action.** Cyrius compiles itself from tarball on a booted AGNOS ISO, end-to-end   | `cyrius`, `agnos`, `agnosticos`     |
-| **June 21** | **Solstice: higher-order items.** TBD gift — agent-tooling article + capstone receipts               | `agnosticos/docs/articles`          |
-| **July 1**  | **Distribution at scale.** Ark OTA pipeline live; recipes buildable from zugot by third parties     | `ark`, `nous`, `zugot`              |
-| **July 15** | **Reproducibility standard.** Every artifact in the stack has an SHA manifest; seed + hash chain published | `sigil`, `libro`, `agnosticos`      |
-| **August**  | **DEF CON / Black Hat distribution.** ~$5K budget: 10K stickers + 500 SD cards + 1K quick-start cards. Bumper-sticker-as-cryptographic-root-of-trust: QR-encoded 29KB seed + SHA-256 chain + URL → **sticker becomes paper signing authority.** | `agnosticos`                        |
+Each beat is still a release, not a blog post. The beats are the right work; the dates moved to honest planning windows. **Fall 2026 is the planning target. Summer acceleration past that remains the stretch case if Cyrius cycles continue at the 3–5 day cadence, the MVP ships on the closed-beta opening, and the summer program reaches the right hardening density faster than expected.**
 
-**Cadence discipline**: each beat is a release, not a blog post. If
-the beat doesn't ship running software on the date, it slips to the
-next biweekly slot — the list tightens, doesn't move right.
+| Target window | Beat | Primary repos |
+|---|---|---|
+| **May 1 2026** *(shipped, partial — historical)* | V1: Boots, runs DOOM, all Cyrius. ISO Stage 0+ cut; kernel 1.26.1 (predicted 1.22.x — shipped ahead) + Cyrius toolchain + 30+ ports + science library. ISO Stage-4 cut + first hardware boot remain — the actual MVP gate. | `agnos`, `cyrius`, `agnosticos` |
+| **Fall 2026** | **Library for Humanity.** Reference library + knowledge corpus (vidya + abaco + 27-crate science tier) shipped as a browseable first release. | `vidya`, `abaco`, science tier |
+| **Fall 2026** | **Multi-platform byte-identical.** x86_64 + aarch64 + Apple Silicon + Windows PE32+ reproducible cross all four. *Per state.md, this is largely closed already at v5.5.x; this beat is more announcement than build.* | `cyrius` |
+| **Fall 2026** | **Self-hosting in action.** Cyrius compiles itself from tarball on a booted AGNOS ISO, end-to-end. **This is the public-beta technical milestone**, not a separate beat. | `cyrius`, `agnos`, `agnosticos` |
+| **Fall 2026 (winter solstice 2026-12-21)** | **Solstice: higher-order items.** TBD gift — agent-tooling article + capstone receipts. (Date shifted from summer to winter solstice given the fall rescope.) | `agnosticos/docs/articles` |
+| **Fall 2026** | **Distribution at scale.** Ark OTA pipeline live; recipes buildable from zugot by third parties. | `ark`, `nous`, `zugot` |
+| **Fall 2026** | **Reproducibility standard.** Every artifact in the stack has an SHA manifest; seed + hash chain published. *Aligns with Phase 22 parallel-PKI work — same hash-chain infrastructure.* | `sigil`, `libro`, `agnosticos` |
+| **August 2026** *(contingent)* or **August 2027** *(baseline)* | **DEF CON / Black Hat distribution.** ~$5K budget: 10K stickers + 500 SD cards + 1K quick-start cards. **Bumper-sticker-as-cryptographic-root-of-trust** — QR-encoded 29KB seed + SHA-256 chain + URL = paper signing authority. **Critical dependency**: [`Phase 22 paper-PKI verification path`](planning/parallel-pki.md) must ship before the print run is meaningful. Aug 2026 if it lands; Aug 2027 if not. | `agnosticos` |
 
-**Not in the cadence** (deliberately): Beta, v1.0, SY redesign,
-Phase 17–19 work. Those remain on the Beta Q4 2026 / v1.0 Q2 2027
-track above. (Polymorphic codegen previously listed here; slotted
-to Cyrius v5.13.x as of 2026-04-25 — see
-`cyrius/docs/development/roadmap.md`.)
+**Cadence discipline (revised)**: dates are *target windows*, not strict biweekly slots. Each beat ships running software when ready. If a beat misses its target window, it goes to "next window" — not "next biweekly." The list tightens (drop beats that become irrelevant) and the windows move, but the *beats themselves* are the right work and stay on the roadmap until shipped or explicitly retired.
+
+**Not in the cadence** (deliberately): Beta, v1.0, SY redesign, Phase 17–19 work, **Phase 20–23 empire-defense planning work** (each has its own spec, see [Strategic Vision](#strategic-vision)). Those remain on the Beta Q4 2026 / v1.0 Q2 2027 / post-public-beta track above. (Polymorphic codegen previously listed here; slotted to Cyrius v5.13.x as of 2026-04-25 — see `cyrius/docs/development/roadmap.md`.)
+
+**Honesty note**: the rust/linux-era cadence assumed the project would be near-shipping in May-August 2026. The cyrius/agnos-era reality is that the MVP (boot-to-shell on iron) is what closed-beta gates on, and the cadence beats above are *public-beta-era ship work* — they ride on top of a working MVP, not in parallel with one. The fall 2026 anchor is what reflects that sequencing honestly.
 
 ---
 
@@ -167,34 +183,34 @@ Full milestone history lives in `cyrius/CLAUDE.md` + `cyrius/CHANGELOG.md`. Live
 | Crate | Rust → Cyrius | Status | Notes |
 |-------|--------------|--------|-------|
 | agnostik | 0.90.0 → 0.97.1 | **Done** | Shared types |
-| agnosys | 0.51.0 → 1.0.0 | **Done** | Syscall wrappers (59× smaller) |
-| sigil | 1.0.0 → 2.9.0 | **Done** | Crypto boundary |
+| agnosys | 0.51.0 → 1.2.6 | **Done** | Syscall wrappers (59× smaller) |
+| sigil | 1.0.0 → 3.1.1 | **Done** | Crypto boundary |
 | shravan | 1.1.0 → 2.3.2 | **Done** | Audio codecs |
-| libro | 0.92.0 → 2.0.5 | **Done** | Audit chain |
-| argonaut | 0.90.0 → 1.2.0 | **Done** | Init system library |
-| kybernet | 0.51.0 → 1.0.1 | **Done** | PID 1 (14× smaller, 486KB) |
-| AGNOS kernel | — → 1.26.1 | **Done** | 248KB, 33 subsystems, 26 syscalls, Cyrius-native |
-| hoosh | 1.2.0 → 2.0.0 | **Done** | LLM gateway (10.8× smaller) |
-| ai-hwaccel | 1.0.0 → 2.0.0 | **Done** | GPU detection (3.3× smaller) |
-| avatara | 1.0.1 → 2.3.0 | **Done** | Archetype overlay (2,761× faster cached) |
-| kavach | 2.0.0 → 3.0.0 | **Done** | Sandbox (500× faster lifecycle) |
-| abaco | — → 2.1.0 | **Done** | Math/number theory (-52% lines, 12× Miller-Rabin) |
-| bote | 0.92.0 → 2.5.1 | **Done** | MCP core (~5µs/message) |
-| t-ron | 0.90.0 → 2.0.0 | **Done** | MCP security |
-| daimon | 0.6.0 → 1.1.1 | **Done** | Agent orchestrator |
-| agnoshi | 0.90.0 → 1.0.0 | **Done** | AI shell |
-| itihas | 1.0.1 → 2.2.0 | **Done** | History/versioning |
+| libro | 0.92.0 → 2.6.3 | **Done** | Audit chain |
+| argonaut | 0.90.0 → 1.7.0 | **Done** | Init system library — BOOT_MINIMAL agnoshi added 2026-05-11 |
+| kybernet | 0.51.0 → 1.2.1 | **Done** | PID 1 (14× smaller, 486KB at 1.0; now ~1.15MB at 1.2.1 with edge_boot profile) |
+| AGNOS kernel | — → 1.29.0 | **Done** | 248KB at 1.26.1; current pin 5.10.44; 33 subsystems, 26 syscalls, Cyrius-native |
+| hoosh | 1.2.0 → 2.0.0 | **Done** | LLM gateway (10.8× smaller) — pre-CYML format still |
+| ai-hwaccel | 1.0.0 → 2.2.2 | **Done** | GPU detection (3.3× smaller) |
+| avatara | 1.0.1 → 2.3.0 | **Done** | Archetype overlay (2,761× faster cached) — remote-only |
+| kavach | 2.0.0 → 3.2.1 | **Done** | Sandbox (500× faster lifecycle) |
+| abaco | — → 2.2.0 | **Done** | Math/number theory (-52% lines, 12× Miller-Rabin) |
+| bote | 0.92.0 → 2.7.2 | **Done** | MCP core (~5µs/message) |
+| t-ron | 0.90.0 → 2.1.4 | **Done** | MCP security |
+| daimon | 0.6.0 → 1.2.3 | **Done** | Agent orchestrator |
+| agnoshi | 0.90.0 → 1.3.2 | **Done** | AI shell |
+| itihas | 1.0.1 → 2.2.0 | **Done** | History/versioning — remote-only |
 | hadara | — → 1.0.0 | **Native** | Culture modeling (Cyrius-native) |
-| mabda | 1.0.0 → 2.4.1 | **Done** | GPU foundation |
-| sankoch | — → 2.0.0 | **Done** | Lossless compression (LZ4, DEFLATE, zlib, gzip) |
-| ark | — → 0.8.0 | **Done** | Package manager (4× smaller, 40× faster) |
-| nous | — → 1.1.1 | **Done** | Package resolver |
-| phylax | — → 1.0.0 | **Done** | Threat detection |
-| shakti | — → 0.2.2 | **Done** | Privilege escalation |
-| hisab | — → 2.2.0 | **Done** | Higher math |
+| mabda | 1.0.0 → 3.0.0-rc.2 | **Done** | GPU foundation — soaking pre-GA stdlib fold |
+| sankoch | — → 2.2.5 | **Done** | Lossless compression (LZ4, DEFLATE, zlib, gzip) |
+| ark | — → 0.8.0 | **Done** | Package manager (4× smaller, 40× faster) — still on 5.1.10 pin (extreme lag) |
+| nous | — → 1.1.2 | **Done** | Package resolver |
+| phylax | — → 1.1.1 | **Done** | Threat detection — exited 5.7.48 held cluster |
+| shakti | — → 0.3.0 | **Done** | Privilege escalation |
+| hisab | — → 2.2.2 | **Done** | Higher math |
 | bhava | — → 2.0.0 | Pending | Emotion/sentiment (has Cargo.toml) |
 | takumi | 0.8.0 → 0.8.x | **In port** | Package build system — Cyrius port active, pinned 5.5.23, `rust-old/` authoritative until parity |
-| aegis | — → 0.1.0 | Pending | System security daemon |
+| aegis | — → 1.0.0 | **Done** | System security daemon — hit v1.0 in v5.10.x window |
 | aethersafha | — → 0.1.0 | Pending | Wayland compositor |
 
 ### Monolith Extraction — Complete
@@ -223,13 +239,13 @@ Full details: [sprint-history.md](sprint-history.md#monolith-extraction--complet
 
 That's it. No package builds, no recipe sweeps, no self-host loop. Those come after.
 
-**Previous blocker (CLEARED)**: kybernet Cyrius port. Dependency chain completed 2026-04-13: libro ✅ → argonaut ✅ → kybernet 1.0.1 ✅ → kernel 1.22.0 (later hardened to 1.26.1, 248KB) ✅ → boot pipeline (Cyrius, ~67KB) ✅.
+**Previous blocker (CLEARED)**: kybernet Cyrius port. Dependency chain completed 2026-04-13: libro ✅ → argonaut ✅ → kybernet 1.0.1 ✅ → kernel 1.22.0 (later hardened to 1.26.1, 248KB; now at 1.29.0) ✅ → boot pipeline (Cyrius, ~67KB → 81KB rebuilt against 5.10.44 on 2026-05-11) ✅.
 
 **Current MVP work**: Sovereign boot pipeline active. Kernel boots in QEMU via `make boot-test`. ISO Stage-4 cut + first hardware boot session remain.
 
 | # | Item | Scope | Status | Notes |
 |---|------|-------|--------|-------|
-| 1 | Kernel boots in QEMU | **MVP** | **Done** | boot.cyr (67KB Cyrius binary, rebuilt against 5.7.21 on 2026-04-27 — pin update to 5.11.x queued), kernel 1.26.1 (248KB, real CI hygiene fix replaced 1.26.0 workaround) |
+| 1 | Kernel boots in QEMU | **MVP** | **Done** | boot.cyr (~81KB Cyrius binary, rebuilt against **5.10.44** on 2026-05-11), kernel **1.29.0** (was 1.26.1 at 248KB; current cycle on 5.10.44 pin) |
 | 2 | Sovereign boot pipeline | **MVP** | **Done** | `make boot-test` from genesis repo |
 | 2.5 | ISO `--iso-check` (Stage 0 component verification) | **MVP** | **Done** | 26-of-26 components READY (2026-04-27 audit), ISO assembly unblocked |
 | **3** | **ISO Stage-4-only first cut (live image, pre-built binaries)** | **MVP** | **🔴 NEXT** — planned, awaiting D1–D4 | See [`iso-stage4-plan.md`](iso-stage4-plan.md). Days, not weeks. **The MVP gate.** |
@@ -240,7 +256,12 @@ That's it. No package builds, no recipe sweeps, no self-host loop. Those come af
 | 6 | LFS Stage 3: build AGNOS userland on target | **Post-MVP** (Public Beta) | Deferred | Cyrius-compiled binaries inside AGNOS. Also where userland ↔ AGNOS-kernel ABI bridge gets exercised end-to-end. |
 | 7 | Selfhost-validate passes all phases | **Post-MVP** (Public Beta) | Deferred | Run `selfhost-validate --phase all` on booted ISO |
 
-**MVP target**: Closed beta cut, **early June 2026** (~3 weeks from 2026-05-11). Gated on (a) Cyrius v5.12.x bare-metal target landing — recent Cyrius cadence is 3–5 days per minor, so this is closer than the version number implies; (b) ISO Stage-4 D1–D4 resolved; (c) first hardware boot session producing a shell prompt.
+**MVP target**: Closed beta opening gate, **early June 2026** (~3 weeks from 2026-05-11). Gated on:
+- (a) **ISO Stage-4 D1–D4 resolved + Stage-4 ISO cut** — our work, install.cyr in agnosticos/scripts/
+- (b) **First hardware boot session** — kernel + kybernet + agnoshi reaching a shell on real iron (Pi 4 or AMD NUC)
+- (c) **Non-founder tester** sits at the prompt
+
+**NOT a gate**: Cyrius v5.12.x bare-metal target. Earlier framing carried this as a dependency — that was conceptual residue from when Cyrius and agnos lived in the same repo (pre-2026-04-01 monolith extraction). The kernel already boots end-to-end in QEMU as a multiboot1 ELF — bare-metal compilation works *now*, via ad-hoc bare-metal mode in agnos. v5.12.x formalizes the toolchain side (ELF no-libc target format, interrupt-handler emit conventions, kernel-mode syscall stubs stripped) — useful for cleaner future kernel work, but **not required for the MVP to ship**. Language and kernel are separately-releasable subsystems; coupling MVP to a language-side cleanup is the residue-pattern of when they were one project.
 
 ### P0 — Other Active Blockers
 
@@ -265,7 +286,7 @@ That's it. No package builds, no recipe sweeps, no self-host loop. Those come af
 |---|----------|------|-------|
 | B1 | High | Self-hosted CI runners on AGNOS | Replace Arch/Ubuntu runners with AGNOS itself |
 | B2 | High | RPi4 hardware boot test | Firmware blobs added, needs physical validation |
-| S1 | High | CVE-2026-31431 (Copy Fail) — host kernel cleanup + cross-repo audit | AF_ALG `algif_aead` + `splice()` LPE in mainline Linux 2017→. AGNOS-native kernel **structurally immune** (no socket/splice surface; verified in `agnos` v1.26.1, 26-syscall table). Local repos clean: sigil, agnosys, phylax — no AF_ALG refs. **Do**: (a) host bootstrap defconfigs in `agnosticos/kernel/{6.6-lts,6.x-stable,7.0-devel,configs}` — pin `# CONFIG_CRYPTO_USER_API* is not set` (HASH/SKCIPHER/AEAD/RNG); (b) audit when cloned: kybernet, libro, kavach, shakti, aegis, t-ron, argonaut, ark, agnostik, bote, daimon, hoosh. Live tracking in [`state.md`](state.md#cve-2026-31431-copy-fail-cleanup--audit). |
+| S1 | High | CVE-2026-31431 (Copy Fail) — host kernel cleanup + cross-repo audit | AF_ALG `algif_aead` + `splice()` LPE in mainline Linux 2017→. AGNOS-native kernel **structurally immune** (no socket/splice surface; verified against 26-syscall table invariant — anchored on table size, not patch level. Current: `agnos` v1.29.0). Local repos clean: sigil, agnosys, phylax — no AF_ALG refs. **Do**: (a) host bootstrap defconfigs in `agnosticos/kernel/{6.6-lts,6.x-stable,7.0-devel,configs}` — pin `# CONFIG_CRYPTO_USER_API* is not set` (HASH/SKCIPHER/AEAD/RNG); (b) audit when cloned: kybernet, libro, kavach, shakti, aegis, t-ron, argonaut, ark, agnostik, bote, daimon, hoosh. Live tracking in [`state.md`](state.md#cve-2026-31431-copy-fail-cleanup--audit). |
 | R2 | High | Update scripts/CI for zugot | 16 scripts/CI/config files still reference local `recipes/` paths |
 | E1 | Medium | ESP32 agent source repo | Recipe done, MQTT bridge done. Pending: source repo + firmware |
 | V1 | Stretch | t-ron voice — contract Bruce Boxleitner | Direct voice-synthesis contract with the actor *infamous* for the role; permanently hardens t-ron's character identity to its namesake. **The play — the argument is the asset**: AGNOS ships a Tron that actually *exists* — t-ron is a living, executing MCP security monitor that demonstrably fights for users in the real tool layer. Disney's Tron is fiction; t-ron is shipped software. The substantive argument that move makes in public: *"the real version of this is now working software, not a 1982 film."* That argument is the asset — it lands the moment the cultural shift starts, and Disney litigating against it is them defending fiction against a working artifact (i.e. losing the argument). Disney's natural incentive then flips to **alignment** ("Tron is real"), not litigation. Boxleitner's voice/likeness is licensed directly (his to grant). Any litigation pressure is downstream noise, not the substance of the move. **Core idiom** — *"We fight for the users"* is t-ron's operating ethic, the line *made real*: it ties directly to the subsystem's job (MCP security monitor — protect the user from bad actors in the tool layer). **Capture corpus**: the core idiom is the non-negotiable seed; targeted phrase-set captured for inference seeding; everything else naturally generated by the model, no script-reading sessions. Iterative — once natural cadence locks, additional phrases / word recitations can be captured to refine the synthesis. **Reach goal**: Boxleitner's sign-off and active participation — the actor publicly endorsing the subsystem named in his role's honor, on par with the back-pocket-ally tier. **Sequencing**: post-V1, after first-tier ally relationships land. Outreach rides the public AGNOS news cycle (booted OS + DEF CON receipts + articles in circulation) so the conversation isn't cold — momentum opens the door. Budget + outreach path TBD. |
@@ -402,6 +423,68 @@ Detailed items tracked in respective repos:
 
 **Key design questions open** (see spec): confirmation token mechanism, default `irreversible` set, L1 detection thresholds, backward-compatibility migration path, L6 type-adoption mandate level.
 
+### Phase 20 — Cross-Platform Compat Subsystem (post-public-beta, foundational)
+
+**Spec**: [`planning/cross-platform-compat-subsystem.md`](planning/cross-platform-compat-subsystem.md) — full design spine.
+
+**Commitment**: the *agnosticism* in AGNOS's name. Foreign-platform work (starting with Linux) runs **transparently** — wrappers or native ports — without the user needing to make it viable. **It just works.** Native ports remain the preferred path; the compat subsystem is the bridge for software not yet ported and for software that will never be ported.
+
+**Architecture (locked)**: sandboxed Linux subsystem via kavach container. Foreign binaries run inside a full Linux-personality root (their own `/lib`, `/usr`, libc, process tree); the AGNOS kernel never sees Linux syscalls directly. From outside, it's a kavach sandbox; from inside, it's Linux. **Two growth paths, never collapsed**: AGNOS kernel grows organically with native workloads (legitimate, audited, load-bearing), but never to mimic foreign-platform ABIs. The interpretive layer stays the interpretive layer — the boundary is permanent.
+
+**Why this preserves the structural-immunity argument**: the CVE class that the 26-syscall sovereign surface excludes (e.g. CVE-2026-31431 Copy Fail) requires the vulnerable syscall to *exist in the kernel*. Since the kernel never absorbs foreign ABIs, the bug class stays unreachable for AGNOS-native processes. Foreign binaries run with Linux-grade risk, audibly tagged, sandboxed by default.
+
+**Phasing** (full detail in spec):
+- **Phase 1 — Foundation** ✅ Substrate (kavach 3.x shipped; `Subsystem<T>` agnostik type to add when active)
+- **Phase 2 — Proof-of-concept**: boot a static busybox inside a kavach-isolated Linux personality root (post-public-beta)
+- **Phase 3 — ark packaging**: `ark install linux-compat-env` provisions the personality root reproducibly
+- **Phase 4 — Runtime UX**: `agnos run path/to/foo` auto-detects Linux binary, spawns subsystem, returns exit code — user never interacts with the subsystem directly
+- **Phase 5 — Curated profiles**: workload-class variants (AI/Python, build, desktop) — each a curated capability surface smaller than full Linux
+- **Phase 6 — Port pipeline feedback**: high-usage subsystem workloads surface as candidates for native ports
+
+**Rejected alternatives** (see spec for full reasoning): in-kernel Linux ABI (erases structural immunity); per-process linux-personality flag (leaks ABI awareness into the sovereign surface); recompile-only without runtime compat (contradicts the "just works" commitment).
+
+**Subsystem name**: TBD — Sanskrit convention applies when Phase 2 begins. "The compat subsystem" / "linux-compat-env" works as a placeholder.
+
+### Phase 21 — DPI Resistance (post-public-beta, network-stack-foundational)
+
+**Spec**: [`planning/dpi-resistance.md`](planning/dpi-resistance.md) — full design spine.
+
+**Commitment**: the AGNOS network stack normalizes traffic to mainstream-browser fingerprints **by default**. Every AGNOS-native application gets DPI resistance for free; every `cyrius` TLS connection looks indistinguishable from current-stable Chrome by default. The empire cannot selectively throttle, block, or fingerprint AGNOS users without acting against Chrome-on-Windows users at scale.
+
+**Six-layer defense** (mirrors agent-injection-defense pattern): L1 TLS fingerprint normalization (cyrius stdlib `tls.cyr`); L2 traffic shape normalization (agnosys + transport-policy crate); L3 pluggable transports (obfs4 / meek / snowflake); L4 domain fronting / decoy routing (opt-in advanced); L5 mesh fallback via `kula` (when fully censored); L6 steganographic channels (last-resort low-bandwidth). Failure of any single layer doesn't surface AGNOS to the network.
+
+**Two principles, never collapsed**: AGNOS network normalization grows to match shifting mainstream browser fingerprints — never to become its own distinctive fingerprint. Pluggable transports are exceptional, not default. The wire-layer invisibility is paradoxical-but-durable sovereignty: AGNOS-at-the-OS-layer requires AGNOS-at-the-network-layer to be invisible.
+
+**Phasing**: substrate (cyrius stdlib TLS) → L1 fingerprint normalization → L2 shape normalization → L3 transports → L5 mesh → L4/L6 advanced. Foundation already shipped in cyrius/agnosys; explicit fingerprint-target work begins post-public-beta.
+
+### Phase 22 — Parallel PKI (parallel to closed beta, paper-rooted trust)
+
+**Spec**: [`planning/parallel-pki.md`](planning/parallel-pki.md) — full design spine.
+
+**Commitment**: AGNOS ships with a **parallel trust chain rooted in physical artifacts** — the 29KB seed + SHA-256 chain distributed on bumper stickers, SD cards, and QR-encoded paper. The physical artifact *is* the signing authority. Any AGNOS install can verify any AGNOS-signed thing against the root without internet, without commercial CA cooperation, without any rented infrastructure. The empire cannot revoke a sticker.
+
+**Architecture**: 29KB seed + Ed25519 root pubkey + SHA-256 chain header on physical media. Sub-keys (per-project, per-build) chain forward to leaf signatures via sigil. Commercial CAs serve as **opportunistic cross-signing bridges** for browser compatibility — never as the load-bearing trust. Even if every commercial CA refused AGNOS tomorrow, AGNOS continues to verify its own artifacts.
+
+**Two principles, never collapsed**: parallel PKI is always the load-bearing trust; commercial CA bridge is convenience layer. Even if 100% of users had commercial-CA-trusted browsers, AGNOS still verifies internally against the paper root. If the bridge ever becomes required, the empire wins by revoking the bridge.
+
+**DEF CON August 2026 cadence beat depends on Phase 2** of this spec — the sticker distribution event is meaningful only if any AGNOS install can actually verify against the printed root. Phase 2 (verification path) must ship before the sticker print run is meaningful — that's the critical dependency.
+
+**Phasing**: sigil substrate (✅ shipping) → parallel-PKI verification path (closed-beta scope) → cross-signing infrastructure → public artifact distribution (DEF CON Aug 2026) → print-at-home tooling → mirror network → key rotation ceremony.
+
+### Phase 23 — Foundation Structure (governance meta-defense)
+
+**Spec**: [`planning/foundation-structure.md`](planning/foundation-structure.md) — full design spine.
+
+**Commitment**: the project evolves toward a **multi-jurisdictional, mission-locked, contributor-protecting Foundation** that holds project assets (trademarks, copyrights, signing-key custody) in a way no single state actor or commercial entity can coerce. The Foundation is the legal substrate that makes the parallel PKI, parallel distribution, and parallel finance *actually defensible*.
+
+**Seven commitments** (full detail in spec): (1) multi-jurisdictional asset distribution; (2) license-as-shield (GPL-3.0-only, already locked); (3) contributor protection (DCO + pseudonymous contribution paths); (4) asset segregation (trademarks/copyrights/keys held by Foundation, not individuals); (5) funding diversity (no single source >25%); (6) succession planning (project survives Robert); (7) mission lock (bylaws prevent Mozilla-style drift).
+
+**Two principles, never collapsed**: Foundation operates non-commercially; commercial activities live in separate entities that license / royalty back to the Foundation (the two-track outreach framework — NPO commons vs commercial equity). Foundation's jurisdictional footprint grows toward multi-jurisdiction; never centralizes to a single coercible legal system.
+
+**Pre-Foundation immediate actions** (Robert can do now, no legal counsel needed): trademark filings (`AGNOS`, `Cyrius`, key subsystem names); DCO sign-off in contribution docs + CI; CONTRIBUTING.md IP model documentation; quiet outreach to 2-4 candidate founding board members; project bank account separate from personal finances; signing-key custody documentation. These six are time-sensitive — Phase 1 (trademark) should happen *before* public adoption, not after.
+
+**Phasing**: pre-Foundation (current; Robert holds everything) → trademark filings + DCO + contributor docs (pre-closed-beta) → legal counsel engagement → primary Foundation formation (at v1.0) → asset transfer → secondary-jurisdiction mirror → mature governance (TSC elections, founder emeritus transition at v2.0).
+
 ---
 
 ## Ecosystem
@@ -412,46 +495,46 @@ All subsystems are standalone repos at `/home/macro/Repos/{name}/`.
 
 | Name | Role | Repo | Version | Cyrius Port |
 |------|------|------|---------|-------------|
-| **agnos** | AGNOS kernel | `MacCracken/agnos` | 1.26.1 | **Native** |
-| **cyrius** | Sovereign compiler | `MacCracken/cyrius` | 5.11.0 | **Native** |
-| **kybernet** | PID 1 binary | `MacCracken/kybernet` | 1.0.1 | **Done** |
-| **argonaut** | Init system (library) | `MacCracken/argonaut` | 1.2.0 | **Done** |
-| **agnosys** | Kernel interface | `MacCracken/agnosys` | 1.2.1 | **Done** |
-| **agnostik** | Shared types library | `MacCracken/agnostik` | 1.2.0 | **Done** |
-| **sigil** | Trust verification & crypto | `MacCracken/sigil` | 3.1.0 | **Done** |
-| **libro** | Audit chain | `MacCracken/libro` | 2.0.5 | **Done** |
+| **agnos** | AGNOS kernel | `MacCracken/agnos` | 1.29.0 | **Native** |
+| **cyrius** | Sovereign compiler | `MacCracken/cyrius` | 5.11.24 | **Native** |
+| **kybernet** | PID 1 binary | `MacCracken/kybernet` | 1.2.1 | **Done** |
+| **argonaut** | Init system (library) | `MacCracken/argonaut` | 1.7.0 | **Done** |
+| **agnosys** | Kernel interface | `MacCracken/agnosys` | 1.2.6 | **Done** |
+| **agnostik** | Shared types library | `MacCracken/agnostik` | 1.2.2 | **Done** |
+| **sigil** | Trust verification & crypto | `MacCracken/sigil` | 3.1.1 | **Done** |
+| **libro** | Audit chain | `MacCracken/libro` | 2.6.3 | **Done** |
 | **hoosh** | LLM inference gateway | `MacCracken/hoosh` | 2.0.0 | **Done** |
 | **avatara** | Divine archetype overlay | `MacCracken/avatara` | 2.3.0 | **Done** |
-| **ai-hwaccel** | GPU detection | `MacCracken/ai-hwaccel` | 2.0.0 | **Done** |
-| **kavach** | Sandbox execution | `MacCracken/kavach` | 3.0.0 | **Done** |
-| **abaco** | Math/number theory | `MacCracken/abaco` | 2.1.0 | **Done** |
-| **bote** | MCP core | `MacCracken/bote` | 2.5.1 | **Done** |
-| **t-ron** | MCP security monitor | `MacCracken/t-ron` | 2.0.0 | **Done** |
-| **daimon** | Agent orchestrator | `MacCracken/daimon` | 1.1.1 | **Done** |
-| **agnoshi** | AI shell | `MacCracken/agnoshi` | 1.0.0 | **Done** |
+| **ai-hwaccel** | GPU detection | `MacCracken/ai-hwaccel` | 2.2.2 | **Done** |
+| **kavach** | Sandbox execution | `MacCracken/kavach` | 3.2.1 | **Done** |
+| **abaco** | Math/number theory | `MacCracken/abaco` | 2.2.0 | **Done** |
+| **bote** | MCP core | `MacCracken/bote` | 2.7.2 | **Done** |
+| **t-ron** | MCP security monitor | `MacCracken/t-ron` | 2.1.4 | **Done** |
+| **daimon** | Agent orchestrator | `MacCracken/daimon` | 1.2.3 | **Done** |
+| **agnoshi** | AI shell | `MacCracken/agnoshi` | 1.3.2 | **Done** |
 | **hadara** | Culture modeling | `MacCracken/hadara` | 1.0.0 | **Native** |
 | **shravan** | Audio codecs | `MacCracken/shravan` | 2.3.2 | **Done** |
-| **mabda** | GPU foundation | `MacCracken/mabda` | 2.4.1 | **Done** |
-| **sankoch** | Lossless compression | `MacCracken/sankoch` | 2.0.0 | **Done** |
+| **mabda** | GPU foundation | `MacCracken/mabda` | 3.0.0-rc.2 | **Done** — pre-GA soak before stdlib fold |
+| **sankoch** | Lossless compression | `MacCracken/sankoch` | 2.2.5 | **Done** |
 | **itihas** | History/versioning | `MacCracken/itihas` | 2.2.0 | **Done** |
-| **bsp** | BSP geometry library | `MacCracken/bsp` | 1.1.2 | **Done** (waiting on Cyrius 5.6.x optimization arc) |
-| **cyrius-doom** | DOOM engine | `MacCracken/cyrius-doom` | 0.26.1 | **Native** (waiting on Cyrius 5.6.x optimization arc) |
-| **ark** | Unified package manager | `MacCracken/ark` | 0.8.0 | **Done** |
-| **nous** | Package resolver | `MacCracken/nous` | 1.1.1 | **Done** |
-| **phylax** | Threat detection engine | `MacCracken/phylax` | 1.0.0 | **Done** |
-| **shakti** | Privilege escalation | `MacCracken/shakti` | 0.2.2 | **Done** |
-| **hisab** | Higher math | `MacCracken/hisab` | 2.2.0 | **Done** |
+| **bsp** | BSP geometry library | `MacCracken/bsp` | 1.1.2 | **Done** |
+| **cyrius-doom** | DOOM engine | `MacCracken/cyrius-doom` | 0.26.2 | **Native** — held on 5.7.48 pin |
+| **ark** | Unified package manager | `MacCracken/ark` | 0.8.0 | **Done** — extreme pin lag (5.1.10) |
+| **nous** | Package resolver | `MacCracken/nous` | 1.1.2 | **Done** |
+| **phylax** | Threat detection engine | `MacCracken/phylax` | 1.1.1 | **Done** |
+| **shakti** | Privilege escalation | `MacCracken/shakti` | 0.3.0 | **Done** |
+| **hisab** | Higher math | `MacCracken/hisab` | 2.2.2 | **Done** |
 | **owl** | `cat`/`bat` replacement | `MacCracken/owl` | 1.3.6 | **Native** — M0–M5 shipped; M3b blocked on vyakarana |
 | **vyakarana** | Source-code grammar / tokenizer | `MacCracken/vyakarana` | 2.2.1 | **Native** — M0 scaffold shipped 2026-04-23; M1 shell grammar in flight |
 | **bhava** | Emotion/sentiment | `MacCracken/bhava` | 2.0.0 | Pending |
 | **takumi** | Package build system | `MacCracken/takumi` | 0.8.0 | **In port** — pinned Cyrius 5.5.23, parity work in flight |
-| **aegis** | System security daemon | `MacCracken/aegis` | 0.8.2 | Pending |
+| **aegis** | System security daemon | `MacCracken/aegis` | 1.0.0 | **Done** — hit v1.0 in v5.10.x window |
 | **aethersafha** | Desktop compositor | `MacCracken/aethersafha` | 0.1.0 | Pending |
 | **mela** | Agent marketplace | `MacCracken/mela` | 0.1.0 | Pending |
 | **agnova** | OS installer | `MacCracken/agnova` | 0.1.0 | Pending |
 | **seema** | Edge fleet management | `MacCracken/seema` | 0.1.0 | Pending |
 | **samay** | Task scheduler | `MacCracken/samay` | 0.1.0 | Pending |
-| **cyim** | Sovereign text editor (VIM-inspired) | `MacCracken/cyim` | 1.6.7 | **Native** — vyakarana consumer; cyim-lsp 1.5.0 companion shipped |
+| **cyim** | Sovereign text editor (VIM-inspired) | `MacCracken/cyim` | 1.7.0 | **Native** — vyakarana consumer; cyim-lsp 1.5.0 companion shipped |
 | **bazaar** | Community package repo | `MacCracken/bazaar` | — | — |
 
 ### Cross-Cutting Concerns
