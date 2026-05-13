@@ -278,18 +278,20 @@ capture from Attempt 4.
 
 ---
 
-### Attempt 4 — pending
+### Attempt 4 — 2026-05-13 ~09:48 PDT → FAIL
 
-**Honest framing.** The Attempt 3 target is the **NUC AMD**
+**Pre-run framing (preserved).** The target is the **NUC AMD**
 (Zen-class). AMD Zen advertises both SMEP (since Zen 1, 2017)
 and SMAP (since Zen 1) — so on this silicon the v1.29.1 CR4
 CPUID gate is *behaviorally identical* to v1.29.0: both
-revisions end up setting bits 5 + 20 + 21. **v1.29.1 alone is
+revisions end up setting bits 5 + 20 + 21. **v1.29.1 alone was
 unlikely to change the Attempt 3 outcome on the NUC AMD.** It
-ships because the unconditional OR was a real portability bug
+shipped because the unconditional OR was a real portability bug
 surfaced by the iron-boot campaign (and proved with `-cpu
-qemu64` going from triple-fault to boot), but it is not
+qemu64` going from triple-fault to boot), but it was not
 load-bearing for resolving Attempt 3's symptom on this target.
+This was logged as a prediction before the run; the run
+confirmed it.
 
 **Build under test** (patched kernel — v1.29.1, no functional
 change vs 1.29.0 on Zen):
@@ -301,9 +303,30 @@ change vs 1.29.0 on Zen):
 | initramfs | `scripts/build/initramfs.cpio.gz` 295325 bytes (unchanged) |
 | grub.cfg | post-`cdb67b2` (unchanged from Attempt 3) |
 
+**Symptom (verbatim from GRUB console):**
+
+```
+WARNING: non console will be available to OS
+```
+
+Displayed alone, machine then resets — **bit-identical to
+Attempt 3's displayed output**. Same failure class, same
+position in the boot chain.
+
+**Significance:** Confirms the pre-run prediction exactly.
+v1.29.1 is a no-op on Zen silicon (CPUID gate yields the same
+CR4 bits the unconditional OR did), so the symptom is
+unchanged. This closes out the "bare retry" diagnostic option
+— we now have direct evidence that the SMEP/SMAP framing alone
+does not explain the Attempt 3 reset on the NUC AMD. The root
+cause is something else along the multiboot1 handoff or early
+shim path, and further blind code changes without a phase
+indicator (serial / port-0x80 / multiboot2 rewrite) will burn
+attempts without bisecting the failure.
+
 **Diagnostic options that would actually change the outcome**
-(pick one before reattempting on iron — a bare retry with
-v1.29.1 on AMD adds little signal):
+(bare retry exhausted as of Attempt 4 — pick one before the
+next iron run):
 
 1. **Serial-cable capture.** USB-to-TTL adapter on the NUC's
    COM1 header (if exposed) or via internal serial. Boot the
@@ -342,17 +365,35 @@ information for the least invasive change. Options 3 and 4 are
 real engineering work and should be informed by serial output,
 not chosen blindly.
 
-**If a bare v1.29.1 retry is done anyway** (low cost, mild
-signal):
+**Bare v1.29.1 retry — observed:**
 
 | Observed | Implication |
 |----------|-------------|
-| Same `WARNING: non console will be available to OS` + reset | Expected on Zen; confirms v1.29.1 is no-op on this silicon, doesn't tell us anything about the root cause. Proceed to options 1–4. |
-| Anything different (no reset, different message, different timing) | Unexpected on Zen — would indicate v1.29.1 perturbed something other than the SMEP/SMAP bits. Worth capturing in detail. |
+| **✓ Same `WARNING: non console will be available to OS` + reset (Attempt 4, ~09:48 PDT)** | **Confirmed.** v1.29.1 is no-op on this silicon as predicted; tells us nothing new about the root cause. Bare-retry option is exhausted. Proceed to options 1–4. |
+| Anything different (no reset, different message, different timing) | Did not occur. Would have indicated v1.29.1 perturbed something other than the SMEP/SMAP bits. |
+
+**Outcome:** FAIL. Bare retry consumed; result matches the
+pre-run prediction (no-op on Zen). The next attempt must
+introduce a phase indicator or change the boot protocol —
+further code-only changes without bisection signal are guessing.
 
 ---
 
-## Carry-forward items (not blocking Attempt 4)
+### Attempt 5 — pending
+
+Awaiting one of the diagnostic interventions above. Highest-
+information / lowest-cost path remains **option 1 (serial-cable
+capture on `ttyS0,115200`)** — even one character of pre-reset
+output narrows the failure to one of {shim never executed,
+shim faulted before first `serial_putc`, fault in early init,
+fault past kernel main}. Options 3 (multiboot2 shim rewrite)
+and 4 (low-memory placement audit via multiboot memmap tag)
+are real engineering work and should be informed by serial
+output, not chosen blindly.
+
+---
+
+## Carry-forward items (not blocking Attempt 5)
 
 - **aarch64 native boot test**: blocked on Pi SSH access. Cyrius
   5.11.30 patched the aarch64 emitter; structural verification
