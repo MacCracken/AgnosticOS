@@ -7,7 +7,7 @@ type: state
 # AGNOS Ecosystem — Current State
 
 > **Cyrius toolchain**: 5.11.24 | **Cycle**: v5.11.x — stdlib annotation arc + consumer-issue closeout (active; **24 patches landed same-day** 2026-05-11 — record one-day burst rate)
-> **Last refresh**: 2026-05-12 (mid-day — captures cyrius 5.11.29/.30/.31 ELF section-header arc, agnos 1.29.0 re-pin, iron-boot Attempt 1 FAIL + repair, `install-usb.sh --update` mode, cyrius v5.x→v6.x tight-close decision) | **Refresh cadence**: bundle with each v5.11.x patch close, full sweep when minor cuts
+> **Last refresh**: 2026-05-13 (captures iron-boot Attempts 2 + 3 on the **NUC AMD** primary target — Intel/Skytech queued post-AMD-proof, not concurrent. Attempt 2 (`grub_video_set_mode`) fixed in `install-usb.sh` commit `cdb67b2`. Attempt 3 (post-handoff silent reset) root cause is OPEN; agnos 1.29.1 ships a real portability fix (CR4 SMEP/SMAP CPUID gate) but is behaviorally identical to 1.29.0 on Zen, so doesn't resolve Attempt 3 on this target. Also re-pins agnos in the live-bedrock cluster.) | **Refresh cadence**: bundle with each v5.11.x patch close, full sweep when minor cuts
 > **Crate registries** (versions + roles): [`planning/shared-crates.md`](planning/shared-crates.md) is the full registry (incl. pre-1.0); [`docs/applications/libs/README.md`](../applications/libs/README.md) is the v1.0+ stable subset. This file holds cycle / pin / sweep state only.
 
 This doc holds **volatile state** — what's currently true across the AGNOS dev surface. CLAUDE.md is preferences/process/procedures; this is the live picture. Per [*Docs Go Stale Before the Commit*](../articles/docs-go-stale-before-the-commit.md): rewrite in place when state changes; don't preserve historical snapshots — git history is authoritative.
@@ -43,7 +43,7 @@ Plus infrastructure carry-forward: `cyrius deps` symlink → file-copy (v5.10.37
 | 5 | Infrastructure (deps copy fix, regression port, TS test harness) | [ ] Queued | Later in v5.11.x |
 | 6 | **argonaut 1.7.0 + kybernet 1.2.1 (BOOT_MINIMAL agnoshi)** | ✅ Cut 2026-05-11 eve | Genesis-repo MVP path: adds agnoshi as a no-deps console service in BOOT_MINIMAL, unblocks boot-to-shell-on-iron without aethersafha. argonaut 1.7.0 = the feature; kybernet 1.2.1 = consumer pin bump. See respective CHANGELOGs. |
 | 7 | **Cyrius 5.11.29/.30/.31 — ELF section-header fix arc** | ✅ Cut 2026-05-12 | GRUB `grub_elf32_get_shnum` rejection on first iron-boot attempt traced to `EMITELF_KERNEL`/`EMITELF`/`cyrld` emitting `e_shoff=0`. Three patch releases mirrored a 5-section table (.text/.rodata/.bss/.shstrtab) across x86 kernel emitter (.29), aarch64 kernel emitter (.30), cyrld ELF64 user-binary linker (.31). agnos 1.29.0 re-pinned to 5.11.29; USB refresh via new `install-usb.sh --update` mode. |
-| 8 | **Iron-boot Attempt 1 → FAIL → repair shipped → Attempt 2 pending** | 🔄 Awaiting reboot | First attempt 2026-05-12 ~13:43 PDT hit the GRUB chain above; repair landed across cyrius 5.11.29 + agnos 1.29.0 + `install-usb.sh --update`. See [`iron-boot-testing-log.md`](iron-boot-testing-log.md) for the per-attempt running log (append-only). |
+| 8 | **Iron-boot Attempts 1–3 (NUC AMD) → 2 repairs landed + 1 portability fix + Attempt 3 root cause OPEN** | 🔄 Diagnosis pending | Target: NUC AMD (Zen-class, primary). Intel hosts queued post-AMD-proof, not concurrent. (1) GRUB `grub_elf32_get_shnum` — fixed in cyrius 5.11.29 + agnos 1.29.0 (ELF section headers). (2) GRUB `grub_video_set_mode:782` — fixed in `agnosticos` `install-usb.sh` commit `cdb67b2` (insmod `all_video` / `efi_gop` / `efi_uga` + `gfxpayload=text`). (3) Silent reset post-multiboot-handoff (`WARNING: non console will be available to OS` only) — root cause **open**. agnos 1.29.1 ships a boot_shim CR4 SMEP/SMAP CPUID gate (real portability fix for non-Zen-or-Broadwell silicon) but on AMD Zen the patch is behaviorally identical to 1.29.0, so it does not resolve Attempt 3 on the current target. Recommended next diagnostic: serial-cable capture via the `verbose serial` GRUB entry. See [`iron-boot-testing-log.md`](iron-boot-testing-log.md) Attempt 4 for the option matrix. |
 
 ### v5.10.x retrospective (closed 2026-05-11 at 5.10.50)
 
@@ -108,7 +108,7 @@ CYML format — WARM CLUSTERS:
            aegis (5.10.34)
 
 CYML format — LIVE 5.10.44 BEDROCK (~16 repos, the boot path):
-  v5.10.44: agnos (1.29.0), agnoshi (1.3.2),
+  v5.10.44: agnos (1.29.1), agnoshi (1.3.2),
             agnostik (1.2.2), argonaut (1.7.0),
             bote (2.7.2), daimon (1.2.3),
             kavach (3.2.1), kybernet (1.2.1),
@@ -192,7 +192,7 @@ Status verified 2026-05-11 eve.
 
 Linux kernel LPE in `algif_aead` (AF_ALG in-place AEAD + `splice()` → 4-byte page-cache write → root). Disclosed 2026-04-29; affects mainline kernels from 2017 onward. Roadmap item **S1**.
 
-**AGNOS-native kernel** (`agnos` v1.29.0): structurally immune — verified at `kernel/core/syscall.cyr:32-36`, 26-syscall table contains no `socket`, no `splice`, no AF_ALG family. Bug class is unreachable. (Kernel has moved from 1.26.1 → 1.29.0 since the original CVE audit; syscall table verification is anchored on the syscall-table invariant, not the kernel patch level — re-verify only if the syscall surface grows.)
+**AGNOS-native kernel** (`agnos` v1.29.1): structurally immune — verified at `kernel/core/syscall.cyr:32-36`, 26-syscall table contains no `socket`, no `splice`, no AF_ALG family. Bug class is unreachable. (Kernel has moved from 1.26.1 → 1.29.1 since the original CVE audit; syscall table verification is anchored on the syscall-table invariant, not the kernel patch level — re-verify only if the syscall surface grows.)
 
 | # | Action | Status |
 |---|--------|--------|

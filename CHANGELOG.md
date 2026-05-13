@@ -5,6 +5,22 @@ All notable changes to AGNOS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026.5.13] - 2026-05-13
+
+### Iron-boot Attempts 2 + 3 + repairs
+
+- **`scripts/install-usb.sh` (commit `cdb67b2`, "fixing video")** — generated grub.cfg now preloads `all_video` / `efi_gop` / `efi_uga` and forces `gfxpayload=text` (global + per-menuentry). Resolves Attempt 2's `error: video/video.c:grub_video_set_mode:782: no suitable video mode found` on UEFI firmware that exposes only GOP/UGA (every modern board, the NUC AMD included). Multiboot1 negotiates a video mode at handoff that AGNOS doesn't need (kernel uses VGA text + serial, no framebuffer console); the insmod-then-skip pattern tells GRUB to bypass the mode switch. **Note:** `install-usb.sh --update` skips grub.cfg by design — verifying the fix requires a full re-provision (wipe + re-grub), not the iteration-refresh path.
+- **`agnos` v1.29.0 → v1.29.1** (consumed via the v5.10.44 live-bedrock pin cluster — `docs/development/state.md` Pin-lag spectrum) — boot_shim CR4 step 5 now CPUID-gates SMEP (EBX bit 7) and SMAP (EBX bit 20). v1.29.0 ORed both unconditionally, which `#GP`→triple-faulted on silicon that doesn't advertise the feature. **Framing:** the current iron target (NUC AMD, Zen-class) *does* advertise both bits, so this patch is behaviorally equivalent to v1.29.0 on that host — it is **not** a confirmed causal fix for Attempt 3's silent reset. It is a real portability bug that future Intel hosts (queued post-AMD-proof) and older AMD silicon would have hit. QEMU-verified: clean boot to `=== done ===` on `-cpu max`; previously-triple-faulted `-cpu qemu64` now boots through the shim and reaches `AGNOS kernel v1.29.1` banner — direct regression proof. Full receipt in `agnos/CHANGELOG.md` § `[1.29.1]`. Attempt 3 root cause remains open; serial-cable capture is the recommended next diagnostic.
+
+### Changed — docs
+
+- **`docs/development/iron-boot-testing-log.md`** — Attempts 2 + 3 logged (each with verbatim GRUB symptom, root cause, repair-step table); Attempt 4 placeholder updated to reflect v1.29.1 as the build under test, with an outcome-interpretation table for the no-serial-cable retry. Last-updated bumped to 2026-05-13.
+- **`docs/development/state.md`** — Last refresh → 2026-05-13. Active table row 8 expanded from "Attempt 2 pending" to "Attempts 1–3 → 3 repairs → Attempt 4 pending," summarizing all three failure classes and their fixes. Pin-lag spectrum: agnos bumped 1.29.0 → 1.29.1 in the live-bedrock cluster. CVE-2026-31431 immunity-anchor entry re-pinned to 1.29.1 (the syscall-table invariant is unchanged; doc-version-staleness avoidance only).
+
+### Memory
+
+- **`feedback_iron_boot_log_precision.md`** added — engineering-history logs (iron-boot, similar) use approximate timestamps; not scientific reconstruction. Don't pause work to ask the user for exact wall-clock times — pick a sensible approximate from available signals (commit timestamps, conversational context) and proceed. Established 2026-05-13 from explicit user feedback.
+
 ## [2026.5.11] - 2026-05-11
 
 ### Changed — v5.10.x cycle close + v5.11.x open (state.md refresh)
