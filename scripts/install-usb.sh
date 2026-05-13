@@ -212,12 +212,25 @@ cp "$INITRAMFS_SRC" "${MOUNT_POINT}/boot/initramfs.cpio.gz"
 
 echo "[7/7] Writing GRUB config..."
 cat > "${MOUNT_POINT}/boot/grub/grub.cfg" <<'EOF'
+# Load EFI video drivers up front so multiboot can probe a mode.
+# Without this, multiboot fails with "no suitable video mode found"
+# on UEFI hardware that only exposes GOP/UGA (i.e. most modern boards).
+insmod all_video
+insmod efi_gop
+insmod efi_uga
+
+# Skip the graphics-mode switch at handoff — AGNOS uses VGA text /
+# serial, not a framebuffer, so a text payload is what the kernel
+# actually expects.
+set gfxpayload=text
+
 set timeout=3
 set default=0
 
 menuentry 'AGNOS — Closed Beta MVP (boot to shell)' {
     insmod multiboot
     insmod gzio
+    set gfxpayload=text
     multiboot /boot/agnos
     module    /boot/initramfs.cpio.gz
     boot
@@ -226,6 +239,7 @@ menuentry 'AGNOS — Closed Beta MVP (boot to shell)' {
 menuentry 'AGNOS — verbose serial (ttyS0,115200)' {
     insmod multiboot
     insmod gzio
+    set gfxpayload=text
     multiboot /boot/agnos console=ttyS0,115200
     module    /boot/initramfs.cpio.gz
     boot
@@ -234,6 +248,7 @@ menuentry 'AGNOS — verbose serial (ttyS0,115200)' {
 menuentry 'AGNOS — kybernet harness mode (boot-test exit on phase 8)' {
     insmod multiboot
     insmod gzio
+    set gfxpayload=text
     multiboot /boot/agnos kybernet.harness=1
     module    /boot/initramfs.cpio.gz
     boot
