@@ -379,17 +379,120 @@ further code-only changes without bisection signal are guessing.
 
 ---
 
-### Attempt 5 — pending
+## Diagnosis — 2026-05-13 GRUB source review
 
-Awaiting one of the diagnostic interventions above. Highest-
-information / lowest-cost path remains **option 1 (serial-cable
-capture on `ttyS0,115200`)** — even one character of pre-reset
-output narrows the failure to one of {shim never executed,
-shim faulted before first `serial_putc`, fault in early init,
-fault past kernel main}. Options 3 (multiboot2 shim rewrite)
-and 4 (low-memory placement audit via multiboot memmap tag)
-are real engineering work and should be informed by serial
-output, not chosen blindly.
+After Attempt 4 confirmed v1.29.1 was a no-op on Zen as predicted
+(SMEP/SMAP CPUID gate yields the same CR4 bits the unconditional OR
+did), review of GRUB upstream (rhboot/grub2 mirror — same code path
+as the install-USB's GRUB) characterized the actual entry-state
+delivered by GRUB on UEFI x86_64. The diagnosis came from reading
+source, not from a new hardware run — serial-cable capture was
+unavailable, so the next-best diagnostic was understanding the
+contract GRUB *says* it delivers.
+
+**GRUB-EFI's multiboot1 handoff path (the path our USB exercises):**
+
+| File | Finding |
+|------|---------|
+| `grub-core/loader/multiboot.c` | UEFI dispatch uses `efi_boot()` → `grub_relocator_efi_boot()`, NOT the BIOS `grub_relocator32_boot()` — two entirely different relocator paths |
+| `grub-core/loader/i386/multiboot_mbi.c` | UEFI path calls `grub_efi_finish_boot_services()` before handoff — ExitBootServices performed, memmap finalized in MBI, no UEFI services available |
+| `grub-core/lib/x86_64/efi/relocator.c` | The EFI relocator is `grub_relocator64_efi_boot` — uses a **64-bit state struct** (RAX/RBX/RCX/RDX/RIP/RSI), copies stub bytes to low memory, calls them as a function |
+| `grub-core/lib/i386/relocator64.S` lines 95–164 (`grub_relocator64_efi_start`) | The stub: load RAX/RBX/RIP from state, `jmp *jump_addr(%rip)`. **No `cli`. No `lgdt`. No CR0.PG clear. No CR4.PAE clear. No EFER.LME clear (wrmsr).** 64-bit indirect near jump — no CS reload, no mode switch. |
+
+**Confirmed root cause.** GRUB on UEFI x86_64 jumps to the kernel
+entry point **with the CPU still in 64-bit long mode** — UEFI's GDT
+intact, paging on, EFER.LME set, CS = 64-bit code segment. There is
+no long-mode-exit sequence whatsoever. Our `build/agnos` is **ELF32 /
+Machine: Intel 80386 / entry 0x100060** (per Attempt 1 `readelf -h`).
+The bytes at 0x100060 were assembled as 32-bit protected-mode
+instructions; when those bytes are fetched in long mode they decode as
+unrelated (or invalid) 64-bit instructions, producing a triple-fault
+within a handful of cycles. CPU resets.
+
+This explains every observed datum:
+
+- **Iron resets after `no console will be available to OS`** — the
+  warning comes from GRUB's `set_console()` (multiboot.c) saying it
+  can't satisfy any console flag the kernel requested. *Unrelated to
+  the crash*; it's just the last thing GRUB prints before the
+  handoff. The reset is the triple-fault from long-mode decoding of
+  32-bit kernel bytes. (Note: prior log entries transcribed the
+  warning as "non console will be available" — the actual GRUB string
+  is "no console will be available"; "non" was a misread.)
+- **QEMU `-kernel -cpu max` boots clean** — `-kernel` uses QEMU's own
+  Linux-boot-protocol shim, which delivers a 32-bit-protected-mode
+  CPU directly to the kernel. Bypasses GRUB entirely; entirely
+  different entry-state contract.
+- **v1.29.1 CR4 fix is a no-op on Zen** — confirmed empirically in
+  Attempt 4. Now also explained: kernel never reaches the CR4 code
+  because long-mode decoding faults at the first 32-bit instruction.
+
+**Mapping back to Attempt 3's hypotheses:**
+
+- **Hypothesis 1** (kernel triple-fault) — *correct in shape*, but the
+  trigger was one layer upstream of where we were looking. We assumed
+  CR4 / CPUID / stack-setup; the actual fault is instruction-decoding
+  mode mismatch at the very first fetch.
+- **Hypothesis 3** (multiboot1 + UEFI fundamental incompatibility) —
+  *directionally correct*. The incompatibility is **GRUB-side, not
+  firmware-side**: GRUB-EFI on x86_64 no longer performs the
+  long-mode-exit step that multiboot1's 32-bit-protected-mode contract
+  requires. The firmware would happily run a 64-bit kernel handed off
+  by the same path.
+
+**Architectural decision: Path A — ELF64 multiboot2.**
+
+Switch the boot kernel to 64-bit ELF; replace the multiboot1 header
+with a multiboot2 header carrying `MULTIBOOT_HEADER_TAG_ENTRY_ADDRESS_EFI64`.
+Kernel inherits UEFI's long-mode state cleanly; shim simplifies (no
+mode transition, no CR4 setup, GDT/paging inherited from firmware).
+Memory pin: [[project-agnos-bootloader-roadmap]] — Path A is the MVP
+bridge, Path C (sovereign UEFI bootloader, no GRUB) is the long-term
+destination.
+
+**Path B rejected** (long-mode-exit prologue keeping ELF32): would
+hand-roll the long-mode-exit sequence GRUB stopped doing — paying the
+cost of fighting the firmware with no path toward Path C. Same lesson
+the Linux community learned a decade ago when they moved to the EFI
+stub.
+
+ELF32 emit stays in Cyrius as **latent capability** for hypothetical
+future legacy-iron support per [[project-agnos-kernel-growth-rules]] —
+not deleted, just unused for the boot kernel.
+
+---
+
+### Attempt 5 — pending (Path A build)
+
+Direction confirmed by the Diagnosis above. A bare v1.29.1-or-v1.29.2
+retry on iron is no longer informative — the root cause is upstream of
+any patch to the existing 32-bit shim. Attempt 5 will exercise the
+new Path A build.
+
+**Implementation scope** (each step independently verifiable; see
+forthcoming plan doc for detail):
+
+1. **Cyrius patch — new `EMITELF64_KERNEL`** in `src/backend/x86/fixup.cyr`
+   (sibling of existing `EMITELF_KERNEL` at line 664; references the
+   user-binary ELF64 emit at line 827 for size/layout patterns). Emits
+   ELF64 header (64-byte) + PH64 (56-byte) + EM_X86_64 + multiboot2
+   header (`0xE85250D6` + arch 0 + tags) + `MULTIBOOT_HEADER_TAG_ENTRY_ADDRESS_EFI64`.
+   Non-trivial; ~200 lines. Likely lands as cyrius 5.11.32 (next free
+   slot per the user-binary cleanup queue).
+2. **agnos kernel shim rewrite** for long-mode entry. Expect
+   `RAX = 0x36d76289` (multiboot2 magic), `RBX = MBI ptr`, paging on,
+   GDT inherited from UEFI, 64-bit CS. Drop the 32-bit CR4 setup
+   (UEFI already configured CR4); drop stack-setup-in-32-bit-mode logic;
+   walk the MBI tags as 64-bit structures. Bump agnos to 1.30.0
+   (kernel ABI change — ELF32→ELF64).
+3. **scripts/install-usb.sh** — generated grub.cfg: `multiboot` → `multiboot2`,
+   `module` → `module2`. Trivial.
+4. **QEMU OVMF UEFI test** — boot under emulated UEFI (not `-kernel`,
+   which uses Linux protocol). Exercises the same `grub_relocator64_efi_boot`
+   path iron will use. If this passes, iron is a high-probability
+   success.
+5. **Iron Attempt 5** — full re-provision (not `--update`) with the
+   Path A USB. NUC AMD.
 
 ---
 
