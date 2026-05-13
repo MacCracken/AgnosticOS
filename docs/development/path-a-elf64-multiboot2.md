@@ -3,7 +3,7 @@
 > **Status**: Drafted 2026-05-13 | Approach: ELF64 kernel + multiboot2 + EFI64 entry tag | Scope: NUC AMD (x86_64 UEFI) iron-boot MVP
 > **Diagnosis source**: `docs/development/iron-boot-testing-log.md` § *Diagnosis — 2026-05-13 GRUB source review*
 > **Roadmap pin**: [[project-agnos-bootloader-roadmap]] memory — Path A is the MVP bridge; Path C (sovereign UEFI bootloader, no GRUB) is the long-term destination
-> **NEXT AGENT — START HERE.** Iron-boot Attempt 5 cannot proceed until Path A lands. Cyrius patch is the upstream blocker; agnos and scripts changes follow.
+> **NEXT AGENT — START HERE.** Steps 1-5a (cyrius + agnos) and Step 7 (install-usb.sh) landed; Step 5b (QEMU OVMF) **FAILED inside GRUB's relocator under strict-W^X UEFI** (see § *Status update — 2026-05-13* at the bottom and iron-boot log § *Diagnosis 2*). Iron Attempt 5 (Step 8) is on **HOLD** until the resolution path is chosen by the project leader (options 1-4 in the status update). **Do NOT** push iron Attempt 5 against the current build — it will reproduce Attempts 3/4 exactly. **Do NOT** edit cyrius — the language is hands-off per session feedback; cyrius work in this plan is correct and complete. Cross-repo changes (agnos, cyrius) require explicit per-edit approval.
 
 ---
 
@@ -261,10 +261,59 @@ Everything else can be ignored or deferred.
 | 4a | agnos: bump `cyrius.cyml` pin to 5.11.43 (no flag — sanity check) | Build succeeds; output **bit-identical** to 5.11.29 build (same sha256, same 250968 bytes, ELF32/EM_386/entry 0x100060/5 sections, multiboot1 PASS) | agnos | ✓ Landed 2026-05-13 |
 | 4b | agnos: build invocation sets `CYRIUS_ELF64_KERNEL=1` (in `scripts/build.sh` x86 branch; python validator extended to handle both ELF32/multiboot1 and ELF64/multiboot2) | Build produces 251160-byte ELF64/EM_X86_64 kernel, entry 0x1000a8, 5×64B section headers; multiboot2 header bytes verified at file offset 120; `grub-file --is-x86-multiboot2 build/agnos` PASS | agnos | ✓ Landed 2026-05-13 |
 | 5a | agnos: kernel shim rewrite for long-mode entry — `#ifndef ELF64_KERNEL` wraps legacy 32-bit shim; `#ifdef ELF64_KERNEL` adds new 64-bit shim (stack at 0x200000 / UART verbatim / GDT verbatim / lgdt + push-lea-push-retfq for CS reload / segment reload). New `mbi.cyr` with `fn mbi_capture_rbx()` called immediately after shim (SysV ABI preserves RBX across call; local `var p = &mb_info_ptr;` loads RAX; raw `48 89 18` stores RBX → mb_info_ptr). `var mb_info_ptr[8];` in boot_data.cyr (uninitialized array → bypasses EMIT_GVAR_INITS clobber). `scripts/build.sh` prepends `#define ELF64_KERNEL` when env var set. | Build produces 251128-byte ELF64 with structurally-identical pattern to legacy (123-byte enum-init gap between trampoline target and shim start); `call mbi_capture_rbx` at virtual 0x11A05C resolves to virtual 0x1000AD ✓ | agnos | ✓ Drafted 2026-05-13 |
-| 5b | QEMU OVMF UEFI emulation boot test | Boots into scheduler + tier3 test under emulated UEFI (the `grub_relocator64_efi_boot` path) | scripts/agnos | pending |
-| 6 | agnos version bump 1.29.x → 1.30.0; release | CI green; release artifact | agnos | pending |
-| 7 | scripts/install-usb.sh: grub.cfg `multiboot` → `multiboot2`, `module` → `module2` | `install-usb.sh` writes a parseable grub.cfg (boot menu shows entries) | scripts | pending |
-| 8 | Full re-provision `/dev/sdb` (not `--update`); iron Attempt 5 on NUC AMD | Iron boots into the scheduler/tier3 test serial output OR fails with new symptom (further along boot chain than Attempt 4) | scripts | pending |
+| 5b | QEMU OVMF UEFI emulation boot test | Boots into scheduler + tier3 test under emulated UEFI (the `grub_relocator64_efi_boot` path) | scripts/agnos | ✗ FAIL 2026-05-13 — #PF inside GRUB's relocator (W^X). See iron-boot log § *QEMU OVMF gate* + *Diagnosis 2*. |
+| 6 | agnos version bump 1.29.x → 1.30.0; release | CI green; release artifact | agnos | **HOLD** (blocked on 5b resolution) |
+| 7 | scripts/install-usb.sh: grub.cfg `multiboot` → `multiboot2`, `module` → `module2` | `install-usb.sh` writes a parseable grub.cfg (boot menu shows entries) | scripts | ✓ Landed 2026-05-13 (multiboot/module → multiboot2/module2 in all 3 menuentries + the surrounding comment block) |
+| 8 | Full re-provision `/dev/sdb` (not `--update`); iron Attempt 5 on NUC AMD | Iron boots into the scheduler/tier3 test serial output OR fails with new symptom (further along boot chain than Attempt 4) | scripts | **HOLD** (would re-hit iron Attempt 3/4 reset until 5b resolved) |
+
+---
+
+## Status update — 2026-05-13
+
+Path A's cyrius + agnos work landed (Steps 1-5a), and the in-repo
+install-usb.sh change landed (Step 7). **Step 5b — the QEMU OVMF
+emulation gate — failed inside GRUB's relocator before any byte of
+the kernel executed.** Diagnosis: GRUB's `grub_relocator64_efi_boot`
+issues six `movabs %rax, <addr_inside_stub>` writes patching kernel
+register state directly into `.text` of the loaded `relocator.mod`
+(positions verified via .rela.text at offsets 0x342B-0x3471 mapping
+to `grub_relocator64_{rax,rbx,rcx,rdx,rip,rsi}` at .text 0x8AA-0x8F7).
+Under OVMF 2024+ strict-W^X (UEFI Memory Attributes Protocol), those
+writes fault. Linux distros skip this path entirely — they boot via
+`linuxefi` / `grub_linux_boot`, not multiboot2.
+
+The bit-identical "WARNING: no console will be available to OS" +
+reset on iron Attempts 3/4 is almost certainly the same fault — on
+bare iron with no exception handlers, it cascades to triple-fault →
+reset. OVMF caught it cleanly.
+
+**This means Path A as drafted will not boot through GRUB on
+strict-W^X UEFI**, and the resolution requires one of:
+
+1. **Bring Path C (sovereign UEFI bootloader) forward** — pre-empts the
+   long-term roadmap item but removes the GRUB dependency entirely.
+2. **Vendor a patched GRUB** with `grub_relocator64_efi_boot`
+   refactored to allocate a writable trampoline + copy-before-patch,
+   OR to call `MemoryAttributesProtocol->SetMemoryAttributes` to drop
+   the RO bit on the relocator pages before writing.
+3. **Linux Boot Protocol pretender** — synthesize a bzImage-shaped
+   header on the AGNOS kernel so GRUB's `linuxefi` command takes the
+   well-tested (and W^X-correct) Linux-protocol path. Wastes the
+   multiboot2 plumbing we just put in cyrius 5.11.43, but reuses
+   GRUB without patching it.
+4. **Loose-W^X OVMF rebuild** — confirm the diagnosis end-to-end
+   under emulation. If the kernel boots cleanly under loose-W^X
+   OVMF, the analysis is fully validated and we know real-iron success
+   depends on whatever the NUC AMD firmware does with W^X.
+
+Cyrius work is **not** at fault. `EMITELF64_KERNEL` produces a
+correct ELF64 multiboot2 kernel that GRUB *accepts* — RAX magic was
+loaded, the handoff was prepared. The fault is upstream of any cyrius
+emission, in GRUB's design. No cyrius issue to file from this gate.
+
+**Decision needed** before iron Attempt 5 is re-attempted. Resolution
+options 1-4 above are not equivalent in scope — pick the path before
+spending more cyrius/agnos work.
 
 **Each step is a separate verification gate.** Steps 1-3 are cyrius
 work; 4-6 are agnos work; 7-8 are this repo. Per `CLAUDE.md` § DO NOT:
