@@ -201,7 +201,10 @@ fn main(): i64 {
     if (kcp == 2)  { println("verdict (kernel): canary ran, died before stack setup (CP 3)."); return 0; }
     if (kcp == 3)  { println("verdict (kernel): stack set up, died before COM1 UART init (CP 4)."); return 0; }
     if (kcp == 4)  { println("verdict (kernel): COM1 init done, died inside boot_info_capture_rdi (CP 5)."); return 0; }
-    if (kcp == 5)  { println("verdict (kernel): reached top-level main.cyr, died before gdt/tss/idt init (CP 6)."); return 0; }
+    if (kcp == 5)    { println("verdict (kernel): reached top-level main.cyr, died in the two opening serial_println calls (before bisector 0x80)."); return 0; }
+    if (kcp == 128)  { println("verdict (kernel): bisector 0x80 — opening serial_println pair OK, died inside gdt_init."); return 0; }
+    if (kcp == 129)  { println("verdict (kernel): bisector 0x81 — gdt_init OK, died inside tss_init."); return 0; }
+    if (kcp == 130)  { println("verdict (kernel): bisector 0x82 — tss_init OK, died inside idt_init."); return 0; }
     if (kcp == 6)  { println("verdict (kernel): GDT/TSS/IDT loaded, died before APIC/timer init (CP 7)."); return 0; }
     if (kcp == 7)  { println("verdict (kernel): APIC + timer live, died before pt_init (CP 8)."); return 0; }
     if (kcp == 8)  { println("verdict (kernel): page tables built, died before pmm_init (CP 9). Historical RDRAND stall."); return 0; }
