@@ -1049,7 +1049,83 @@ Attempt 8's `gdt_init` → `tss_init` → `idt_init` → `pic_init` → `apic_in
 
 ---
 
-## Carry-forward items (not blocking Attempt 10)
+### Attempt 10 — 2026-05-14 ~PDT → FAIL (regression by stub-kernel artifact; gnoboot died at CP 2)
+
+**Build under test** (as observed on the USB at boot time):
+
+| Artifact | Version / Size | Notes |
+|----------|----------------|-------|
+| cyrius toolchain | 5.11.54 (local) | minor bump since Attempt 9's 5.11.53; not implicated |
+| agnos kernel (USB `\boot\agnos`) | **344 bytes, ELF32 i386 stub** | ❌ Wrong file. `agnos/build/agnos` had been replaced by a tiny 32-bit stub (date stamp May 14 14:40) before `install-usb.sh` ran. The real Attempt-9-plan kernel (smp.cyr SIPI loops gated, 251,152 bytes ELF64) was never copied onto this USB. |
+| gnoboot (USB `\EFI\BOOT\BOOTX64.EFI`) | 35,328 bytes (unchanged from Attempt 9) | ran correctly, see below |
+| `scripts/read-boot-log.sh` | unchanged — Cyrius `read-boot-log` binary | |
+
+**Symptom — different from Attempts 6-9.** Instead of `gnoboot 0.1 step 7: Jumping to kernel...` → blank → reset, the firmware fell through to the EDK II UEFI Interactive Shell:
+
+```
+UEFI Interactive Shell v2.2
+EDK II
+UEFI v2.70 (American Megatrends, 0x00050013)
+Mapping table
+FS1: Alias(s): HD1e0b:; BLK4:
+   PciRoot(0X0)/Pci(0x8,0x1)/Pci(0x0,0x4)/USB(0x4,0X0)/HD(1,GPT,...)   ← AGNOS USB
+FS0: Alias(s): HD0b:; BLK1:
+   PciRoot(0X0)/Pci(0x2,0x1)/Pci(0x0,0x0)/NVMe(0x1,...)/HD(1,GPT,...)
+...
+Press ESC in 1 seconds to skip startup.nsh or any other key to continue.
+Shell>
+```
+
+**CMOS readout (post-reset):**
+
+```
+CMOS[0x53] gnoboot magic    = 0xcd  (decimal 205)
+CMOS[0x52] gnoboot checkpt  = 0x02  (decimal 2)
+CMOS[0x51] kernel  magic    = 0xab  (decimal 171)
+CMOS[0x50] kernel  checkpt  = 0x10  (decimal 16)
+
+verdict (gnoboot): located ESP but died before reading + verifying /boot/agnos.
+```
+
+**Forensic trail (gnoboot side — current boot):**
+
+1. `efi_main` entered → CMOS[0x53] = 0xCD (magic), CMOS[0x52] = 0x01.
+2. `bs->HandleProtocol(ImageHandle, &LoadedImageGuid, &li)` returned EFI_SUCCESS.
+3. `bs->HandleProtocol(li->DeviceHandle, &SfsGuid, &sfs)` returned EFI_SUCCESS.
+4. CMOS[0x52] = 0x02 written (last written value observed in CMOS).
+5. `sfs->OpenVolume`, `root->Open("\boot\agnos", READ, 0)`, `file->Read(file, &64, &elf_hdr)` all returned EFI_SUCCESS.
+6. ELF magic check at `load8(&elf_hdr + 0) != 0x7F` passed — the stub IS an ELF, just the wrong kind.
+7. `e_phoff = load64(&elf_hdr + 0x20)` read the stub's bytes at offset 0x20 (ELF32 places `e_phoff` at 0x1C, not 0x20). Result = 0x90 (junk, but valid in-file offset on a 344-byte file).
+8. `file->SetPosition(file, 0x90)` + `file->Read(file, &56, &phdr)` succeeded.
+9. `load8(&phdr + 0) != 1` (PT_LOAD) fired — `phdr[0]` at file offset 0x90 in a 344-byte ELF32 stub is `0x00`. Gnoboot called `efi_print(st, &msg_pt_f)` and `return 0` (`main.cyr:225`).
+10. With `efi_main` returning 0, UEFI firmware regained control and no other Boot#### option resolved on the USB → EDK fallback shell ran.
+
+CP 3 (kernel ELF mapped + magic verified) was never written; CMOS[0x52] correctly stops at 0x02. The verdict is accurate for *this* boot.
+
+**Forensic trail (kernel side — STALE, from a prior unlogged boot):**
+
+CMOS[0x51] = 0xAB and CMOS[0x50] = 0x10 are residue from a previous iron boot — battery-backed CMOS persists across reset cycles until overwritten. `agnos/kernel/core/main.cyr:296` writes CMOS[0x50] = 0x10 only after the scheduler-armed checkpoint (see `read-boot-log.cyr:218` — "scheduler armed — kernel init COMPLETE. Any later stall is post-init"). **Some prior attempt (between Attempt 9 and now, not captured in this log) reached scheduler-armed.** That's a major data point: kernel init is no longer the blocker on the current code, the post-init scheduler loop is.
+
+This run is a *regression* of the boot-pipeline plumbing (wrong file on USB), not of the kernel. The kernel-side CMOS bytes are pre-regression evidence and worth treating as authoritative — corroborated by the open investigation in `agnos/docs/development/state.md` § *timer-driven context switch under UEFI+gnoboot* (which presumes the kernel reaches scheduler activation).
+
+**Root cause of the regression.** `agnos/build/agnos` was a 344-byte ELF32 i386 stub (date stamp May 14 14:40), not the 251,152-byte ELF64 multiboot2 kernel that the Attempt-9 plan + `ce745c7 more iron boot repairs` would produce. `install-usb.sh:64` (`KERNEL_SRC="${REPO_ROOT}/../agnos/build/agnos"`) faithfully copied that file to `\boot\agnos` on the USB. `set -e` + the python ELF validator in `scripts/build.sh` should have caught a malformed build at build time; since the build wasn't re-run between the stub appearing and `install-usb.sh --update` executing, no gate fired. Exact provenance of the stub is unclear — possibly an aborted manual `cyrius build` or a build script run without `CYRIUS_ELF64_KERNEL=1`. `agnos/build/agnos-halt` (251,128 bytes, May 13 11:56) sits in the same directory, suggesting earlier debug/rename activity.
+
+**Repair (applied 2026-05-14, this session):**
+
+| Approx PDT | Action | Verification gate |
+|-----------|--------|-------------------|
+| 2026-05-14 ~15:00 | Fresh rebuild of agnos: `cd agnos && sh scripts/build.sh` | `build/agnos` 344 → **251,312 bytes**; build.sh's python validator reports `multiboot2 (ELF64): OK`, `entry: 0x1000a8`. Carries `ce745c7 more iron boot repairs` + `d2baa10` (smp.cyr SIPI loops gated) + `0c78acd` (gdt ltr slot + gdt[104] resize). |
+| 2026-05-14 ~15:01 | Fresh rebuild of gnoboot: `cd gnoboot && CYRIUS_TARGET_EFI=1 cyrius build src/main.cyr build/BOOTX64.EFI` | `build/BOOTX64.EFI` = **35,328 bytes** (unchanged from prior — gnoboot source at `3a33059 updates for CMOS`, no behavioral change vs. Attempt 9's gnoboot). |
+| pending | Re-flash USB via `sudo scripts/install-usb.sh /dev/sdX --update` (user-side; destructive to USB) | `install-usb.sh` should print `Refreshing /boot/agnos   344 → 251312 bytes` and `Refreshing /EFI/BOOT/BOOTX64.EFI   35328 → 35328 bytes`. |
+| pending | Iron Attempt 11 on NUC AMD | post-reset `read-boot-log.sh` should print a **kernel-side** verdict (gnoboot CP should reach 5; kernel CP should advance past 0x10 if the post-scheduler stall is fixed, or stick at 0x10 if it's still the prior open issue). The boot should *not* fall through to the UEFI Interactive Shell — if it does, gnoboot itself regressed. |
+
+**Process note — build artifact discipline.** `agnos/build/agnos` is a load-bearing path (install-usb.sh's only kernel source). It silently surviving as a wrong-architecture stub across attempts is a process gap. Two cheap mitigations worth considering before Attempt 11 if not already in place: (a) `install-usb.sh` could `readelf -h "$KERNEL_SRC"` and refuse to copy unless `Class: ELF64` + `Machine: AMD x86-64` + size ≥ 100 KB; (b) `scripts/build.sh` could `rm -f "$ROOT/build/agnos"` at the top so a stale stub can't survive a failed `cyrius build` invocation. Not blocking; flagging for whoever sweeps boot-pipeline hygiene next.
+
+**Outcome:** FAIL (boot regression by stub-kernel artifact, not by code under test). Two new findings: (1) kernel CMOS residue confirms an undocumented prior boot reached scheduler-armed — Attempt 9's SIPI-gate diagnostic + the Attempt-9 / `ce745c7` follow-ups appear to have worked at the kernel-init layer; (2) the kernel ABI / install-pipeline lacks a gate against shipping a wrong-shape `\boot\agnos` to the USB. The path to Attempt 11 is purely re-provisioning — no code change needed at the gnoboot or agnos layer to retry.
+
+---
+
+## Carry-forward items (not blocking Attempt 11)
 
 - **aarch64 native boot test**: blocked on Pi SSH access. Cyrius
   5.11.30 patched the aarch64 emitter; structural verification
