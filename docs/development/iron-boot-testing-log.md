@@ -1,4 +1,4 @@
-> **Last Updated**: 2026-05-13
+> **Last Updated**: 2026-05-14
 
 # Iron Boot Test Log
 
@@ -985,7 +985,71 @@ Per the Cyrius frame-layout convention documented in `ring3.cyr:25-26` (*"params
 
 ---
 
-## Carry-forward items (not blocking Attempt 8)
+### Attempt 9 — 2026-05-14 ~PDT → FAIL (bisector advancing)
+
+**Build under test** (Attempt-8 Fixed entries applied — `ltr` slot-trap +
+`gdt[104]` resize, both in `agnos/kernel/arch/x86_64/`):
+
+| Artifact | Version / Size |
+|----------|----------------|
+| cyrius toolchain | 5.11.53 (unchanged) |
+| agnos kernel | 1.30.0 + Attempt-8 Fixed entries (`gdt.cyr` ltr slot fix; `boot_data.cyr` gdt array 56 → 104). `build/agnos` 251232 → 251616 bytes (+384, alignment cascade). |
+| gnoboot | 0.1.0 (unchanged from Attempt 8) |
+| `scripts/read-boot-log.sh` | unchanged — reads CMOS 0x50-0x53 via Cyrius `read-boot-log` |
+| CMOS slot map | 0x50-0x53 (per `archaemenid_cmos_map` memory pin) |
+
+**Symptom:** Same external cadence as Attempts 6-8 — gnoboot step-7 line, blank screen, reset → firmware splash. No framebuffer-side signal expected (per Attempt 7's Case A resolution; framebuffer unreachable from kernel on this firmware path).
+
+**CMOS readout (post-reset):**
+
+```
+CMOS[0x53] gnoboot magic    = 0xcd  (decimal 205)
+CMOS[0x52] gnoboot checkpt  = 0x05  (decimal 5)
+CMOS[0x51] kernel  magic    = 0xab  (decimal 171)
+CMOS[0x50] kernel  checkpt  = 0x07  (decimal 7)
+```
+
+**Verdict — Attempt-8 fix held; fault site moved forward.**
+
+- Kernel ran (`0xAB` magic set) → ELF64 shim entry, COM1 init, boot-info capture all OK
+- gnoboot pre-jump checkpoints all 5 reached (unchanged from Attempt 8)
+- Highest kernel checkpoint = **0x07** (`agnos/kernel/core/main.cyr:53` — APIC + timer live, post `apic_init` / `apic_timer_init`)
+- Did NOT reach 0x08 (`main.cyr:83` — set after `pt_init` returns)
+- **→ fault is between `apic_timer_init` returning and `pt_init` returning**, i.e. inside one of the four call sites at `main.cyr:59-77`:
+  1. `smp_start_aps()` — INIT-SIPI-SIPI wakeup of Application Processors (smp.cyr:167)
+  2. `kb_init_tables()` / `kb_isr_build()` — keyboard ISR build
+  3. `idt_set_gate(...kb_isr...)` — install IRQ1 vector
+  4. `pt_init()` — page tables
+
+Attempt 8's `gdt_init` → `tss_init` → `idt_init` → `pic_init` → `apic_init` chain all return cleanly (CP 7 is past `apic_timer_init`). The CP 6 → CP 7 leg was previously the long-suspected stall zone; it is now confirmed live on iron Zen.
+
+**Root-cause hypothesis (high confidence):** `smp_start_aps()` at `agnos/kernel/arch/x86_64/smp.cyr:167`. Two pieces of evidence:
+
+1. The in-source comment at smp.cyr:173-176 explicitly flags this as *the* "uncomment-for-real-hardware" path:
+   > "Works on real hardware. QEMU's multiboot/GRUB emulation doesn't properly support SIPI — APs start at wrong address (0x4000 not 0x8000). Uncomment for real hardware or when QEMU adds proper SIPI support."
+
+   The INIT-SIPI-SIPI loops at smp.cyr:177-182 are live (not commented out). This is the **first iron boot to actually fire INIT-SIPI-SIPI at Zen APs** — the prediction in that comment was never measured.
+
+2. Three concrete hazards in the live path:
+   - **CR3 = 0x1000 is hardcoded** in the AP trampoline's 32-bit stage (smp.cyr:112). `pt_init` has not yet run at this point, so APs share whatever page tables gnoboot left at physical 0x1000. If those tables don't identity-map 0xFEE00000 (LAPIC), every AP triple-faults on its first APIC-ID read at smp.cyr:143, and Zen APs taking simultaneous triple-faults can crowbar the BSP via shared cache/snoop traffic before BSP reaches CP 8.
+   - **Empty-loop "delays"** at smp.cyr:178, 180, 182 are not volatile. INIT requires ~10ms quiescence per the SDM; SIPI window is ~200μs. If cyrius emits the loop body as-is on Zen, the loops still take some time, but if any constant-folding ever lands the delays vanish entirely.
+   - **Trampoline writes at 0x8000-0x8200** (smp.cyr:66-79). Pre-`pt_init`, this relies on gnoboot's bootstrap mappings covering that range writable.
+
+**Fix (Attempt 10 — diagnostic, not final):** comment out the three INIT-SIPI-SIPI for-loops at smp.cyr:177-182, leaving `smp_build_trampoline()` and the `vmm_alloc_at` stack-allocation loop in place. This isolates the AP-wakeup IPI from the pre-IPI setup. Iron-boot is expensive (one reflash + reset cycle per data point), so we deliberately leave trampoline build and stack alloc running — if they fault, we still don't reach CP 0x71-equivalent and the next iteration will instrument them. If we instead reach CP 8 / further, AP wakeup is confirmed as the fault and the v1 patch is one of the three concrete hazards above (most likely the CR3=0x1000 / LAPIC-identity-map hazard).
+
+**Repair steps (Attempt-10 plan):**
+
+| Approx PDT | Action | Verification gate |
+|-----------|--------|-------------------|
+| 2026-05-14 | `agnos/kernel/arch/x86_64/smp.cyr:177-182` — comment out the three `apic_send_init` / `apic_send_sipi` for-loops and their inter-IPI delay loops. Leave `smp_build_trampoline()` and the `vmm_alloc_at` stack alloc loop live. Comment updated to explain why (Attempt-9 SIPI-gate diagnostic). (DONE) | `CYRIUS_ELF64_KERNEL=1 ./scripts/build.sh` clean (cyrius 5.11.54); `build/agnos` 251616 → 251152 bytes (−464, six call sites eliminated as predicted). gnoboot smoke under OVMF not re-run — change is on a path QEMU can't exercise (single-vCPU). |
+| 2026-05-14 | agnos `CHANGELOG.md [Unreleased]` — `Changed` entry noting the diagnostic gate (will revert / replace with real fix after Attempt 10 result) | doc-only |
+| pending | Re-flash USB (`scripts/install-usb.sh`), iron Attempt 10 on NUC AMD | post-reset `read-boot-log.sh` should show `kernel checkpt` ≥ 0x08 if SMP wakeup was the fault. If still 0x07, fault is in `smp_build_trampoline` writes or `vmm_alloc_at` against gnoboot's page tables — Attempt 11 will instrument finer. |
+
+**Outcome:** FAIL — but the bisector held its discipline. One CMOS read advanced us from "anywhere in `gdt_init` → `pt_init`" (six function calls) to "one of four specific calls between `apic_timer_init` returning and `pt_init` returning". The SIPI-gate diagnostic narrows that to one or two on the next iron run.
+
+---
+
+## Carry-forward items (not blocking Attempt 10)
 
 - **aarch64 native boot test**: blocked on Pi SSH access. Cyrius
   5.11.30 patched the aarch64 emitter; structural verification
