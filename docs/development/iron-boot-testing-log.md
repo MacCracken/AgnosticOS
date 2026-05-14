@@ -735,7 +735,194 @@ point the kernel is running but invisible).
 
 ---
 
-## Carry-forward items (not blocking Attempt 6)
+### Attempt 6 — 2026-05-13 ~late-PM PDT → FAIL
+
+**Build under test** (Attempt 5 plan applied — BSS zero + EfiLoaderCode
+both shipped):
+
+| Artifact | Version / Size |
+|----------|----------------|
+| cyrius toolchain | 5.11.53 (per `gnoboot/cyrius.cyml` and `agnos/cyrius.cyml`) |
+| agnos kernel | 1.30.0 — `build/agnos` 251040 bytes (entry `0x1000A8`, unchanged from Attempt 5) |
+| gnoboot | 0.1.0-post-fixes — `build/BOOTX64.EFI` with the two Attempt-5 repairs in `src/main.cyr`: byte-loop zeroing `[p_filesz, p_memsz)` after segment read, and `bs->AllocatePages` MemoryType `1 (EfiLoaderCode)` |
+| install-usb.sh | unchanged from Attempt 5 |
+
+**Symptom (verbatim from NUC AMD display):**
+
+```
+Press <DEL> to enter Setup. <F7> to Boot Menu.gnoboot 0.1 step 7: Jumping to kernel...
+```
+
+Then **blank screen**, then **reset → firmware splash again**. Bit-identical
+to Attempt 5 — same step-7 line on the same cell as the firmware splash
+(cosmetic, not load-bearing), same blank, same reset cadence. No serial
+attached; kernel UART output (`COM1 / 0x3F8`) not captured.
+
+**Significance.** Both repairs from Attempt 5 ran on iron and produced
+**zero change**. The triple-fault is therefore **neither**:
+
+- **BSS garbage** (gnoboot's byte-loop zeroes `[p_filesz, p_memsz)`
+  pre-EBS — confirmed in `gnoboot/src/main.cyr:216-221`), nor
+- **LoaderData NX-marking** (gnoboot's `AllocatePages` requests
+  MemoryType `1 (EfiLoaderCode)` — confirmed in `gnoboot/src/main.cyr:191`).
+
+These were the two highest-confidence hypotheses for the QEMU-OVMF /
+iron divergence; ruling them out is what Attempt 6 actually delivered.
+
+**Remaining hypotheses (no further evidence yet — needs visibility into
+kernel-side execution, which Attempt 6 also lacks):**
+
+1. **Inherited AMD Zen UEFI page-table W^X ≠ OVMF's.** Strict-W^X
+   firmware applies NX to non-LoaderCode ranges in the live PT. Stack
+   at 0x200000 is `EfiConventionalMemory`; first `call boot_info_capture_rdi()`
+   pushes a return address there — NX wouldn't fire on a write but
+   if the firmware additionally marks Conventional pages as not-present
+   or read-only post-EBS, the push #PFs and the absent IDT triple-faults.
+2. **GDT divergence.** `boot_shim.cyr:163-164` documents CS=0x38 /
+   DS=0x18 working under OVMF; AMD Zen UEFI may use different
+   selectors. First `call` validates CS against the inherited GDTR.
+3. **CR0/CR4/EFER divergence.** SMEP/SMAP/UMIP/CET enabled by AMD
+   Zen UEFI but not OVMF. CET shadow-stack in particular would fault
+   on the first `call` if the shadow-stack pointer is null.
+
+All three need kernel-side ground-truth to bisect. Path forward is
+twofold and now bundled.
+
+**Repair steps (Attempt-7 plan; gnoboot + agnos edits, no install-usb
+or cyrius changes):**
+
+| Approx PDT | Action | Verification gate |
+|-----------|--------|-------------------|
+| ~late-PM | `gnoboot/src/main.cyr`: add `gop_guid`, extend `boot_info` 80 → 112 bytes (version 1 → 2, inlined fb fields at 0x48-0x60), `LocateProtocol(GOP)` after BSS zero pre-EBS, copy `fb_phys/pitch/width/height/pixel_format` into struct, set `flags.fb_present` | `cyrius build` clean; gnoboot `tests/ovmf_smoke.sh` (EXPECT="Activating scheduler") PASS; `tests/verify_pe.sh` PASS |
+| ~late-PM | `agnos/kernel/arch/x86_64/boot_shim.cyr`: prepend 26 bytes to ELF64 shim asm block (canary — read `[rdi+0x48]`, paint 256 white pixels at top-left if non-null; preserves RDI, clobbers RAX/RCX) | `scripts/build.sh` clean; `build/agnos` grows ~32 bytes; gnoboot smoke still PASS |
+| ~late-PM | `agnosticos/docs/development/path-c-sovereign-uefi.md` § Handoff: update struct spec to v2 inlined fb fields; tag type=1 deprecated | doc-only |
+| ~late-PM | gnoboot CHANGELOG `[Unreleased]` Added (GOP capture) + Fixed (note Attempt-6 ruled out both Attempt-5 hypotheses) | doc-only |
+| ~late-PM | agnos CHANGELOG `[Unreleased]` Added (canary) + Changed (boot-info v2) | doc-only |
+| pending | Re-flash USB (`scripts/install-usb.sh`), iron Attempt 7 on NUC AMD | screen shows step-7 line + **white pixel stripe at top of screen** + (reset or further progress) |
+| pending in parallel | User sources USB-to-TTL serial cable for COM1 header | independent of canary outcome — needed regardless of result |
+
+**Outcome:** FAIL. No iron progress beyond Attempt 5 in absolute terms,
+but two hypotheses ruled out and a visible kernel-side bisection signal
+is now in place for Attempt 7. Attempt 6's "no improvement" result IS
+its diagnostic value — it tells us the remaining failure modes are
+strictly post-jump, not pre-jump environmental.
+
+---
+
+### Attempt 7 — 2026-05-13 ~late-PM PDT → FAIL
+
+**Build under test** (Attempt 6 plan applied — agnos canary + gnoboot GOP
+capture both shipped):
+
+| Artifact | Version / Size |
+|----------|----------------|
+| cyrius toolchain | 5.11.53 (unchanged) |
+| agnos kernel | 1.30.0 + canary — `build/agnos` 251072 bytes (+32 over Attempt 6's 251040 — 26-byte canary asm rounded up for alignment). Canary is at `boot_shim.cyr:200-206`: `mov rax,[rdi+0x48]; test rax,rax; jz +17; mov ecx,256; mov dword [rax],0xFFFFFFFF; add rax,4; loop -12`. Prepended to ELF64 shim, runs before stack setup and before any cyrius `fn` call. |
+| gnoboot | 0.1.0 + GOP capture — `build/BOOTX64.EFI` 35328 bytes. `gop_guid` + `LocateProtocol(GOP)` at `main.cyr:265-280`, pre-EBS. boot_info struct extended 80 → 112 bytes (version 1 → 2, inlined `fb_phys/pitch/width/height/pixel_format` at offsets 0x48-0x60). Failure-safe: if `LocateProtocol` returns non-zero, `fb_phys` stays 0 and the canary's `JZ` skips the paint. |
+| install-usb.sh | unchanged from Attempt 6 |
+
+**Symptom (verbatim from NUC AMD display):**
+
+```
+Press <DEL> to enter Setup. <F7> to Boot Menu.gnoboot 0.1 step 7: Jumping to kernel...
+```
+
+Then **blank screen**, then **reset → firmware splash again**. Bit-identical
+to Attempt 6. **No white stripe** at top-left of screen. No serial
+attached; kernel UART output (`COM1 / 0x3F8`) not captured.
+
+**Significance.** The canary's null-check splits the outcome into two
+disjoint cases:
+
+- **Case A — `fb_phys == 0` on iron.** gnoboot's `LocateProtocol(GOP)`
+  failed on NUC AMD UEFI (text-mode firmware path, no GOP exposed, or
+  GUID mismatch under this firmware). Canary's `JZ +17` fired and the
+  kernel proceeded past the 26-byte canary into the stack-setup +
+  `call boot_info_capture_rdi()` sequence, then triple-faulted later
+  (one of the three Attempt-6 remaining hypotheses: AMD Zen page-table
+  W^X, GDT divergence, or CR/EFER state). The kernel *did* execute,
+  but invisibly.
+- **Case B — `fb_phys != 0` but `jmp rax` never landed or first
+  instruction faulted.** Kernel was never reached. Either the `mov
+  eax, 0x1000A8; jmp rax` in gnoboot didn't transfer control (page at
+  0x1000A8 not executable per inherited UEFI PT — even though gnoboot
+  allocated as `EfiLoaderCode`), or the first 4 bytes of the canary
+  itself (`48 8B 47 48`) faulted on fetch.
+
+**We cannot distinguish A from B from the display alone.** Both produce
+identical bit-identical reset output. The canary delivered one bit of
+information (it didn't paint) — that bit is genuinely ambiguous without
+a second channel.
+
+**Concrete diagnostic state after Attempt 7:**
+
+| Hypothesis | Status |
+|---|---|
+| BSS garbage in `.bss` | Ruled out (Attempt 6) |
+| LoaderData NX-marking | Ruled out (Attempt 6) |
+| fb_phys=0 on iron (Case A) | Possible — gnoboot's GOP path was QEMU-OVMF verified, not iron-verified |
+| jmp-rax / first-instruction fault (Case B) | Possible — would also produce no-stripe + reset |
+| AMD Zen page-table W^X post-EBS | Still open (would manifest in either case at a later instruction) |
+| GDT divergence | Still open |
+| CR0/CR4/EFER divergence (esp. CET) | Still open |
+
+**Path forward — serial cable is now blocking.** Three remaining iron
+diagnostics could fire here; without kernel-side visibility, picking
+among them is guessing. Specifically:
+
+1. **USB-to-TTL serial cable on COM1 header.** This was the recommended
+   path from Attempt 4 onward and has been deferred three attempts
+   running. Attempt 7's no-stripe ambiguity confirms: the visual canary
+   was a useful intermediate step, but it cannot bisect Case A vs Case
+   B. Serial does. Even a single byte from kernel `serial_putc` at
+   entry instruction #1 (post-canary) decides A vs B immediately.
+2. **As a fallback only if serial sourcing is delayed:** add a *second*
+   canary in gnoboot, *before* the `jmp rax`, that paints a different
+   color or position. If THAT one fires and the agnos one doesn't,
+   we're in Case B (jmp issue). If neither fires, GOP wasn't located
+   (Case A, no fb at all). This is a one-attempt diagnostic worth
+   maybe 30 min in gnoboot — but a serial cable is strictly more
+   informative and the COM1 header is exposed on the NUC AMD.
+
+**No code changes recommended pre-serial.** The Attempt-6 remaining-
+hypotheses list (Zen page-table W^X, GDT, CR/EFER) cannot be sanely
+attacked without seeing where the kernel dies. Blind shim changes here
+would burn attempts the way bare-retry burned Attempt 4.
+
+**Outcome:** FAIL. Visual canary delivered ambiguous signal —
+diagnostically valuable (proves screen is unreachable from kernel-side
+without GOP, narrows post-handoff failure to a smaller domain) but
+not bisecting.
+
+**Correction to recommendation (post-conversation, same evening).** The
+"serial cable is the blocker" framing across Attempts 4-7 was wrong.
+The dev environment (`archaemenid`) IS the NUC AMD iron-boot target —
+single Beelink SER, no separate devbox. Serial-cable diagnostics require
+a second host to read the COM1 wire; that host doesn't exist in this
+setup. The right diagnostic channel for one-machine iron is **persistent
+storage that survives reset** — CMOS scratch RAM, UEFI NVRAM variables,
+or raw disk sectors. Memory pin [[project-single-machine-dev-setup]]
+records the constraint so future agents don't repeat the serial advice.
+
+Attempt 8 ships CMOS-scratch checkpoints (cheapest path; no driver
+required on either kernel or Linux side).
+
+**Repair steps (Attempt-8 plan — CMOS persistent boot-log):**
+
+| Approx PDT | Action | Verification gate |
+|-----------|--------|-------------------|
+| ~late-PM | `agnos/kernel/arch/x86_64/boot_shim.cyr`: insert 5 CMOS checkpoint writes in the ELF64 shim asm block (8 bytes each; `out 0x70, al` + `out 0x71, al`). Checkpoint 1 also sets CMOS[0x41] = 0xAB magic. Slots used: CMOS[0x40] (checkpoint counter 1-5) and CMOS[0x41] (kernel-ran magic). Clobbers AL only per write; RDI/RSP/other GPRs preserved. Visual canary kept as backup signal. | `CYRIUS_ELF64_KERNEL=1 ./scripts/build.sh` clean; `build/agnos` grows 251072 → 251120 bytes (+48 exact = 6 × 8-byte writes); gnoboot `tests/ovmf_smoke.sh` still reaches `Activating scheduler...` (CMOS writes silent in QEMU). |
+| ~late-PM | `agnosticos/scripts/read-boot-log.sh`: read `/dev/nvram` (CMOS-base offset 0x0E excluded by the Linux nvram driver, so CMOS 0x40 maps to /dev/nvram 0x32), dump CMOS[0x40] and CMOS[0x41], print verdict mapping checkpoint number → "highest kernel point reached." | `ls /dev/nvram` shows char device 10,144; chmod +x; structural test only (no actual read attempted pre-iron). |
+| ~late-PM | agnos `CHANGELOG.md [Unreleased]` Added entry for CMOS boot-log + correction note crediting Attempt 7's wrong-serial-advice context | doc-only |
+| pending | Re-flash USB (`scripts/install-usb.sh`), iron Attempt 8 on NUC AMD | screen shows step-7 line + (white stripe iff GOP detected) + reset cadence as before |
+| pending | After reset, machine returns to Arch → `sudo /home/macro/Repos/agnosticos/scripts/read-boot-log.sh` | Outputs CMOS[0x41] (0xAB iff kernel ran) and CMOS[0x40] (1-5, the last checkpoint hit). Verdict bisects fault to within ~30 bytes of shim code. |
+
+**Outcome:** FAIL (visual canary inconclusive). Persistent diagnostic
+channel now in place for Attempt 8; serial is no longer load-bearing.
+
+---
+
+## Carry-forward items (not blocking Attempt 8)
 
 - **aarch64 native boot test**: blocked on Pi SSH access. Cyrius
   5.11.30 patched the aarch64 emitter; structural verification

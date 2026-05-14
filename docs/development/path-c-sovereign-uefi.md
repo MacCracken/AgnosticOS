@@ -123,7 +123,7 @@ via tag-list (same idea as multiboot2 but our shape).
 
 struct agnos_boot_info {
     uint32_t magic;          // 0x41474E4F ('AGNO')  — sovereign magic, not 0x36D76289
-    uint32_t version;        // 1 for MVP. Bumped on layout-breaking changes.
+    uint32_t version;        // 2 (v1 had no inlined fb fields). Bumped on layout-breaking changes.
     uint32_t struct_size;    // sizeof(this struct including tag stream) for fwd-compat
     uint32_t flags;          // bit 0 = serial enabled, bit 1 = framebuffer present, ...
 
@@ -139,14 +139,26 @@ struct agnos_boot_info {
     uint64_t acpi_rsdp_phys; // RSDP pointer from UEFI config table (or 0)
     uint64_t efi_st_phys;    // UEFI SystemTable* (for runtime services post-ExitBootServices)
 
+    // Framebuffer — inlined (v2). Originally tag-stream type=1, but the
+    // agnos kernel canary reads fb_phys from raw asm at entry instruction
+    // #1, before stack setup and before any cyrius fn call. Walking a
+    // tag stream in raw asm is brutal; inlining at fixed offsets makes
+    // the canary 26 bytes total (see agnos boot_shim.cyr ELF64 path).
+    uint64_t fb_phys;        // physical address of linear framebuffer (0 if absent)
+    uint32_t fb_pitch;       // bytes per scanline (PixelsPerScanLine × 4 for 32 bpp)
+    uint32_t fb_width;       // pixels (HorizontalResolution)
+    uint32_t fb_height;      // pixels (VerticalResolution)
+    uint32_t fb_pixel_format;// 0 = RGB888x, 1 = BGR888x, 2 = bitmask, 3 = blt-only (no direct fb)
+    uint64_t _reserved_fb;   // alignment + future fb fields
+
     // Tag stream begins here (8-byte aligned), terminated by tag with type=0.
     // Tag header: { uint32_t type, uint32_t size }. Payload follows.
     // Reserved tag types:
     //   0 = END
-    //   1 = framebuffer (gop_mode_info_t)
     //   2 = boot_loader_name (UTF-8 string)
     //   3 = uefi_handle (handles we forward to the kernel for late use)
-    // Kernel walks until type==0.
+    // Tag type 1 (framebuffer) was reserved in v1 but is now inlined
+    // above — kernel walkers MUST NOT expect a fb tag in the stream.
     uint8_t tags[];
 };
 
