@@ -1,26 +1,29 @@
 #!/bin/bash
 # install-usb.sh — Provision or refresh a USB drive as an AGNOS boot device
 #
+# Path C: gnoboot at EFI/BOOT/BOOTX64.EFI + agnos kernel at /boot/agnos.
+# UEFI firmware loads gnoboot from the removable-boot path; gnoboot loads
+# the kernel via SimpleFileSystemProtocol and hands off via the sovereign
+# boot-info struct (RDI = &boot_info, magic 0x41474E4F='AGNO'). No GRUB.
+# Pre-1.30.0 multiboot2-via-GRUB shape lives in git history; see Path A
+# notes in docs/development/path-a-elf64-multiboot2.md (closed).
+#
 # Two modes:
 #
 #   sudo ./scripts/install-usb.sh /dev/sdX
-#     Full provision: wipes, GPT + 256MB FAT32 ESP, installs GRUB in EFI
-#     removable mode, copies kernel + initramfs, writes boot menu.
+#     Full provision: wipes, GPT + 256MB FAT32 ESP, copies gnoboot.efi
+#     + kernel + initramfs. No grub-install.
 #
 #   sudo ./scripts/install-usb.sh --update /dev/sdX
-#     Iteration refresh: mounts the existing ESP, overwrites the kernel
-#     and initramfs only, unmounts. No wipe, no re-grub. Use this after
-#     `cd ../agnos && sh scripts/build.sh` to push a freshly-built
-#     kernel onto a USB that was already provisioned once.
+#     Iteration refresh: mounts the existing ESP, overwrites gnoboot +
+#     kernel + initramfs, unmounts. No wipe. Use this after rebuilding
+#     gnoboot and/or agnos kernel locally.
 #
 # After either: reboot, F-key boot menu, select the USB.
 #
 # Note: this is a host-side bash script (orchestration of destructive
-# disk operations + grub-install — both need root). The Cyrius-native
-# install.cyr does the initramfs build that this script consumes.
-# Eventually this script's logic could fold into install.cyr behind a
-# --target-device flag, but for first-hardware-boot work the bash form
-# is direct and inspectable.
+# disk operations needs root). The Cyrius-native install.cyr does the
+# initramfs build that this script consumes.
 
 set -euo pipefail
 
@@ -36,7 +39,7 @@ DEV="${1:-}"
 if [[ -z "$DEV" ]]; then
     echo "Usage:"
     echo "  sudo $0 /dev/sdX             # full provision (wipes the device)"
-    echo "  sudo $0 --update /dev/sdX    # refresh kernel + initramfs only"
+    echo "  sudo $0 --update /dev/sdX    # refresh gnoboot + kernel + initramfs only"
     echo ""
     echo "Detect candidates:"
     lsblk -o NAME,SIZE,TYPE,MOUNTPOINTS,LABEL,MODEL | head -20
@@ -59,6 +62,7 @@ esac
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 KERNEL_SRC="${REPO_ROOT}/../agnos/build/agnos"
+GNOBOOT_SRC="${GNOBOOT_SRC:-${REPO_ROOT}/../gnoboot/build/BOOTX64.EFI}"
 INITRAMFS_SRC="${SCRIPT_DIR}/build/initramfs.cpio.gz"
 MOUNT_POINT="/mnt/agnos-usb"
 
@@ -70,13 +74,24 @@ if [[ ! -f "$KERNEL_SRC" ]]; then
     exit 1
 fi
 
+if [[ ! -f "$GNOBOOT_SRC" ]]; then
+    echo "ERROR: gnoboot binary not found at $GNOBOOT_SRC"
+    echo "  Build it first in the gnoboot repo:"
+    echo "    (cd ../gnoboot && CYRIUS_TARGET_EFI=1 cyrius build src/main.cyr build/BOOTX64.EFI)"
+    echo "  Or fetch the latest release:"
+    echo "    curl -fsSL https://github.com/MacCracken/gnoboot/releases/latest/download/BOOTX64.EFI \\"
+    echo "      -o ../gnoboot/build/BOOTX64.EFI"
+    echo "  Or override GNOBOOT_SRC=/path/to/BOOTX64.EFI on the command line."
+    exit 1
+fi
+
 if [[ ! -f "$INITRAMFS_SRC" ]]; then
     echo "ERROR: initramfs not found at $INITRAMFS_SRC"
     echo "  Build it first: cd $SCRIPT_DIR && ./build/install"
     exit 1
 fi
 
-# --- update mode (refresh kernel + initramfs only, no wipe) ---
+# --- update mode (refresh gnoboot + kernel + initramfs, no wipe) ---
 
 if [[ "$MODE" == "update" ]]; then
     if [[ ! -b "$PART" ]]; then
@@ -90,6 +105,7 @@ if [[ "$MODE" == "update" ]]; then
     lsblk -o NAME,SIZE,TYPE,MOUNTPOINTS,LABEL,MODEL "$DEV" 2>/dev/null || true
     echo ""
     echo "Files to install:"
+    echo "  gnoboot:   $GNOBOOT_SRC ($(stat -c%s "$GNOBOOT_SRC") bytes)"
     echo "  Kernel:    $KERNEL_SRC ($(stat -c%s "$KERNEL_SRC") bytes)"
     echo "  Initramfs: $INITRAMFS_SRC ($(stat -c%s "$INITRAMFS_SRC") bytes)"
     echo ""
@@ -102,21 +118,25 @@ if [[ "$MODE" == "update" ]]; then
         mount "$PART" "$MOUNT_POINT"
     fi
 
-    if [[ ! -d "${MOUNT_POINT}/boot/grub" ]]; then
-        echo "ERROR: $PART is mounted but has no /boot/grub — not a provisioned AGNOS USB."
-        echo "  Run full provision (without --update) first."
+    if [[ ! -d "${MOUNT_POINT}/EFI/BOOT" ]]; then
+        echo "ERROR: $PART is mounted but has no /EFI/BOOT — not a provisioned AGNOS USB"
+        echo "       (or it's a pre-1.30.0 GRUB-shape USB — re-provision without --update)."
         umount "$MOUNT_POINT" 2>/dev/null || true
         exit 1
     fi
 
+    OLD_GNOBOOT_BYTES=0
+    [[ -f "${MOUNT_POINT}/EFI/BOOT/BOOTX64.EFI" ]] && OLD_GNOBOOT_BYTES=$(stat -c%s "${MOUNT_POINT}/EFI/BOOT/BOOTX64.EFI")
     OLD_KERN_BYTES=0
     [[ -f "${MOUNT_POINT}/boot/agnos" ]] && OLD_KERN_BYTES=$(stat -c%s "${MOUNT_POINT}/boot/agnos")
     OLD_INIT_BYTES=0
     [[ -f "${MOUNT_POINT}/boot/initramfs.cpio.gz" ]] && OLD_INIT_BYTES=$(stat -c%s "${MOUNT_POINT}/boot/initramfs.cpio.gz")
 
-    echo "Refreshing /boot/agnos          ${OLD_KERN_BYTES} → $(stat -c%s "$KERNEL_SRC") bytes"
+    echo "Refreshing /EFI/BOOT/BOOTX64.EFI         ${OLD_GNOBOOT_BYTES} → $(stat -c%s "$GNOBOOT_SRC") bytes"
+    cp "$GNOBOOT_SRC" "${MOUNT_POINT}/EFI/BOOT/BOOTX64.EFI"
+    echo "Refreshing /boot/agnos                    ${OLD_KERN_BYTES} → $(stat -c%s "$KERNEL_SRC") bytes"
     cp "$KERNEL_SRC" "${MOUNT_POINT}/boot/agnos"
-    echo "Refreshing /boot/initramfs.cpio.gz  ${OLD_INIT_BYTES} → $(stat -c%s "$INITRAMFS_SRC") bytes"
+    echo "Refreshing /boot/initramfs.cpio.gz       ${OLD_INIT_BYTES} → $(stat -c%s "$INITRAMFS_SRC") bytes"
     cp "$INITRAMFS_SRC" "${MOUNT_POINT}/boot/initramfs.cpio.gz"
 
     echo "Unmounting and syncing..."
@@ -128,13 +148,14 @@ if [[ "$MODE" == "update" ]]; then
     echo "✓ AGNOS USB refreshed on $PART"
     echo "============================================================"
     echo ""
-    echo "Boot menu is unchanged — reboot and select the USB to test."
+    echo "No GRUB config to maintain — gnoboot reads /boot/agnos directly."
+    echo "Reboot and select the USB to test."
     exit 0
 fi
 
 # --- provision-mode preflight (tools only needed for full wipe path) ---
 
-for tool in parted mkfs.fat wipefs partprobe grub-install; do
+for tool in parted mkfs.fat wipefs partprobe; do
     if ! command -v "$tool" >/dev/null 2>&1; then
         echo "ERROR: required tool '$tool' not found"
         exit 1
@@ -143,7 +164,7 @@ done
 
 # --- confirmation ---
 
-echo "=== AGNOS USB Provisioning ==="
+echo "=== AGNOS USB Provisioning (Path C — gnoboot, no GRUB) ==="
 echo ""
 echo "Target device: $DEV"
 echo ""
@@ -153,11 +174,12 @@ echo ""
 udevadm info --query=property --name="$DEV" 2>/dev/null | grep -E "ID_BUS|ID_MODEL|ID_VENDOR" || true
 echo ""
 echo "Files to install:"
+echo "  gnoboot:   $GNOBOOT_SRC ($(stat -c%s "$GNOBOOT_SRC") bytes)"
 echo "  Kernel:    $KERNEL_SRC ($(stat -c%s "$KERNEL_SRC") bytes)"
 echo "  Initramfs: $INITRAMFS_SRC ($(stat -c%s "$INITRAMFS_SRC") bytes)"
 echo ""
 echo "*** THIS WILL WIPE ALL DATA ON $DEV ***"
-echo "  (For just refreshing the kernel/initramfs on a USB you've already"
+echo "  (For just refreshing gnoboot/kernel/initramfs on a USB you've already"
 echo "   provisioned once, re-run with --update — no wipe.)"
 echo ""
 read -r -p "Type 'YES' to proceed: " confirm
@@ -169,12 +191,12 @@ fi
 # --- 1. wipe ---
 
 echo ""
-echo "[1/7] Wiping existing partition table on $DEV..."
+echo "[1/6] Wiping existing partition table on $DEV..."
 wipefs -a "$DEV"
 
 # --- 2. partition ---
 
-echo "[2/7] Creating GPT layout (256MB FAT32 ESP + 999G unallocated)..."
+echo "[2/6] Creating GPT layout (256MB FAT32 ESP at 1MiB + rest unallocated)..."
 parted -s "$DEV" mklabel gpt
 parted -s "$DEV" mkpart AGNOS-BOOT fat32 1MiB 256MiB
 parted -s "$DEV" set 1 esp on
@@ -183,77 +205,27 @@ sleep 1
 
 # --- 3. format ---
 
-echo "[3/7] Formatting $PART as FAT32 (label AGNOSBOOT)..."
+echo "[3/6] Formatting $PART as FAT32 (label AGNOSBOOT)..."
 mkfs.fat -F32 -n AGNOSBOOT "$PART"
 
 # --- 4. mount ---
 
-echo "[4/7] Mounting $PART at $MOUNT_POINT..."
+echo "[4/6] Mounting $PART at $MOUNT_POINT..."
 mkdir -p "$MOUNT_POINT"
 mount "$PART" "$MOUNT_POINT"
 
-# --- 5. grub install ---
+# --- 5. copy gnoboot (UEFI removable-boot path) ---
 
-echo "[5/7] Installing GRUB (EFI removable mode, no NVRAM entry)..."
-grub-install \
-    --target=x86_64-efi \
-    --efi-directory="$MOUNT_POINT" \
-    --boot-directory="${MOUNT_POINT}/boot" \
-    --removable \
-    --no-nvram
+echo "[5/6] Copying gnoboot to EFI/BOOT/BOOTX64.EFI..."
+mkdir -p "${MOUNT_POINT}/EFI/BOOT"
+cp "$GNOBOOT_SRC" "${MOUNT_POINT}/EFI/BOOT/BOOTX64.EFI"
 
-# --- 6. copy AGNOS files ---
+# --- 6. copy AGNOS kernel + initramfs ---
 
-echo "[6/7] Copying AGNOS kernel + initramfs..."
+echo "[6/6] Copying AGNOS kernel + initramfs..."
+mkdir -p "${MOUNT_POINT}/boot"
 cp "$KERNEL_SRC" "${MOUNT_POINT}/boot/agnos"
 cp "$INITRAMFS_SRC" "${MOUNT_POINT}/boot/initramfs.cpio.gz"
-
-# --- 7. grub.cfg ---
-
-echo "[7/7] Writing GRUB config..."
-cat > "${MOUNT_POINT}/boot/grub/grub.cfg" <<'EOF'
-# Load EFI video drivers up front so multiboot2 can probe a mode.
-# Without this, multiboot2 fails with "no suitable video mode found"
-# on UEFI hardware that only exposes GOP/UGA (i.e. most modern boards).
-insmod all_video
-insmod efi_gop
-insmod efi_uga
-
-# Skip the graphics-mode switch at handoff — AGNOS uses VGA text /
-# serial, not a framebuffer, so a text payload is what the kernel
-# actually expects.
-set gfxpayload=text
-
-set timeout=3
-set default=0
-
-menuentry 'AGNOS — Closed Beta MVP (boot to shell)' {
-    insmod multiboot2
-    insmod gzio
-    set gfxpayload=text
-    multiboot2 /boot/agnos
-    module2    /boot/initramfs.cpio.gz
-    boot
-}
-
-menuentry 'AGNOS — verbose serial (ttyS0,115200)' {
-    insmod multiboot2
-    insmod gzio
-    set gfxpayload=text
-    multiboot2 /boot/agnos console=ttyS0,115200
-    module2    /boot/initramfs.cpio.gz
-    boot
-}
-
-menuentry 'AGNOS — kybernet harness mode (boot-test exit on phase 8)' {
-    insmod multiboot2
-    insmod gzio
-    set gfxpayload=text
-    multiboot2 /boot/agnos kybernet.harness=1
-    module2    /boot/initramfs.cpio.gz
-    boot
-}
-EOF
 
 # --- unmount + sync ---
 
@@ -270,16 +242,24 @@ echo "✓ AGNOS USB ready at $DEV"
 echo "============================================================"
 echo ""
 echo "Layout:"
-echo "  $PART   256MB  FAT32 ESP  (GRUB + kernel + initramfs)"
-echo "  unallocated  ~931GB  (reserved for future AGNOS data partition)"
+echo "  $PART   256MB  FAT32 ESP  (label AGNOSBOOT)"
+echo "    EFI/BOOT/BOOTX64.EFI    — gnoboot (UEFI removable-boot path)"
+echo "    boot/agnos              — AGNOS kernel (ELF64)"
+echo "    boot/initramfs.cpio.gz  — initramfs (consumed by kernel; not gnoboot v0.1.0)"
+echo "  unallocated  rest of device  (reserved for future AGNOS data partition)"
+echo ""
+echo "Boot path:"
+echo "  UEFI firmware → EFI/BOOT/BOOTX64.EFI (gnoboot) → /boot/agnos (kernel)"
+echo "  Handoff: RDI = &boot_info (magic 0x41474E4F='AGNO'), see path-c-sovereign-uefi.md"
 echo ""
 echo "Next steps:"
 echo "  1. Reboot"
 echo "  2. Hit your motherboard's boot-menu key (F8/F10/F12/Esc)"
 echo "  3. Select the USB drive"
-echo "  4. At GRUB, default boots straight to AGNOS in 3 seconds"
+echo "  4. gnoboot loads the kernel automatically (no menu in v0.1.0)"
 echo ""
-echo "Iteration loop (refresh kernel + initramfs without re-installing GRUB):"
-echo "  (cd ../agnos && sh scripts/build.sh)   # rebuild kernel"
-echo "  sudo $0 --update $DEV                  # push to USB"
+echo "Iteration loop (refresh without re-provisioning):"
+echo "  (cd ../gnoboot && CYRIUS_TARGET_EFI=1 cyrius build src/main.cyr build/BOOTX64.EFI)"
+echo "  (cd ../agnos && sh scripts/build.sh)"
+echo "  sudo $0 --update $DEV"
 echo ""
