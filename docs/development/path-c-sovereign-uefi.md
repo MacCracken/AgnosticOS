@@ -185,30 +185,33 @@ agent does not touch cyrius.
 
 Without this, gnoboot cannot be written. **Upstream blocker.**
 
-### Gnoboot (`/home/macro/Repos/gnoboot/` — to be created)
+### Gnoboot (`/home/macro/Repos/gnoboot/` — initialized 2026-05-13)
 
-New repo. Modules per § *gnoboot internals* above. Initial directory shape:
+Cyrius-native, GPL-3.0-only, semver. Current directory state:
 
 ```
 gnoboot/
-├── README.md
-├── LICENSE                 # GPL-3.0-only (matching AGNOS family)
-├── CHANGELOG.md
-├── VERSION                 # 0.1.0 to start (gnoboot uses semver, not CalVer)
-├── cyrius.cyml             # build manifest; cyrius pin once UEFI emit lands
+├── README.md               # ✓ status table + build + test + architecture
+├── LICENSE                 # ✓ GPL-3.0-only
+├── CHANGELOG.md            # ✓ Keep a Changelog; all work under [Unreleased] until v0.1.0 tag
+├── VERSION                 # ✓ 0.1.0 (will be the first official tag once Step 9 + Step 12 pass)
+├── cyrius.cyml             # ✓ pin = cyrius 5.11.49 (UEFI Application emit mode)
+├── .gitignore              # ✓ ignores /build/, editor cruft, secrets
+├── .github/workflows/
+│   ├── ci.yml              # ✓ build w/ CYRIUS_TARGET_EFI=1, structural + OVMF gates, artifact upload
+│   └── release.yml         # ✓ v?X.Y.Z tag trigger, CI-gated, BOOTX64.EFI + SHA256SUMS to GH release
 ├── src/
-│   ├── main.cyr            # efi_main entry
-│   ├── uefi.cyr            # UEFI protocol/struct defs
-│   ├── fs.cyr              # ESP read
-│   ├── elf.cyr             # ELF64 parse + LOAD
-│   ├── memmap.cyr          # GetMemoryMap + sovereign-struct memmap
-│   ├── handoff.cyr         # struct build + ExitBootServices + jmp
-│   └── console.cyr         # debug print
+│   ├── main.cyr            # ✓ Step 3 banner (kernel; + inline-asm walking ConOut)
+│   └── test.cyr            # placeholder (cyrius [build].test entry)
 ├── tests/
-│   └── ovmf_smoke.sh       # boot under QEMU+OVMF and verify serial output
-└── docs/
-    └── handoff-protocol.md # sovereign boot-info struct spec (authoritative)
+│   ├── verify_pe.sh        # ✓ fast structural gate (DOS magic / PE sig / Char / Subsystem / DllChar)
+│   └── ovmf_smoke.sh       # ✓ runtime gate (GPT/ESP/qemu+OVMF; cross-distro OVMF path probe)
+└── (future at Step 7) docs/handoff-protocol.md
 ```
+
+Modules per § *gnoboot internals* will grow under `src/` as Steps 4-7
+land. For Step 3 (current state), the entire bootloader fits in one
+inline-asm block — no fs/elf/memmap/handoff modules yet.
 
 ### Agnos (`/home/macro/Repos/agnos/`)
 
@@ -264,13 +267,18 @@ at the time of the shim swap, same as Path A had planned.
 | # | Step | Verification gate | Repo | Status |
 |---|---|---|---|---|
 | 0 | Cyrius issue filed describing UEFI-application emit | issue exists at `cyrius/docs/development/issues/2026-05-13-gnoboot-uefi-application-emit.md` | cyrius | ✓ Filed 2026-05-13 |
-| 1 | Cyrius implements `_TARGET_EFI_APPLICATION` per the issue | `programs/efi_probe.cyr` or similar boots under QEMU OVMF and prints to ConOut serial | cyrius | **BLOCKING** |
-| 2 | `gnoboot` repo created (locally); cyrius.cyml + README + LICENSE | `git init` (user does the commit) | gnoboot | pending |
-| 3 | gnoboot `src/console.cyr` + minimal `efi_main` that prints "gnoboot vX.Y.Z" to ConOut and waits | QEMU OVMF shows the banner | gnoboot | pending |
-| 4 | gnoboot `src/fs.cyr` — open ESP, read `/boot/agnos` into memory, print sha256 to console | QEMU OVMF: banner + matching sha256 vs `sha256sum agnos/build/agnos` | gnoboot | pending |
-| 5 | gnoboot `src/elf.cyr` — parse ELF64 header, walk program headers, AllocatePages + copy each PT_LOAD | QEMU OVMF: banner + "ELF parsed: entry=0x1000a8 N segments mapped" | gnoboot | pending |
+| 1 | Cyrius implements `_TARGET_EFI_APPLICATION` per the issue | `programs/efi_probe.cyr` boots under QEMU OVMF and prints to ConOut serial | cyrius | ✓ Landed 5.11.49 (3-slot arc: 5.11.47 emit + 5.11.48 structural gate + 5.11.49 RELOCS_STRIPPED fix + OVMF smoke gate in `check.sh`) |
+| 2 | `gnoboot` repo created (locally); cyrius.cyml + README + LICENSE | `git init` (user does the commit) | gnoboot | ✓ User-init'd 2026-05-13 |
+| 3 | gnoboot `src/main.cyr` — minimal `efi_main` that prints "gnoboot vX.Y.Z" to ConOut | QEMU OVMF shows the banner | gnoboot | ✓ 2026-05-13 — `tests/ovmf_smoke.sh PASS`; banner observed on ConOut between BdsDxe load and the fallback boot-manager menu. cyrius pin 5.11.47 → 5.11.49. Pattern: `kernel;` + inline-asm walking SystemTable→ConOut→OutputString (mirrors `efi_probe.cyr` — single-block, no DIR64 fixups needed at banner scale) |
+| 3.5 | gnoboot CI/release scaffolding — `tests/verify_pe.sh` (structural), `tests/ovmf_smoke.sh` (runtime), `.github/workflows/{ci,release}.yml`, CHANGELOG | local: both gates PASS; CI: structural + OVMF gates green on `ubuntu-latest` with the `ovmf parted mtools qemu-system-x86` package set; Release: `v0.1.0` tag (when ready) → GH release with `BOOTX64.EFI` + `gnoboot-0.1.0-x86_64-efi.efi` + `SHA256SUMS` | gnoboot | ✓ 2026-05-13 — agnos-style install pattern (canonical `install.sh` + post-install smoke); cross-distro OVMF path probing (Arch `edk2-ovmf` + Ubuntu `ovmf`); accepts both `vX.Y.Z` and `X.Y.Z` tag styles |
+| 4a | Infrastructure probe — *retrospectively a misread*: the printed "PASS" came from firmware-preserved RDX in the post-capture banner walk, not from the captured global. Step 4's disassembly proved the capture was a no-op — at top-level `kernel;` mode, `var X = expr;` is a global with deferred initializer, and cyrius emits the following asm BEFORE the `&expr` lea, so RAX is junk when the capture asm runs. The agnos shim's `var p = &foo; asm` register-capture pattern only works *inside a fn body*. | "step 4a probe ok" did print (PASS-as-displayed), but the displayed PASS was misleading | gnoboot | ⚠ 2026-05-13 — constraint logged in gnoboot CHANGELOG and applied to Step 4 (pure-asm rewrite) |
+| 4 | `bs->HandleProtocol(ImageHandle, &LoadedImageGuid, &out)` returns EFI_SUCCESS. Now in clean cyrius (post-5.11.52): `fn efi_main(handle, st)` convention, byte-array literal globals for UTF-16LE strings and the LoadedImage GUID, `fncall2`/`fncall3` for MS x64 firmware calls. Six-byte corrective save asm at end of top-level patches cyrius 5.11.52's REX-prefix bug in the auto-emitted entry save (filed `cyrius/docs/development/issues/2026-05-13-efi-main-trampoline-save-rex-wrong.md`). | QEMU OVMF: `PASS: "step 4: HandleProtocol(LoadedImage) = ok" observed on ConOut` | gnoboot | ✓ 2026-05-13 — clean cyrius code, ~90 lines for the whole gnoboot Step 4 (down from ~280 in the pure-asm Step 4) |
+| 5 | gnoboot `src/main.cyr` — open ESP via SimpleFileSystem, open `\boot\agnos`, read first 4 bytes, check ELF magic | QEMU OVMF: `PASS: "step 5: /boot/agnos magic = ELF" observed on ConOut` | gnoboot | ✓ 2026-05-13 — 5 firmware calls chained (HP×2 + OpenVolume + Open + Read), all clean cyrius (`fncall2`/`fncall3`/`fncall5`), no asm. `tests/ovmf_smoke.sh` extended to provision `\boot\agnos` on the test ESP from the agnos kernel build (or synthetic 4-byte stub). Cyrius 5.11.53 corrective-save asm removed — entry-save REX hotfix verified in disassembly. |
+| 5b | gnoboot — parse ELF64 header, walk program headers, AllocatePages + copy each PT_LOAD | QEMU OVMF: `PASS: "step 5b: kernel mapped at 0x100000 = ok" observed on ConOut` | gnoboot | ✓ 2026-05-13 — single PT_LOAD covering AGNOS kernel: AllocatePages(AllocateAddress, EfiLoaderData) at 0x100000, 78 pages (310 KB inc. BSS), Read 245 KB filesz directly into place. Verified ELF magic at load addr. |
+| 6 | gnoboot — GetMemoryMap into a 16 KB buffer; capture mm_key for ExitBootServices | QEMU OVMF: `PASS: "step 6: kernel @ 0x100000 + memmap = ok" observed on ConOut` | gnoboot | ✓ 2026-05-13 — single `bs->GetMemoryMap` call (`fncall5`), captures all 5 OUT params (`mm_size`, `mm_key`, `mm_dsz`, `mm_dver` + the buffer itself). 16 KB pre-allocated cyrius global holds ~400 descriptors of slack vs. OVMF's typical 30-80. |
 | 6 | gnoboot `src/memmap.cyr` — GetMemoryMap, dump entry count + total RAM | QEMU OVMF: prints memory map summary | gnoboot | pending |
-| 7 | gnoboot `src/handoff.cyr` — build sovereign struct, ExitBootServices, **jump to kernel entry** (with current agnos kernel that still expects MB2 — will fault, that's fine) | QEMU OVMF: kernel jumped to (any sign of life from the kernel side, even a fault) | gnoboot | pending |
+| 7 | gnoboot — build sovereign struct, ExitBootServices, **jump to kernel entry** with RDI = &boot_info | QEMU OVMF: `PASS: "AGNOS kernel v1.30.0" observed on ConOut` (kernel prints banner + 9 init lines through `Page tables: 1024MB mapped` post-EBS) | gnoboot | ✓ 2026-05-13 — gnoboot's MVP handoff verified end-to-end. Architecture: 80-byte sovereign struct (magic 0x41474E4F, version 1), GetMemoryMap×2 (initial + fresh-key), ExitBootServices, inline-asm jump with `mov rdi, &boot_info; mov eax, 0x1000A8; jmp rax`. Kernel-side stall past `Page tables` is a separate agnos investigation, documented in agnos's `docs/development/state.md`. |
+| 8 | Agnos shim swap MB2 → sovereign struct (cross-repo agnos edit) | agnos 1.30.0 builds clean; kernel reads `RDI` instead of `RBX` at entry; kernel boots through 10 init checkpoints under gnoboot Step 7 | agnos | ✓ 2026-05-13 — 6 edits in agnos repo: `mbi.cyr` asm byte 0x18→0x38 (mov [rax],rbx → mov [rax],rdi), fn rename `mbi_capture_rbx → boot_info_capture_rdi`, global rename `mb_info_ptr → boot_info_ptr`, boot_shim.cyr comments + call-site update, VERSION 1.29.1 → 1.30.0, cyrius pin 5.11.43 → 5.11.53. |
 | 8 | Agnos shim swap: replace MBI parse with sovereign struct read (RDI = &boot_info, magic check) | agnos kernel build still compiles; agnos `1.29.x → 1.30.0` bump | agnos | pending |
 | 9 | End-to-end QEMU OVMF: gnoboot → agnos kernel → scheduler + tier3 test serial output | clean serial trace through "=== done ===" | gnoboot + agnos + scripts | pending |
 | 10 | `scripts/install-usb.sh` — drop GRUB, copy gnoboot.efi into `/EFI/BOOT/` | `install-usb.sh` produces a USB with no `/boot/grub/`, just `/EFI/BOOT/BOOTX64.EFI` + `/boot/agnos` + initramfs | agnosticos | pending |
