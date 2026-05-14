@@ -220,6 +220,10 @@ fn main(): i64 {
     if (kcp == 19) { println("verdict (kernel): 10 hlts done (CP 0x13) — matches QEMU known-good cycle. Died between iter 10 and iter 25."); return 0; }
     if (kcp == 20) { println("verdict (kernel): 25 hlts done (CP 0x14) — past QEMU's break point. Died between iter 25 and loop end (CP 0x11)."); return 0; }
     if (kcp == 17) { println("verdict (kernel): post-scheduler idle loop COMPLETE (CP 0x11). All 50 hlts retired. Stall is post-loop."); return 0; }
+    if (kcp == 32) { println("verdict (kernel): CP 0x20 — entered test_proc_a (1st context switch in OK), died before its first serial_print. Improbable path — investigate iretq → user-proc entry."); return 0; }
+    if (kcp == 33) { println("verdict (kernel): CP 0x21 — test_proc_a's first serial_print done, first arch_wait did not return. Sub-case 1: timer IRQ not re-delivered post-iretq (PIC EOI / IF-flag / IDT)."); return 0; }
+    if (kcp == 34) { println("verdict (kernel): CP 0x22 — test_proc_a round-trip OK (hlt returned inside the user proc), stuck oscillating on test_proc_a. Sub-case 3a: sched_next never advances past proc 1."); return 0; }
+    if (kcp == 35) { println("verdict (kernel): CP 0x23 — sched rotated test_proc_a → test_proc_b OK. Scheduler is alive; proc 0 (kernel idle) starved by round-robin. Sub-case 3b: fix sched_next to include proc 0 OR mark proc 0 ready post-save_context."); return 0; }
     syscall(1, 1, "verdict (kernel): unexpected checkpoint ", 40);
     print_num(kcp);
     println(" — possibly stale CMOS.");
