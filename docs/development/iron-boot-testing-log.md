@@ -628,45 +628,114 @@ rule):**
 
 ---
 
-### Attempt 5 — pending (Path A build, NOT yet exercised on iron)
+### Attempt 5 — 2026-05-13 ~late-PM PDT → FAIL
 
-Pre-Diagnosis-2 framing (preserved). Direction had been confirmed by
-the 2026-05-13 GRUB-source diagnosis above. **Updated framing:** Path
-A's cyrius + agnos work landed, but Step 5b (QEMU OVMF) failed inside
-GRUB before any kernel byte executes. Going to iron with the current
-Path A build now would most likely reproduce the Attempt 3/4 reset
-exactly. Hold iron Attempt 5 until one of the resolution options
-above is chosen and implemented.
+**Pivot framing.** Path A (multiboot2 + GRUB-EFI) was abandoned
+between Attempt 4 prep and this run after the 2026-05-13 GRUB-source
+diagnosis (*Diagnosis 2* above) proved `grub_relocator64_efi_boot`
+writes to its own `.text` under strict-W^X UEFI — a GRUB-side bug
+not fixable in our timeline. Path C (sovereign UEFI bootloader,
+gnoboot) landed in its place: GRUB removed from the chain entirely,
+`gnoboot` loads agnos directly from the ESP and hands off via the
+sovereign-struct ABI (`RDI = &boot_info`, magic `0x41474E4F`). All
+12 path-C steps cleared QEMU OVMF (kernel boots through 17 init
+checkpoints to `Activating scheduler...`); Attempt 5 was the first
+exercise on iron. See `docs/development/path-c-sovereign-uefi.md`
+for the full pivot, and `[[project-grub-mb2-efi-wx-blocker]]` for
+the GRUB-side analysis.
 
-**Implementation scope** (preserved — original plan):
+**Original Path A scope** (retired with this attempt; preserved in
+git history pre-`a4055d1`). All four sub-items landed (cyrius
+`EMITELF64_KERNEL` in 5.11.43; agnos ELF64 shim wrapped in
+`#ifdef ELF64_KERNEL`; `scripts/install-usb.sh` MB1→MB2 switch;
+QEMU OVMF gate). The QEMU OVMF gate hit GRUB-side W^X relocator
+fault before any kernel byte executed — Path A bridge does not
+survive modern UEFI. Path C supersedes; no further Path A work
+planned.
 
-1. **Cyrius patch — new `EMITELF64_KERNEL`** in `src/backend/x86/fixup.cyr`
-   (sibling of existing `EMITELF_KERNEL` at line 664; references the
-   user-binary ELF64 emit at line 827 for size/layout patterns). Emits
-   ELF64 header (64-byte) + PH64 (56-byte) + EM_X86_64 + multiboot2
-   header (`0xE85250D6` + arch 0 + tags) + `MULTIBOOT_HEADER_TAG_ENTRY_ADDRESS_EFI64`.
-   ✓ Landed in cyrius 5.11.43.
-2. **agnos kernel shim rewrite** for long-mode entry. Expect
-   `RAX = 0x36d76289` (multiboot2 magic), `RBX = MBI ptr`, paging on,
-   GDT inherited from UEFI, 64-bit CS. Drop the 32-bit CR4 setup
-   (UEFI already configured CR4); drop stack-setup-in-32-bit-mode logic;
-   walk the MBI tags as 64-bit structures. Bump agnos to 1.30.0
-   (kernel ABI change — ELF32→ELF64). ✓ Drafted in agnos repo
-   (cyrius.cyml pinned to 5.11.43; build produces ELF64 251056-byte
-   kernel; shim wrapped in `#ifdef ELF64_KERNEL`).
-3. **scripts/install-usb.sh** — generated grub.cfg: `multiboot` → `multiboot2`,
-   `module` → `module2`. ✓ Landed 2026-05-13 in this repo.
-4. **QEMU OVMF UEFI test** — boot under emulated UEFI (not `-kernel`,
-   which uses Linux protocol). Exercises the same `grub_relocator64_efi_boot`
-   path iron will use. ✗ FAIL — see *QEMU OVMF gate* and *Diagnosis 2*
-   above. The path A bridge as drafted does not survive GRUB's
-   relocator under strict-W^X UEFI.
-5. **Iron Attempt 5** — full re-provision (not `--update`) with the
-   Path A USB. NUC AMD. **HOLD** pending Diagnosis-2 resolution.
+**Build under test** (Path C — gnoboot in the chain, no GRUB):
+
+| Artifact | Version / Size |
+|----------|----------------|
+| cyrius toolchain | 5.11.53 (per `gnoboot/cyrius.cyml` and `agnos/cyrius.cyml`) |
+| agnos kernel | 1.30.0 — `build/agnos` 251040 bytes (ELF64, single PT_LOAD at `p_paddr=0x100000`, `p_filesz=0x3d340`, `p_memsz=0x4d340`, entry `0x1000A8`) |
+| gnoboot | 0.1.0 pre-fix — `build/BOOTX64.EFI` (PE/COFF UEFI Application; subsystem 10 = `IMAGE_SUBSYSTEM_EFI_APPLICATION`) |
+| install-usb.sh | post-`a4055d1` (GRUB removed, gnoboot at `/EFI/BOOT/BOOTX64.EFI`) |
+
+**Symptom (verbatim from NUC AMD display):**
+
+```
+Press <DEL> to enter Setup. <F7> to Boot Menu.gnoboot 0.1 step 7: Jumping to kernel...
+```
+
+(Firmware splash didn't `\r\n`-terminate, so gnoboot's `msg_pre`
+started on the same character cell as `.gnoboot` continuation —
+cosmetic. `msg_pre` does end with `\r\n` (`gnoboot/src/main.cyr:36`),
+so any kernel-side ConOut text would have started on a fresh line —
+but ConOut is dead post-EBS and the kernel uses UART instead, which
+has no display path on this NUC.) Then **blank screen**, then
+**machine resets and restarts the firmware splash**. No serial
+cable attached — kernel-side UART output (`COM1 / 0x3F8`) not
+captured.
+
+**Significance:** gnoboot itself reached step 7 — that means all
+five firmware-call chains succeeded (HandleProtocol×2, OpenVolume,
+Open, Read, ELF magic check, AllocatePages, segment load with
+verify, GetMemoryMap). No `EBS fail` print → ExitBootServices
+succeeded. Failure is **post-jump**, in the kernel's first
+instructions or first BSS reference. Reset (not hang) is consistent
+with triple-fault (no kernel IDT installed yet, so #PF / #GP escalate
+through #DF to triple-fault → CPU INIT → firmware restart). This is
+the **furthest any iron attempt has reached** — Attempts 1-4 reset
+inside GRUB before the kernel was loaded.
+
+**Diagnosis (no iron serial; reasoning from code + QEMU divergence):**
+
+QEMU OVMF + Path C boots the kernel through 17 init checkpoints to
+`Activating scheduler...` (verified in `agnos/docs/development/state.md`
+§ *Open investigation — timer-driven context switch under UEFI+gnoboot*).
+Same gnoboot binary, same kernel binary; iron silently triple-faults
+before any kernel UART output. Two divergence points:
+
+1. **BSS gap not zeroed (high confidence, deterministic gnoboot bug).**
+   `gnoboot/src/main.cyr:191-193` reads `p_filesz` (245 KB) into
+   `p_paddr` but never zeroes `[p_filesz, p_memsz)` (64 KB BSS gap).
+   UEFI 2.x § 7.2: `AllocatePages` returns undefined memory contents.
+   QEMU OVMF tends to return zero on fresh allocations (masked the
+   bug through gnoboot Step 5b/7 QEMU PASS); real firmware leaves
+   POST/EFI scratch. Kernel `.bss` globals read garbage on iron and
+   triple-fault at first reference. Deterministic divergence that
+   alone explains QEMU-works / iron-resets.
+2. **MemoryType 2 (EfiLoaderData) on stricter firmware (medium
+   confidence, insurance).** `gnoboot/src/main.cyr:185` allocates
+   kernel pages as `EfiLoaderData`. Strict-W^X firmware NX-marks
+   data-typed allocations; the inherited post-EBS page tables still
+   carry that NX, so `jmp 0x1000A8` into a LoaderData page #PFs,
+   IDT absent, triple-fault. OVMF runs from LoaderData pages
+   regardless (state.md confirms full kernel boot to `Activating
+   scheduler...`), so this isn't load-bearing under OVMF — but AMD
+   Zen firmware is a different vendor and may enforce. Cheap to fix
+   alongside #1.
+
+**Repair steps (gnoboot edits; no agnos / cyrius / install-usb changes):**
+
+| Approx PDT | Action | Verification gate |
+|-----------|--------|-------------------|
+| ~late-PM | `gnoboot/src/main.cyr`: insert byte-loop `store8(p_paddr+i, 0)` over `[p_filesz, p_memsz)` after segment-read + ELF-magic verify, before initial GetMemoryMap | `cyrius build` clean; `tests/ovmf_smoke.sh` (EXPECT="Activating scheduler") still PASS |
+| ~late-PM | `gnoboot/src/main.cyr:185`: `AllocatePages` MemoryType `2 (EfiLoaderData)` → `1 (EfiLoaderCode)` | Same — both gates green; PE/COFF structurally unchanged (`tests/verify_pe.sh`) |
+| ~late-PM | `gnoboot/CHANGELOG.md [Unreleased]` entry with diagnosis pointer to this section | doc-only |
+| pending | Re-flash USB (`scripts/install-usb.sh`), iron Attempt 6 on NUC AMD | screen shows step-7 line + either kernel banner / further progress / new failure mode |
+
+**Outcome:** FAIL. Furthest iron progress on the campaign — gnoboot
+delivered the kernel, kernel triple-faulted on its first BSS read or
+NX'd page. Both fixes bundle into Attempt 6; if Attempt 6 still
+resets, next bisect needs a **USB-to-TTL serial cable on the NUC's
+COM1 header** (the diagnostic recommended since Attempt 4 — at that
+point the kernel is running but invisible).
 
 ---
 
-## Carry-forward items (not blocking Attempt 5)
+## Carry-forward items (not blocking Attempt 6)
 
 - **aarch64 native boot test**: blocked on Pi SSH access. Cyrius
   5.11.30 patched the aarch64 emitter; structural verification
