@@ -1234,6 +1234,145 @@ now confirmed on iron and isolated to a known fix domain.
 
 ---
 
+### Attempt 12 — 2026-05-14 ~PDT → FAIL (CP 0x10; QEMU+UEFI hypothesis re-validated, dec-tree interpretation corrected)
+
+**Build under test** (Attempt-11 plan applied — three in-loop CMOS
+checkpoints added to the scheduler idle loop; gnoboot unchanged):
+
+| Artifact | Version / Size |
+|----------|----------------|
+| cyrius toolchain | 5.11.54 (bumped from 5.11.53 to pick up the read-boot-log build clean) |
+| agnos kernel | 1.30.0 + Attempt-11 in-loop bisector. `build/agnos` = **251,456 bytes** (+144 over Attempt 11) ELF64 multiboot2, entry `0x1000a8`. Three new `if (idle_count == N)` blocks at `main.cyr:303-314` emitting CP 0x12/0x13/0x14 at iter 1/10/25. |
+| gnoboot | 0.1.0 unchanged from Attempts 9-11 — `build/BOOTX64.EFI` = 35,328 bytes |
+| `scripts/read-boot-log.sh` | Cyrius `read-boot-log` rebuilt with verdicts for kcp 0x12/0x13/0x14/0x11; 27,080 bytes. |
+
+**CMOS readout (post-reset):**
+
+```
+CMOS[0x53] gnoboot magic    = 0xcd  (decimal 205)
+CMOS[0x52] gnoboot checkpt  = 0x05  (decimal 5)
+CMOS[0x51] kernel  magic    = 0xab  (decimal 171)
+CMOS[0x50] kernel  checkpt  = 0x10  (decimal 16)
+
+verdict (kernel): scheduler armed (CP 0x10) — kernel init COMPLETE. Stall is post-init, before first hlt return (CP 0x12).
+```
+
+**Diagnosis — dec-tree interpretation was wrong; fault is exactly the QEMU+UEFI test_proc hypothesis on iter 0.**
+
+Re-reading `main.cyr:271-302` carefully shows the Attempt-11 decision
+tree's "CP 0x10 = widens fix domain beyond test_proc" reading does not
+hold up:
+
+1. **`sti` works.** Line 272 executes `sti`; CP 0x0F at line 278 was
+   skipped only because Attempt 12's bisector overlays at 0x10/0x12-0x14
+   replaced the prior layered scheme — but the path through line 278 is
+   the same. The next checkpoint downstream (0x10 at line 296) fired,
+   confirming everything between 272 and 296 ran.
+2. **Timer interrupts deliver and `hlt` wakes.** Lines 281-282 call
+   `arch_wait()` *twice* **before** `sched_active = 1` (line 288).
+   `do_context_switch` exits early when `sched_active == 0` (sched.cyr:94),
+   so those two ISRs are pure tick-counter + EOI + iretq. CP 0x10 firing
+   downstream of them proves both hlts returned.
+3. **The first hlt that fails is the one inside the scheduler loop**
+   (line 302), which is also the first hlt with `sched_active == 1`.
+   That's not the timer/IRQ path widening — that's exactly the
+   QEMU+UEFI test_proc hypothesis manifesting at *iter 0* instead of
+   iter <10.
+
+**Why iter 0 on iron vs ~10 in QEMU.** Trace through what happens on
+the first `sched_active==1` timer ISR:
+
+- ISR pushes 9 caller-saved regs (`pic.cyr:46-91`).
+- `timer_handler` → `do_context_switch(rsp)` (sched_active is now 1).
+- `sched_next()` picks proc 1 (`test_proc_a`, state=1 ready).
+- `proc_save_context(0, rsp)` snapshots the kernel's hlt-resumption state
+  into proc 0's slot.
+- `proc_restore_context(1, rsp)` overwrites the ISR stack frame with
+  `test_proc_a`'s state: RIP=&test_proc_a, RSP=0x814000, CS=0x08,
+  RFLAGS=0x200, all GPRs zeroed.
+- iretq → control transfers to `test_proc_a`.
+
+Now look at `kernel/user/test_procs.cyr:6-12`:
+
+```cyrius
+fn test_proc_a() {
+    if (0 == 1) {           # dead code — branch never taken
+        serial_print("A", 1);
+        arch_wait();
+    }
+    return 0;
+}
+```
+
+The body is dead-code-eliminated; the function is effectively just a
+prologue + `return 0`. Execution:
+
+- prologue: `push rbp; mov rbp, rsp` → RSP=0x813FF8, RBP=0x813FF8
+- body: empty (the `if (0 == 1)` is unreachable)
+- epilogue: `mov rsp, rbp; pop rbp; ret` → RSP=0x814000
+- `ret` pops `[0x814000]` as the return address
+
+What's at 0x814000? The `vmm_alloc_at(0x810000)` call at main.cyr:248
+maps a 2MB huge page covering [0x800000, 0xA00000) (vmm.cyr:11-22
+forces the 2MB bit), so the address *is* mapped — that's why this isn't
+a stack page fault. But the underlying physical page is whatever
+`pmm_alloc()` handed back, and that memory is uninitialized firmware
+scratch. Most likely zero → `ret 0x0` → unmapped instruction fetch →
+triple fault → reset. (Even if non-zero, the chance of landing on
+valid code is effectively zero.)
+
+In QEMU under `-kernel`, `pmm_alloc` returned a page whose 2MB-aligned
+container happened to contain a value at offset 0x14000 that survived
+~10 iterations of the same return-to-garbage churn before triple-faulting
+— different memory contents, different break point. iron + UEFI +
+gnoboot gives us a freshly-handed-off region where the value triple-faults
+on iter 0.
+
+**The dec tree's flaw.** It treated `arch_wait()` as if the *user code*
+could observe whether the hlt returned: "CP 0x12 = first hlt returned,
+CP 0x10 = it didn't." But the timer ISR doesn't return to the kernel —
+when `sched_active==1` it *jumps to test_proc_a*, which dies before any
+post-hlt code can run. CP 0x12 is unreachable not because the hlt
+hangs, but because the post-hlt instruction stream is no longer the
+kernel's.
+
+**Fault domain is identical to QEMU+UEFI's, just narrower.** Three
+independent runs (QEMU `-kernel`, QEMU+UEFI+gnoboot, iron+UEFI+gnoboot)
+all triple-fault on `test_proc_a`'s `ret`-to-garbage. iron breaks
+fastest because its initial memory contents are most adversarial.
+state.md fix (a) — "make `test_proc_a/b` real busy-loops in the default
+build" — is exactly correct; we just don't need any further iron data
+before applying it.
+
+**Repair steps (Attempt-13 plan — apply state.md fix (a), the real busy-loop):**
+
+| Approx PDT | Action | Verification gate |
+|-----------|--------|-------------------|
+| 2026-05-14 | `agnos/kernel/user/test_procs.cyr` — change `if (0 == 1)` → `while (1 == 1)` in both `test_proc_a` and `test_proc_b`. This makes the functions actual busy-loops (`serial_print` + `arch_wait` indefinitely), so `ret` is never reached and the return-to-garbage triple fault goes away. The `bench.sh`-applied patch is being inlined into source as the default build. Note this changes the kernel's behavior under microbenchmarks too — bench.sh now needs the *inverse* patch (or to be retired); flagging for the perf-bench sweep. (DONE) | `sh scripts/build.sh` clean (cyrius 5.11.54); `build/agnos` 251,456 → **251,472 bytes** (+16, the two `jmp` back-edges replacing the dead `if` branches). multiboot2 (ELF64) OK, entry `0x1000a8`. |
+| 2026-05-14 | `agnosticos/scripts/src/read-boot-log.cyr` — tighten the kcp==16 verdict to point at CP 0x12 as the *expected* next gate now that the test_proc bug is fixed. (Optional cosmetic; the existing verdict is already correct interpretation.) | `cyrius build` clean. |
+| pending | Re-flash USB + iron Attempt 13 on NUC AMD | post-reset `read-boot-log.sh` should show kernel CP advancing past 0x10 — CP 0x12 (first hlt round-trip in busy-loop), CP 0x13 (10 iter), CP 0x14 (25 iter), or CP 0x11 (loop completed). Any of these is a strict improvement; CP 0x11 is the closed-beta gate's next milestone. |
+| queued | Bench-discipline followup: `scripts/bench.sh` previously patched `if (0 == 1)` → `while (1 == 1)` at build time. With the fix inlined into source, bench.sh's patch is now a no-op (or worse, double-patches). Audit + retire or invert it. | bench.sh dry-run on the new source is a no-op. |
+| queued for next round | Cyrius toolchain bump (agnos/cyrius.cyml, agnosticos/scripts/cyrius.cyml) from 5.11.53/54 → next stable. Unblocks the read-boot-log `vec_get` LSP diagnostic. | post-bump: `cyrius build` clean on both repos. |
+
+**Outcome:** FAIL — *but* the failure is fully diagnosed, the fault site
+is byte-localized (test_procs.cyr:6-12, the dead-code branch), and the
+fix is a 2-line edit. The Attempt-11 dec-tree interpretation of CP 0x10
+was the only thing that "widened" the fix domain; corrected reading
+keeps the domain exactly where state.md placed it.
+
+**Process note — dec-tree reasoning trap.** The Attempt-11 dec tree
+mapped CP values to fault hypotheses based on *when in the loop* the
+break occurred, implicitly assuming the loop instructions are reachable
+post-hlt. That assumption fails when `sched_active==1` redirects control
+out of the kernel entirely. Future bisector schemes through
+context-switch boundaries should distinguish "instruction stream is
+still the kernel's" from "instruction stream is now a different proc's"
+— a CP write *before* the hlt and *after* the hlt are not the same kind
+of evidence once a scheduler is involved. Worth a one-paragraph note in
+the carry-forward / next-bisector design.
+
+---
+
 ## Carry-forward items (not blocking Attempt 12)
 
 - **aarch64 native boot test**: blocked on Pi SSH access. Cyrius
