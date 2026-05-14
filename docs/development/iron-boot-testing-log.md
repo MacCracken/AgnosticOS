@@ -1351,8 +1351,8 @@ before applying it.
 | 2026-05-14 | `agnos/kernel/user/test_procs.cyr` — change `if (0 == 1)` → `while (1 == 1)` in both `test_proc_a` and `test_proc_b`. This makes the functions actual busy-loops (`serial_print` + `arch_wait` indefinitely), so `ret` is never reached and the return-to-garbage triple fault goes away. The `bench.sh`-applied patch is being inlined into source as the default build. Note this changes the kernel's behavior under microbenchmarks too — bench.sh now needs the *inverse* patch (or to be retired); flagging for the perf-bench sweep. (DONE) | `sh scripts/build.sh` clean (cyrius 5.11.54); `build/agnos` 251,456 → **251,472 bytes** (+16, the two `jmp` back-edges replacing the dead `if` branches). multiboot2 (ELF64) OK, entry `0x1000a8`. |
 | 2026-05-14 | `agnosticos/scripts/src/read-boot-log.cyr` — tighten the kcp==16 verdict to point at CP 0x12 as the *expected* next gate now that the test_proc bug is fixed. (Optional cosmetic; the existing verdict is already correct interpretation.) | `cyrius build` clean. |
 | pending | Re-flash USB + iron Attempt 13 on NUC AMD | post-reset `read-boot-log.sh` should show kernel CP advancing past 0x10 — CP 0x12 (first hlt round-trip in busy-loop), CP 0x13 (10 iter), CP 0x14 (25 iter), or CP 0x11 (loop completed). Any of these is a strict improvement; CP 0x11 is the closed-beta gate's next milestone. |
-| queued | Bench-discipline followup: `scripts/bench.sh` previously patched `if (0 == 1)` → `while (1 == 1)` at build time. With the fix inlined into source, bench.sh's patch is now a no-op (or worse, double-patches). Audit + retire or invert it. | bench.sh dry-run on the new source is a no-op. |
-| queued for next round | Cyrius toolchain bump (agnos/cyrius.cyml, agnosticos/scripts/cyrius.cyml) from 5.11.53/54 → next stable. Unblocks the read-boot-log `vec_get` LSP diagnostic. | post-bump: `cyrius build` clean on both repos. |
+| 2026-05-14 | Bench-discipline followup: `agnos/scripts/bench.sh` (DONE — same-day cleanup). Audited bench.sh's sed; corrected reading is that it patches `while (1 == 1)` → `if (0 == 1)` (the opposite direction from what the old test_procs comment claimed). Pre-Attempt-12 the pattern didn't match the source's `if (0 == 1)`, so the sed was a silent no-op. Post-fix the sed *does* match and converts busy-loops to no-ops for bench builds — which is what bench actually wants (so the scheduler doesn't keep test_procs alive past `arch_halt`). Added a match-count guard (`grep -c 'while (1 == 1) {'` must equal 2) before the sed so a future test_procs reshape fails bench loudly. Cross-linked the bench.sh ↔ test_procs.cyr coupling in both files' comments. | `grep -c 'while (1 == 1) {' kernel/user/test_procs.cyr` returns 2; kernel build remains clean at 251,472 bytes. bench.sh now fails loudly if the contract diverges. |
+| 2026-05-14 | Cyrius toolchain bump → **5.11.55** in both `agnos/cyrius.cyml` (was 5.11.53) and `agnosticos/scripts/cyrius.cyml` (was **5.10.44** — the Attempt-12 log's "5.11.54" for this file was wrong; the agnosticos pin had been carrying a much wider gap). Both manifests now read `cyrius = "5.11.55"`. (DONE) | `sh scripts/build.sh` on agnos: green, 251,472 bytes (byte-identical to Attempt 13). `cyrius build src/boot.cyr build/boot` on agnosticos/scripts: green. **Caveat:** both build outputs still emit `version-pinned /home/macro/.cyrius/versions/5.11.54/lib/` despite the manifest pin being 5.11.55, even though 5.11.55 IS installed under `~/.cyrius/versions/5.11.55/`. The wrapper binary itself reports `cyrius 5.11.25` and appears to cap resolution at 5.11.54. This is a cyrius-wrapper question, not a manifest question — pin is correct, resolution is upstream. Flagged for the cyrius repo, not blocking iron Attempt 14. |
 
 **Outcome:** FAIL — *but* the failure is fully diagnosed, the fault site
 is byte-localized (test_procs.cyr:6-12, the dead-code branch), and the
@@ -1373,7 +1373,124 @@ the carry-forward / next-bisector design.
 
 ---
 
-## Carry-forward items (not blocking Attempt 12)
+### Attempt 13 — 2026-05-14 ~PDT → PARTIAL SUCCESS (no triple-fault; new stall at CP 0x10 → 0x12 gap, fault domain narrowed to context-switch round-trip)
+
+**Build under test** (Attempt-12 plan applied — test_procs converted
+to real busy-loops; gnoboot unchanged; cyrius unchanged from 5.11.54):
+
+| Artifact | Version / Size |
+|----------|----------------|
+| cyrius toolchain | 5.11.54 (unchanged) |
+| agnos kernel | 1.30.0 + busy-loop test_procs + Attempt-11 in-loop bisector. `build/agnos` = **251,472 bytes** (+16 over Attempt 12) ELF64 multiboot2, entry `0x1000a8`. `test_procs.cyr:14-28` now `while (1 == 1) { serial_print; arch_wait; }` in both `test_proc_a` and `test_proc_b`. |
+| gnoboot | 0.1.0 unchanged from Attempts 9-12 — `build/BOOTX64.EFI` = 35,328 bytes |
+| `scripts/read-boot-log.sh` | unchanged from Attempt 12 (verdict text still says "before first hlt return (CP 0x12)") |
+
+**Symptom delta vs Attempt 12:**
+
+| | Attempt 12 | Attempt 13 |
+|---|---|---|
+| End state | Semi-hard reset (forced hard power cycle) | **Soft lockup — canary + gnoboot framebuffer message persist** |
+| Required intervention | Power cycle to recover | Power cycle still required (no autoreboot) |
+| Triple-fault evidence | Yes (reset = CPU shutdown path) | **No** (CPU is alive in some state; framebuffer not corrupted) |
+
+**CMOS readout (post-reset):**
+
+```
+CMOS[0x53] gnoboot magic    = 0xcd  (decimal 205)
+CMOS[0x52] gnoboot checkpt  = 0x05  (decimal 5)
+CMOS[0x51] kernel  magic    = 0xab  (decimal 171)
+CMOS[0x50] kernel  checkpt  = 0x10  (decimal 16)
+
+verdict (kernel): scheduler armed (CP 0x10) — kernel init COMPLETE. Stall is post-init, before first hlt return (CP 0x12).
+```
+
+**Diagnosis — return-to-garbage hypothesis fully validated; new fault is in the kernel-side round-trip back to proc 0.**
+
+The reset → soft-lockup transition is the cleanest possible confirmation
+that Attempt 12's diagnosis was correct. With `test_proc_a`/`test_proc_b`
+as real busy-loops, the `ret`-to-uninitialized-stack path that
+triple-faulted on iter 0 is no longer reachable; the CPU is now executing
+*something* (no triple fault, framebuffer intact), but the kernel's idle
+loop is not resuming far enough to fire CP 0x12. The fault domain has
+shrunk from "anywhere in the scheduler / context-switch path" to one of
+three specific sub-cases:
+
+1. **test_proc_a's first hlt never returns** — timer IRQ not re-delivered
+   after iretq into ring-0 test_proc_a. Likely PIC EOI / IF-flag / IDT
+   issue downstream of the first context switch. CPU is alive but
+   permanently halted in test_proc_a's first `arch_wait()`.
+2. **Round-trip context switch back to proc 0 corrupts state** — second
+   timer ISR fires inside test_proc_a, sched_next() rotates through
+   test_proc_b → wraps to proc 0, but `proc_restore_context(0, ...)`
+   sets up an RIP/RSP that diverges from the kernel's saved hlt-resume
+   state. Resumes into something that isn't the idle loop's CP-0x12
+   block.
+3. **`sched_next()` never picks proc 0** — proc 0's state was set to
+   ready (state=1) on the first context-switch out, but if it stays at
+   state=2 (running) or 0 (free) somewhere in the round-robin's view,
+   the rotation oscillates only between test_proc_a ↔ test_proc_b
+   indefinitely. CP 0x12 unreachable not because of a fault but because
+   the kernel idle loop is starved.
+
+**Why this isn't visible in QEMU.** QEMU under `-kernel` skipped gnoboot
+entirely (different memory layout, no UEFI runtime services, simpler PIC
+path); the previous QEMU "10 iter then break" was a *different* bug
+(the ret-to-garbage from a non-zero scratch word). With busy-loops
+applied, QEMU also stops triple-faulting — but no one has re-run QEMU
+yet with the busy-loop variant to see whether it now stalls at CP 0x10
+or progresses to CP 0x12. **That's the cheapest next datum** —
+distinguishes "iron-only context-switch bug" from "iron + QEMU
+shared bug exposed once the louder ret-to-garbage stopped masking it."
+
+**Why "lockup with canary" is itself diagnostic.** The canary + gnoboot
+message persisting means:
+
+- Framebuffer memory is intact (no random kernel writes corrupted it)
+- The CPU is not in a triple-fault → reset loop
+- The CPU is either (a) halted on `hlt` with interrupts not arriving,
+  or (b) busy-looping somewhere (the test_procs are designed to busy-loop
+  forever via `serial_print` + `arch_wait`)
+
+If serial output is observable (the test_procs spam "A" and "B" chars
+forever), case (a) is partial: at least one test_proc executed at
+least one iteration before halting. If serial is silent, the very first
+context switch faulted before reaching test_proc_a's serial_print.
+**Serial capture is the second cheap datum.**
+
+**Repair steps (Attempt-14 plan — instrument test_procs themselves; QEMU re-run):**
+
+| Approx PDT | Action | Verification gate |
+|-----------|--------|-------------------|
+| pending | Re-run QEMU `-kernel` with the Attempt-14 build. Compare CMOS / serial against iron. | QEMU also stalls at CP 0x10 → bug is in context-switch path itself, not iron-specific. QEMU advances to CP 0x12 → bug is iron-specific (PIC/LAPIC/IDT timing under UEFI handoff). |
+| pending | Capture serial output during iron boot if possible (UART pinout / FTDI). If "A"/"B" chars stream → test_procs are running, kernel idle is starved. If serial silent post-CP-0x10 → first context switch faulted before test_proc_a's first instruction completed. | Direct evidence of which sub-case (1/2/3 above) is in play. |
+| 2026-05-14 | Add CMOS CPs *inside* `test_procs.cyr`: CP 0x20 at top of `test_proc_a` (pre-loop), CP 0x21 after first `serial_print` (guarded by `iter == 0`), CP 0x22 after first `arch_wait` (guarded by `iter == 0`), CP 0x23 at top of `test_proc_b` (proves round-robin reached proc 2). Inline asm blocks match the kernel's existing CMOS-write pattern. (DONE) | `sh scripts/build.sh` green; `build/agnos` = **251,520 bytes** (+48 over Attempt 13: four CP-write blocks × ~12 bytes incl. loop guards); multiboot2 ELF64 OK, entry `0x1000a8`. `grep -c 'while (1 == 1) {' kernel/user/test_procs.cyr` = 2 — bench.sh's match-count guard still satisfied. |
+| pending | Re-flash USB + iron Attempt 14 on NUC AMD | post-reset `read-boot-log.sh` shows kcp ∈ {**0x10**, **0x20**, **0x21**, **0x22**, **0x23**}: **0x10** = first context switch faulted before test_proc_a's first instruction (sub-case 2 most likely — proc_restore_context for proc 1 set up bad RIP/RSP); **0x20** = into test_proc_a OK, serial_print faulted (improbable — serial path is byte-tested); **0x21** = first serial_print OK, first hlt-in-proc didn't return (sub-case 1 — timer IRQ not redelivered post-iretq into ring-0 user proc); **0x22** = first round-trip in test_proc_a OK, stuck oscillating on test_proc_a (sub-case 3a — sched_next never advances past proc 1, maybe state machine wedged); **0x23** = sched rotated test_proc_a → test_proc_b OK, stuck oscillating between user procs (sub-case 3b — proc 0 starved, never returns to kernel idle, CP 0x12 unreachable by design). 0x22 or 0x23 = strict scheduler-alive progress; 0x10 or 0x20-0x21 = fault inside the first context-switch round-trip. |
+| pending | If sub-case (1) is confirmed (hlt doesn't return inside test_proc_a): inspect timer ISR EOI path (`pic.cyr`) for whether EOI is sent before iretq into user-context, and confirm IF flag is set in saved RFLAGS for test_procs at `proc_init` time. | `grep -n EOI` on the timer ISR; `proc_init` for test_procs sets RFLAGS=0x202 (IF=1) or equivalent. |
+| pending | If sub-case (3) is confirmed (sched starves proc 0): adjust `sched_next` to include the current proc in the rotation only when no other ready proc exists OR mark proc 0 as ready explicitly post-save_context. | Round-robin demo: kernel idle resumes after one full cycle through test_procs. |
+
+**Outcome:** PARTIAL SUCCESS. The Attempt-12 busy-loop fix did exactly
+what it was supposed to do — eliminated the return-to-garbage triple
+fault. The fact that we're now staring at a *different* stall, with the
+framebuffer alive and no reset, is unambiguously forward motion. The
+remaining fault domain is one of three concrete, well-localized
+sub-cases inside the context-switch round-trip, and Attempt 14's three
+parallel datums (QEMU re-run, serial capture, in-test_proc CMOS
+bisector) can disambiguate among them in one boot cycle.
+
+**Process note — "no longer resets" is its own data class.** The
+prior attempts' reset behavior was so consistent that it became the
+default interpretation of "boot failed." A soft-lockup with intact
+framebuffer is a qualitatively different failure mode and should be
+called out as such in future entries — it tells us the CPU is alive
+(no triple fault), the kernel didn't corrupt memory it owned (no
+random framebuffer writes), and the fault is in control flow rather
+than state corruption. Worth distinguishing in the verdict text of
+`read-boot-log.cyr` going forward — "stall" vs "reset" vs "lockup"
+are not synonyms.
+
+---
+
+## Carry-forward items (not blocking Attempt 14)
 
 - **aarch64 native boot test**: blocked on Pi SSH access. Cyrius
   5.11.30 patched the aarch64 emitter; structural verification
