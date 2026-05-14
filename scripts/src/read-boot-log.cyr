@@ -215,7 +215,11 @@ fn main(): i64 {
     if (kcp == 13) { println("verdict (kernel): SYSCALL + stack canary up, died before proc creation (CP 14)."); return 0; }
     if (kcp == 14) { println("verdict (kernel): test procs created, died before 'sti' (CP 15)."); return 0; }
     if (kcp == 15) { println("verdict (kernel): interrupts enabled, died before scheduler activation (CP 16)."); return 0; }
-    if (kcp == 16) { println("verdict (kernel): scheduler armed — kernel init COMPLETE. Any later stall is post-init."); return 0; }
+    if (kcp == 16) { println("verdict (kernel): scheduler armed (CP 0x10) — kernel init COMPLETE. Stall is post-init, before first hlt return (CP 0x12)."); return 0; }
+    if (kcp == 18) { println("verdict (kernel): first hlt returned (CP 0x12) — timer ISR + 1st context switch OK. Died between iter 1 and iter 10."); return 0; }
+    if (kcp == 19) { println("verdict (kernel): 10 hlts done (CP 0x13) — matches QEMU known-good cycle. Died between iter 10 and iter 25."); return 0; }
+    if (kcp == 20) { println("verdict (kernel): 25 hlts done (CP 0x14) — past QEMU's break point. Died between iter 25 and loop end (CP 0x11)."); return 0; }
+    if (kcp == 17) { println("verdict (kernel): post-scheduler idle loop COMPLETE (CP 0x11). All 50 hlts retired. Stall is post-loop."); return 0; }
     syscall(1, 1, "verdict (kernel): unexpected checkpoint ", 40);
     print_num(kcp);
     println(" — possibly stale CMOS.");

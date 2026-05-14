@@ -1125,7 +1125,116 @@ This run is a *regression* of the boot-pipeline plumbing (wrong file on USB), no
 
 ---
 
-## Carry-forward items (not blocking Attempt 11)
+### Attempt 11 — 2026-05-14 ~PDT → PARTIAL SUCCESS (kernel init COMPLETE on iron; first positive framebuffer signal)
+
+**Build under test** (Attempt-10 repair applied — fresh ELF64 kernel + unchanged
+gnoboot, both re-flashed via `install-usb.sh --update`):
+
+| Artifact | Version / Size |
+|----------|----------------|
+| cyrius toolchain | 5.11.53 (unchanged) |
+| agnos kernel | 1.30.0 + Attempt-8 Fixed entries + Attempt-9 SMP gate. `build/agnos` = **251,312 bytes** ELF64 multiboot2, entry `0x100a8`. Carries `ce745c7` + `d2baa10` (smp.cyr SIPI gate) + `0c78acd` (gdt fixes). |
+| gnoboot | 0.1.0 unchanged from Attempts 9/10 — `build/BOOTX64.EFI` = 35,328 bytes, source at `3a33059 updates for CMOS` |
+| `scripts/read-boot-log.sh` | unchanged — Cyrius `read-boot-log` binary, CMOS 0x50-0x53 |
+
+**Symptom — first new visual signal in the iron-boot arc.** Boot cadence
+diverged from the Attempt-6-through-9 "step-7 line → blank → reset" pattern:
+**white canary stripe painted at top-left of screen** (the 256-pixel paint
+from `boot_shim.cyr:200-206`'s ELF64-shim asm canary, conditional on
+`[rdi+0x48]` non-null). Stripe persisted briefly, then standard reset cadence.
+
+**CMOS readout (post-reset):**
+
+```
+CMOS[0x53] gnoboot magic    = 0xcd  (decimal 205)
+CMOS[0x52] gnoboot checkpt  = 0x05  (decimal 5)
+CMOS[0x51] kernel  magic    = 0xab  (decimal 171)
+CMOS[0x50] kernel  checkpt  = 0x10  (decimal 16)
+
+verdict (kernel): scheduler armed — kernel init COMPLETE. Any later stall is post-init.
+```
+
+**Verdict — MVP gate cleared at the kernel-init layer.**
+
+- gnoboot CP 0x05 → all 5 pre-jump checkpoints reached, ELF64 mapping +
+  `jmp rax` handoff clean. Attempt-10 stub-kernel regression confirmed
+  resolved.
+- kernel magic `0xAB` → ELF64 shim entry, COM1 init, `boot_info_capture_rdi`
+  all OK on this *current-build* kernel (not stale residue this time —
+  the gnoboot CP is fresh-current at 0x05, and kernel CP advancement
+  matches the committed source).
+- kernel CP **0x10** = `agnos/kernel/core/main.cyr:296` — written
+  immediately after `sched_active = 1`. Kernel walked the full
+  init chain: opening `serial_println` pair → `gdt_init` → `tss_init`
+  (Attempt-8 ltr-slot fix held) → `idt_init` → `pic_init` → `apic_init`
+  → `apic_timer_init` → `smp_start_aps` (SIPI loops gated per Attempt 9)
+  → `pt_init` → `pmm_init` → `vmm_init` → `heap_init` → `dev_init` /
+  `acpi_init` / `pci_scan` → `vfs_init` → `syscall_init` → proc creation
+  → `sti` → scheduler activation. **Every Attempt-8/9 fix held
+  simultaneously.**
+- **Canary stripe painting is the first positive framebuffer signal
+  on iron.** The boot_shim canary's null-check on `[rdi+0x48]`
+  (fb_phys from gnoboot's GOP capture) found a non-null pointer AND
+  the kernel-side asm wrote 256 white pixels successfully. This
+  retroactively flips Attempt 7's Case-A diagnosis: framebuffer **is**
+  reachable from kernel-side under UEFI+gnoboot+ELF64 on this Zen iron.
+  GOP capture and the boot-info v2 fb fields work end-to-end on the
+  real firmware path.
+- did NOT reach CP 0x11 (`main.cyr:309` — written after `sched_active = 0`,
+  i.e. after the 50-iteration `while (idle_count < 50) { arch_wait(); }`
+  loop completes). Kernel resets between scheduler arm and post-loop
+  CP write.
+
+**Significance.** Three independent pieces of evidence converge on
+the same fault site as the QEMU+UEFI investigation already documented
+in `agnos/docs/development/state.md` § *timer-driven context switch
+under UEFI+gnoboot*:
+
+1. iron CMOS bisector pins kernel-side fault to the post-`sched_active=1`
+   idle loop (between CP 0x10 and CP 0x11);
+2. QEMU+UEFI investigation (2026-05-13) showed timer-context-switch
+   cycle stops after ~10 iterations under gnoboot's pre-handoff
+   memory layout — a latent agnos kernel bug exposed by gnoboot's
+   different page-table/stack contents vs. the legacy `-kernel`
+   path;
+3. iron now reproduces the exact same failure mode independently
+   (different firmware, different memory, same outcome).
+
+The investigation handoff in agnos `state.md` proposed three concrete
+fix paths — (a) make `test_proc_a/b` real busy-loops in the default
+build, (b) wrap test_proc fns with a busy loop in `proc_create_full`,
+(c) switch to dedicated kernel threads. Iron Attempt 11 confirms the
+hypothesis on real hardware; one of those fixes plus a finer
+post-`sched_active=1` bisector (CP 0x11a/b/c around `arch_wait()`,
+schedule entry, first IRQ0 tick, context-switch return) should
+either close the issue or pinpoint exactly which iteration breaks.
+
+**This is the AGNOS MVP closed-beta gate at the kernel-init layer.**
+All 17 init checkpoints pass on Zen iron. The remaining work for
+boot-to-shell on hardware is post-init: scheduler dispatching to a
+runnable user task (kybernet PID 1 / agnoshi).
+
+**Repair steps (Attempt-12 plan — scheduler-loop bisector ONLY, fix deferred):**
+
+Bisector-first discipline: a blind `test_proc` patch is non-information-bearing. Iron is the only place we can confirm whether the QEMU "10 hlts then break" pattern reproduces on Zen, or whether iron breaks at a different iteration (which would widen the fix domain). One reflash to know.
+
+| Approx PDT | Action | Verification gate |
+|-----------|--------|-------------------|
+| 2026-05-14 | `agnos/kernel/core/main.cyr` — add three `if (idle_count == N)` blocks inside the `while (idle_count < 50)` idle loop, each emitting a CMOS write: CP 0x12 after first `arch_wait()` returns (iter 1), CP 0x13 after 10 iterations (matches QEMU's known-good count under gnoboot), CP 0x14 after 25 iterations. Pattern matches the existing CP 0x10 / CP 0x11 asm-block style. (DONE) | `sh scripts/build.sh` clean (cyrius 5.11.54); `build/agnos` 251,312 → **251,456 bytes** (+144, ≈48 bytes per `if`+asm block including RBP-relative load + cmp + je). multiboot2 (ELF64) OK, entry `0x1000a8`. |
+| 2026-05-14 | `agnosticos/scripts/src/read-boot-log.cyr` — add verdicts for kcp 18/19/20 (CP 0x12/0x13/0x14) plus a new kcp==17 verdict (loop completed, post-loop stall). Tightened the kcp==16 verdict to point at CP 0x12 as the next-expected gate. (DONE) | `cyrius build src/read-boot-log.cyr build/read-boot-log` clean; `strings build/read-boot-log \| grep "CP 0x1[234]"` returns three new verdicts. Binary 27,080 bytes. |
+| pending | Re-flash USB (`sudo scripts/install-usb.sh /dev/sdX --update`) + iron Attempt 12 on NUC AMD | post-reset `read-boot-log.sh` decision tree: **CP 0x10** = first hlt didn't return at all (timer ISR or first context switch broken — biggest finding, widens fix domain beyond `test_proc`); **CP 0x12** = first round-trip OK, breaks before iter 10 (consistent with `test_proc` stack-garbage at small iteration count); **CP 0x13** = matches QEMU exactly (10 hlts then break); **CP 0x14** = breaks after iter 25 (different from QEMU, fault is later in cycle); **CP 0x11** = full 50 iterations completed, scheduler loop is fine and stall is post-loop (would invalidate the entire `test_proc` hypothesis). |
+| deferred | Apply `test_procs.cyr` `if (0 == 1)` → `while (1 == 1)` patch (or one of the three state.md fixes), if Attempt 12 result confirms the QEMU pattern reproduces on iron. Holding the fix until iron data tells us whether it's actually the right fix. | — |
+| queued for next round | Bump consumer `cyrius.cyml` toolchain pins (`agnos/cyrius.cyml`, `agnosticos/scripts/cyrius.cyml`) from 5.11.53/54 → 5.11.55. Should clean the `vec_get` LSP diagnostic on `read-boot-log.cyr` and the bare-file LSP noise generally. Language-side change is in the cyrius repo, not touched here. | post-bump: `cyrius build` clean on both; LSP diagnostics on `read-boot-log.cyr` reduce. |
+
+**Outcome:** PARTIAL SUCCESS. First attempt where every code-under-test
+fix held simultaneously, kernel reached `Activating scheduler...`, AND
+delivered a positive framebuffer signal (canary stripe). Remaining
+fault is the previously-documented post-init scheduler-loop issue,
+now confirmed on iron and isolated to a known fix domain.
+
+---
+
+## Carry-forward items (not blocking Attempt 12)
 
 - **aarch64 native boot test**: blocked on Pi SSH access. Cyrius
   5.11.30 patched the aarch64 emitter; structural verification
