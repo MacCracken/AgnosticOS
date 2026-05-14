@@ -1,0 +1,223 @@
+# read-boot-log.cyr — dump the AGNOS Path-C boot checkpoint trail
+# from CMOS scratch RAM via direct port I/O.
+#
+# The Linux /dev/nvram driver rejects every read with -EIO when the
+# BIOS's CMOS checksum doesn't match its historical convention (very
+# common on modern UEFI hardware — first seen on archaemenid, the
+# AMD Beelink SER, 2026-05-13). We sidestep the driver entirely:
+# iopl(3) grants ring-3 port I/O, then we talk to the CMOS hardware
+# pair (0x70 = index, 0x71 = data) ourselves.
+#
+# CMOS trail (battery-backed, survives the reset that follows a
+# triple-fault). Slots shifted +0x10 on 2026-05-14 (was 0x40-0x43)
+# after archaemenid BIOS was observed clobbering 0x42/0x43/0x44 on
+# every cold boot; the 0x50-0x7F range is virgin on this hardware.
+#
+#     CMOS[0x50] = kernel checkpoint  (1..N)   — boot_shim + core/main
+#     CMOS[0x51] = kernel magic       (0xAB)   — set at boot_shim entry
+#     CMOS[0x52] = gnoboot checkpoint (1..5)
+#     CMOS[0x53] = gnoboot magic      (0xCD)   — set at efi_main entry
+#
+# Iron has no serial wiring (single-machine dev setup, archaemenid IS
+# the iron-boot target); CMOS is the only post-mortem signal channel.
+#
+# Sources:
+#   gnoboot/src/main.cyr                       — CMOS[0x42]/[0x43] writes
+#   agnos/kernel/arch/x86_64/boot_shim.cyr     — CMOS[0x40]/[0x41] writes (CPs 1-5)
+#   agnos/kernel/core/main.cyr                 — CMOS[0x40] late-init (CPs 6-16)
+#   agnosticos/docs/development/path-c-sovereign-uefi.md
+#
+# Build:    cyrius build src/read-boot-log.cyr build/read-boot-log
+# Run:      sudo ./build/read-boot-log
+
+include "lib/string.cyr"
+include "lib/fmt.cyr"
+include "lib/args.cyr"
+
+# Read one CMOS byte. Caller must hold iopl(3) (CAP_SYS_RAWIO).
+#
+# Encoding details (so the next person can verify):
+#   - First param `cmos_off` lives at [rbp - 0x08] per Cyrius ABI;
+#     we read only its low byte into AL.
+#   - First local `val` lives at [rbp - 0x10]; we write the result there.
+#   - OUT 0x70 / IN 0x71 use the immediate-port form (ports < 256),
+#     so DX is left untouched.
+fn cmos_read(cmos_off: i64): i64 {
+    var val = 0;
+    asm {
+        # mov al, byte [rbp - 0x08]   ; low byte of cmos_off → AL
+        0x8A; 0x45; 0xF8;
+        # out 0x70, al                ; select CMOS register
+        0xE6; 0x70;
+        # in al, 0x71                 ; read CMOS data byte
+        0xE4; 0x71;
+        # movzx eax, al               ; zero-extend (upper 32 of RAX cleared)
+        0x0F; 0xB6; 0xC0;
+        # mov [rbp - 0x10], rax       ; store to local `val`
+        0x48; 0x89; 0x45; 0xF0;
+    }
+    return val;
+}
+
+fn print_cmos_line(label, b) {
+    syscall(1, 1, label, strlen(label));
+    syscall(1, 1, "0x", 2);
+    fmt_byte(b);
+    syscall(1, 1, "  (decimal ", 11);
+    print_num(b);
+    syscall(1, 1, ")\n", 2);
+    return 0;
+}
+
+# Dump CMOS bytes 0x0E-0x7F in a hex-grid layout. RTC bytes 0x00-0x0D
+# are deliberately skipped: reading them while the RTC is updating
+# returns garbage, and they're not where any checkpoint signal lives.
+# Used to discover which CMOS slots the BIOS leaves untouched (i.e.
+# which bytes are safe to use as a boot-log signal channel on this
+# specific hardware).
+fn cmos_dump() {
+    println("CMOS dump (0x0E-0x7F, RTC region 0x00-0x0D skipped):");
+    println("");
+    println("       +0 +1 +2 +3  +4 +5 +6 +7  +8 +9 +A +B  +C +D +E +F");
+    var row = 0;
+    while (row < 8) {
+        var base = row * 16;
+        # Row header: "0xNN  "
+        syscall(1, 1, "  0x", 4);
+        fmt_byte(base);
+        syscall(1, 1, "  ", 2);
+        var col = 0;
+        while (col < 16) {
+            var off = base + col;
+            if (off < 14) {
+                # RTC region — skip with placeholder
+                syscall(1, 1, "-- ", 3);
+            } else {
+                var b = cmos_read(off);
+                fmt_byte(b);
+                syscall(1, 1, " ", 1);
+            }
+            col = col + 1;
+            # extra space between 4-byte groups
+            if (col == 4)  { syscall(1, 1, " ", 1); }
+            if (col == 8)  { syscall(1, 1, " ", 1); }
+            if (col == 12) { syscall(1, 1, " ", 1); }
+        }
+        syscall(1, 1, "\n", 1);
+        row = row + 1;
+    }
+    println("");
+    println("  signal slots in current build:");
+    println("    0x50 = kernel checkpoint, 0x51 = kernel magic (0xAB)");
+    println("    0x52 = gnoboot checkpoint, 0x53 = gnoboot magic (0xCD)");
+    println("  (pre-2026-05-14: 0x40-0x43; moved after BIOS clobber found on archaemenid)");
+    println("");
+    println("  rule of thumb: bytes that are 0x00 OR 0xFF across multiple cold");
+    println("  boots are likely safe. Bytes that hold small consecutive values");
+    println("  or persist non-trivial state are probably BIOS-managed — move");
+    println("  signal slots elsewhere if 0x50-0x53 are not in the safe set.");
+    return 0;
+}
+
+fn main(): i64 {
+    args_init();
+    var dump_mode = 0;
+    var i = 1;
+    while (i < argc()) {
+        var arg = argv(i);
+        if (streq(arg, "--dump") == 1) { dump_mode = 1; }
+        elif (streq(arg, "-h") == 1) {
+            println("Usage: read-boot-log [--dump]");
+            println("  default  print 4 checkpoint bytes + verdict");
+            println("  --dump   print full CMOS 0x0E-0x7F hex grid");
+            return 0;
+        }
+        elif (streq(arg, "--help") == 1) {
+            println("Usage: read-boot-log [--dump]");
+            println("  default  print 4 checkpoint bytes + verdict");
+            println("  --dump   print full CMOS 0x0E-0x7F hex grid");
+            return 0;
+        }
+        i = i + 1;
+    }
+
+    # iopl(3) — grant ring-3 port I/O. EPERM if not root / no CAP_SYS_RAWIO.
+    var rc = syscall(172, 3);
+    if (rc != 0) {
+        println("error: iopl(3) failed — run with sudo (need CAP_SYS_RAWIO).");
+        return 1;
+    }
+
+    if (dump_mode == 1) {
+        cmos_dump();
+        return 0;
+    }
+
+    var gmagic = cmos_read(83);  # 0x53
+    var gcp    = cmos_read(82);  # 0x52
+    var kmagic = cmos_read(81);  # 0x51
+    var kcp    = cmos_read(80);  # 0x50
+
+    print_cmos_line("CMOS[0x53] gnoboot magic    = ", gmagic);
+    print_cmos_line("CMOS[0x52] gnoboot checkpt  = ", gcp);
+    print_cmos_line("CMOS[0x51] kernel  magic    = ", kmagic);
+    print_cmos_line("CMOS[0x50] kernel  checkpt  = ", kcp);
+    syscall(1, 1, "\n", 1);
+
+    # --- Verdict layer 1: did gnoboot launch at all? ---
+    if (gmagic != 0xCD) {
+        println("verdict: gnoboot never launched (CMOS[0x53] != 0xCD).");
+        println("  UEFI firmware rejected BOOTX64.EFI, or the boot order didn't");
+        println("  pick the AGNOS USB. Check BIOS boot menu + ESP layout.");
+        println("  (If CMOS is fresh / never written, both magics will be 0x00.)");
+        return 0;
+    }
+
+    # --- Verdict layer 2: did gnoboot reach handoff? ---
+    if (gcp == 1) { println("verdict (gnoboot): efi_main entered but died before locating the ESP."); return 0; }
+    if (gcp == 2) { println("verdict (gnoboot): located ESP but died before reading + verifying /boot/agnos."); return 0; }
+    if (gcp == 3) { println("verdict (gnoboot): mapped kernel ELF but died before GetMemoryMap / pre-EBS."); return 0; }
+    if (gcp == 4) { println("verdict (gnoboot): reached pre-EBS but ExitBootServices itself failed (likely invalid mm_key)."); return 0; }
+    if (gcp != 5) {
+        syscall(1, 1, "verdict (gnoboot): undefined checkpoint ", 40);
+        print_num(gcp);
+        println(" — possibly stale CMOS.");
+        return 0;
+    }
+
+    # --- Verdict layer 3: did kernel start? ---
+    if (kmagic != 0xAB) {
+        println("verdict: gnoboot completed handoff (CP 5) but the kernel's first");
+        println("  instruction never wrote the magic byte at CMOS[0x51].");
+        println("  Possibilities:");
+        println("    - jmp to 0x1000A8 went somewhere unmapped (page fault, no IDT).");
+        println("    - kernel ELF wasn't at 0x1000A8 (wrong entry point).");
+        println("    - first boot_shim instruction faulted (very unlikely — it's a CMOS write).");
+        return 0;
+    }
+
+    # --- Verdict layer 4: where did kernel stall? ---
+    if (kcp == 1)  { println("verdict (kernel): entry reached (instr 1), died before visual canary (CP 2)."); return 0; }
+    if (kcp == 2)  { println("verdict (kernel): canary ran, died before stack setup (CP 3)."); return 0; }
+    if (kcp == 3)  { println("verdict (kernel): stack set up, died before COM1 UART init (CP 4)."); return 0; }
+    if (kcp == 4)  { println("verdict (kernel): COM1 init done, died inside boot_info_capture_rdi (CP 5)."); return 0; }
+    if (kcp == 5)  { println("verdict (kernel): reached top-level main.cyr, died before gdt/tss/idt init (CP 6)."); return 0; }
+    if (kcp == 6)  { println("verdict (kernel): GDT/TSS/IDT loaded, died before APIC/timer init (CP 7)."); return 0; }
+    if (kcp == 7)  { println("verdict (kernel): APIC + timer live, died before pt_init (CP 8)."); return 0; }
+    if (kcp == 8)  { println("verdict (kernel): page tables built, died before pmm_init (CP 9). Historical RDRAND stall."); return 0; }
+    if (kcp == 9)  { println("verdict (kernel): PMM up, died before heap_init (CP 10)."); return 0; }
+    if (kcp == 10) { println("verdict (kernel): heap up, died before dev_init / acpi_init / pci_scan (CP 11)."); return 0; }
+    if (kcp == 11) { println("verdict (kernel): ACPI + PCI enumerated, died before vfs_init (CP 12)."); return 0; }
+    if (kcp == 12) { println("verdict (kernel): VFS up, died before syscall_init / stack_canary (CP 13)."); return 0; }
+    if (kcp == 13) { println("verdict (kernel): SYSCALL + stack canary up, died before proc creation (CP 14)."); return 0; }
+    if (kcp == 14) { println("verdict (kernel): test procs created, died before 'sti' (CP 15)."); return 0; }
+    if (kcp == 15) { println("verdict (kernel): interrupts enabled, died before scheduler activation (CP 16)."); return 0; }
+    if (kcp == 16) { println("verdict (kernel): scheduler armed — kernel init COMPLETE. Any later stall is post-init."); return 0; }
+    syscall(1, 1, "verdict (kernel): unexpected checkpoint ", 40);
+    print_num(kcp);
+    println(" — possibly stale CMOS.");
+    return 0;
+}
+
+var exit_code = main();
+syscall(60, exit_code);
