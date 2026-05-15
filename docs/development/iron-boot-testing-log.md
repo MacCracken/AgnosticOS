@@ -2719,13 +2719,156 @@ Implementation: two-line `outb(0x70, slot); outb(0x71, val)` pair per stamp, cal
 
 ---
 
-### Attempt 23 — pending iron burn
+### Attempt 23 — 2026-05-15 → PMM ruled out (all 12 stamps = 0xaf)
 
-Repair (J) carries. Outcome interpretation table above. The mem-iso block above the kernel-CR3 restore stays unchanged from Attempt 22; only `proc.cyr`'s `proc_create_address_space` gains 12 CMOS stamps. Visual ladder unchanged. Sole diagnostic carrier remains the kcp+CMOS readout.
+Build under test:
+
+| Artifact | Version / Size |
+|----------|----------------|
+| cyrius toolchain | 5.11.55 pinned (manifests). |
+| agnos kernel | 1.30.1 candidate + Repair (J) — `build/agnos` = **254,752 bytes** ELF64 multiboot2, entry `0x1000a8`. |
+| gnoboot | 0.1.0 unchanged |
+| `scripts/build/read-boot-log` | Rebuilt — 12 new PMM-stamp slot reads + smoking-gun interpretation block; binary **38,344 bytes**. |
+
+**CMOS readout (post-reset, user-reported):**
+
+```
+CMOS[0x50] kernel checkpt = 0x68
+CMOS[0x56..0x5B] AS1 pmm_alloc bytes = 0xaf, 0xaf, 0xaf, 0xaf, 0xaf, 0xaf
+CMOS[0x5C..0x61] AS2 pmm_alloc bytes = 0xaf, 0xaf, 0xaf, 0xaf, 0xaf, 0xaf
+```
+
+**Headline diagnostic — PMM ruled out.** All 12 stamps read `0xaf` (byte 2 of `(addr >> 16) & 0xFF` → phys ≈ 0xaf0000, ~11 MB). Every page returned by `pmm_alloc` was well above the 2-MB kernel-reserved watermark and far above the [0x1000..0x3FFF] kernel-PT range. Smoking gun #1 (PMM hands out a kernel-PT page → `memset(addr, 0, 4096)` zeros the kernel PML4 in place) is **falsified**. Triage shifts to direct PML4 corruption hypotheses (suspect #2 — KPTI tail write at `proc.cyr:212` — or a different bug class entirely, e.g. flags torn at init).
+
+kcp=0x68 unchanged from Attempt 22 — the kernel still reaches "post second AS1 round-trip" and faults on the `mov rax, 0x1000 / mov cr3, rax` restore.
 
 ---
 
-## Carry-forward items (not blocking Attempt 23)
+### Repair (K) for Attempt 24 — 7 PML4 health stamps across mem-iso
+
+Landed 2026-05-15 in `agnos/kernel/core/main.cyr`. 7 single-byte CMOS stamps at slots **0x62..0x68**, each reading byte 0 of phys 0x1000 (the kernel PML4[0]'s low byte) at successive checkpoints through the mem-iso block. Pure port-I/O — no behavior change.
+
+| Slot | Site |
+|---|---|
+| 0x62 | Entering mem-iso, pre-AS work |
+| 0x63 | Post AS1 + AS2 `proc_create_address_space` |
+| 0x64 | Post `proc_map_page` x2 |
+| 0x65 | Post first `cr3_load(as1)` |
+| 0x66 | Post first AS1 SMAP round-trip |
+| 0x67 | Post AS2 SMAP round-trip |
+| 0x68 | Post second AS1 round-trip (last quiet point pre-CR3-restore) |
+
+**Stamp encoding** — byte 0 of PML4[0]:
+
+- `0x07` → P|RW|US, entry points to PDPT @ 0x2000 — **healthy**.
+- `0x00` → entry zeroed — corruption pinned between this slot and the prior one.
+- other → entry **rewritten** with non-canonical flags — flag-tear bug class.
+
+Pre-bound outcomes:
+
+| Repair-K readout | Diagnosis |
+|---|---|
+| All 7 slots read `0x07` | PML4 healthy throughout; cr3-restore #PF is NOT direct PML4 corruption. Premise inverts — Repair (L) needs a #PF handler dumping CR2 / error code. |
+| First slot reading `0x00` at index N | Corruption window pinned between slot (N-1) and slot N. Triage the code in that window. |
+| Persistent non-zero, non-0x07 value | Flag-tear bug class — entry never initialized correctly. Audit the init site. |
+
+**Build verification:**
+
+| Step | Result |
+|------|--------|
+| `sh scripts/build.sh` (agnos) | OK |
+| `build/agnos` size | **254,848 bytes** (+96 from Attempt 23: 7 × ~14-byte asm blocks) |
+| multiboot2 (ELF64) / entry | OK / `0x1000a8` (unchanged) |
+| `cyrius build` for read-boot-log | OK — gains 7 new slot reads + interpretation block; `timer_isr[]` headroom unchanged at 1 byte |
+
+---
+
+### Attempt 24 — 2026-05-15 → PML4[0] = 0x04 throughout (Path C `pt_init` bug)
+
+Build under test:
+
+| Artifact | Version / Size |
+|----------|----------------|
+| cyrius toolchain | 5.11.55 pinned. |
+| agnos kernel | 1.30.1 candidate + Repair (J) + Repair (K) — `build/agnos` = **254,848 bytes**. |
+| gnoboot | 0.1.0 unchanged. |
+| `scripts/build/read-boot-log` | Rebuilt with 7 new PML4 slot verdicts. |
+
+**CMOS readout (post-reset, user-reported):**
+
+```
+CMOS[0x50] kernel checkpt              = 0x68
+CMOS[0x54] CR4 byte 2 post cr3(as1)    = 0x30
+CMOS[0x55] CR4 byte 2 pre-stac         = 0x30
+CMOS[0x56..0x61] AS1+AS2 pmm bytes     = 0x74 (all 12; clean, ≥ 0x200000)
+CMOS[0x62..0x68] PML4[0] byte 0        = 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04
+```
+
+**Headline diagnostic — PML4[0] reads `0x04` at every checkpoint, including the very first stamp ("entering mem-iso, pre-AS work").** This is the third (unenumerated) bucket: not 0x00 (dynamic zeroing), not 0x07 (healthy), but a persistent flag-tear value present *before any mem-iso code runs*. PMM is clean (PMM stamps re-confirmed at 0x74). Repair (K)'s premise was "find the corruption window" — there is no window, the entry was wrong at boot.
+
+**Root cause pinned to `kernel/arch/x86_64/paging.cyr:pt_init`:**
+
+```cyrius
+var pml4e = load64(0x1000);
+store64(0x1000, pml4e | 0x04);     # PML4[0] |= US
+var pdpte = load64(0x2000);
+store64(0x2000, pdpte | 0x04);     # PDPT[0] |= US
+```
+
+This OR-in-US pattern is a **Path A artifact**. The legacy multiboot path ran `boot_shim.cyr:65` (`mov [0x1000], 0x2003`) first, pre-seeding `PML4[0] = 0x2003` (P|RW → PDPT @ 0x2000); `pt_init` only had to upgrade to `0x2007` (add US for ring-3).
+
+**Path C bypasses boot_shim's PT setup entirely.** Per `boot_shim.cyr:171`: "Page tables — UEFI's identity map is fine." gnoboot inherits UEFI's PT and hands control to the kernel without ever touching phys 0x1000. By the time `pt_init` runs, phys 0x1000 is cold (zero). The OR yields `0 | 0x04 = 0x04` — US set, but **P=0, RW=0, no PDPT address**.
+
+The kernel runs fine through CP 0x68 because **CR3 never points at 0x1000** — UEFI's identity map carries it, and AS1/AS2's PML4s are built correctly by `proc_create_address_space` (`store64(new_pml4, new_pdpt | 0x07)` at `proc.cyr:195`). The crash is at `mov cr3, 0x1000` in main.cyr:629-631 — the MMU walks the new PML4, hits PML4[0] with P=0, and #PFs on the next instruction fetch.
+
+PDPT[0] at 0x2000 is also broken (same OR-in pattern) — `0x04` instead of `0x3007`. Two-line fix, both sites.
+
+Repair (L)'s prior-bound form (#PF handler) becomes unnecessary — Repair (K)'s static reading was conclusive without dynamic fault diagnostics.
+
+---
+
+### Repair (L) for Attempt 25 — `pt_init` explicit-write fix
+
+Landed 2026-05-15 in `agnos/kernel/arch/x86_64/paging.cyr:30-33`. Replaces the OR-in-US pattern with explicit, self-sufficient writes:
+
+```cyrius
+store64(0x1000, 0x2007);   # PML4[0] -> PDPT @ 0x2000 | P|RW|US
+store64(0x2000, 0x3007);   # PDPT[0] -> PD   @ 0x3000 | P|RW|US
+```
+
+`pt_init` is now self-sufficient under both Path A (boot_shim still works — explicit write overrides its 0x2003 seed harmlessly) and Path C (cold memory at 0x1000/0x2000 is initialized from scratch). PD entries at 0x3000 and PDPT[1..3] huge pages already used explicit writes — unchanged.
+
+Comment in-place explains the Path A vs Path C provenance and points at Attempt 24 / Repair (K) for the diagnostic trail.
+
+**Build verification:**
+
+| Step | Result |
+|------|--------|
+| `sh scripts/build.sh` (agnos) | OK |
+| `build/agnos` size | **254,800 bytes** (−48 from Attempt 24: two `store64(literal, literal)` calls compile smaller than the `var + load64 + OR + store64` quartet) |
+| multiboot2 (ELF64) / entry | OK / `0x1000a8` (unchanged) |
+| `cyrius build` for read-boot-log | Not regenerated — kcp interpretation unchanged |
+| `sudo install-usb.sh --update /dev/sdb` | Pending (user step) |
+| `timer_isr[]` headroom | Unchanged at 1 byte |
+
+**Pre-bound outcomes for Attempt 25 iron burn:**
+
+| CMOS readout | Diagnosis |
+|---|---|
+| `kcp ≥ 0x69` + cp_fb(0x19) MAGENTA visible | **Repair (L) sufficient.** Kernel-CR3 restore succeeded; mem-iso block complete; ladder advances to userland-exec / kybernet sites. Next gate at CP 0x14 / 0x15. |
+| `kcp = 0x68` + PML4 stamps all `0x07` | Static fix landed but something downstream re-clears it — unlikely (no other writers to PML4[0] in mem-iso). Triage `proc_create_address_space`'s `store64(new_pd + 511*8, u_pml4)` collision possibility. |
+| `kcp = 0x68` + PML4 stamps still `0x04` | Build didn't reflash, or `pt_init` not on the call path. Re-verify `install-usb.sh --update` ran clean and the new ELF made it onto the boot media. |
+| `kcp` regresses below 0x68 | Repair (L) introduced a regression elsewhere — extremely unlikely for a 2-line literal-store swap, but flag if seen. |
+
+---
+
+### Attempt 25 — pending iron burn
+
+Repair (L) carries. Visual ladder gains CP 0x19 MAGENTA paint if `pt_init` fix is sufficient. Sole structural change to kernel boot: `paging.cyr:pt_init` rewrites PML4[0] and PDPT[0] from scratch instead of OR-ing into whatever happens to be there.
+
+---
+
+## Carry-forward items (not blocking Attempt 25)
 
 - **aarch64 native boot test**: blocked on Pi SSH access. Cyrius
   5.11.30 patched the aarch64 emitter; structural verification
