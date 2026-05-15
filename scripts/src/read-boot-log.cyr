@@ -176,6 +176,17 @@ fn main(): i64 {
     var as2_upml4 = cmos_read(95);  # 0x5F
     var as2_updpt = cmos_read(96);  # 0x60
     var as2_upd  = cmos_read(97);  # 0x61
+    # Repair (K), Attempt 24+: PML4 health stamps from main.cyr mem-iso block.
+    # Slots 0x62..0x68 = byte 0 of phys 0x1000 (kernel PML4[0]) at 7 checkpoints.
+    # Healthy = 0x07 (P|RW|US flag bits → kernel PDPT @ 0x2000). 0x00 = entry
+    # zeroed (corruption confirmed). First 0x00 in the series pins the window.
+    var pml4_pre     = cmos_read(98);   # 0x62  pre-AS work (after kcp=0x1A)
+    var pml4_postcr  = cmos_read(99);   # 0x63  post AS1+AS2 create (after kcp=0x16)
+    var pml4_postmap = cmos_read(100);  # 0x64  post proc_map_page x2 (after kcp=0x17)
+    var pml4_as1     = cmos_read(101);  # 0x65  post first cr3_load(as1) (after kcp=0x18)
+    var pml4_clac1   = cmos_read(102);  # 0x66  post first AS1 round-trip (after kcp=0x1D)
+    var pml4_clac2   = cmos_read(103);  # 0x67  post AS2 round-trip (after kcp=0x64)
+    var pml4_clac3   = cmos_read(104);  # 0x68  post second AS1 round-trip (after kcp=0x68)
 
     print_cmos_line("CMOS[0x53] gnoboot magic    = ", gmagic);
     print_cmos_line("CMOS[0x52] gnoboot checkpt  = ", gcp);
@@ -209,7 +220,27 @@ fn main(): i64 {
     println("    0x01..0x1F      = page in [0x010000..0x1FFFFF] — below 2 MB watermark, also bad.");
     println("    0x20..0xFF      = page >= 0x200000 — safe (above kernel reservation).");
     println("    Any slot in [0x56..0x61] reading < 0x20 with kcp >= 0x18 = PMM bug confirmed.");
-    println("    AS1 stamps clean + AS2 stamps clean + kcp=0x68 = PMM ruled out; triage KPTI tail write.");
+    println("    AS1 stamps clean + AS2 stamps clean + kcp=0x68 = PMM ruled out; triage PML4 stamps below.");
+    syscall(1, 1, "\n", 1);
+
+    # Repair (K), Attempt 24+: dump the 7 PML4 health stamps and interpret.
+    print_cmos_line("CMOS[0x62] PML4[0] byte 0 (entering mem-iso, pre-AS work)  = ", pml4_pre);
+    print_cmos_line("CMOS[0x63] PML4[0] byte 0 (post AS1+AS2 create)            = ", pml4_postcr);
+    print_cmos_line("CMOS[0x64] PML4[0] byte 0 (post proc_map_page x2)          = ", pml4_postmap);
+    print_cmos_line("CMOS[0x65] PML4[0] byte 0 (post first cr3_load(as1))       = ", pml4_as1);
+    print_cmos_line("CMOS[0x66] PML4[0] byte 0 (post first AS1 SMAP round-trip) = ", pml4_clac1);
+    print_cmos_line("CMOS[0x67] PML4[0] byte 0 (post AS2 SMAP round-trip)       = ", pml4_clac2);
+    print_cmos_line("CMOS[0x68] PML4[0] byte 0 (post second AS1 round-trip)     = ", pml4_clac3);
+    println("  Repair (K) PML4 scan: low byte of kernel PML4[0] @ phys 0x1000.");
+    println("    0x07            = healthy (P|RW|US flag bits → kernel PDPT @ 0x2000).");
+    println("    0x00            = entry ZEROED — corruption pinned at this checkpoint.");
+    println("    other           = entry rewritten — different bug class (e.g. flags torn).");
+    println("    All 0x07 + kcp=0x68 = PML4 healthy throughout. Premise inverts: cr3-restore");
+    println("    fault is NOT direct PML4 corruption. Repair (L) → install #PF handler that");
+    println("    dumps CR2 + error code so we can see the actual fault address/cause.");
+    println("    First 0x00 at slot N + kcp=0x68 = corruption between checkpoints (N-1) and N.");
+    println("    Slot order: 0x62 pre-AS / 0x63 post-create / 0x64 post-map / 0x65 post-cr3(as1) /");
+    println("                0x66 post-AS1-clac / 0x67 post-AS2-clac / 0x68 post-AS1-clac-2nd.");
     syscall(1, 1, "\n", 1);
 
     # --- Verdict layer 1: did gnoboot launch at all? ---
@@ -288,7 +319,7 @@ fn main(): i64 {
     if (kcp == 101) { println("verdict (kernel): CP 0x65 — second cr3_load(as1) survived. Died inside second AS1 SMAP-bracketed access (stac / load64 / clac). Should be unreachable — exact same access pattern as the first AS1 round-trip which succeeded at kcp=0x1D."); return 0; }
     if (kcp == 102) { println("verdict (kernel): CP 0x66 — second stac under AS1 executed. Died on load64(0xC00000) — but the first AS1 pass loaded the same address without fault. Investigate whether the AS2 pass somehow invalidated AS1's PT mirror (cross-AS aliasing)."); return 0; }
     if (kcp == 103) { println("verdict (kernel): CP 0x67 — second load64 under AS1 succeeded. Died on clac (3-byte asm, no memory access). Near-unreachable."); return 0; }
-    if (kcp == 104) { println("verdict (kernel): CP 0x68 — second AS1 round-trip complete. Died on the kernel-CR3 restore asm at main.cyr:575-577 (mov rax, 0x1000 / mov cr3, rax). Kernel PML4 at 0x1000 corrupt — something zeroed it during mem-iso. Repair (J) for Attempt 23 wires 12 PMM-allocation byte-2 stamps at CMOS [0x56..0x61] inside proc_create_address_space. SCAN THE [0x56..0x61] LINES ABOVE: any reading < 0x20 with kcp=0x68 = smoking gun #1 confirmed (pmm_alloc handed out a kernel-PT page in [0x1000..0x3FFF]). All [0x56..0x61] >= 0x20 with kcp=0x68 = PMM ruled out; bug is in the KPTI tail write at proc.cyr:212 or downstream — next repair adds stamps there."); return 0; }
+    if (kcp == 104) { println("verdict (kernel): CP 0x68 — second AS1 round-trip complete. Died on the kernel-CR3 restore asm at main.cyr:575-577 (mov rax, 0x1000 / mov cr3, rax). Repair (J) ruled out PMM (Attempt 23 confirmed all [0x56..0x61] = 0xaf, well above 0x20 watermark). Repair (K) for Attempt 24 wires 7 PML4 health stamps at CMOS [0x62..0x68] across the mem-iso block. SCAN THE [0x62..0x68] LINES ABOVE: first slot reading 0x00 = corruption window pinned (between that slot and the prior). All 7 reading 0x07 + kcp=0x68 = PML4 healthy throughout, premise inverts — cr3-restore #PF is NOT direct PML4 corruption, and Repair (L) needs a #PF handler dumping CR2/error code to see the actual fault."); return 0; }
     if (kcp == 105) { println("verdict (kernel): CP 0x69 — kernel CR3 restored to 0x1000 successfully. Mem-iso block fully clean. Stall is in cp_fb(0x19) MAGENTA at main.cyr:586 (FB write — works under kernel CR3) or the serial-print/branch logic at lines 588 onward. Visual check: cell 0x19 MAGENTA should now be painting; if not, cp_fb regressed."); return 0; }
     syscall(1, 1, "verdict (kernel): unexpected checkpoint ", 40);
     print_num(kcp);
