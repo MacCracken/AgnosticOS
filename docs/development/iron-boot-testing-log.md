@@ -3287,7 +3287,15 @@ CMOS[0x69-0x6A] fb_phys     = 0x00, 0x00  (stale — writer deleted by Repair O)
 
 ### Attempt 29 — 2026-05-15 → "worst case" visual diagnosed as non-zero gvar-init bug; Repair (P) lands
 
-**User-reported visual:** "no prompt — only the top canaries disappear leaving the 3 yellow with gnoboot statement remaining."
+**Photo slot (post-burn):** drop the screen photo at
+`iron-boot-photos/attempt-29-<descriptor>.jpg` (e.g.
+`attempt-29-prompt-visible.jpg` if Repair P confirms, or
+`attempt-29-still-broken.jpg` if not), then update the next session
+with the result so the cyrius issue draft (`agnos/docs/development/
+issue/2026-05-15-cyrius-nonzero-gvar-init-not-honored.md`) can be
+filed or revised.
+
+**User-reported visual (pre-Repair-P):** "no prompt — only the top canaries disappear leaving the 3 yellow with gnoboot statement remaining."
 
 **CMOS readout (post-reset):**
 
