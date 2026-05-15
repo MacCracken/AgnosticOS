@@ -216,7 +216,7 @@ fn main(): i64 {
     if (kcp == 14) { println("verdict (kernel): test procs created, died before 'sti' (CP 15)."); return 0; }
     if (kcp == 15) { println("verdict (kernel): interrupts enabled, died before scheduler activation (CP 16)."); return 0; }
     if (kcp == 16) { println("verdict (kernel): scheduler armed (CP 0x10) — kernel init COMPLETE. Stall is post-init, before first hlt return (CP 0x12)."); return 0; }
-    if (kcp == 18) { println("verdict (kernel): first hlt returned (CP 0x12) — timer ISR + 1st context switch OK. Died between iter 1 and iter 10."); return 0; }
+    if (kcp == 18) { println("verdict (kernel): CP 0x12 written (CMOS captures latest write, not highest CP). DISAMBIGUATE BY VISUAL LADDER: cell 0x12 CYAN = iter-1 idle-loop stall (timer ISR + 1st ctx switch OK, died iter 1->10); cell 0x12 MAGENTA = passed idle loop (CP 0x11) + VFS/initrd/memfile, stall is in memory-isolation test (main.cyr:393-478)."); return 0; }
     if (kcp == 19) { println("verdict (kernel): 10 hlts done (CP 0x13) — matches QEMU known-good cycle. Died between iter 10 and iter 25."); return 0; }
     if (kcp == 20) { println("verdict (kernel): 25 hlts done (CP 0x14) — past QEMU's break point. Died between iter 25 and loop end (CP 0x11)."); return 0; }
     if (kcp == 17) { println("verdict (kernel): post-scheduler idle loop COMPLETE (CP 0x11). All 50 hlts retired. Stall is post-loop."); return 0; }
@@ -224,6 +224,10 @@ fn main(): i64 {
     if (kcp == 33) { println("verdict (kernel): CP 0x21 — test_proc_a's first serial_print done, first arch_wait did not return. Sub-case 1: timer IRQ not re-delivered post-iretq (PIC EOI / IF-flag / IDT)."); return 0; }
     if (kcp == 34) { println("verdict (kernel): CP 0x22 — test_proc_a round-trip OK (hlt returned inside the user proc), stuck oscillating on test_proc_a. Sub-case 3a: sched_next never advances past proc 1."); return 0; }
     if (kcp == 35) { println("verdict (kernel): CP 0x23 — sched rotated test_proc_a → test_proc_b OK. Scheduler is alive; proc 0 (kernel idle) starved by round-robin. Sub-case 3b: fix sched_next to include proc 0 OR mark proc 0 ready post-save_context."); return 0; }
+    if (kcp == 22) { println("verdict (kernel): CP 0x16 — address spaces created OK (proc_create_address_space x2 returned). Died before proc_map_page x2 (CP 0x17). Investigate AS-table walker or huge-page setup in proc_map_page."); return 0; }
+    if (kcp == 23) { println("verdict (kernel): CP 0x17 — per-process page mappings installed OK (proc_map_page x2 returned). Died before first cr3_load (CP 0x18). Should be unreachable — only the cr3_load asm + helper-call sit between 0x17 and 0x18."); return 0; }
+    if (kcp == 24) { println("verdict (kernel): CP 0x18 — first cr3 switch (cr3_load(as1)) survived. Died inside SMAP-bracketed store64/load64 sequence or one of the later CR3 switches. Suspect: stac didn't take effect (CR4.SMAP enforcement), or AS2 page tables missing kernel-text mapping (would #PF on next instr after cr3_load(as2))."); return 0; }
+    if (kcp == 25) { println("verdict (kernel): CP 0x19 — full memory-isolation access dance completed (3 CR3 switches + stac/store/load/clac x3 + kernel-PT restore asm). Died before CP 0x13 (post-mem-iso). Likely in serial print / branch logic / kprint_num at lines 462-479."); return 0; }
     syscall(1, 1, "verdict (kernel): unexpected checkpoint ", 40);
     print_num(kcp);
     println(" — possibly stale CMOS.");

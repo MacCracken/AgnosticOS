@@ -2003,7 +2003,143 @@ authoritative post-mortem.
 
 ---
 
-## Carry-forward items (not blocking Attempt 16)
+### Attempt 16 — 2026-05-14 night PDT → MAJOR PROGRESS (closed-beta gate hit; mem-iso test stall; reset not soft-lockup)
+
+**Build under test** (post-Repair-C):
+
+| Artifact | Version / Size |
+|----------|----------------|
+| cyrius toolchain | 5.11.55 pinned (manifests). Wrapper still resolves 5.11.54 lib snapshot — out-of-scope. |
+| agnos kernel | 1.30.0 + Repair (C) — full 15-GPR ISR push/pop + 6 new callee-saved save/restore slots + hw-frame offsets +48. `build/agnos` = **253,712 bytes** ELF64 multiboot2, entry `0x1000a8`. `timer_isr[]` buffer at 63/64 bytes (1 byte headroom). |
+| gnoboot | 0.1.0 unchanged |
+| `scripts/read-boot-log.sh` | Pre-Attempt-16 binary (28,080 bytes); verdict text for kcp=0x12 still authored for the iter-1-to-10 hypothesis — see "Diagnosis" below for the disambiguation hop. |
+
+**CMOS readout (post-reset):**
+
+```
+CMOS[0x53] gnoboot magic    = 0xcd  (decimal 205)
+CMOS[0x52] gnoboot checkpt  = 0x05  (decimal 5)
+CMOS[0x51] kernel  magic    = 0xab  (decimal 171)
+CMOS[0x50] kernel  checkpt  = 0x12  (decimal 18)
+
+verdict (kernel): first hlt returned (CP 0x12) — timer ISR + 1st
+context switch OK. Died between iter 1 and iter 10.
+```
+
+**The verdict text is misleading** — kcp==18 is now ambiguous because two sites in `main.cyr` write CMOS 0x50 = 0x12:
+
+| Write site | Color painted | Meaning |
+|------------|---------------|---------|
+| `main.cyr:319` (idle loop, `idle_count == 0`) | cell 0x12 **CYAN** | first hlt round-trip OK (1st pass) |
+| `main.cyr:381` (post-VFS/initrd/memfile tests) | cell 0x12 **MAGENTA** (overwrite) | full 50-iter idle loop completed, then VFS tests done |
+
+CMOS records only the *latest* write. The **visual ladder is the disambiguator.** Photo [`iron-boot-photos/attempt-16-boot-colors.jpg`](iron-boot-photos/attempt-16-boot-colors.jpg) shows: WHITE stripe + 4 YELLOW + 7 GREEN + 3 CYAN (Attempt 15's painting through CP 0x10), **plus two new MAGENTA cells** at positions 0x11 and 0x12. That maps to:
+
+| Cell | Color | Source | Meaning |
+|------|-------|--------|---------|
+| 0x11 | MAGENTA | `main.cyr:339` | Full 50-hlt idle loop completed → **closed-beta gate hit ✅** |
+| 0x12 | MAGENTA (overwrite) | `main.cyr:381` | VFS + initrd + memfile tests completed ✅ |
+
+**Behavior delta vs Attempt 15 — important.**
+
+| | Attempt 15 | Attempt 16 |
+|---|---|---|
+| End state | Soft lockup; screen intact; **no reset** | **Reset ~1-2s after last MAGENTA cell appeared** |
+| Failure class | Hang (proc 0 starved, infinite spin in some other proc) | **Triple-fault** (exception fired; handler missing or itself faulted; CPU reset) |
+| Kernel CP (CMOS) | 0x23 | **0x12 (MAGENTA disambiguation)** |
+| Visual ladder | ...CYAN ×3 then dark | ...CYAN ×3 + **MAGENTA ×2** (0x11 + 0x12) then dark |
+| Fault domain | Context-switch register state (sub-case 2) | **Memory-isolation test (`main.cyr:393-478`)** |
+
+The reset (not soft-lockup) is a strong signal: an exception fired in the mem-isolation block (#PF / #GP / #SS most likely), the IDT vector hit a stub that wasn't fully wired or itself faulted, that recursed into #DF → triple-fault → CPU hardware reset. The 1-2s delay between the last MAGENTA paint and the reset is consistent with a page-fault handler trying to print to serial before re-faulting.
+
+**Diagnosis — Repair (C) sufficient; new fault domain = memory-isolation test.**
+
+What CP 0x12 MAGENTA *proves*:
+
+1. **CP 0x10 → CP 0x11** — scheduler ran for **all 50 hlt iterations** without faulting. The full proc 0 ↔ proc_a ↔ proc_b round-robin works. Full 15-GPR ISR push/pop + 6 callee-saved save/restore slots are correctly aligned. **Sub-case-2 territory closed.**
+2. **CP 0x11 → CP 0x12 MAGENTA** — `sched_active = 0`, scheduler tear-down OK, `vfs_write`, `initrd_build_test` + `initrd_init`, `initrd_open` + `vfs_read` + `vfs_close` (×2), `vfs_create_memfile` + `vfs_read` + `vfs_close` all returned cleanly. **VFS + initrd subsystems are working on iron.**
+
+What CP 0x12 MAGENTA *doesn't* prove (no CP fires between 0x12-MAGENTA and 0x13): which line in the memory-isolation test (lines 393-478) faults. Plausible suspects in execution order:
+
+1. `proc_create_address_space()` (×2 — lines 396-397). Allocates PML4 + propagates kernel mappings; could fault if PMM exhausted or kernel-PT mirror logic broken.
+2. `vmm_is_mapped(phys1/phys2)` + conditional `vmm_map()` (lines 414-419). Sanity check; benign.
+3. `proc_map_page(as1/as2, 0xC00000, phys1/phys2)` (lines 420-421). Per-process PD entry write with US=1.
+4. `cr3_load(as1)` (line 437). **First CR3 switch — most likely fault site.** If AS1's PML4 doesn't have kernel.text mapped at the right virtual address (kernel runs from `~0x100000`, in PD entry 0 — needs to be in AS1's table copy), the very next instruction fetch after `mov cr3, rax` will #PF.
+5. `stac` + `store64(0xC00000, 0xAAAA)` + `load64` + `clac` (lines 438-441). SMAP-bracketed access to US=1 page. Faults if (a) stac didn't actually set RFLAGS.AC, or (b) AS1's tables don't have 0xC00000 mapped, or (c) a timer ISR fires between stac and load64 — kernel ISR entry implicitly clears AC, but we're now back to ring-0 with AC=0 and the next load64 traps.
+6. Repeat for AS2, then back to AS1 (lines 443-454).
+7. Final kernel-PT restore asm (lines 457-460) — literal `mov rax, 0x1000; mov cr3, rax`. If `0x1000` is no longer the right kernel PML4 (KASLR moved it?), the post-CR3-load fetch faults.
+
+The 1-2s-then-reset profile most strongly fingers (4) or (5) — page-fault on the first AS switch.
+
+**Process note — visual ladder is now load-bearing.** Without `fb.cyr`, the kcp=18 readout would have sent us chasing the idle-loop iter-1 bug for another attempt. The MAGENTA-vs-CYAN disambiguation at cell 0x12 is the entire diagnosis. Worth re-stating: **for CPs that fire from multiple sites, the visual ladder is the truth, CMOS is the index.**
+
+**Why this is the biggest jump in the attempt sequence.** Attempt 16 closed sub-case 2 (context-switch state preservation), validated the entire scheduler cycle on iron, validated VFS + initrd + memfile on iron, and hit the **closed-beta gate** (CP 0x11). The remaining work to reach a usable post-MVP kernel is: memory isolation (this attempt's fault), userland exec spawn (CP 0x14), kybernet launch (CP 0x15), and shell. The skeleton works; the AS-switch path is the next localized bug.
+
+---
+
+### Repairs landed for Attempt 17 — 2026-05-14 night
+
+All edits in `agnos/` (kernel main.cyr) and `agnosticos/scripts/` (read-boot-log verdicts). Per-action consent obtained — user approved "update them all" verbatim for the 4-item bundle: log-cleanup, verdict-cleanup, state.md spot-update, bisector CPs.
+
+**1. read-boot-log.cyr — disambiguate kcp=18; add verdicts for kcp 22-25 (CPs 0x16-0x19).**
+
+The kcp==18 verdict now points at the visual ladder as the disambiguator — future iron post-mortems won't get sent back to the idle-loop-iter-1 hypothesis when the fault is actually downstream. Four new verdicts (kcp 22-25) match the bisector CPs being added to the mem-iso block.
+
+| Build verification | Result |
+|---|---|
+| `cyrius build src/read-boot-log.cyr build/read-boot-log` | OK |
+| Binary size | 28,080 → **29,504 bytes** (+1,424 from 5 verdict strings) |
+| Pre-existing `vec_get` undefined-fn warning | Inherited from stdlib snapshot; out-of-scope for this attempt — verdict path doesn't touch it |
+
+**2. main.cyr — 4 bisector CPs inside the memory-isolation test block.**
+
+All four use the existing CMOS-write pattern (`asm { 0xB0 0x50 0xE6 0x70 0xB0 <CP> 0xE6 0x71 }`) + matching `cp_fb` MAGENTA paint, since they sit downstream of CP 0x11 (post-scheduler / userland category).
+
+| CP | Insertion site | What it proves on iron |
+|----|----------------|------------------------|
+| 0x16 | After `proc_create_address_space() x2` (post `var as2 = ...`) | AS allocation + kernel-PT mirror logic OK |
+| 0x17 | After `proc_map_page() x2` (post mapping 0xC00000 in both AS) | Per-process PD writes with US=1 OK |
+| 0x18 | After first `cr3_load(as1)` (BEFORE first `stac`) | First CR3 switch survived → AS1 has kernel.text mapped at the right VA |
+| 0x19 | After kernel-PT restore asm (post `mov cr3, rax` with literal 0x1000) | Full 3-CR3-switch dance + 3 SMAP'd accesses + restore all survived |
+
+| Build verification | Result |
+|---|---|
+| `sh scripts/build.sh` | OK |
+| `build/agnos` size | 253,712 → **253,824 bytes** (+112 = 4 × ~28-byte blocks: CMOS-write asm + `cp_fb` call) |
+| multiboot2 (ELF64) | OK |
+| Entry | `0x1000a8` (unchanged) |
+
+**3. state.md header — spot-update for Attempt 16 outcome.**
+
+(Updated in the same commit as this log entry. See state.md line 10.)
+
+**4. iron-boot-testing-log.md — this entry.**
+
+(Updated in the same commit.)
+
+**Verification gates skipped** (same as Attempt 15-16): QEMU pre-flight impossible (Path A W^X-blocked; Path C QEMU launch script not yet wired; multiboot2 ELF64 fails `qemu -kernel`). Iron is still the only test surface.
+
+**Attempt-17 plan (pre-bound expected outcomes):**
+
+| Expected kcp on iron | Cell pattern | Diagnosis |
+|---------------------|--------------|-----------|
+| kcp=0x12 unchanged, **no new MAGENTA past cell 0x12** | Same as Attempt 16 + no 0x16 cell | Fault is BEFORE CP 0x16 — `proc_create_address_space()` or the AS2 alloc. Investigate PMM exhaustion or kernel-PT mirror logic. |
+| kcp=0x16, **cell 0x16 MAGENTA** then dark | + 1 new MAGENTA cell (0x16) | Address spaces alloc'd OK; fault is in `proc_map_page` or the `vmm_is_mapped` / `vmm_map` calls between them. |
+| kcp=0x17, **cell 0x17 MAGENTA** then dark | + 2 new MAGENTA cells (0x16, 0x17) | Page mappings installed OK; fault is the `cr3_load(as1)` itself — AS1 PML4 missing kernel.text mapping or invalid CR3 value. **Most likely outcome based on the diagnosis.** |
+| kcp=0x18, **cell 0x18 MAGENTA** then dark | + 3 new MAGENTA cells (0x16, 0x17, 0x18) | First CR3 switch survived; fault is in the SMAP'd `stac/store/load/clac` sequence or the second CR3 switch. Investigate CR4.SMAP enforcement and whether stac is taking effect. |
+| kcp=0x19, **cell 0x19 MAGENTA** then dark | + 4 new MAGENTA cells | Entire AS-switch dance survived; fault is in serial print / branch logic / kprint_num at lines 462-479. Should be benign — likely a kprint or branch on uninitialized var. |
+| kcp=0x13, **cell 0x13 MAGENTA** | + 5 new MAGENTA cells (0x16-0x19 + 0x13 overwrite) | **Memory-isolation test fully passed.** Fault moves to userland exec spawn (lines 484-499). |
+
+**Iron readout shortcut**: the headline verdict is readable from the screen alone — count NEW MAGENTA cells past Attempt 16's two. 0 new = AS alloc faulted; 1-4 new = AS-switch path faulted at that stage; 5+ new = mem-iso passed, next gate is userland exec.
+
+**Carry-forward debt** (not blocking Attempt 17):
+
+- `timer_isr[]` buffer headroom is 1 byte. Future ISR additions MUST bump the buffer first.
+- read-boot-log build emits a pre-existing `vec_get` undefined-fn warning from the stdlib snapshot. Cyrius-side concern; not blocking. Surface to cyrius repo on a future cleanup pass.
+
+---
+
+## Carry-forward items (not blocking Attempt 17)
 
 - **aarch64 native boot test**: blocked on Pi SSH access. Cyrius
   5.11.30 patched the aarch64 emitter; structural verification
