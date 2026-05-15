@@ -3110,7 +3110,116 @@ Sibling to `boot_info_capture_rdi` — same `var p = &boot_info_ptr` Cyrius idio
 
 ---
 
-## Carry-forward items (not blocking Attempt 26)
+### Attempt 27 — 2026-05-15 → fb_phys = 0 confirmed; bug shifts from kernel to gnoboot/boot_info
+
+**Build under test:**
+
+| Artifact | Version / Size |
+|----------|----------------|
+| cyrius toolchain | 5.11.55 pinned. |
+| agnos kernel | 1.30.1 candidate post-Repair-(N) — `build/agnos` = **255,048 bytes** (verified on-disk). |
+| gnoboot | 0.1.0 unchanged from Attempt 26 (boot_info producer side untouched this cycle). |
+| `scripts/build/read-boot-log` | ~47,640 bytes — Repair (N) verdicts present (kcp=0xE5..0xEA branches + CMOS[0x69]/[0x6A] decoder). |
+
+**CMOS readout (post-reset, user-reported):**
+
+```
+CMOS[0x53] gnoboot magic                                   = 0xcd
+CMOS[0x52] gnoboot checkpt                                 = 0x05
+CMOS[0x51] kernel  magic                                   = 0xab
+CMOS[0x50] kernel  checkpt                                 = 0x19  (decimal 25 — PEGGED again)
+CMOS[0x54] CR4 byte 2 (post first cr3_load(as1))           = 0x30
+CMOS[0x55] CR4 byte 2 (pre-stac, post kcp=0x60)            = 0x30
+CMOS[0x56]..[0x5B] AS1 PMM allocs (byte 2)                 = 0x59, 0x59, 0x59, 0x5a, 0x5a, 0x5a
+CMOS[0x5C]..[0x61] AS2 PMM allocs (byte 2)                 = 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a
+CMOS[0x62]..[0x68] PML4[0] byte 0 (7 stamps)               = 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07
+CMOS[0x69] fb_phys byte 2 ((fb_phys >> 16) & 0xFF)         = 0x00
+CMOS[0x6A] fb_phys byte 3 ((fb_phys >> 24) & 0xFF)         = 0x00
+```
+
+**Headline result — `fb_phys = 0x00000000`.** The Repair (N) BAR snapshot at main.cyr:638 stamped CMOS[0x69]/[0x6A] **before** the `cp_fb(0x19)` call. Both bytes read `0x00`. Per the Repair-N interpretation block:
+
+> Both `0x00` with kcp `< 0xE5` = snapshot ran before kernel reached cp_fb, but stamp asm itself executed — read it as **'fb_phys really IS 0' (gnoboot/boot_info broken)**.
+
+The `cmos_stamp_fb_phys()` asm walked `boot_info_ptr → bi → bi[+0x48]` and the value at offset +0x48 came back zero. `cp_fb(0x19, MAGENTA)` then stamped its argument-value (kcp=0x19) and immediately died — fb_phys=0 made the first FB MMIO write fault before the prologue `0xE5` stamp could fire. **The bug pre-dates the kernel's mem-iso block; it's in the bootloader/kernel handoff.**
+
+**This re-frames the failure mode entirely.** Attempts 22-26 chased kernel-side mem-iso correctness (PT mapping, CR3 dances, SMAP brackets, BAR shifts, MTRR/PAT). All those layers are now provably clean:
+
+- PMM stamps `0x59/0x5a` (well above 2 MB watermark — Repair (J) confirms no kernel-PT-range allocation; PMM allocator healthy)
+- PML4[0] = `0x07` at all 7 mem-iso checkpoints (Repair (L) `pt_init` explicit-write fix is holding firm; no zero-init regression)
+- CR4 byte 2 = `0x30` at both check sites (SMEP+SMAP held through the SMAP brackets)
+- CR3 dance survived all three switches (otherwise kcp couldn't have reached 0x19 at all)
+
+The kernel is fine. **gnoboot isn't populating `boot_info+0x48` with the GOP framebuffer phys address** — or it's writing zero, or it's writing to a different offset than the kernel expects.
+
+**Visual marker observation — three-way reset asymmetry:**
+
+| Reset path | Visual markers |
+|---|---|
+| Initial cold boot (USB switchover) | 25-racy pattern (gnoboot handoff text + colored CP square row at top-left) |
+| BIOS Save-and-Exit | 25-racy pattern (same as cold) |
+| Fault-triggered reset (warm) | "Normal markers" — different from 25-racy |
+
+This refines the Attempt 26 asymmetry observation. Both cold POST AND BIOS save-exit produce the racy 25-pattern; only fault/warm-reset shows the deterministic "normal" pattern. Consistent with a gnoboot-side issue: gnoboot re-runs on both cold and save-exit paths (fresh boot_info structure populated each time); fault-reset preserves prior state via a different path (or possibly skips parts of gnoboot's GOP probe entirely).
+
+**Suspect ranking after Repair (N) readout:**
+
+| # | Hypothesis | Status |
+|---|---|---|
+| 1 | **gnoboot never populates `boot_info+0x48`** (struct field left zero-initialized) | **Leading.** Simplest explanation. Check `gnoboot/src/*.cyr` for the GOP-probe → boot_info write path; verify the offset constant matches the kernel's reader. |
+| 2 | gnoboot writes fb_phys to a different offset than +0x48 | Plausible. ABI mismatch between gnoboot's struct layout and kernel's struct layout (agnos 1.30.0 was the kernel-ABI break — gnoboot side may not be aligned). |
+| 3 | `boot_info_ptr` is stale/bogus and the snapshot is reading a random zero | Possible but lower probability. `boot_info_capture_rdi` proved boot_info_ptr is captured at kernel entry; if it were bogus the kernel wouldn't have made it through PMM init reading the memory map. |
+| 4 | gnoboot's GOP probe fails silently and writes zero to fb_phys | Plausible. UEFI GOP discovery can fail on some firmware/GPU combos; gnoboot may not signal the failure, just leave fb_phys=0. |
+
+Hypotheses (1), (2), and (4) all converge to the same fix-path: gnoboot inspection. (3) requires kernel-side instrumentation.
+
+**Repair (O) — mem-iso block deletion (LANDED 2026-05-15):**
+
+After re-reading `docs/development/uefi-boot-prior-art.md` §6 (Common UEFI handoff contract) and §8 (AGNOS Path C delta), the corrected diagnosis: the mem-iso block at `main.cyr:383-685` builds AS1/AS2 page tables, switches CR3 to each, and restores to the *kernel-built* PT (pt_init's 0-4GB identity map). The `fb_phys=0` reading was a red herring — even with fb_phys non-zero, the kernel's restored PT doesn't reliably cover the GOP framebuffer BAR the way UEFI's identity map did. Per prior-art §6: **"No loader hands off 'proper' kernel page tables — the firmware's identity map is the contract. Every kernel rebuilds its own page tables shortly after entry."** AGNOS's `pt_init` does rebuild, but the mem-iso test that follows is **post-MVP verification work** that's actively breaking the pre-MVP boot path.
+
+Attempts 17-27 (11 burns, repair letters F-N) all chased symptoms inside a test block that isn't on the boot-to-shell critical path. Repair (O) is the structural correction: delete the test.
+
+**Edit landed:** `agnos/kernel/core/main.cyr` lines 383-685 removed (303 lines). Includes:
+- AS1/AS2 creation (`proc_create_address_space x2`)
+- per-process page mapping (`proc_map_page` x2)
+- all 3 CR3 switches (`cr3_load(as1)` / `cr3_load(as2)` / `cr3_load(as1)`)
+- SMAP brackets (stac/clac) + store64/load64 round-trips
+- explicit kernel-CR3 restore (`mov cr3, 0x1000`)
+- mem-iso verify print block (`serial_print "AS1 wrote..."` × N)
+- nested if/else PASS/FAIL branch
+- all bisector stamps from Repairs (I)/(J)/(K)/(L)/(M)/(N) (kcp 0x18, 0x1A-0x1D, 0x60-0x68, 0xE1-0xE4)
+- `cmos_stamp_fb_phys()` call site (the helper itself stays in `mbi.cyr` — dead code, DCE will eliminate)
+
+Marker comment left at deletion site referencing this entry + the prior-art doc.
+
+**Build verification:**
+
+| Step | Result |
+|------|--------|
+| `sh scripts/build.sh` (agnos) | OK |
+| `build/agnos` size | **253,496 bytes** (-1,552 from Attempt 27's 255,048 — code+data shrink, less than line-count suggests because most deleted lines were comments) |
+| multiboot2 (ELF64) / entry | OK / `0x1000a8` (unchanged) |
+| `sudo install-usb.sh --update /dev/sdb` | Pending (user step) |
+
+**Pre-burn ask for Attempt 28:** one burn is enough. We're not bisecting; we're checking whether the boot path advances past the deleted block.
+
+**Decision matrix for Attempt 28:**
+
+| Outcome | Diagnosis |
+|---|---|
+| kcp ≥ 0x12 + new checkpoint somewhere in userland exec test | **Win.** Mem-iso block was the sole blocker. Boot progressed to next phase. New front becomes wherever it stalls next. |
+| kcp pegged at 0x12 | The post-VFS / pre-mem-iso state already had a latent issue masked by mem-iso's quicker fault. Triage the userland exec test entry (`spawn_user_proc`). |
+| kcp regressed below 0x12 | Unexpected — our edit only deleted code that shouldn't have run for MVP. Re-read the diff for collateral damage. |
+
+**Carry-forward (not blocking Attempt 28):**
+
+- `cmos_stamp_fb_phys()` in `mbi.cyr` and the in-cp_fb bisector stamps in `fb.cyr` (kcp 0xE5-0xEA) are now dead code. Leave for one verification burn; remove post-Attempt-28-success.
+- `boot_info_capture_rdi()` stays — it's load-bearing for the real boot path, not just diagnostics.
+- `pt_init`'s 0-4GB identity map vs UEFI's identity map: if userland exec test runs into FB-write issues later, the real fix is extending `pt_init` to mirror UEFI's identity map (or just inheriting UEFI's PT until userspace lands). Deferred — not on the critical path yet.
+
+---
+
+## Carry-forward items (not blocking Attempt 28)
 
 - **aarch64 native boot test**: blocked on Pi SSH access. Cyrius
   5.11.30 patched the aarch64 emitter; structural verification
