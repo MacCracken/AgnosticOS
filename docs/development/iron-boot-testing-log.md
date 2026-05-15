@@ -1586,9 +1586,13 @@ oversight, not a kernel-core or hardware-handoff bug.
 | Approx PDT | Action | Verification gate |
 |-----------|--------|-------------------|
 | 2026-05-14 (this commit) | Update `scripts/src/read-boot-log.cyr` with explicit verdicts for kcp 32-35 (CPs 0x20-0x23) so future iron runs name the sub-case directly. (DONE) | `cyrius build src/read-boot-log.cyr build/read-boot-log` green; binary = 28,080 bytes; next iron run prints sub-case 3b verdict instead of "unexpected checkpoint 35." |
-| pending | Inspect `agnos/kernel/sched/sched.cyr` (or equivalent) — confirm proc 0's `state` field after kernel's initial `save_context()` call. Identify whether the round-robin's "next ready proc" predicate excludes proc 0 because (a) its state is not 1/ready, (b) the iterator starts past it and wraps without checking, or (c) it's filtered as "this is the kernel idle proc, skip." | Read-only inspection — produces a specific 1-3 line diff candidate. **Do not edit kernel without explicit go-ahead (per-action-consent + cyrius-hands-off both apply — agnos is not cyrius, but the user has flagged kernel edits as approval-required during iron-boot bring-up).** |
-| pending | Re-run QEMU `-kernel` with the Attempt-14 build before flashing. **Now expected to also stall at CP 0x23** — sub-case 3b is structural, not iron-specific. If QEMU stalls at 0x23, the sched_next fix can be QEMU-validated before the next iron burn. | QEMU shows CP 0x23 = iron and QEMU now share the same failure mode (good — fix is iron-portable). QEMU shows CP 0x12 = QEMU's PIC handling re-selects proc 0 differently from iron (worth knowing but doesn't change the fix domain). |
-| pending | After kernel fix lands + QEMU advances past 0x23 to CP 0x12/0x13/0x14/0x11: re-flash USB, iron Attempt 15. | post-reset `read-boot-log.sh` shows kcp ∈ {0x12, 0x13, 0x14, **0x11**}. **CP 0x11 is the closed-beta gate's penultimate milestone** — full 50-hlt scheduler cycle completes on iron. After CP 0x11 the next gate is post-loop progress (shell launch). |
+| 2026-05-14 eve | Inspect `agnos/kernel/core/sched.cyr` — analysis identified that the existing `if (proc_get_state(old) == 2)` guard at do_context_switch line 103 *should* mark proc 0 ready after first save, blame shows it's been there since 2026-04-06. Iron sub-case 3b empirically shows it isn't sufficient — proc 0 stays unselectable somehow. (DONE) | Two-line analysis pinpointed the guard. **Both** repair candidates were then approved by user and landed in the same eve — see "Repairs landed" subsection below. |
+| 2026-05-14 eve | Land repair (A) — unconditional `proc_set_state(old, 1)` post-save in `do_context_switch`. Removes the `state==2` guard whose conditional read may be the unaccounted variable on iron. (DONE) | `agnos/kernel/core/sched.cyr:108-116` (was 103-105). Kernel 252,528 → 252,496 bytes (–32, branch eliminated). Same-LSP-class warning for proc_current, unrelated. |
+| 2026-05-14 eve | Land repair (B) — `sched_next()` falls back to `return 0` (proc 0 = kernel idle) instead of `return proc_current` when no ready proc found. Belt-and-suspenders with (A): guards against any state-corruption path that might still leave proc 0 unselected. (DONE) | `agnos/kernel/core/sched.cyr:7-25`. Kernel 252,496 → 252,480 bytes (–16, literal 0 vs global load). |
+| 2026-05-14 eve | Wire visual-diagnostic ladder — new `kernel/arch/x86_64/fb.cyr` with `cp_fb(idx, color)` (BGR-encoded; null/oob-guarded), plus 19 `cp_fb` call sites in `kernel/core/main.cyr` after every existing CMOS CP write. Color-coded by layer: YELLOW=early arch (0x80/0x81/0x82/0x06), GREEN=subsystems (0x07-0x0D), CYAN=scheduler arming + in-hlt-loop (0x0E-0x10, 0x12/0x13/0x14 first pass), MAGENTA=post-scheduler/userland (0x11, 0x12/0x13/0x14 post-test, 0x15). Stops on iron screen at the cell where execution halted — no reboot+CMOS-read needed for cell-color readout. (DONE) | `kernel/arch/x86_64/fb.cyr` (new, ~30 LOC); `kernel/agnos.cyr` (include); `kernel/core/main.cyr` (19 sites). Kernel +416 bytes from cp_fb wiring + function body. |
+| 2026-05-14 eve | Collateral cleanup — renamed `kernel/lib/` → `kernel/klib/` to eliminate the cyrius wrapper's `./lib/` shadow-collision class. Wrapper reserves `./lib/` at compile cwd for stdlib-snapshot resolution; agnos was using the same name for its freestanding syscall-free stdlib (kstring/kfmt/ktagged), generating a "delete ./lib/" warning every build and creating real stomp risk if `cyrius deps` were ever run with non-empty `[deps] stdlib`. Updated includes in agnos.cyr, comment refs in cyrius.cyml + vfs.cyr, removed now-moot `CYRIUS_NO_WARN_SHADOW_LIB=1` from test.sh, current-state refs in README/CLAUDE.md/state.md. Historical refs in CHANGELOG / archived proposals / doc-health / roadmap left alone (they describe state at past tags). (DONE) | Build still 252,480 bytes — byte-identical to pre-rename for the rename itself; the build-warning is gone, no more shadow-by-design caveat to teach future readers. |
+| pending | Re-run QEMU `-kernel` with the Attempt-15 build before flashing. **Now expected to advance past CP 0x23** — both repairs target the proc 0 starvation. If QEMU still stalls at 0x23, the bug is *not* in the round-robin policy and we need to look at proc_save_context / proc_restore_context for proc 0 specifically (sub-case 2 territory). | QEMU advances past 0x23 to 0x12/0x13/0x14/0x11 = repairs are sufficient. QEMU still stalls at 0x23 = sub-case 3b diagnosis was incomplete; look at proc context save/restore for proc 0. |
+| pending | After QEMU advances: re-flash USB, iron Attempt 15. | post-reset `read-boot-log.sh` shows kcp ∈ {0x12, 0x13, 0x14, **0x11**}. **CP 0x11 is the closed-beta gate's penultimate milestone** — full 50-hlt scheduler cycle completes on iron. After CP 0x11 the next gate is post-loop progress (shell launch). Visual on-screen: a 0x12 cell that lights **CYAN then transitions to MAGENTA** confirms the proc 0 ↔ proc_a/b cycle now closes — repair (A)+(B) working. |
 
 **Outcome:** MAJOR PROGRESS. The Attempt-13 in-test_proc bisector
 worked exactly as designed — five possible CPs, one of them
@@ -1614,6 +1618,120 @@ revealed the agnosticos `scripts/cyrius.cyml` had drifted to
 5.11.54's lib snapshot — flagged for the cyrius repo, not iron-
 blocking. The pin-lag spectrum tracked in `docs/development/state.md`
 should reflect both manifests at 5.11.55 next time state.md is refreshed.
+
+---
+
+### Repairs landed for Attempt 15 — 2026-05-14 evening
+
+All edits in `agnos/` (no cyrius-side changes per cyrius-hands-off).
+Per-action consent obtained step-by-step from user. Net kernel size
+delta: +368 bytes (post-rename baseline 252,112 → 252,480).
+
+**1. Repair (A) — unconditional state→ready post-save** (`kernel/core/sched.cyr` ~line 108):
+
+```diff
+     proc_save_context(old, isr_rsp);
+-    if (proc_get_state(old) == 2) {
+-        proc_set_state(old, 1);  # running → ready
+-    }
++    proc_set_state(old, 1);  # running → ready (unconditional)
+```
+
+Rationale: `proc_save_context` semantically implies `old` was the
+running proc; the only valid state transition is to ready. The prior
+`state==2` guard was empirically insufficient on iron — Attempt 14
+sub-case 3b is consistent with proc 0's state being read as non-2
+on that path for reasons we cannot fully account for in static
+analysis. Unconditional set removes that variable. blame on the
+prior conditional dates to 2026-04-06 (`c1877a44`), well before
+iron testing started.
+
+**2. Repair (B) — sched_next falls back to proc 0** (`kernel/core/sched.cyr` ~line 19):
+
+```diff
+         si = si + 1;
+     }
+-    return proc_current;
++    return 0;  # fall back to proc 0 (kernel idle)
+ }
+```
+
+Rationale: when the round-robin scan finds no other ready proc, the
+prior fallback `return proc_current` lets a busy-looping ring-0
+test proc (`test_proc_b`) hold the CPU indefinitely. Falling back
+to proc 0 (kernel idle) guarantees the kernel idle loop gets
+re-selected whenever no test proc is ready — proc 0 will hlt and
+yield again. Belt-and-suspenders with (A): if (A) fully solves
+sub-case 3b, (B) is dormant; if (A) fails on iron for some
+unaccounted reason, (B) provides a second safety net at a different
+layer (policy vs state). Either alone defends sub-case 3b.
+
+**3. Visual diagnostic — color-coded CP ladder** (`kernel/arch/x86_64/fb.cyr`
+NEW + 19 sites in `kernel/core/main.cyr`):
+
+New file `fb.cyr` defines `cp_fb(idx, color)` — paints a 4×4
+colored cell on the UEFI framebuffer at a fixed (col, row) grid
+keyed off the CP index. Null-guarded against missing `boot_info_ptr`
+and `fb_phys`; off-screen-guarded against bad height. Companion to
+the existing CMOS scheme — CMOS captures progress across reset
+(post-mortem readout), `cp_fb` captures progress at-boot-time on
+screen. After every existing CMOS asm CP write in main.cyr, a
+matching `cp_fb(idx, COLOR)` call. CMOS first, FB second — if a
+hypothetical fb regression faults, the CMOS log is unaffected.
+
+Color palette (BGR-encoded; gnoboot's UEFI GOP default on Zen is
+BGR — on RGB hardware yellow↔cyan swap but layer geometry stays
+correct):
+
+| Color | Hex | Layer | CPs |
+|-------|-----|-------|-----|
+| WHITE | `0xFFFFFFFF` | boot_shim canary stripe (pre-existing, 256-px line at y=0) | 1-5 (boot_shim only) |
+| YELLOW | `0x00FFFF00` | early arch | 0x80, 0x81, 0x82, 0x06 |
+| GREEN | `0x0000FF00` | subsystem init | 0x07-0x0D |
+| CYAN | `0x0000FFFF` | scheduler arming + in-hlt-loop first pass | 0x0E, 0x0F, **0x10** (closed-beta gate), in-loop 0x12/0x13/0x14 |
+| MAGENTA | `0x00FF00FF` | post-scheduler / userland | 0x11, post-test 0x12/0x13/0x14, 0x15 |
+
+On iron Attempt 14's repeat, the cells should have lit:
+- WHITE stripe (boot_shim) ✓
+- YELLOW × 4 ✓
+- GREEN × 7 ✓
+- CYAN × 3 (0x0E, 0x0F, 0x10 = closed-beta gate fired)
+- CYAN × 1 at cell 0x12 (first hlt round-trip OK — proc_a→proc_b switch)
+- **STOP** at 0x23 (proc_b entered, never yielded)
+- proc 0 never resumes → cells 0x11 + 0x12-MAGENTA-overwrite + 0x13-MAGENTA + 0x14-MAGENTA + 0x15 all dark
+
+For Attempt 15 with repairs (A)+(B) in: expect cells 0x12/0x13/0x14
+to **transition CYAN → MAGENTA** (first written by the hlt loop,
+overwritten by the post-VFS/post-mem-isolation/post-userland-exec
+sites) and cell **0x11 lights MAGENTA** — the closed-beta gate's
+penultimate milestone, full 50-hlt scheduler cycle completed.
+
+**4. Collateral — klib/ rename**: `kernel/lib/` → `kernel/klib/`,
+eliminating cyrius wrapper's `./lib/` shadow-collision class.
+Was generating "delete ./lib/" warning every build (false positive
+for this repo — the kernel deliberately vendors its freestanding
+stdlib at that path). Wrapper reserves `./lib/` at compile cwd
+for stdlib-snapshot resolution; distinct name eliminates the
+warning AND the stomp risk if `cyrius deps` is ever run with
+non-empty `[deps] stdlib`. Includes in agnos.cyr, comment refs in
+cyrius.cyml + vfs.cyr, removed now-moot `CYRIUS_NO_WARN_SHADOW_LIB=1`
+from test.sh, current-state refs in README/CLAUDE.md/state.md.
+Historical refs in CHANGELOG / archived proposals / doc-health /
+roadmap left alone — they describe state at past tags. Build
+byte-identical for the rename itself; the value is reduced
+build-warning noise + reduced surface for future drift.
+
+**Build verification:** `./scripts/build.sh` green, ELF64
+multiboot2 OK, entry `0x1000a8`. Cumulative kernel size
+post-everything: **252,480 bytes**.
+
+**QEMU pre-flight (recommended before iron burn):** load this
+build under QEMU+UEFI per Attempt-13's gnoboot path. If QEMU now
+emits CMOS CP ∈ {0x11, 0x12, 0x13, 0x14}, repairs are sufficient
+on QEMU and likely on iron. If QEMU still stalls at 0x23 (or
+anywhere ≤ 0x10), the diagnosis was incomplete and we need to
+look at `proc_save_context` / `proc_restore_context` for proc 0
+specifically (sub-case 2 territory).
 
 ---
 
