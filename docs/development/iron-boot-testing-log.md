@@ -2533,7 +2533,7 @@ Long-term fix B (pre-map FB phys into AS1/AS2 at construction time) is intention
 
 ---
 
-### Attempt 21 — pending iron burn
+### Attempt 21 — 2026-05-15 → Repair (H) confirmed; kcp advanced 0x18 → 0x1D
 
 Build under test:
 
@@ -2544,23 +2544,107 @@ Build under test:
 | gnoboot | 0.1.0 unchanged |
 | `scripts/build/read-boot-log` | Rebuilt — kcp=0x60 verdict added + kcp=0x18 + decode-hint refreshed. |
 
-**Pre-bound Attempt-21 outcome table** (kcp / visual pairs):
+**CMOS readout (post-reset, user-reported):**
 
-| kcp / visual | Diagnosis |
+```
+CMOS[0x53] gnoboot magic    = 0xcd  (decimal 205)
+CMOS[0x52] gnoboot checkpt  = 0x05  (decimal 5)
+CMOS[0x51] kernel  magic    = 0xab  (decimal 171)
+CMOS[0x50] kernel  checkpt  = 0x1d  (decimal 29)
+CMOS[0x54] CR4 byte 2 (post first cr3_load(as1))   = 0x30  (decimal 48)
+CMOS[0x55] CR4 byte 2 (pre-stac, post kcp=0x60)    = 0x30  (decimal 48)
+```
+
+**Visual ladder:** User reports "same visual display" as Attempt 20 — last visible MAGENTA stays at column 0x17 (post-`proc_map_page` x2), then ~2-3 s of silence, then reset. This is the *expected* visual for Repair (H): the four under-AS1 cp_fb calls (former 0x18 / 0x1B / 0x1C / 0x1D) were deleted, so the visual ladder is supposed to be silent between 0x17 (last kernel-CR3 cp_fb) and 0x19 (post-restore cp_fb). The kcp port-I/O ladder is now the only diagnostic carrier through that block.
+
+**Headline diagnostic — Repair (H) landed cleanly; AS1 round-trip is fully clean; death is in the AS2-block or kernel-CR3 restore.**
+
+`kcp=0x1D` (vs. Attempt 20's stuck 0x18) is the headline: dropping the under-AS1 cp_fb calls fully unblocked the AS1 SMAP round-trip. The kcp ladder ran every stamp through main.cyr:535 inclusive — `kcp=0x18` (post-`cr3_load(as1)`) → `kcp=0x60` (pre-stac) → `kcp=0x1B` (post-stac) → `kcp=0x1C` (post-`store64`+`load64`) → `kcp=0x1D` (post-clac). Only the highest stamp value is preserved in CMOS slot 0x50, so reading 0x1D = full chain completed.
+
+`[0x54] = 0x30, [0x55] = 0x30` — CR4.SMEP|SMAP held all the way through both dump sites. Repair (F)'s CPUID-gated SMEP+SMAP enable in Path-C boot_shim is **completely solid**. CR4 is closed as a concern.
+
+**Death window: main.cyr:538–559** (AS2 stac/store/load/clac + second AS1 round-trip + kernel-CR3 restore + final kcp=0x19 stamp). There are *no kcp stamps in this entire block on the Attempt 21 build* — kcp=0x1D fires at line 535, the next stamp (kcp=0x19) at line 559 never landed. Bisector resolution is 21 lines wide; the read-boot-log Attempt-21 verdict guessed "cr3_load(as2)" as prime suspect but couldn't actually distinguish that from 8 other candidate sites.
+
+**Static analysis — likely candidates ranked:**
+
+1. **`proc_create_address_space` second-call divergence** — both as1 and as2 are built by the same function, mirror kernel PD[0..510] + PDPT[1..3], cover 0–4 GB. AS1 worked; AS2 *should* too. If proc.cyr:154 has a state-dependent bug (e.g., PMM exhaustion partway through the second call returning a partial structure), AS2's PML4 could be non-zero but missing the PD-copy entries → #PF on first kernel-text fetch under as2's CR3.
+2. **`proc_create_address_space` returned 0** — main.cyr:416 has no zero-check on the as2 return. If pmm_alloc failed for the kernel PT trio, as2 = 0 and `cr3_load(as2)` loads CR3=0 → immediate #PF.
+3. **AS2 missing `0xC00000` mapping** — `proc_map_page(as2, 0xC00000, 0x1200000)` at main.cyr:444 silently failed. cr3_load works (kernel text mirrored), but store64(0xC00000) #PFs.
+4. **Kernel-CR3 restore broken** — mov rax, 0x1000 / mov cr3, rax at lines 551-554. Bytes are correct (REX.W mov-imm64 + 0F 22 D8). Should be unreachable as the bug, but the bisector currently can't rule it out.
+
+**Repair (I) for Attempt 22 — 9-stamp diagnostic bisector landed 2026-05-15** (see next section).
+
+**Process note — Repair (H) shape was right.** Dropping the four under-AS1 cp_fb calls cost zero asm bytes (well, −64 net) and advanced the diagnostic frontier by 5 sub-CPs in one move. The deferred long-term fix B (pre-map FB phys into AS1/AS2) remains the right enhancement once the mem-iso block proves clean — but Option A's minimum-risk move surfaced the next bug ladder rung cleanly. Same shape as Attempt 20's kcp=0x60 disambiguator: cheap, single-purpose, decisive.
+
+---
+
+### Repair (I) for Attempt 22 — 9-stamp diagnostic bisector
+
+Landed 2026-05-15 in `agnos/kernel/core/main.cyr` (lines 537-571). Nine 8-byte port-I/O `out 0x71, kcp` stamps inserted at every step of the AS2 block + second AS1 round-trip + kernel-CR3 restore:
+
+| Stamp site | kcp | Diagnosis if kcp pins here |
+|---|---|---|
+| post-`cr3_load(as2)` | 0x61 | AS2 SMAP-bracketed access block stalled (stac/store/load). |
+| post-stac (AS2) | 0x62 | store64/load64 under AS2 SMAP failed — AS2 PD-entry for 0xC00000 likely missing or wrong flags. |
+| post-store+load (AS2) | 0x63 | clac under AS2 faulted — near-unreachable. |
+| post-clac (AS2) | 0x64 | second cr3_load(as1) faulted — AS1 PT got corrupted by the AS2 pass (cross-AS aliasing). |
+| post-cr3_load(as1) #2 | 0x65 | second AS1 access block faulted — should be impossible (same as first AS1 round-trip which worked at kcp=0x1D). |
+| post-stac (AS1 #2) | 0x66 | second load64 under AS1 faulted — implies AS2 invalidated AS1's mapping. |
+| post-load (AS1 #2) | 0x67 | second clac under AS1 faulted — near-unreachable. |
+| post-clac (AS1 #2) | 0x68 | kernel-CR3 restore asm faulted — kernel PML4 at 0x1000 corrupt. |
+| post-restore (kernel CR3 = 0x1000) | 0x69 | mem-iso block fully clean; stall is downstream cp_fb(0x19) or serial-print logic. |
+
+Pure diagnostic stamps — port I/O only, no memory access, can't fault on missing PT mirror. Plus 9 new verdicts in `scripts/src/read-boot-log.cyr` (kcp == 97..105) and an updated kcp == 29 verdict reflecting the post-Repair-I baseline (0x1D no longer terminal; if it pins, port-I/O at 0x61 didn't run = AS2 PT itself broken).
+
+**Build verification:**
+
+| Step | Result |
+|------|--------|
+| `sh scripts/build.sh` (agnos) | OK |
+| `build/agnos` size | **254,000 bytes** (+64 from Attempt 21 — 72 bytes of new asm; 8 bytes absorbed by alignment slot padding, same pattern as Attempt 20's kcp=0x60 stamp) |
+| multiboot2 (ELF64) | OK |
+| Entry | `0x1000a8` (unchanged) |
+| `cyrius build src/read-boot-log.cyr build/read-boot-log` | OK — 9 new kcp verdicts (97–105) + revised kcp=29 verdict; binary **36,280 bytes** (was 32,376) |
+| `sudo install-usb.sh --update /dev/sdb` | Pending (user step) |
+| `timer_isr[]` headroom | Unchanged at 1 byte |
+
+**Carry-forward debt (not blocking Attempt 22):**
+
+- `timer_isr[]` buffer headroom still 1 byte.
+- **Long-term fix B (pre-map FB phys into AS1/AS2)** still deferred until mem-iso block proves clean. Once landed, the four under-AS1 cp_fb stamps can be restored for visual ladder under per-process CR3.
+- read-boot-log carries some stdlib-slice warnings (`vec_get`, unrelated functions reported "undefined" by the diagnostic layer) — pre-existing, not caused by Repair (I); binary builds and runs fine. Investigate when stdlib annotation arc closes.
+
+---
+
+### Attempt 22 — pending iron burn
+
+Build under test:
+
+| Artifact | Version / Size |
+|----------|----------------|
+| cyrius toolchain | 5.11.55 pinned (manifests). |
+| agnos kernel | 1.30.1 candidate + Repair (I) — 9 port-I/O bisector stamps (0x61..0x69) added to mem-iso block. `build/agnos` = **254,000 bytes** ELF64 multiboot2, entry `0x1000a8`. |
+| gnoboot | 0.1.0 unchanged |
+| `scripts/build/read-boot-log` | Rebuilt — 9 new kcp verdicts (97–105) + revised kcp=29 verdict; binary **36,280 bytes**. |
+
+**Pre-bound Attempt-22 outcome table** (kcp readouts):
+
+| kcp | Diagnosis |
 |---|---|
-| **kcp = 0x19, cp_fb(0x19) MAGENTA paints** | Full mem-iso block survived under AS1+AS2. Memory isolation logic clean. Next bug surface is scheduler / userland (CP 0x13 onward — post-mem-iso). |
-| **kcp = 0x1D, no 0x19 paint** | Kernel-CR3 restore asm broke OR cp_fb(0x19) hangs post-restore (very strange — kernel CR3 has FB mapped, this has worked across earlier attempts). |
-| **kcp = 0x1C** | AS2 block stalled — `cr3_load(as2)` or stac/store/load/clac under AS2. AS2's PT mirror has the same coverage as AS1's; if AS1 round-trip worked but AS2 didn't, suspect AS2 PD divergence in `proc_create_address_space`. |
-| **kcp = 0x1B** | store64 / load64 under AS1+SMAP failed. Real SMAP-bracketed access issue — investigate the `0xC00000` PD entry built by `proc_map_page` (does the 2MB page carry US\|RW\|P with the right `0x87` flags?). |
-| **kcp = 0x60, [0x55] = 0x30** | stac under AS1 itself faulted with CR4.SMEP\|SMAP=0x30 enabled. Verify stac opcode encoding (0x0F 0x01 0xCB) and that AC bit semantics don't trip on the test address. |
-| **kcp = 0x60, [0x55] = 0x00** | CR4 actually cleared between [0x54] and [0x55] dumps. No CR-mutating ops between them — would be an unexpected genuine bug. |
-| **kcp = 0x18** | Port-I/O 0x60 stamp itself didn't run. Very unexpected — port-I/O has been working under AS1 across the ladder. Would mean AS1 broke between kcp=0x18 stamp and kcp=0x60 stamp (nothing's there now). |
+| **kcp = 0x19, cp_fb(0x19) MAGENTA paints** | Full mem-iso block survived (AS1 + AS2 + kernel restore). Memory isolation logic clean. Next bug surface is downstream (CP 0x13 onward — post-mem-iso). |
+| **kcp = 0x69, no 0x19 paint** | Kernel CR3 restored OK; cp_fb(0x19) at main.cyr:572 hangs (FB write under kernel CR3 — has worked across earlier attempts, would be a regression). |
+| **kcp = 0x68** | Second AS1 round-trip clean; kernel-CR3 restore asm faulted. Kernel PML4 at 0x1000 may be corrupt — audit any mem-iso code path that could write into 0x1000-0x2FFF. |
+| **kcp = 0x65 / 0x66 / 0x67** | Second AS1 round-trip faulted at a step the first pass cleared (kcp=0x1B/0x1C/0x1D). Implies AS2 pass invalidated AS1's PT mirror — cross-AS aliasing or shared-PT bug. |
+| **kcp = 0x64** | AS2 SMAP round-trip clean; second cr3_load(as1) faulted. AS1 PML4 became unmapped between Attempt-21's clean first pass and now. |
+| **kcp = 0x62 / 0x63** | AS2 access block faulted at store64 or load64. AS2's PD entry for 0xC00000 is the culprit — proc_map_page(as2, …) didn't install the mapping or wrote wrong flags. |
+| **kcp = 0x61** | cr3_load(as2) cleared (AS2 has kernel-text mapped) but the very next instruction faulted. Inspect the stac opcode emission under AS2. |
+| **kcp = 0x1D** | The very first new stamp (kcp=0x61, post-cr3_load(as2)) didn't run. Means either (a) cr3_load(as2) loaded CR3=0 (proc_create_address_space returned 0; main.cyr:416 has no zero-check) or (b) cr3_load(as2) faulted because AS2's PT mirror is corrupt (proc_create_address_space second call diverged from first). Highest-suspicion outcome. |
 
 (Iron burn pending. Update this entry post-reset with CMOS readout — kcp + [0x54] + [0x55] — and the resulting branch from the table above.)
 
 ---
 
-## Carry-forward items (not blocking Attempt 21)
+## Carry-forward items (not blocking Attempt 22)
 
 - **aarch64 native boot test**: blocked on Pi SSH access. Cyrius
   5.11.30 patched the aarch64 emitter; structural verification
