@@ -164,14 +164,14 @@ fn main(): i64 {
     print_cmos_line("CMOS[0x52] gnoboot checkpt  = ", gcp);
     print_cmos_line("CMOS[0x51] kernel  magic    = ", kmagic);
     print_cmos_line("CMOS[0x50] kernel  checkpt  = ", kcp);
-    print_cmos_line("CMOS[0x54] CR4 byte 2 (post-cr3, pre-stac, attempt-18) = ", cr4hi);
-    print_cmos_line("CMOS[0x55] CR4 byte 2 (pre-stac, attempt-19)           = ", cr4pre);
+    print_cmos_line("CMOS[0x54] CR4 byte 2 (post first cr3_load(as1))   = ", cr4hi);
+    print_cmos_line("CMOS[0x55] CR4 byte 2 (pre-stac, post kcp=0x60)    = ", cr4pre);
     println("  byte 2 bit map (LSB-first): FSGSBASE PCIDE OSXSAVE - SMEP SMAP PKE -");
-    println("  SMEP = 0x10, SMAP = 0x20 in this byte. Expected post-Attempt-19:");
-    println("    [0x54] = 0x30 if CR4.SMEP|SMAP held through the cr3_load(as1) round-trip;");
-    println("    [0x55] = 0x30 if CR4.SMEP|SMAP held all the way to right-before-stac;");
-    println("    either reading 0x00 again = CR4 got cleared somewhere downstream of boot_shim.");
-    println("  Both fields meaningful only if kcp reached the matching dump site (>= 0x18).");
+    println("  SMEP = 0x10, SMAP = 0x20. Post-Attempt-20 baseline (Repair F landed):");
+    println("    [0x54] expected 0x30 once kcp >= 0x18.");
+    println("    [0x55] expected 0x30 once kcp >= 0x60 (Attempt 21+) or >= 0x1B (pre-21).");
+    println("    Either field 0x00 with kcp at/past its site = CR4 cleared downstream.");
+    println("    [0x55]=0x00 with kcp pinned at 0x18 = dump never reached (pre-21 cp_fb hang).");
     syscall(1, 1, "\n", 1);
 
     # --- Verdict layer 1: did gnoboot launch at all? ---
@@ -236,7 +236,8 @@ fn main(): i64 {
     if (kcp == 35) { println("verdict (kernel): CP 0x23 — sched rotated test_proc_a → test_proc_b OK. Scheduler is alive; proc 0 (kernel idle) starved by round-robin. Sub-case 3b: fix sched_next to include proc 0 OR mark proc 0 ready post-save_context."); return 0; }
     if (kcp == 22) { println("verdict (kernel): CP 0x16 — address spaces created OK (proc_create_address_space x2 returned). Died before proc_map_page x2 (CP 0x17). Investigate AS-table walker or huge-page setup in proc_map_page."); return 0; }
     if (kcp == 23) { println("verdict (kernel): CP 0x17 — per-process page mappings installed OK (proc_map_page x2 returned). Died before first cr3_load (CP 0x18). Should be unreachable — only the cr3_load asm + helper-call sit between 0x17 and 0x18."); return 0; }
-    if (kcp == 24) { println("verdict (kernel): CP 0x18 — kcp landed via CMOS port-I/O after cr3_load(as1). Attempt 18 confirmed CMOS[0x54] = 0x00 → CR4.SMAP was OFF (legacy comment in main.cyr referenced the dead ELF32 shim path). Attempt 19 added SMEP+SMAP enable in boot_shim.cyr Path C `#ifdef ELF64_KERNEL` block (post-CP-5, CPUID-gated) + CR4 re-dump at CMOS[0x55] right before `stac`. Diagnosis fork: (a) CMOS[0x54]=0x30 AND [0x55]=0x30 = CR4 held, stall is in stac/store64/load64/clac block downstream OR cp_fb-under-AS1 broken — needs SMAP sub-CPs (0x1B-0x1D) to disambiguate. (b) [0x54]=0x30 but [0x55]=0x00 = CR4 cleared between cr3_load and stac — investigate any CR-mutating call. (c) both still 0x00 = SMEP/SMAP enable in boot_shim didn't stick — CPUID path skipped (qemu64?) or CR4 write got reverted earlier."); return 0; }
+    if (kcp == 24) { println("verdict (kernel): CP 0x18 — cr3_load(as1) survived; AS1 has kernel-text mapped. Attempt 20 RESOLVED here: kcp=0x18 + [0x55]=0x00 = cp_fb under AS1's CR3 #PFs (FB MMIO not in AS1's PT mirror — proc_create_address_space only covers 0..4 GB RAM via PD copy + PDPT[1..3] huge pages; Zen UEFI GOP framebuffer is above that). Attempt 21 removed the four under-AS1 cp_fb calls (cp_fb at former 0x18, 0x1B, 0x1C, 0x1D sites); if kcp still pins at 0x18 on an Attempt-21+ kernel, port-I/O under AS1 itself is broken (very unexpected — port-I/O has been working under AS1 across the kcp ladder). Pre-21 verdict-fork retired; the new pre-stac fork lives under kcp=0x60 below."); return 0; }
+    if (kcp == 96) { println("verdict (kernel): CP 0x60 — port-I/O ran under AS1 past the former cp_fb(0x18) site (Attempt 21+). Stall is in the [0x55] CR4 dump asm OR stac OR the SMAP-bracketed store64/load64/clac. Read [0x55] to triage: 0x30 = CR4 still healthy under AS1, stall is in stac/store/load (CP 0x1B-0x1D should advance further). 0x00 with kcp >= 0x60 = CR4 actually cleared between the two dumps — unexpected (no CR-mutating ops between them)."); return 0; }
     if (kcp == 25) { println("verdict (kernel): CP 0x19 — full memory-isolation access dance completed (3 CR3 switches + stac/store/load/clac x3 + kernel-PT restore asm). Died before CP 0x13 (post-mem-iso). Likely in serial print / branch logic / kprint_num at lines 462-479."); return 0; }
     if (kcp == 26) { println("verdict (kernel): CP 0x1A — cp_fb sanity painted on kernel CR3 entering mem-iso block (Attempt 18). Visual ladder should show 1 new YELLOW cell at column 0x1A. If kcp stuck here, fault is in proc_create_address_space() — PMM exhaustion, kernel-PT mirror logic broken, or stack overflow in the helper. If kcp advanced past this with no cells past 0x1A, cp_fb-under-AS1 is broken (FB-not-mapped hypothesis confirmed)."); return 0; }
     if (kcp == 27) { println("verdict (kernel): CP 0x1B — stac executed without faulting under AS1 CR3 (Attempt 18 SMAP bisector). Died inside SMAP-bracketed store64/load64 sequence. CR4.SMAP enforcement state visible via CMOS[0x54] readout above — SMAP bit = 0x20 in byte 2."); return 0; }

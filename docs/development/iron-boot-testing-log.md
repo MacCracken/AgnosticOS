@@ -1,4 +1,4 @@
-> **Last Updated**: 2026-05-14
+> **Last Updated**: 2026-05-15
 
 # Iron Boot Test Log
 
@@ -2462,7 +2462,7 @@ Pre-bound Attempt-20 outcome table:
 
 ---
 
-### Attempt 20 — pending iron burn
+### Attempt 20 — 2026-05-15 → cp_fb-under-AS1 CONFIRMED (kcp=0x18, [0x55]=0x00)
 
 Build under test:
 
@@ -2473,11 +2473,94 @@ Build under test:
 | gnoboot | 0.1.0 unchanged |
 | `scripts/build/read-boot-log` | **32,376 bytes** unchanged. |
 
-(Iron burn pending. Update this entry post-reset with CMOS readout — kcp + [0x54] + [0x55] — and the resulting branch from the Repair (G) outcome table above.)
+**CMOS readout (post-reset, user-reported):**
+
+```
+CMOS[0x53] gnoboot magic    = 0xcd  (decimal 205)
+CMOS[0x52] gnoboot checkpt  = 0x05  (decimal 5)
+CMOS[0x51] kernel  magic    = 0xab  (decimal 171)
+CMOS[0x50] kernel  checkpt  = 0x18  (decimal 24)
+CMOS[0x54] CR4 byte 2 (post-cr3, pre-stac, attempt-18) = 0x30  (SMEP|SMAP both ON)
+CMOS[0x55] CR4 byte 2 (pre-stac, attempt-19)           = 0x00
+```
+
+**Visual ladder:** User reports "still resets after holding 2-3 seconds after last bluish pixels appears." The "last bluish pixels" are CP 0x17 MAGENTA (last cp_fb under kernel CR3 before `cr3_load(as1)` at main.cyr:464). After that no further cell paints → ~2-3 s of silence → reset. Differs from Attempt 19's "no reset items" report — same diagnosis, slightly different fault-cascade visibility (possibly Repair F's SMAP enforcement changed which fault path triple-faults vs. loops).
+
+**Headline diagnostic — cp_fb-under-AS1 confirmed; pre-bound Attempt-20 outcome row 1 fired.**
+
+`kcp = 0x18` (NOT 0x60) means the 8-byte port-I/O at main.cyr:501 (Repair G's kcp=0x60 stamp) **never executed**. The only thing between `kcp = 0x18` (line 467) and `kcp = 0x60` (line 501) is `cp_fb(0x18, MAGENTA)` at line 479 — that's where execution hung. Confirms the prime suspect from the Attempt 19 analysis.
+
+`[0x55] = 0x00` is virgin CMOS — dump never reached. The "CR4 cleared" interpretation is once again ruled out (as the Attempt 19 reinterpretation already established).
+
+**Root cause (confirmed):** `cp_fb`'s `store32(fb + …, color)` writes to the GOP framebuffer phys address. Under AS1's CR3, that phys is not in AS1's page-table mirror. `proc_create_address_space` (proc.cyr:154) populates:
+- PML4[0] → new PDPT
+- PDPT[0] → new PD, copying kernel PD[0..510] from `0x3000` (covers 0..1GB-2MB via 2MB pages)
+- PDPT[1..3] mirrored from kernel PDPT at `0x2000` (1-4GB via 1GB huge pages)
+
+So AS1 reaches 0..4 GB of physical via identity-mapped large/huge pages. The Zen UEFI GOP framebuffer phys on archaemenid is above that range (or in a high-MMIO band the 1-GB huge pages don't cover with MMIO-suitable caching). `cp_fb`'s `store32` from CPL=0 → #PF → handler also faults → #DF → triple-fault → reset ~2-3 s later.
+
+**Repair (H) for Attempt 21 — drop under-AS1 cp_fb calls (Option A).**
+
+Landed 2026-05-15. Four under-AS1 `cp_fb` calls deleted from `main.cyr`:
+- Line 479: `cp_fb(0x18, …)` after first `cr3_load(as1)`
+- Line 517: `cp_fb(0x1B, …)` post-stac
+- Line 522: `cp_fb(0x1C, …)` post-store/load
+- Line 527: `cp_fb(0x1D, …)` post-clac
+
+Plus 12 lines of explanatory comments at the top of the under-AS1 block and a 5-line Attempt-20 outcome resolution appended to the existing pre-bound table comment. Kcp port-I/O stamps unchanged — they carry the full diagnostic ladder under AS1. Visual ladder resumes at `cp_fb(0x19)` MAGENTA after kernel-CR3 restore at line ~545.
+
+Long-term fix B (pre-map FB phys into AS1/AS2 at construction time) is intentionally **deferred** — Option A is the minimum-risk move to find the next bug on the boot path. Once mem-iso block proves clean, B can land separately as a clean enhancement that re-enables the under-AS1 visual ladder.
+
+**Read-boot-log refresh:** kcp=0x18 verdict rewritten to reflect Attempt-20 resolution + Attempt-21 framing. New kcp=0x60 verdict added (Attempt-21+'s pre-stac fork lives here, not at kcp=0x18). CMOS[0x54]/[0x55] decode-hint refreshed: post-Repair-F baseline, expected `0x30 / 0x30` once kcp >= 0x60.
+
+**Build verification:**
+
+| Step | Result |
+|------|--------|
+| `sh scripts/build.sh` (agnos) | OK |
+| `build/agnos` size | **253,936 bytes** (−64 from Attempt 20 — 4 cp_fb call sites removed; comments don't affect codegen) |
+| multiboot2 (ELF64) | OK |
+| Entry | `0x1000a8` (unchanged) |
+| `cyrius build src/read-boot-log.cyr build/read-boot-log` | OK — new kcp=0x60 verdict + refreshed kcp=0x18 + decode-hint |
+| `sudo install-usb.sh --update /dev/sdb` | OK — kernel + gnoboot + initramfs refreshed on USB; kernel-size delta confirmed (254000 → 253936) |
+| `timer_isr[]` headroom | Unchanged at 1 byte |
+
+**Carry-forward debt (not blocking Attempt 21):**
+
+- `timer_isr[]` buffer headroom still 1 byte (unchanged).
+- **Long-term fix B (pre-map FB phys into AS1/AS2)** is the right answer; deferred until mem-iso block is proven clean. Once landed, under-AS1 cp_fb calls can be restored for visual diagnosis under per-process CR3.
+- `proc_create_address_space` covers only 0..4 GB of physical via identity. Any kernel diagnostic under per-process CR3 that touches high MMIO has this problem class.
 
 ---
 
-## Carry-forward items (not blocking Attempt 18)
+### Attempt 21 — pending iron burn
+
+Build under test:
+
+| Artifact | Version / Size |
+|----------|----------------|
+| cyrius toolchain | 5.11.55 pinned (manifests). |
+| agnos kernel | 1.30.1 candidate + Repair (H) — 4 under-AS1 cp_fb calls deleted. `build/agnos` = **253,936 bytes** ELF64 multiboot2, entry `0x1000a8`. |
+| gnoboot | 0.1.0 unchanged |
+| `scripts/build/read-boot-log` | Rebuilt — kcp=0x60 verdict added + kcp=0x18 + decode-hint refreshed. |
+
+**Pre-bound Attempt-21 outcome table** (kcp / visual pairs):
+
+| kcp / visual | Diagnosis |
+|---|---|
+| **kcp = 0x19, cp_fb(0x19) MAGENTA paints** | Full mem-iso block survived under AS1+AS2. Memory isolation logic clean. Next bug surface is scheduler / userland (CP 0x13 onward — post-mem-iso). |
+| **kcp = 0x1D, no 0x19 paint** | Kernel-CR3 restore asm broke OR cp_fb(0x19) hangs post-restore (very strange — kernel CR3 has FB mapped, this has worked across earlier attempts). |
+| **kcp = 0x1C** | AS2 block stalled — `cr3_load(as2)` or stac/store/load/clac under AS2. AS2's PT mirror has the same coverage as AS1's; if AS1 round-trip worked but AS2 didn't, suspect AS2 PD divergence in `proc_create_address_space`. |
+| **kcp = 0x1B** | store64 / load64 under AS1+SMAP failed. Real SMAP-bracketed access issue — investigate the `0xC00000` PD entry built by `proc_map_page` (does the 2MB page carry US\|RW\|P with the right `0x87` flags?). |
+| **kcp = 0x60, [0x55] = 0x30** | stac under AS1 itself faulted with CR4.SMEP\|SMAP=0x30 enabled. Verify stac opcode encoding (0x0F 0x01 0xCB) and that AC bit semantics don't trip on the test address. |
+| **kcp = 0x60, [0x55] = 0x00** | CR4 actually cleared between [0x54] and [0x55] dumps. No CR-mutating ops between them — would be an unexpected genuine bug. |
+| **kcp = 0x18** | Port-I/O 0x60 stamp itself didn't run. Very unexpected — port-I/O has been working under AS1 across the ladder. Would mean AS1 broke between kcp=0x18 stamp and kcp=0x60 stamp (nothing's there now). |
+
+(Iron burn pending. Update this entry post-reset with CMOS readout — kcp + [0x54] + [0x55] — and the resulting branch from the table above.)
+
+---
+
+## Carry-forward items (not blocking Attempt 21)
 
 - **aarch64 native boot test**: blocked on Pi SSH access. Cyrius
   5.11.30 patched the aarch64 emitter; structural verification
