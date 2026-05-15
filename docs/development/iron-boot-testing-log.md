@@ -2381,7 +2381,7 @@ The two diagnostic primaries are: (i) kcp value, (ii) CMOS[0x54] + CMOS[0x55] bo
 
 ---
 
-### Attempt 19 — pending iron burn
+### Attempt 19 — 2026-05-15 → Repair (F) landed cleanly; cp_fb-under-AS1 is the next bug
 
 Build under test:
 
@@ -2392,7 +2392,88 @@ Build under test:
 | gnoboot | 0.1.0 unchanged |
 | `scripts/build/read-boot-log` | **32,376 bytes** — CMOS[0x55] readout + refreshed kcp=4 / kcp=24 verdicts. |
 
-(Iron burn pending. Update this entry post-reset with CMOS readout — particularly CMOS[0x54] *and* CMOS[0x55] — visual ladder description, and photo path.)
+**CMOS readout (post-stall, user-reported):**
+
+```
+CMOS[0x53] gnoboot magic    = 0xcd  (decimal 205)
+CMOS[0x52] gnoboot checkpt  = 0x05  (decimal 5)
+CMOS[0x51] kernel  magic    = 0xab  (decimal 171)
+CMOS[0x50] kernel  checkpt  = 0x18  (decimal 24)
+CMOS[0x54] CR4 byte 2 (post-cr3, pre-stac, attempt-18) = 0x30  (SMEP|SMAP both ON)
+CMOS[0x55] CR4 byte 2 (pre-stac, attempt-19)           = 0x00
+```
+
+**Visual ladder:** user reports "appears like the same as before without reset items" — kernel hung intact, no BIOS POST repaint. Distinct from Attempt 18's reset-only sparse view. Implies #UD→#DF→triple-fault chain is gone — kernel is in a fault loop or halt, not resetting. No new photo (FB unchanged from prior visible state).
+
+**Headline diagnostic — Repair (F) landed cleanly; pre-bound case (b) interpretation was wrong.**
+
+`[0x54] = 0x30` confirms CR4.SMEP|SMAP survived all the way through cr3_load(as1) on iron. The boot_shim Path C CPUID-gated SMEP+SMAP block (Repair F) works. The Attempts 16/17/18 SMAP-was-off root cause is **closed**.
+
+The pre-bound Attempt-19 outcome table at line 2369 mapped `[0x54]=0x30, [0x55]=0x00` to "CR4 cleared between cr3_load(as1) and stac — walk the call chain for any `mov cr4, …`". That interpretation is **implausible** against the static code path:
+
+| Site | Action | Mutates CR4? |
+|------|--------|--------------|
+| `main.cyr:472-478` | `[0x54]` CR4 dump (port I/O) | No |
+| `main.cyr:479` | `cp_fb(0x18, MAGENTA)` | **No** — fb.cyr:46-64 just reads `boot_info_ptr`, loads pitch/height, and `store32`s pixels |
+| `main.cyr:489-495` | `[0x55]` CR4 dump (port I/O) | No |
+
+Between the two dumps is **only** `cp_fb(0x18, …)` — no `mov cr4` anywhere. CR4 cannot have actually been cleared in this window.
+
+**Reinterpretation: `[0x55] = 0x00` is "dump site not reached", not "CR4 cleared".**
+
+Per the archaemenid CMOS map (slots 0x50-0x7F are virgin scratch), [0x55] reading 0x00 is its untouched BIOS default. Attempt 19 was the first build to ever write [0x55]. If line 489 didn't execute, [0x55] just reads back 0x00.
+
+The pre-bound table conflated "[0x55] dump ran and read 0x00" with "[0x55] dump never ran" — both produce the same external reading. That's the table's blind spot, not a real case-(b) event.
+
+**Prime suspect: cp_fb-under-AS1.** Long-suspected at `main.cyr:404-407` and called out in the Attempt 18 §"cp_fb-under-AS1 hypothesis" note. Under AS1's CR3, cp_fb's `store32(fb + …)` likely #PFs because the FB phys range isn't mapped in AS1's PT mirror. With CR4.SMAP=1 (Repair F), the fault path differs from a stac #UD — instead of triple-faulting (BIOS reset, observable as "reset items"), the kernel sits in a #PF→handler→re-fault loop or halts. Matches the user's "no reset items" observation exactly.
+
+**Process note — single observation ("no reset items on screen") promoted cp_fb-under-AS1 from "co-equal next bug" to "prime suspect" in one read.** Same shape as Attempt 18's `[0x54]=0x00` collapsing the Attempt-17 fork. Visual canary signal (reset-vs-hung) costs zero asm bytes and was decisive.
+
+**Repair (G) for Attempt 20 — disambiguator only, no new fix.**
+
+Landed 2026-05-15. Single 8-byte edit to `main.cyr:479-481`: inserts `kcp = 0x60` (port-I/O, can't fault) between `cp_fb(0x18, …)` and the [0x55] CR4 dump. Refreshed comment block explains the disambiguation.
+
+Pre-bound Attempt-20 outcome table:
+
+| kcp / [0x55] | Diagnosis |
+|---|---|
+| **kcp = 0x18** | cp_fb hung before line-481 sub-CP ever ran. Confirms cp_fb-under-AS1 is the bug. **Next:** triage AS1's PT mirror for FB phys range — proc_create_full / shared_kernel_pt coverage of the GOP framebuffer address. |
+| **kcp = 0x60, [0x55] = 0x30** | cp_fb returned, CR4 still good. Stall is in stac/store64/load64/clac (real case (a)). Open the existing 0x1B/0x1C/0x1D sub-CPs (already wired at lines 499-510) — next read should land on one of them. |
+| **kcp = 0x60, [0x55] = 0x00** | Genuine case (b): CR4 actually cleared by something between cp_fb and the [0x55] dump. Unexpected (no CR-mutating call there); would need bytecode-level audit. Wildly unlikely. |
+| **kcp = 0x19 or higher** | Past the entire bisector block. Stall is downstream of clac (kernel-PT restore, scheduler, userland) — next attempt picks up wherever kcp lands. |
+
+**Build verification:**
+
+| Step | Result |
+|------|--------|
+| `sh scripts/build.sh` (agnos) | OK |
+| `build/agnos` size | **254,000 bytes** unchanged (8 added bytes absorbed by existing section/buffer padding — `timer_isr[64]` and friends round to the same alignment slot) |
+| multiboot2 (ELF64) | OK |
+| Entry | `0x1000a8` (unchanged) |
+| read-boot-log | **Not rebuilt** — kcp=0x60 will decode as "unknown CP" for Attempt 20, which is fine for a one-shot disambiguator. If kcp=0x60 lands and Attempt 21 needs more, add a verdict then. |
+| `sudo install-usb.sh --update /dev/sdb` | OK — kernel + gnoboot + initramfs refreshed on USB |
+| `timer_isr[]` headroom | Unchanged at 1 byte |
+
+**Carry-forward debt (not blocking Attempt 20):**
+
+- `timer_isr[]` buffer headroom still 1 byte (unchanged).
+- read-boot-log will report `kcp=0x60` as "unknown" — add a verdict if it actually lands.
+- If Attempt 20 confirms cp_fb-under-AS1 (kcp=0x18 sticks), the fix is `proc_create_full` / shared kernel PT mapping the GOP framebuffer phys range into AS1 — not in the asm bisector at all.
+
+---
+
+### Attempt 20 — pending iron burn
+
+Build under test:
+
+| Artifact | Version / Size |
+|----------|----------------|
+| cyrius toolchain | 5.11.55 pinned (manifests). |
+| agnos kernel | 1.30.1 candidate + Repair (G) — kcp=0x60 sub-CP inserted at main.cyr:479. `build/agnos` = **254,000 bytes** ELF64 multiboot2, entry `0x1000a8`. |
+| gnoboot | 0.1.0 unchanged |
+| `scripts/build/read-boot-log` | **32,376 bytes** unchanged. |
+
+(Iron burn pending. Update this entry post-reset with CMOS readout — kcp + [0x54] + [0x55] — and the resulting branch from the Repair (G) outcome table above.)
 
 ---
 
