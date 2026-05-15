@@ -6,13 +6,13 @@ type: state
 
 # AGNOS Ecosystem — Current State
 
-> **Cyrius toolchain**: 5.11.24 | **Cycle**: v5.11.x — stdlib annotation arc + consumer-issue closeout (active; **24 patches landed same-day** 2026-05-11 — record one-day burst rate)
-> **Last refresh**: 2026-05-13 (captures iron-boot Attempts 2 + 3 on the **NUC AMD** primary target — Intel/Skytech queued post-AMD-proof, not concurrent. Attempt 2 (`grub_video_set_mode`) fixed in `install-usb.sh` commit `cdb67b2`. Attempt 3 (post-handoff silent reset) root cause is OPEN; agnos 1.29.1 ships a real portability fix (CR4 SMEP/SMAP CPUID gate) but is behaviorally identical to 1.29.0 on Zen, so doesn't resolve Attempt 3 on this target. Also re-pins agnos in the live-bedrock cluster.) | **Refresh cadence**: bundle with each v5.11.x patch close, full sweep when minor cuts
+> **Cyrius toolchain**: 5.11.55 | **Cycle**: v5.11.x — stdlib annotation arc + consumer-issue closeout (active; **55 patches landed across 3 days** 2026-05-11/12/13 — 24 + 18 + 13)
+> **Last refresh**: 2026-05-14 (captures iron-boot Attempts 4–14 on the **NUC AMD** primary target — Intel/Skytech queued post-AMD-proof, not concurrent. **Attempt 14 = sub-case 3b confirmed**: ELF load, multiboot2/Path-C handoff, GDT/TSS/IDT/PIC/LAPIC, timer ISR, ring-0 user procs, serial-from-user-procs, PIC EOI, and TWO context-switch round-trips all work; `sched_next()` round-robin starves proc 0 after its initial context-switch out. **Closed-beta gate (CP `0x11`) is one targeted kernel edit away.** Path A (GRUB MB2-EFI) blocked at OVMF strict-W^X; **Path C (sovereign UEFI / gnoboot)** is now MVP. agnos 1.30.0 ships kernel ABI break: entry contract switches from multiboot2 to AGNOS sovereign boot-info struct. Both `agnos/cyrius.cyml` and `agnosticos/scripts/cyrius.cyml` pin **5.11.55**.) | **Refresh cadence**: bundle with each v5.11.x patch close, full sweep when minor cuts
 > **Crate registries** (versions + roles): [`planning/shared-crates.md`](planning/shared-crates.md) is the full registry (incl. pre-1.0); [`docs/applications/libs/README.md`](../applications/libs/README.md) is the v1.0+ stable subset. This file holds cycle / pin / sweep state only.
 
 This doc holds **volatile state** — what's currently true across the AGNOS dev surface. CLAUDE.md is preferences/process/procedures; this is the live picture. Per [*Docs Go Stale Before the Commit*](../articles/docs-go-stale-before-the-commit.md): rewrite in place when state changes; don't preserve historical snapshots — git history is authoritative.
 
-**Drift caveat applies to this doc too** — always verify against actual `VERSION` + `cyrius.cyml`/`cyrius.toml` files before acting on any single item. Repo data refreshed 2026-05-11 eve from local clones across ~52 repos; pin-update sweep largely closed (kernel + most kernel-adjacent repos now on 5.10.44 or 5.11.4; agnosticos/scripts boot pipeline rebuilt against 5.10.44 same day).
+**Drift caveat applies to this doc too** — always verify against actual `VERSION` + `cyrius.cyml`/`cyrius.toml` files before acting on any single item. Repo data refreshed 2026-05-11 eve from local clones across ~52 repos; pin-update sweep largely closed (kernel + most kernel-adjacent repos now on 5.10.44 or 5.11.4; agnosticos/scripts boot pipeline rebuilt against 5.10.44 same day). **2026-05-14 spot-update**: agnos pin moved 5.10.44 → **5.11.55**, agnosticos/scripts pin moved → **5.11.55**, agnos version 1.29.1 → **1.30.0** (sovereign boot-info ABI break). Pin-lag spectrum below reflects 2026-05-11 snapshot — agnos has since exited the 5.10.44 bedrock to the 5.11.55 leading edge.
 
 ---
 
@@ -32,7 +32,7 @@ Plus infrastructure carry-forward: `cyrius deps` symlink → file-copy (v5.10.37
 
 ### v5.11.x slot tracking
 
-**Same-day burst: 24 patches v5.11.0 → v5.11.24 on 2026-05-11.** This exceeds the v5.10.x rate (50 patches in 5 days = 10/day) by ~2.4×. Individual slot resolution lags this doc; the headline counters move faster than the table. Refresh from `cyrius/CHANGELOG.md` for per-patch resolution.
+**Three-day burst: 55 patches v5.11.0 → v5.11.55 across 2026-05-11/12/13** (24 + 18 + 13). Sustained 18–24 patches/day exceeds the v5.10.x rate (50 patches in 5 days = 10/day) by ~2×. Individual slot resolution lags this doc; the headline counters move faster than the table. Refresh from `cyrius/CHANGELOG.md` for per-patch resolution.
 
 | # | Item | Status | Notes |
 |---|------|--------|-------|
@@ -43,7 +43,7 @@ Plus infrastructure carry-forward: `cyrius deps` symlink → file-copy (v5.10.37
 | 5 | Infrastructure (deps copy fix, regression port, TS test harness) | [ ] Queued | Later in v5.11.x |
 | 6 | **argonaut 1.7.0 + kybernet 1.2.1 (BOOT_MINIMAL agnoshi)** | ✅ Cut 2026-05-11 eve | Genesis-repo MVP path: adds agnoshi as a no-deps console service in BOOT_MINIMAL, unblocks boot-to-shell-on-iron without aethersafha. argonaut 1.7.0 = the feature; kybernet 1.2.1 = consumer pin bump. See respective CHANGELOGs. |
 | 7 | **Cyrius 5.11.29/.30/.31 — ELF section-header fix arc** | ✅ Cut 2026-05-12 | GRUB `grub_elf32_get_shnum` rejection on first iron-boot attempt traced to `EMITELF_KERNEL`/`EMITELF`/`cyrld` emitting `e_shoff=0`. Three patch releases mirrored a 5-section table (.text/.rodata/.bss/.shstrtab) across x86 kernel emitter (.29), aarch64 kernel emitter (.30), cyrld ELF64 user-binary linker (.31). agnos 1.29.0 re-pinned to 5.11.29; USB refresh via new `install-usb.sh --update` mode. |
-| 8 | **Iron-boot Attempts 1–3 (NUC AMD) → 2 repairs landed + 1 portability fix + Attempt 3 root cause OPEN** | 🔄 Diagnosis pending | Target: NUC AMD (Zen-class, primary). Intel hosts queued post-AMD-proof, not concurrent. (1) GRUB `grub_elf32_get_shnum` — fixed in cyrius 5.11.29 + agnos 1.29.0 (ELF section headers). (2) GRUB `grub_video_set_mode:782` — fixed in `agnosticos` `install-usb.sh` commit `cdb67b2` (insmod `all_video` / `efi_gop` / `efi_uga` + `gfxpayload=text`). (3) Silent reset post-multiboot-handoff (`WARNING: non console will be available to OS` only) — root cause **open**. agnos 1.29.1 ships a boot_shim CR4 SMEP/SMAP CPUID gate (real portability fix for non-Zen-or-Broadwell silicon) but on AMD Zen the patch is behaviorally identical to 1.29.0, so it does not resolve Attempt 3 on the current target. Recommended next diagnostic: serial-cable capture via the `verbose serial` GRUB entry. See [`iron-boot-testing-log.md`](iron-boot-testing-log.md) Attempt 4 for the option matrix. |
+| 8 | **Iron-boot Attempts 4–14 (NUC AMD) → Attempt 14 lands sub-case 3b; closed-beta gate one kernel edit away** | 🔄 1 targeted edit | Target: NUC AMD (archaemenid, Zen-class, primary AND user's daily-driver — every attempt costs the dev machine). Intel/Skytech queued post-AMD-proof. **Path A (GRUB MB2-EFI) abandoned** — OVMF 2024+ strict-W^X faults in `grub_relocator64_efi_boot` (writes to its own .text patching `_efi_start`'s register-state immediates); Multiboot2 + GRUB-EFI is genuinely under-tested vs Linux's `linuxefi` path. NOT a cyrius bug. **Path C (sovereign UEFI / `gnoboot`)** is now MVP — `gnoboot` is a new repo emitting a UEFI application that hands off via AGNOS sovereign boot-info struct. **agnos 1.30.0** ships the kernel-side ABI break (entry contract: multiboot2 → sovereign boot-info struct). **Attempt 14 hit CP `0x23`** — this confirms in order: kernel→ring-0 user proc context switch, serial from user procs, `hlt`→timer-ISR→`iretq` round-trip, AND proc_a→proc_b switch via `sched_next`. Stall is proc_b's busy-loop never yielding back to proc 0 → **sub-case 3b: `sched_next()` round-robin starves proc 0 after its initial `save_context`**. Repair candidates: (A) mark proc 0 `state=ready` after kernel's initial save (smaller diff), (B) fall back to proc 0 when no other ready proc available. Next CP after fix: `0x11` = closed-beta gate (full 50-hlt scheduler cycle on iron). See [`iron-boot-testing-log.md`](iron-boot-testing-log.md) Attempt 15 plan. |
 
 ### v5.10.x retrospective (closed 2026-05-11 at 5.10.50)
 
@@ -60,7 +60,7 @@ api-surface 2,769 → 2,876 (+107 public fns). cc5 (x86) 741,048 B → **804,472
 
 ### cc5 cut state
 
-cc5 at **809,200 B** at v5.11.24 (+4,728 B across the 24-patch burst from v5.11.0's 804,472 B baseline). v5.11.0 was a stdlib-only addition (cc5 doesn't include `lib/syscalls_*_linux.cyr`); the .1–.24 burst added compiler-internal annotation surface that DOES land in cc5. Self-host fixpoint clean across the burst.
+cc5 at **809,200 B** at v5.11.24 (+4,728 B across the .0–.24 burst from v5.11.0's 804,472 B baseline). v5.11.0 was a stdlib-only addition (cc5 doesn't include `lib/syscalls_*_linux.cyr`); the .1–.24 burst added compiler-internal annotation surface that DOES land in cc5. Self-host fixpoint clean across the burst. **v5.11.25 → v5.11.55 cc5 delta**: not snapshotted in this doc — pull from `cyrius/cc5` if needed. Patches .29/.30/.31 (ELF section-header fix arc) and .43–.55 (Path A→Path C diagnostic + sovereign UEFI emit support) all landed here.
 
 ### v5.12.x reservation — bare-metal + RISC-V rv64
 
@@ -107,8 +107,8 @@ CYML format — WARM CLUSTERS:
            cyim-lsp (5.10.20),
            aegis (5.10.34)
 
-CYML format — LIVE 5.10.44 BEDROCK (~16 repos, the boot path):
-  v5.10.44: agnos (1.29.1), agnoshi (1.3.2),
+CYML format — LIVE 5.10.44 BEDROCK (~15 repos, the boot path minus agnos):
+  v5.10.44: agnoshi (1.3.2),
             agnostik (1.2.2), argonaut (1.7.0),
             bote (2.7.2), daimon (1.2.3),
             kavach (3.2.1), kybernet (1.2.1),
@@ -118,12 +118,15 @@ CYML format — LIVE 5.10.44 BEDROCK (~16 repos, the boot path):
             t-ron (2.1.4)
 
 CYML format — LEADING-EDGE 5.11.x post-burst cluster:
-  v5.11.4: agnosys (1.2.6), sigil (3.1.1), sankoch (2.2.5),
-           sandhi (1.3.4), niyama (1.0.2), patra (1.9.4),
-           sakshi (2.2.4), vani (0.9.3), yukti (2.2.3)
-  v5.11.8: ai-hwaccel (2.2.2)
+  v5.11.55: agnos (1.30.0), agnosticos/scripts (2026.5.13)
+            — both moved to head during the .29/.30/.31 ELF fix arc
+              and Path-A→Path-C transition
+  v5.11.4:  agnosys (1.2.6), sigil (3.1.1), sankoch (2.2.5),
+            sandhi (1.3.4), niyama (1.0.2), patra (1.9.4),
+            sakshi (2.2.4), vani (0.9.3), yukti (2.2.3)
+  v5.11.8:  ai-hwaccel (2.2.2)
 
-CYRIUS TOOLCHAIN itself: 5.11.24 (after same-day 24-patch burst)
+CYRIUS TOOLCHAIN itself: 5.11.55 (after 55-patch 3-day burst 2026-05-11/12/13)
 
 NOT VERIFIED LOCALLY (remote-only, presumed pre-CYML or scaffolded):
   avatara, hadara, itihas, takumi, aethersafha, aethersafta, mela,
@@ -132,9 +135,10 @@ NOT VERIFIED LOCALLY (remote-only, presumed pre-CYML or scaffolded):
   grapevine,chellys-beach-adventure,nba-jam}
 ```
 
-**Bands of attention (refreshed 2026-05-11 eve):**
-- **5.11.x leading edge** (~10 repos) is on the post-burst leaders, ahead of even the live bedrock.
-- **5.10.44 live bedrock** (~16 repos including the entire boot path: agnos, kybernet, argonaut, agnoshi, libro, sigil-adjacent, etc.) — this is where the closed-beta MVP runs.
+**Bands of attention (2026-05-11 eve + 2026-05-14 spot-update for agnos/scripts):**
+- **5.11.55 leading-edge boot-path pair**: agnos (1.30.0) + agnosticos/scripts. These moved off the 5.10.44 bedrock during the .29/.30/.31 ELF fix arc (forced) and the Path-A→Path-C transition (required sovereign UEFI emit support).
+- **5.11.x post-burst cluster** (~10 repos at .4/.8) — ahead of the bedrock but trailing the leading-edge pair.
+- **5.10.44 live bedrock** (~15 repos: kybernet, argonaut, agnoshi, kavach, daimon, bote, t-ron, libro, etc.) — still where the rest of the closed-beta MVP path runs.
 - **Deep-lag tail** shrank but didn't vanish: ark (5.1.10) extreme, hisab/agnova/abaco/nous/bazaar/shakti in v5.7.x cluster, yantra (5.6.17). The 5.4.x cluster (libro, majra) FULLY EXITED at 5.10.44.
 - **Held cluster at 5.7.48** now **3 repos** (mabda, cyrius-doom, samvada) — phylax exited during v5.10.x. mabda is at 3.0.0-rc.2 (soak before GA fold to Cyrius stdlib); cyrius-doom is at 0.26.2 (gated on Cyrius optimization-arc closeout retroactive verification).
 - **Pre-CYML format tail**: only `hoosh` and `shravan` remain in the local-verified set. The previous 11-repo tail collapsed in the v5.10–v5.11 window.
@@ -192,7 +196,7 @@ Status verified 2026-05-11 eve.
 
 Linux kernel LPE in `algif_aead` (AF_ALG in-place AEAD + `splice()` → 4-byte page-cache write → root). Disclosed 2026-04-29; affects mainline kernels from 2017 onward. Roadmap item **S1**.
 
-**AGNOS-native kernel** (`agnos` v1.29.1): structurally immune — verified at `kernel/core/syscall.cyr:32-36`, 26-syscall table contains no `socket`, no `splice`, no AF_ALG family. Bug class is unreachable. (Kernel has moved from 1.26.1 → 1.29.1 since the original CVE audit; syscall table verification is anchored on the syscall-table invariant, not the kernel patch level — re-verify only if the syscall surface grows.)
+**AGNOS-native kernel** (`agnos` v1.30.0): structurally immune — verified at `kernel/core/syscall.cyr:32-36`, 26-syscall table contains no `socket`, no `splice`, no AF_ALG family. Bug class is unreachable. (Kernel has moved from 1.26.1 → 1.30.0 since the original CVE audit; the 1.30.0 cut is a kernel-ABI break for Path-C handoff, not a syscall-surface change. Syscall table verification is anchored on the syscall-table invariant, not the kernel patch level — re-verify only if the syscall surface grows.)
 
 | # | Action | Status |
 |---|--------|--------|
@@ -240,7 +244,7 @@ Root [`CLAUDE.md`](../../CLAUDE.md) "Standalone Repos" table also drifted (same 
 | [`articles/cyrius-vs-rust-benchmarks.md`](../articles/cyrius-vs-rust-benchmarks.md) | Add v5.9.x / v5.10.x / v5.11.x rows; sweep "Pure compute gap" language for closed items |
 | [`articles/port-ledger-volume-1.md`](../articles/port-ledger-volume-1.md) | *Where Rust Still Wins* — confirm which categories closed under v5.8.x / v5.9.x / v5.10.x |
 | [`articles/doom-in-cyrius.md`](../articles/doom-in-cyrius.md) | v5.11.x rebuild numbers when cyrius-doom ships an unblock release (still on pin 5.7.48) |
-| [`articles/sovereign-compiler-vs-brute-force.md`](../articles/sovereign-compiler-vs-brute-force.md) | cc5 size at **809,200 B** (v5.11.24 — was 741,048 B at v5.9.0; +68 KB across v5.10.x three-arc cycle + v5.11.x same-day 24-patch annotation burst) |
+| [`articles/sovereign-compiler-vs-brute-force.md`](../articles/sovereign-compiler-vs-brute-force.md) | cc5 size at **809,200 B** at v5.11.24 baseline (was 741,048 B at v5.9.0; +68 KB across v5.10.x three-arc cycle + v5.11.x .0–.24 annotation burst). **v5.11.25 → v5.11.55 delta not snapshotted** — pull current size from `cyrius/cc5` before publishing. |
 | [`planning/shared-crates.md`](planning/shared-crates.md) | 🔄 Stale again as of 2026-05-11 eve. Refresh queue: agnostik 1.2.2, agnosys 1.2.6, sigil 3.1.1, sankoch 2.2.5, libro 2.6.3, sandhi 1.3.4, niyama 1.0.2, aegis **1.0.0**, cyim 1.7.0, chakshu 0.3.0, darshana 0.3.0. New: argonaut 1.7.0, kybernet 1.2.1. |
 | [`docs/applications/libs/README.md`](../applications/libs/README.md) | Bump versions for v1.0+ subset; "Last Updated 2026-04-15" predates three minors |
 | [`planning/first-party-documentation.md`](planning/first-party-documentation.md) | Re-read at each v5.10.x patch — meta-irony from *Docs Go Stale Before the Commit* |
@@ -284,4 +288,4 @@ When v5.11.x cycle closes:
 
 ---
 
-*Refreshed 2026-05-11 eve (v5.11.0 → v5.11.24 same-day burst; argonaut 1.7.0 + kybernet 1.2.1 boot-to-shell-MVP cuts; pin-update sweep largely closed — 5.10.44 is the live bedrock, 5.11.4+ the leading edge). Rewrite-in-place as state changes. v5.10.x history captured here is closeout-context only — Cyrius CHANGELOG is the receipt.*
+*Refreshed 2026-05-14 (header + iron-boot row + agnos/scripts pin moves spot-updated against v5.11.55 and agnos 1.30.0; Attempt 14 captured — sub-case 3b confirmed, closed-beta gate `CP 0x11` one kernel edit away). Pin-lag spectrum body still reflects 2026-05-11 eve snapshot except where called out. Rewrite-in-place as state changes. v5.10.x history captured here is closeout-context only — Cyrius CHANGELOG is the receipt.*
