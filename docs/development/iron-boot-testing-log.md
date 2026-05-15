@@ -2862,13 +2862,146 @@ Comment in-place explains the Path A vs Path C provenance and points at Attempt 
 
 ---
 
-### Attempt 25 — pending iron burn
+### Attempt 25 — 2026-05-15 → Repair (L) confirmed; mem-iso block fully clean; new bug downstream in main.cyr:640-660
 
-Repair (L) carries. Visual ladder gains CP 0x19 MAGENTA paint if `pt_init` fix is sufficient. Sole structural change to kernel boot: `paging.cyr:pt_init` rewrites PML4[0] and PDPT[0] from scratch instead of OR-ing into whatever happens to be there.
+Build under test:
+
+| Artifact | Version / Size |
+|----------|----------------|
+| cyrius toolchain | 5.11.55 pinned. |
+| agnos kernel | 1.30.1 candidate + Repair (J) + Repair (K) + Repair (L) — `build/agnos` = **254,800 bytes**. |
+| gnoboot | 0.1.0 unchanged. |
+| `scripts/build/read-boot-log` | Not rebuilt — kcp/stamp interpretation unchanged from Attempt 24. |
+
+**CMOS readout (post-reset, user-reported):**
+
+```
+CMOS[0x53] gnoboot magic               = 0xcd  (handoff stamp present)
+CMOS[0x52] gnoboot checkpt             = 0x05  (gnoboot completed)
+CMOS[0x51] kernel  magic               = 0xab  (kernel reached stamp site)
+CMOS[0x50] kernel  checkpt             = 0x19  (decimal 25)
+CMOS[0x54] CR4 byte 2 post cr3(as1)    = 0x30  (SMEP+SMAP intact)
+CMOS[0x55] CR4 byte 2 pre-stac         = 0x30  (SMEP+SMAP intact)
+CMOS[0x56..0x61] AS1+AS2 pmm bytes     = 0x32, 0x32, 0x33, 0x33, 0x33, 0x33,
+                                         0x33, 0x33, 0x33, 0x33, 0x33, 0x33
+                                         (all ≥ 0x20 — clean, well above 2 MB)
+CMOS[0x62..0x68] PML4[0] byte 0        = 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07
+                                         (all healthy — P|RW|US, PDPT @ 0x2000)
+```
+
+**Headline diagnostic — Repair (L) is sufficient.** PML4[0] reads `0x07` at every Repair (K) checkpoint, *including the pre-AS-work stamp* — confirming `pt_init`'s explicit-write replacement initializes PML4[0]/PDPT[0] from cold under Path C. The Attempt 24 third-bucket `0x04` reading is gone; the OR-in-US bug is closed. PMM stamps held clean (all ≥ 0x20, no kernel-PT range hits); CR4 byte-2 held `0x30` through both AS dances.
+
+**kcp = 0x19 = mem-iso block fully complete.** CMOS slot 0x50 preserves only the highest stamp written; reading 0x19 means the kernel reached the **final** stamp of the mem-iso dance at `main.cyr:639`:
+
+```cyrius
+# CMOS CP 0x19: all three CR3 switches + SMAP-bracketed stores/loads + kernel-PT
+# restore survived. Any post-CP-0x19 stall is in the serial-print / branch logic.
+asm { 0xB0; 0x50; 0xE6; 0x70; 0xB0; 0x19; 0xE6; 0x71; }
+cp_fb(0x19, 0x00FF00FF);  # MAGENTA — mem-iso bisector: post all 3 CR3 switches + restore
+```
+
+Attempts 22–24 stuck at `kcp=0x68` (pre-restore stamp from Repair (I)'s 9-stamp bisector); the `mov cr3, 0x1000` restore #PF'd because PML4[0] was `0x04`. Repair (L)'s explicit `store64(0x1000, 0x2007)` cleared that — CR3 restore now walks a valid PML4, `0x19` stamps successfully, and the kcp overwrites the prior `0x68`.
+
+The pre-bound row "kcp ≥ 0x69" in [Repair (L)](#repair-l-for-attempt-25--pt_init-explicit-write-fix) was a forecast typo — the actual final-stamp value is `0x19` (the sub-CP label, not a monotonic counter). Outcome bucket matches "Repair (L) sufficient" exactly; only the predicted readout value was off.
+
+**Visual ladder — RACY.** User reports the screen "occasionally" displays the gnoboot "handing off to kernel" message *plus* a row of colored CP squares at the top-left ([`iron-boot-photos/attempt-25-boot-colors-racy.jpg`](iron-boot-photos/attempt-25-boot-colors-racy.jpg)); otherwise the visual matches recent attempts (silent past column 0x17). The intermittency is the new signal — `cp_fb(0x19)` MAGENTA paint *sometimes* fires, *sometimes* doesn't, on otherwise-identical resets. This non-determinism rules out a deterministic page-table or build error and points at racy state coming out of the mem-iso block (RFLAGS.AC residue from the SMAP brackets? stack misalignment from the asm-heavy CR3 dance? a CR3 that *almost* restored? a TLB-flush gap on FB MMIO?). First racy outcome of the iron-boot ladder — Attempts 1–24 were all deterministic across re-burns.
+
+**Death window — main.cyr:640–660 (21 lines).** Kernel reaches `kcp=0x19` (line 639) but does NOT reach `kcp=0x13` (line 661, "post-memory-isolation test"). The intervening code:
+
+```cyrius
+cp_fb(0x19, 0x00FF00FF);                                    # line 640
+
+serial_print("AS1 wrote 0xAAAA, read=", 23);                # line 642
+kprint_num(val_as1);                                        # line 643
+serial_print(" recheck=", 9);                               # line 644
+kprint_num(val_as1_check);                                  # line 645
+serial_println("", 0);                                      # line 646
+serial_print("AS2 wrote 0xBBBB, read=", 23);                # line 647
+kprint_num(val_as2);                                        # line 648
+serial_println("", 0);                                      # line 649
+
+if (val_as1_check == 0xAAAA) {                              # line 651
+    if (val_as2 == 0xBBBB) {                                # line 652
+        serial_println("Memory isolation: PASS", 22);       # line 653
+    } else {
+        serial_println("Memory isolation: FAIL (AS2)", 28); # line 655
+    }
+} else {
+    serial_println("Memory isolation: FAIL (AS1 clobbered)", 38);  # line 658
+}
+# CMOS CP 0x13: post-memory-isolation test
+asm { 0xB0; 0x50; 0xE6; 0x70; 0xB0; 0x13; 0xE6; 0x71; }    # line 661
+```
+
+Candidates inside the window:
+- `cp_fb(0x19)` itself — line 640 framebuffer write (only intermittently visible).
+- `serial_print` × 5 / `kprint_num` × 3 — eight UART-touching calls (lines 642–649).
+- Nested `if`/`else` chain reading `val_as1_check` / `val_as2` (lines 651–659) — values were written under SMAP brackets earlier; if their stack slots are stale or the AC bit leaked, reads could fault or branch unpredictably.
+
+**Suspect ranking (working hypothesis):**
+
+1. **RFLAGS.AC residue** — the AS2 SMAP round-trip ends with a `clac` (0F 01 CA). If a code path skipped it (e.g. the kernel-PT-restore asm clobbered RFLAGS) AND a later `serial_print` accesses user-flagged memory, SMAP would fault. Test: stamp kcp inside the first `serial_print` call, before the first byte hits the UART.
+2. **Stack misalignment** — the mem-iso block has 3 CR3 switches, 6 stac/clac pairs, kernel-PT-restore asm. If the asm decoder left RSP off-16-byte, the first SSE-aligned local would `#GP`. Test: check RSP alignment via `mov [0x6X], rsp byte 0` stamp.
+3. **`val_as1_check` / `val_as2` are stack-spilled in cc5 codegen** — if the regalloc spilled them to slots that got clobbered by the asm-heavy block, the branch reads garbage. Test: stamp the actual byte read.
+
+**Next repair (M) — proposed:** 4-stamp bisector at main.cyr:640–660 to narrow the 21-line window. Pure port-I/O, ~30 added asm bytes per stamp, no behavior change. See [Repair (M)](#repair-m-for-attempt-26--proposed-4-stamp-bisector-of-mainscyr640-660) below.
 
 ---
 
-## Carry-forward items (not blocking Attempt 25)
+### Repair (M) for Attempt 26 — 4-stamp bisector of main.cyr:640-660
+
+**Status:** Landed 2026-05-15 in `agnos/kernel/core/main.cyr` + `agnosticos/scripts/src/read-boot-log.cyr`. Pending iron burn.
+
+**Goal:** Bisect the 21-line death window between `cp_fb(0x19)` and `kcp=0x13`.
+
+**Stamps landed:**
+
+| Slot | Site (main.cyr) | Stamp value | What it tells us |
+|------|------|-------------|------------------|
+| Stamp 1 | After `cp_fb(0x19, MAGENTA)` line 640 | `0xE1` (225 dec) | Did cp_fb itself return? If kcp stays 0x19, cp_fb is the killer. |
+| Stamp 2 | After first `serial_print("AS1 wrote...")` line 642 | `0xE2` (226 dec) | Did the first UART touch + .rodata walk survive? |
+| Stamp 3 | After final `serial_println("", 0)` line 649 | `0xE3` (227 dec) | Did the 8-call print block survive? Isolates branch from print. |
+| Stamp 4 | Between `}` line 659 and `kcp=0x13` line 661 | `0xE4` (228 dec) | Did the nested if/else branch complete? |
+
+Stamp values chosen above the existing 0x18/0x19/0x1A-0x1D/0x60/0x68/0x69 set to avoid collision in CMOS slot 0x50. Each stamp is the standard 8-byte `mov al, 0x50 / out 0x70, al / mov al, imm / out 0x71, al` pattern — clobbers AL only, no memory access.
+
+Companion edit at main.cyr:638 — stale "lines 462-479" line-number reference (pre-Repair-L) refreshed to "lines 640-660" with confirmation that Attempt 25 actually saw the stall there.
+
+**read-boot-log refresh:** 4 new verdict branches added at `read-boot-log.cyr:323-327` (kcp = 225/226/227/228 decoders), plus the existing kcp=25 (CP 0x19) verdict updated to reference Attempt 25 results + the Repair (M) bisector lookup pattern + the racy-cell observation. The kcp=104 (CP 0x68) "Repair (L) needs #PF handler" forecast was left intact for narrative continuity — that branch only fires on regression, and the actual Repair (L) path is documented above.
+
+**Decision matrix for Attempt 26 readout:**
+
+| kcp post-Attempt-26 | Diagnosis |
+|---|---|
+| `0x19` (unchanged) | `cp_fb(0x19)` itself is faulting intermittently. Triage FB MMIO mapping under kernel CR3 post-restore — possible TLB-flush gap or cacheability mismatch. **Repair (N) candidate**: cp_fb-internal stamps + `wbinvd`/`invlpg` injection ahead of the FB write. |
+| `0xE1` | cp_fb survived; first serial_print faulted. Triage UART driver state (likely RFLAGS.AC residue from a missed clac, or .rodata string-literal load fault). **Repair (N) candidate**: stamp inside `serial_print`'s loop. |
+| `0xE2` | First serial_print returned; death is in kprint_num or a later print/println at lines 643-649. **Repair (N) candidate**: stamp between each of the 7 remaining print calls. |
+| `0xE3` | Print block clean; branch logic at lines 651-659 is the killer. **Repair (N) candidate**: stamp `val_as1_check` / `val_as2` bytes via `mov rax, [rbp-N] / out 0x71, al` before each compare. |
+| `0xE4` | Branch complete; the `kcp=0x13` asm itself faulted (very unlikely — identical to 24 working stamps). Most likely interpretation: spurious result, retry the burn. |
+| `0x13` (or higher) | Repair (M) revealed nothing — the bug was transient on this burn. Repeat burns 2-3× to characterize the racy outcome distribution before escalating. |
+
+**Build verification:**
+
+| Step | Result |
+|------|--------|
+| `sh scripts/build.sh` (agnos) | OK |
+| `build/agnos` size | **254,832 bytes** (+32 from Attempt 25: 4 × 8-byte stamps, no alignment absorption this round) |
+| multiboot2 (ELF64) / entry | OK / `0x1000a8` (unchanged) |
+| `cyrius build` for read-boot-log | OK — `build/read-boot-log` now 42,288 bytes (gained ~6 KB of new verdict text since Attempt 24 baseline) |
+| `timer_isr[]` headroom | Unchanged at 1 byte (Repair (M) is in main.cyr body, not the ISR buffer) |
+| `sudo install-usb.sh --update /dev/sdb` | Pending (user step) |
+
+**Pre-burn ask for Attempt 26:** Given Attempt 25's racy outcome, capture CMOS from **2-3 consecutive resets** rather than one. If kcp lands at different values across burns (e.g., one shows 0x19, another shows 0xE3, another shows 0x13), the racy state distribution itself becomes the primary diagnostic.
+
+**Carry-forward debt (not blocking Attempt 26):**
+
+- If kcp=0x19 result repeats (cp_fb-under-restored-CR3 fault), the deferred Repair-H Option-B work (pre-map FB phys into AS1/AS2's PT mirrors) becomes the structural fix. Not relevant to other kcp values.
+- Several read-boot-log verdicts (kcp=104, kcp=18) still cite pre-Repair-L line numbers (393-478, 549, 561, 575-577). Those branches only fire on regression — refresh opportunistically when next touched.
+- Repair (M) is diagnostic-only. If it pins the bug to print/branch logic, Repair (N) will be the actual fix.
+
+---
+
+## Carry-forward items (not blocking Attempt 26)
 
 - **aarch64 native boot test**: blocked on Pi SSH access. Cyrius
   5.11.30 patched the aarch64 emitter; structural verification
