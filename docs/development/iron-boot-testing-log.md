@@ -2290,7 +2290,7 @@ CMOS[0x50] kernel  checkpt  = 0x18  (decimal 24)
 CMOS[0x54] CR4 byte 2 16-23 = 0x00  (decimal 0)
 ```
 
-**Visual ladder:** unchanged from Attempts 16/17 — no new cells past 0x12 visible post-reset (BIOS POST clears FB after triple-fault; pre-reset cell state unobservable on archaemenid because the box is the user's daily driver). Post-reset photo at [`iron-boot-photos/attempt-18-boot-colors.jpg`](iron-boot-photos/Boot_Colors_18_reset_only.jpeg) shows only the surviving 0x80-0x82 / GREEN/CYAN cells from earlier in this boot — visual disambiguator unusable for this attempt's diagnostic.
+**Visual ladder:** unchanged from Attempts 16/17 — no new cells past 0x12 visible post-reset (BIOS POST clears FB after triple-fault; pre-reset cell state unobservable on archaemenid because the box is the user's daily driver). Post-reset photo at [`iron-boot-photos/attempt-18-boot-colors-reset-only.jpg`](iron-boot-photos/attempt-18-boot-colors-reset-only.jpg) shows only the surviving 0x80-0x82 / GREEN/CYAN cells from earlier in this boot — visual disambiguator unusable for this attempt's diagnostic. Filename suffix `-reset-only` notes the user observation: this sparse view appears only after triple-fault reset; on a *non-reset* exit path (kernel hangs intact), the FB carries Attempts 16/17-style coverage through cell 0x12.
 
 **Headline diagnostic — CR4.SMAP = 0 on iron.**
 
