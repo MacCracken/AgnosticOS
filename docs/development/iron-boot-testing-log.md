@@ -3219,6 +3219,72 @@ Marker comment left at deletion site referencing this entry + the prior-art doc.
 
 ---
 
+### Attempt 28 — 2026-05-15 → MVP BOOT SPINE ALIVE ON IRON
+
+![Attempt 28 — full cp_fb cell sequence painted to halt](iron-boot-photos/attempt-28-mvp-spine-alive.jpg)
+
+**Headline:** Path C end-to-end on archaemenid (NUC AMD, Beelink SER). The kernel completes every checkpoint in its current init sequence and reaches `arch_halt()` at `main.cyr:415` as designed. Closed-beta gate (cp_fb 0x11 MAGENTA) was hit at Attempt 16; this attempt blew **four checkpoints past that gate** — 0x12 / 0x14 / 0x15 all painted MAGENTA, then halt.
+
+The "lockup" framing on first inspection was misread:
+
+- `kcp = 0xEA` is the in-cp_fb internal bisector stamp (Repair N), **not** a stage marker. It tells you the *last* cp_fb call returned cleanly — nothing about boot-stage. The `scripts/read-boot-log.sh` verdict text still encoded the pre-Repair-O Repair M/N decision tree and reported the success as a "stall." Verdict logic needs purging.
+- `CMOS[0x62-0x6A]` PML4 / fb_phys stamps are stale — their writers were inside the deleted mem-iso block (Repair O). The read-boot-log script reads them as if fresh.
+- The screen photo is the truth: every cp_fb cell the post-Repair-O kernel paints is visible — yellow row (0x80/0x81/0x82 early arch + 0x06 GDT/IDT), green span (0x07-0x0D APIC → PMM → heap → ACPI → VFS → SYSCALL), cyan + overpainted-magenta (0x0E-0x10 scheduler arming, 0x11 MAGENTA = closed-beta gate, 0x12 MAGENTA = post-VFS, 0x14 MAGENTA = post-userland-exec, 0x15 MAGENTA = kybernet-launch reached).
+
+**Build under test:**
+
+| Artifact | Version / Size |
+|----------|----------------|
+| cyrius toolchain | 5.11.55 pinned. |
+| agnos kernel | 1.30.1 candidate post-Repair-(O) — `build/agnos` = **253,496 bytes** (verified on-disk before this attempt's burn). Subsequent kybernet wire-up edit at main.cyr:415 took the binary to **253,768 bytes** (+272 — shell dispatch tree now reachable, no longer DCE'd). |
+| gnoboot | 0.1.0 — sovereign UEFI loader, multiboot2-replacement handoff via boot-info struct at RDI. |
+| read-boot-log | 47,640 bytes (stale verdicts — purge queued). |
+
+**CMOS readout (post-reset, user-reported):**
+
+```
+CMOS[0x53] gnoboot magic    = 0xcd  (gnoboot reached handoff)
+CMOS[0x52] gnoboot checkpt  = 0x05
+CMOS[0x51] kernel  magic    = 0xab  (kernel reached main code)
+CMOS[0x50] kernel  checkpt  = 0xEA  (in-cp_fb stamp: last cp_fb returned clean)
+CMOS[0x54]/[0x55]           = 0x30 / 0x30  (CR4 SMEP+SMAP both held)
+CMOS[0x56-0x61] PMM         = 0x4b×6 / 0x5a×6  (live — proc_create_address_space
+                                                still runs from spawn_user_proc)
+CMOS[0x62-0x68] PML4        = 0x07×7  (stale — writers deleted by Repair O)
+CMOS[0x69-0x6A] fb_phys     = 0x00, 0x00  (stale — writer deleted by Repair O)
+```
+
+**Decision-matrix outcome (per Attempt 27 § "Decision matrix for Attempt 28"):**
+
+| Predicted | Actual |
+|---|---|
+| kcp ≥ 0x12 + new checkpoint in userland exec test = **Win** | ✅ — kcp 0x12 MAGENTA painted (post-VFS), 0x14 MAGENTA painted (post-userland-exec), 0x15 MAGENTA painted (kybernet-launch reached), halt. |
+
+**Re-framing the MVP gap.** The original Attempt 28 success-condition ("advances past 0x12") was a narrow framing — it tracked the mem-iso fault as the active blocker, not closed-beta MVP. With the mem-iso front closed, the kernel reaches its current end-of-implementation: `sh_cmd_bench(); arch_halt();` at `main.cyr:415`. **That's not MVP.** MVP = boot-to-shell on iron = user types a character into a shell and sees it echo. Three real gaps separate Attempt 28 from MVP:
+
+1. **`main.cyr:415` wiring** — `sh_cmd_bench()` was a benchmark stub. Real launch path is `kybernet()` → `shell()` → reads `kb_buf` ring + dispatches commands. **Landed same-session** (2026-05-15): `sh_cmd_bench()` → `kybernet()`, kernel 253,496 → 253,768 bytes (+272, shell dispatch tree now reachable).
+2. **Framebuffer glyph renderer** — `kernel/arch/x86_64/fb.cyr` has `cp_fb()` (colored marker cells) but no text rendering. Phase 2 of fb.cyr's docstring already calls this out as "deferred: 8×8 bitmap font + fb_print() mirroring serial_println." Without it, the shell can read keystrokes but the user can't see them. Slot pending.
+3. **Mirror shell I/O to fb** — `shell()` at `kernel/user/shell.cyr:340` uses `serial_print/serial_putc` exclusively. Add `kprint(buf, len)` that hits both serial + fb, or wrap `serial_*` calls. Slot pending alongside #2.
+
+**Open question (iron-only):** does the existing PS/2 ISR + scancode table fire for the user's USB keyboard on archaemenid? Modern AMD NUCs typically have no PS/2 port; UEFI emulates PS/2 for USB keyboards via legacy SMM until the OS takes ownership of xHCI. This kernel doesn't touch xHCI, so legacy emulation should remain active — but verification is an iron burn, not a code question. If emulation doesn't hold, USB HID driver (xHCI + USB stack + HID class) becomes the real next blocker, which is much larger than the fb console.
+
+**State after Attempt 28:**
+- Path C sovereign UEFI handoff: ✅ works on iron
+- agnos full init spine: ✅ works on iron (GDT/TSS/IDT → APIC/timer → paging → PMM → heap → ACPI/PCI → VFS → initrd → SYSCALL → stack canary → scheduler arming → idle survival → userland exec → kybernet-launch)
+- Closed-beta gate (0x11 MAGENTA): ✅ held since Attempt 16, re-verified
+- MVP (typeable shell on iron): ⏳ blocked on fb glyph renderer + (probably) PS/2-emulation working for USB keyboard
+
+**This is the genesis-repo's last big lift before closed beta.** Once the shell is visible and typeable on iron, what's left is product polish (welcome banner, prompt color, command set), installer wiring, and the beta-cohort cut.
+
+**Carry-forward (not blocking the fb-console slot):**
+
+- Purge `scripts/src/read-boot-log.cyr` verdict logic for the deleted Repair M/N bisector stamps. The stale CMOS slots 0x62-0x6A should be marked "post-Repair-O dead — values stale from earlier burns."
+- Remove the in-cp_fb stamps (kcp 0xE5-0xEA) from `fb.cyr:46-86` — they were diagnostics for a bug class that no longer exists, and they keep clobbering CMOS[0x50] so the *real* stage kcp is never readable.
+- `boot_info_capture_rdi()` stays — load-bearing for the actual boot path.
+- `cmos_stamp_fb_phys()` in `mbi.cyr` is now dead code; DCE will eliminate it but it can be deleted from source for hygiene.
+
+---
+
 ## Carry-forward items (not blocking Attempt 28)
 
 - **aarch64 native boot test**: blocked on Pi SSH access. Cyrius
