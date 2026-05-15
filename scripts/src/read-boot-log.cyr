@@ -261,8 +261,8 @@ fn main(): i64 {
     if (kcp == 2)  { println("verdict (kernel): canary ran, died before stack setup (CP 3)."); return 0; }
     if (kcp == 3)  { println("verdict (kernel): stack set up, died before COM1 UART init (CP 4)."); return 0; }
     if (kcp == 4)  { println("verdict (kernel): COM1 init done, died inside boot_info_capture_rdi OR the CR4 SMEP/SMAP enable block (both sit between CP 4 and CP 5 in Attempt-19+ boot_shim). CPUID and `mov cr4, ebx` are routine ring-0 ops, so boot_info_capture_rdi is the prime suspect."); return 0; }
-    if (kcp == 5)    { println("verdict (kernel): reached top-level main.cyr, died in the two opening serial_println calls (before bisector 0x80)."); return 0; }
-    if (kcp == 128)  { println("verdict (kernel): bisector 0x80 — opening serial_println pair OK, died inside gdt_init."); return 0; }
+    if (kcp == 5)    { println("verdict (kernel): reached top-level main.cyr, died in the two opening kprintln calls (before bisector 0x80)."); return 0; }
+    if (kcp == 128)  { println("verdict (kernel): bisector 0x80 — opening kprintln pair OK, died inside gdt_init."); return 0; }
     if (kcp == 129)  { println("verdict (kernel): bisector 0x81 — gdt_init OK, died inside tss_init."); return 0; }
     if (kcp == 130)  { println("verdict (kernel): bisector 0x82 — tss_init OK, died inside idt_init."); return 0; }
     if (kcp == 6)  { println("verdict (kernel): GDT/TSS/IDT loaded, died before APIC/timer init (CP 7)."); return 0; }
@@ -276,9 +276,9 @@ fn main(): i64 {
     if (kcp == 14) { println("verdict (kernel): test procs created, died before 'sti' (CP 15)."); return 0; }
     if (kcp == 15) { println("verdict (kernel): interrupts enabled, died before scheduler activation (CP 16)."); return 0; }
     if (kcp == 16) { println("verdict (kernel): scheduler armed (CP 0x10) — kernel init COMPLETE. Stall is post-init, before first hlt return (CP 0x12)."); return 0; }
-    if (kcp == 18) { println("verdict (kernel): CP 0x12 written (CMOS captures latest write, not highest CP). DISAMBIGUATE BY VISUAL LADDER: cell 0x12 CYAN = iter-1 idle-loop stall (timer ISR + 1st ctx switch OK, died iter 1->10); cell 0x12 MAGENTA = passed idle loop (CP 0x11) + VFS/initrd/memfile, stall is in memory-isolation test (main.cyr:393-478)."); return 0; }
+    if (kcp == 18) { println("verdict (kernel): CP 0x12 reached (post-VFS / initrd / memfile tests written this slot most recently). CMOS captures latest write, not highest CP — kernel may have advanced further. Visual cell-color ladder was retired post-Attempt-29 (cp_fb cells stripped); rely on kcp + on-screen kprint log for disambiguation."); return 0; }
     if (kcp == 19) { println("verdict (kernel): 10 hlts done (CP 0x13) — matches QEMU known-good cycle. Died between iter 10 and iter 25."); return 0; }
-    if (kcp == 20) { println("verdict (kernel): 25 hlts done (CP 0x14) — past QEMU's break point. Died between iter 25 and loop end (CP 0x11)."); return 0; }
+    if (kcp == 20) { println("verdict (kernel): 25 hlts done (CP 0x14) — past QEMU's break point. CMOS captures latest write — userland exec stamp also lands on 0x14, see below."); return 0; }
     if (kcp == 17) { println("verdict (kernel): post-scheduler idle loop COMPLETE (CP 0x11). All 50 hlts retired. Stall is post-loop."); return 0; }
     if (kcp == 32) { println("verdict (kernel): CP 0x20 — entered test_proc_a (1st context switch in OK), died before its first serial_print. Improbable path — investigate iretq → user-proc entry."); return 0; }
     if (kcp == 33) { println("verdict (kernel): CP 0x21 — test_proc_a's first serial_print done, first arch_wait did not return. Sub-case 1: timer IRQ not re-delivered post-iretq (PIC EOI / IF-flag / IDT)."); return 0; }
@@ -286,8 +286,8 @@ fn main(): i64 {
     if (kcp == 35) { println("verdict (kernel): CP 0x23 — sched rotated test_proc_a → test_proc_b OK. Scheduler is alive; proc 0 (kernel idle) starved by round-robin. Sub-case 3b: fix sched_next to include proc 0 OR mark proc 0 ready post-save_context."); return 0; }
     if (kcp == 22) { println("verdict (kernel): CP 0x16 — address spaces created OK from spawn_user_proc (proc_create_address_space returned). Died before proc_map_page (CP 0x17)."); return 0; }
     if (kcp == 23) { println("verdict (kernel): CP 0x17 — per-process page mapping installed OK. Died before user-proc dispatch (CP 0x14)."); return 0; }
-    if (kcp == 20) { println("verdict (kernel): CP 0x14 — userland exec test reached (CMOS captures latest write). Disambiguate by visual ladder: cell 0x14 CYAN = stall at the '25 hlts done' marker inside the idle loop (CP 0x14 CYAN); cell 0x14 MAGENTA = userland exec test passed, stall is between CP 0x14 MAGENTA and CP 0x15 (the next checkpoint, kybernet-launch)."); return 0; }
-    if (kcp == 21) { println("verdict (kernel): CP 0x15 — kybernet-launch reached (MAGENTA). After Repair (O) wire-up (sh_cmd_bench → kybernet) this is the entry to the shell loop in init.cyr. If kcp pegs here with no shell prompt on the framebuffer, four sub-cases (in order of likelihood post Attempt-29): (a) Repair-P-style — non-zero module-scope `var X = literal;` initializers not honored at runtime; fb_putc paints invisible black-on-black at wrong y-offset (FB_CONSOLE_Y0=0 wipes cp_fb cells 0x06..0x10); decodes from screen: cp_fb cells at rows 1–2 wiped, row-9 yellows (0x80/0x81/0x82) survive, no visible prompt. (b) fb_console_init didn't populate the font (check fb_console_ready). (c) fb_putc faulted on first paint. (d) shell loop stuck reading from a kbd ring that never fills (PS/2 emulation not active on this hardware); decodes from screen: all cp_fb cells intact, no prompt — kbd path blocked, not fb."); return 0; }
+    if (kcp == 20) { println("verdict (kernel): CP 0x14 — userland exec test reached (CMOS captures latest write; same slot also stamped at '25 hlts done' inside the idle loop). Most recent stamp wins — assume userland exec reached if kprint log on screen shows 'Userland exec complete'."); return 0; }
+    if (kcp == 21) { println("verdict (kernel): CP 0x15 — kybernet-launch reached. Shell loop is alive (verified Attempt 29 — 'agnos>' prompt rendered). If no input echoes: shell is reading an empty kbd ring. Check (1) BIOS Legacy USB / USB Keyboard Support enabled; (2) try a different USB port (rear EHCI vs front XHCI); (3) if neither works, native XHCI + USB-HID stack is the real next subsystem."); return 0; }
     # NOTE: Verdicts for the mem-iso block (kcp 0x19, 0x1A-0x1D, 0x60-0x68,
     # 0xE1-0xEA Repair M/N) were deleted with Repair (O) on 2026-05-15.
     # Those code paths no longer exist in the kernel; any matching kcp now

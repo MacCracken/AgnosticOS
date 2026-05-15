@@ -3349,10 +3349,74 @@ fn fb_console_init() {
 | cp_fb cells still missing **OR** prompt still invisible | Repair P insufficient — different root cause (e.g., load32 reading wrong width/height; fb_print being called with bogus len; a different shadowing issue). Re-bisect with stamps inside fb_putc. |
 | kcp drops below 0x15 | Repair P regressed something earlier in boot. Unlikely given the assigns are pure stores to gvars, but possible. Revert and re-investigate. |
 
-**Carry-forward (not blocking Attempt 29):**
+**Burn outcome — 2026-05-15 (post-Repair-P verification):**
 
-- File cyrius issue: "non-zero gvar initializer at module scope not honored at runtime; zero-init unaffected." Reproducer: this repair. Severity: medium (silent wrong-result; works correctly in some contexts — needs minimal repro).
-- If Attempt 29 confirms prompt visible, the original Attempt 28 carry-forward (purge `scripts/src/read-boot-log.cyr` Repair M/N verdict logic; remove cp_fb-internal stamps from `fb.cyr:46-86`) becomes the next housekeeping pass.
+![Attempt 29 — shell visible, USB keyboard not inputting](iron-boot-photos/attempt-29-shell-visible-no-keys.jpg)
+
+| Observed | Interpretation |
+|---|---|
+| Full cp_fb cell sequence visible (rows 1, 2, 9 all painted, including 0x06–0x10 + 0x80/0x81/0x82 stripe) **AND** `agnos>` prompt visible below the grid | ✅ **Repair (P) confirmed.** Non-zero gvar-init bug fixed at the symptom level. cyrius issue (`docs/development/issues/2026-05-15-cyrius-nonzero-gvar-init-not-honored.md`) stands for upstream surface. |
+| USB keyboard input not reaching the shell — prompt visible but typing produces no echo | 🔍 **New blocker surfaced: MVP gap #3 falsified.** Hypothesis was "UEFI legacy SMM emulates PS/2 for USB keyboard on archaemenid (probable yes)." Iron proved otherwise. Beelink SER has no PS/2 port — kbd_isr ring (`kb_buf`) never fills. Maps to sub-case (d) from the prior verdict tree: "shell loop reading from a kbd ring that never fills." |
+
+**State after Attempt 29:**
+- Path C sovereign UEFI handoff: ✅ verified
+- Full kernel init spine: ✅ verified
+- Closed-beta gate (CP 0x11 MAGENTA): ✅ held since Attempt 16, re-verified
+- Shell rendered on iron framebuffer: ✅ **NEW** (Repair P)
+- Shell receives keystrokes from a USB keyboard on archaemenid: ❌ blocked
+
+**Next-action triage (user-driven, free attempts first):**
+
+1. **BIOS knob** — boot Beelink into UEFI setup, look for `Legacy USB Support`, `USB Keyboard Support`, `XHCI Hand-off`, `EHCI Hand-off`. If "Auto" or off, force "Enabled". SMM emulation drops at `ExitBootServices` on some firmware unless the flag is sticky.
+2. **Port swap** — try every USB-A port. Some boards wire only one port to the EHCI-compat shim; the rest are pure XHCI with no SMM emulation.
+3. **If both fail → native XHCI + USB-HID-boot-protocol driver.** Not a hack — the right MVP answer ("sovereign OS depends on SMM emulation for input" is not a shipping posture). Scope: ~1.5–2.5k Cyrius LOC for keyboard-only.
+   - XHCI controller init (discover via PCIe — already enumerated at CP 0x0B), MMIO map, command/event ring setup, reset, slot enable.
+   - HID boot protocol: 8-byte report, fixed format (modifier byte + 6 keycodes), no descriptor parsing required.
+
+**PS/2 keyboard explicitly not an option** — modern NUCs ship no PS/2 port.
+
+---
+
+### Post-Attempt-29 cleanup pass — 2026-05-15
+
+Hygiene work landed after the burn, while the shell prompt was still on screen:
+
+**What was stripped:**
+
+| File | Change | Effect |
+|---|---|---|
+| `kernel/core/main.cyr` | All 19 `cp_fb(...)` call lines removed; **CMOS port-I/O stamps preserved** (still 8 bytes per stage, post-mortem readable via `read-boot-log.sh`) | Visual cp_fb cell grid (rows 1–9, y=8..79) no longer painted. The 80-pixel ribbon above the shell goes away. |
+| `kernel/core/main.cyr` | 85 `serial_print(` / `serial_println(` → `kprint(` / `kprintln(` (mirrored to both serial + fb) | **Fixes the scrambled-digits issue** visible in the Attempt 29 photo: numbers were smushing together on fb because `kprint_num()` mirrored but `serial_print` for labels did not. Boot log now reads coherently on screen. |
+| `kernel/arch/x86_64/fb_console.cyr` | `FB_CONSOLE_Y0 = 80` → `FB_CONSOLE_Y0 = 8` (canary stripe at y=0..7 stays — gnoboot-handoff diagnostic kept by design) | Shell + boot log start one cell below the canary, full screen height available. |
+| `scripts/src/read-boot-log.cyr` | Verdict text updated: kcp=21 (CP 0x15) reflects Attempt 29 ground truth (shell alive, USB-kbd blocked, BIOS / port / native-USB triage); kcp=18/20 visual-cell-color disambiguation dropped (cells no longer exist); kcp=128/129/130 / kcp=5 verdict text renamed `serial_println` → `kprintln` | Future post-mortems read accurately against the post-cleanup kernel. |
+| `kernel/core/main.cyr:362-367` | Stale "cp_fb under restored kernel CR3" comment in the mem-iso-removal block reworded ("Under restored kernel CR3 the test pegged kcp at 0x19…") | Doc accuracy. |
+
+**What was kept (the "log infrastructure" the user asked to preserve):**
+
+- All CMOS port-I/O stamps (`asm { 0xB0; 0x50; 0xE6; 0x70; 0xB0; <kcp>; 0xE6; 0x71; }`) — 8 bytes each, survive a hang, decoded by `read-boot-log.sh`. **This is the "if something breaks in startup, we know where to look" channel.**
+- All `kprint*` log lines (every stage of init prints to both serial + fb). Visible on-screen during boot.
+- `cp_fb()` function definition in `kernel/arch/x86_64/fb.cyr`. Infrastructure stays — re-adding a visual stamp at a new stage is a one-line `cp_fb(<idx>, <color>);` call.
+- boot_shim canary stripe (y=0..7, 256 white pixels). gnoboot-handoff diagnostic, untouched per "leave gnoboot."
+
+**Already-stripped during Attempt 28 work, verified not re-present:**
+
+- Repair-N in-`cp_fb` bisector stamps (kcp 0xE5–0xEA). `fb.cyr` is clean.
+- `cmos_stamp_fb_phys()` helper. Not present in `mbi.cyr` (DCE eliminated; source-clean too).
+
+**Build under test (post-cleanup):**
+
+| Artifact | Size |
+|---|---|
+| cyrius toolchain | 5.11.55 (pin unchanged) |
+| `agnos/build/agnos` | **266,312 bytes** (was 266,712 post-Repair-P — net -400 from cp_fb call removal, partially offset by kprint indirection vs direct serial_print) |
+| `agnosticos/scripts/build/read-boot-log` | 32,104 bytes (verdict text shrunk where visual-cell disambiguation removed) |
+| multiboot2 (ELF64) / entry | OK / `0x1000a8` (unchanged) |
+
+**Carry-forward post-cleanup:**
+
+- File cyrius issue: "non-zero gvar initializer at module scope not honored at runtime; zero-init unaffected." Reproducer: Repair P. Severity: medium (silent wrong-result). Note: this is a **cyrius repo** issue — per `feedback_cyrius_hands_off`, surface only; do not edit cyrius.
+- gnoboot 0.2 branch (CMOS-removal track) → user-flagged ready for main merge. Per `feedback_bootloader_kernel_ownership` claude owns gnoboot end-to-end during iron-boot bring-up, but per session policy this Claude is leaving gnoboot untouched while user manages the merge.
+- USB-HID-boot stack scope estimate (XHCI + HID class) added to MVP gap #3 — primary path is BIOS knob + port swap (free), native driver is the real-answer fallback.
 
 ---
 
