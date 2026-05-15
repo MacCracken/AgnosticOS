@@ -2139,6 +2139,61 @@ All four use the existing CMOS-write pattern (`asm { 0xB0 0x50 0xE6 0x70 0xB0 <C
 
 ---
 
+### Attempt 17 — 2026-05-14 night PDT → CMOS advances to 0x18; visual ladder unchanged from Attempt 16
+
+**Build under test:**
+
+| Artifact | Version / Size |
+|----------|----------------|
+| cyrius toolchain | 5.11.55 pinned (manifests) |
+| agnos kernel | 1.30.0 + Repair (D) — 4 bisector CPs (0x16/0x17/0x18/0x19) instrumented across the AS-create / AS-map / first-CR3-switch / full-restore boundaries. `build/agnos` = **253,824 bytes** ELF64 multiboot2, entry `0x1000a8`. |
+| gnoboot | 0.1.0 unchanged |
+| `scripts/build/read-boot-log` | 29,504 bytes — kcp=18 verdict rewritten to reference visual-ladder disambiguation + 4 new verdicts (kcp 22-25) |
+
+**CMOS readout (post-reset):**
+
+```
+CMOS[0x53] gnoboot magic    = 0xcd  (decimal 205)
+CMOS[0x52] gnoboot checkpt  = 0x05  (decimal 5)
+CMOS[0x51] kernel  magic    = 0xab  (decimal 171)
+CMOS[0x50] kernel  checkpt  = 0x18  (decimal 24)
+
+verdict (kernel): CP 0x18 — first cr3 switch (cr3_load(as1)) survived.
+Died inside SMAP-bracketed store64/load64 sequence or one of the later
+CR3 switches. Suspect: stac didn't take effect (CR4.SMAP enforcement),
+or AS2 page tables missing kernel-text mapping (would #PF on next instr
+after cr3_load(as2)).
+```
+
+**Visual ladder:** unchanged from Attempt 16 — no new MAGENTA cells past 0x11/0x12. Cells 0x16/0x17/0x18 NOT painted.
+
+**The CMOS-vs-visual discrepancy is the headline.** Per the pre-bound outcome matrix in the Attempt-17 plan above, kcp=0x18 should be paired with `+ 3 new MAGENTA cells (0x16, 0x17, 0x18)`. The visual ladder shows zero new cells. CMOS writes for 0x16 / 0x17 / 0x18 all completed (CMOS landed on the last of them, 0x18), but the matching `cp_fb()` paints either no-op'd or were overdrawn/cleared before reset.
+
+This forks the diagnosis. Either:
+
+1. **cp_fb broke for these specific calls** — same code path that painted cells 0x11 and 0x12 cleanly earlier in this very boot. Plausible triggers: `boot_info_ptr` or fb-mapped state corrupted between CP 0x12 and CP 0x16 (the new instrumentation block only adds 4 CMOS+cp_fb pairs; no new globals); or the framebuffer access path lost coherence after the AS-creation / map work touched the PMM/VMM state.
+2. **Cells WERE painted, then erased** — a triple-fault reset path that runs firmware-side display reinit could in principle clear the GOP framebuffer between the last paint and the screen handoff to BIOS POST. The reset profile is consistent with this (Attempt 16 painted cells survived to screen post-reset, but those were painted from kernel CR3 only; cells 0x18 paint runs from AS1's CR3).
+3. **kcp=0x18 reached via the CMOS-write asm only, cp_fb at line 449 was the fault site** — would mean cp_fb-on-AS1 is broken. The CMOS write at `:448` is asm-only (no stack, no helper call); cp_fb at `:449` is a CALL that pushes return-addr, accesses `boot_info_ptr` (kernel data), then writes to FB. If AS1's mapping for kernel data or FB phys is broken, the CALL or first load64 inside cp_fb faults.
+
+(3) is the cleanest fit: CMOS writes 0x16/0x17 happen before any cr3_load (on kernel CR3) — so cp_fb(0x16)/(0x17) had no excuse to fail. But the visual shows they didn't paint either, so (3) alone doesn't account for it.
+
+Diagnosis is now: **CMOS-vs-visual desync started somewhere between CP 0x12 (painted clean Attempt 16) and CP 0x18 (CMOS only, no paint).** The bisector to find that boundary is the next attempt's job — sub-checkpoints inside the mem-iso block AND a sanity-check cp_fb call BEFORE the new code (between line 381 and line 396) to prove cp_fb still works on kernel CR3 mid-flight.
+
+**Fault-domain change vs Attempt 16:** Attempt 16's last paint was cell 0x12 with kcp=0x12. Attempt 17's last paint is cell 0x12 with kcp=0x18. The screen looks identical; the CMOS tells the truth. **The visual ladder is no longer authoritative** until we restore CMOS↔FB coherence — which makes the cp_fb-broke-mid-boot hypothesis the gating issue, ahead of the SMAP / AS2 / kernel-text-mapping questions the kcp=0x18 verdict points at.
+
+**Suspect ordering for Attempt 18 instrumentation:**
+
+1. Sanity cp_fb call on a fresh cell (e.g. 0x1A YELLOW) immediately before `var as1 = proc_create_address_space()` at `main.cyr:396`. If 0x1A paints → cp_fb survives up to the mem-iso block; failure is inside the mem-iso block. If 0x1A doesn't paint → cp_fb broke earlier, somewhere between line 381 and line 396 (which is just `serial_println("Memory isolation test...", 23);` — unlikely to be the culprit, but bisect-able).
+2. Sub-checkpoints 0x1B/0x1C/0x1D inside the SMAP region for the original kcp=0x18 hypothesis (post-stac / post-store64 / post-AS1-clac), assuming cp_fb itself isn't the dying instruction.
+3. Optional: dump CR4 low byte to virgin CMOS slot 0x54 right before the first stac, to nail down CR4.SMAP enforcement state on iron.
+
+**Carry-forward debt (not blocking Attempt 18):**
+
+- `timer_isr[]` buffer headroom still 1 byte (unchanged from Attempt 17).
+- read-boot-log build still emits `vec_get` warning (unchanged).
+
+---
+
 ## Carry-forward items (not blocking Attempt 17)
 
 - **aarch64 native boot test**: blocked on Pi SSH access. Cyrius
