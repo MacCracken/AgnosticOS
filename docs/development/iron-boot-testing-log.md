@@ -2616,7 +2616,7 @@ Pure diagnostic stamps — port I/O only, no memory access, can't fault on missi
 
 ---
 
-### Attempt 22 — pending iron burn
+### Attempt 22 — 2026-05-15 → Repair (I) confirmed; kernel-PML4 corruption branch hit (kcp=0x68)
 
 Build under test:
 
@@ -2627,24 +2627,105 @@ Build under test:
 | gnoboot | 0.1.0 unchanged |
 | `scripts/build/read-boot-log` | Rebuilt — 9 new kcp verdicts (97–105) + revised kcp=29 verdict; binary **36,280 bytes**. |
 
-**Pre-bound Attempt-22 outcome table** (kcp readouts):
+**CMOS readout (post-reset, user-reported):**
 
-| kcp | Diagnosis |
+```
+CMOS[0x53] gnoboot magic    = 0xcd  (decimal 205)
+CMOS[0x52] gnoboot checkpt  = 0x05  (decimal 5)
+CMOS[0x51] kernel  magic    = 0xab  (decimal 171)
+CMOS[0x50] kernel  checkpt  = 0x68  (decimal 104)
+CMOS[0x54] CR4 byte 2 (post first cr3_load(as1))   = 0x30  (decimal 48)
+CMOS[0x55] CR4 byte 2 (pre-stac, post kcp=0x60)    = 0x30  (decimal 48)
+```
+
+**Visual ladder:** User reports "no visual change" vs Attempt 21 — last visible MAGENTA stays at column 0x17, then silence, then reset. This is the *expected* visual for Repair (I): all 9 new stamps are pure port-I/O, no `cp_fb`, so the visual ladder is unchanged from Attempt 21. The kcp port-I/O ladder is the only diagnostic carrier through main.cyr:537–580.
+
+**Headline diagnostic — Repair (I) landed cleanly; the mem-iso block is fully traversed up to but excluding the kernel-CR3 restore.**
+
+`kcp=0x68` is the pre-bound "Second AS1 round-trip clean; kernel-CR3 restore asm faulted. Kernel PML4 at 0x1000 may be corrupt" branch — exactly the outcome the table flagged for code-path audit. The ladder ran every stamp from `kcp=0x61` (post-cr3_load(as2)) through `kcp=0x68` (post-clac, AS2's round-trip and second AS1 round-trip both clean), but the `mov rax, 0x1000 / mov cr3, rax` block at main.cyr:575-577 #PFs. CR4 dumps stay 0x30/0x30 — SMEP+SMAP healthy across the entire mem-iso block.
+
+**`[0x54] = 0x30, [0x55] = 0x30`** — Repair (F) still solid; CR4 fully closed as a concern.
+
+### Code-path audit — what wrote into 0x1000-0x2FFF?
+
+The kernel PML4 lives at phys 0x1000 (one page); kernel PDPT at 0x2000, kernel PD at 0x3000 (per `proc_create_address_space`'s `load64(0x3000 + i*8)` / `load64(0x2000 + pi*8)` at proc.cyr:183, 189). Total kernel-PT footprint: phys [0x1000..0x3FFF].
+
+**Prime suspect — PMM allocates a kernel-PT page.** PMM (`agnos/kernel/core/pmm.cyr`) marks pages [0..511] (phys 0x0..0x1FFFFF) USED via `memset(&pmm_bitmap, 0xFF, 64)` at pmm.cyr:88, then KASLR-seeds `pmm_next_free = 512 + (seed % 3584)` at pmm.cyr:102. The wrap-around branch in `pmm_alloc` (pmm.cyr:119-127) walks `[0, pmm_next_free)` — which *includes* the kernel-reserved range. If a stray `pmm_free(addr)` ever runs with `addr ∈ [0x1000..0x3FFF]` (e.g., a future PMM-init bug, a bitmap zero-pass that beats the 0xFF pass, or a corrupted `pmm_next_free` rollback) the bitmap shows those pages free, and the next `pmm_alloc` returns 0x1000/0x2000/0x3000. `proc_create_address_space` then `memset(new_pml4, 0, 4096)` zeros the kernel PML4 in place. CR3=0x1000 reload walks zeros → #PF. **High confidence; binary-decidable via Repair (J).**
+
+**Secondary suspect — KPTI tail write in `proc_create_address_space`.** Line 212 stashes `u_pml4` at `new_pd + 511 * 8`. If `new_pd` were wrongly the kernel PD at 0x3000 (e.g., because PMM handed out 0x3000 as the new_pd), this write would land at phys 0x3FF8 — corrupting kernel PD[511] without faulting at the time. `proc_map_page` then reads back through the corrupted chain on every subsequent call.
+
+**Why this fires on the SECOND `proc_create_address_space` not the first:** AS1 worked clean (kcp=0x1D); AS2's *internal* round-trip also worked (kcp through 0x68). PMM is monotonically advancing `pmm_next_free` so each successive 6-page batch is at a higher phys address. For AS2 to land in the kernel-reserved range, either (a) `pmm_next_free` wraps and the wrap-search finds a "free" kernel page (the bitmap should prevent this, but a corruption path would surface it), or (b) the in-flight side effects of AS2's build silently clobber kernel PML4 via a different path (KPTI tail write, etc.). Either way the fault is invisible until kernel-CR3 reload.
+
+### Pre-bound outcomes for Repair (J)
+
+The audit's binary question — "did PMM hand out a kernel-PT page?" — is what Repair (J) is sized to answer in a single iron burn.
+
+| Repair-J CMOS readout | Diagnosis |
 |---|---|
-| **kcp = 0x19, cp_fb(0x19) MAGENTA paints** | Full mem-iso block survived (AS1 + AS2 + kernel restore). Memory isolation logic clean. Next bug surface is downstream (CP 0x13 onward — post-mem-iso). |
-| **kcp = 0x69, no 0x19 paint** | Kernel CR3 restored OK; cp_fb(0x19) at main.cyr:572 hangs (FB write under kernel CR3 — has worked across earlier attempts, would be a regression). |
-| **kcp = 0x68** | Second AS1 round-trip clean; kernel-CR3 restore asm faulted. Kernel PML4 at 0x1000 may be corrupt — audit any mem-iso code path that could write into 0x1000-0x2FFF. |
-| **kcp = 0x65 / 0x66 / 0x67** | Second AS1 round-trip faulted at a step the first pass cleared (kcp=0x1B/0x1C/0x1D). Implies AS2 pass invalidated AS1's PT mirror — cross-AS aliasing or shared-PT bug. |
-| **kcp = 0x64** | AS2 SMAP round-trip clean; second cr3_load(as1) faulted. AS1 PML4 became unmapped between Attempt-21's clean first pass and now. |
-| **kcp = 0x62 / 0x63** | AS2 access block faulted at store64 or load64. AS2's PD entry for 0xC00000 is the culprit — proc_map_page(as2, …) didn't install the mapping or wrote wrong flags. |
-| **kcp = 0x61** | cr3_load(as2) cleared (AS2 has kernel-text mapped) but the very next instruction faulted. Inspect the stac opcode emission under AS2. |
-| **kcp = 0x1D** | The very first new stamp (kcp=0x61, post-cr3_load(as2)) didn't run. Means either (a) cr3_load(as2) loaded CR3=0 (proc_create_address_space returned 0; main.cyr:416 has no zero-check) or (b) cr3_load(as2) faulted because AS2's PT mirror is corrupt (proc_create_address_space second call diverged from first). Highest-suspicion outcome. |
-
-(Iron burn pending. Update this entry post-reset with CMOS readout — kcp + [0x54] + [0x55] — and the resulting branch from the table above.)
+| **Any slot in [0x56..0x5B] (AS1) or [0x5C..0x61] (AS2) reads `0x00`** | **Smoking gun #1 confirmed.** That slot's `pmm_alloc` returned a phys page in [0x0000..0xFFFF]. Root cause = PMM bitmap. Triage `pmm_init` / `pmm_free` callers / `pmm_next_free` rollback. |
+| **All slots [0x56..0x61] read `0x20` or higher** | PMM is clean — `pmm_alloc` returned only ≥ 0x200000 pages. Smoking gun #1 ruled out. Triage shifts to suspect #2 (KPTI tail write at proc.cyr:212) and other downstream paths. Add `cmos_stamp` after every `store64(new_pd + 511*8, …)` in next repair. |
+| **AS1 stamps [0x56..0x5B] all show valid bytes, AS2 stamps [0x5C..0x61] all read `0x00` (virgin CMOS)** | AS2 call to `proc_create_address_space` never reached the stamp sites = aborted at first pmm_alloc returning 0. Means PMM exhausted between the AS1 and AS2 calls — 1 GB+ of single-page allocations would have to happen between them, which the mem-iso block doesn't do; this would imply a runaway loop or major bug. Low probability but flag if observed. |
 
 ---
 
-## Carry-forward items (not blocking Attempt 22)
+### Repair (J) for Attempt 23 — PMM-allocation CMOS stamps
+
+Landed 2026-05-15 in `agnos/kernel/core/proc.cyr`. 12 single-byte CMOS stamps inside `proc_create_address_space`, written immediately after each of the 6 `pmm_alloc()` calls. A static call counter `proc_pca_call_n` distinguishes the AS1 call (slots 0x56..0x5B) from the AS2 call (slots 0x5C..0x61). Each stamp writes `(addr >> 16) & 0xFF` — byte 2 of the returned physical address.
+
+Slot allocation (CMOS scratch range [0x50..0x7F] per archaemenid CMOS map):
+
+| Slot | Stamps |
+|---|---|
+| 0x50 | kcp (existing) |
+| 0x51 | kernel magic 0xab (existing) |
+| 0x52 | gnoboot checkpt (existing) |
+| 0x53 | gnoboot magic 0xcd (existing) |
+| 0x54 | CR4 byte 2 post first cr3_load(as1) (existing) |
+| 0x55 | CR4 byte 2 pre-stac post kcp=0x60 (existing) |
+| **0x56** | AS1 call, byte 2 of `new_pml4` |
+| **0x57** | AS1 call, byte 2 of `new_pdpt` |
+| **0x58** | AS1 call, byte 2 of `new_pd` |
+| **0x59** | AS1 call, byte 2 of `u_pml4` |
+| **0x5A** | AS1 call, byte 2 of `u_pdpt` |
+| **0x5B** | AS1 call, byte 2 of `u_pd` |
+| **0x5C** | AS2 call, byte 2 of `new_pml4` |
+| **0x5D** | AS2 call, byte 2 of `new_pdpt` |
+| **0x5E** | AS2 call, byte 2 of `new_pd` |
+| **0x5F** | AS2 call, byte 2 of `u_pml4` |
+| **0x60** | AS2 call, byte 2 of `u_pdpt` |
+| **0x61** | AS2 call, byte 2 of `u_pd` |
+
+**Stamp encoding**: `(addr >> 16) & 0xFF` distinguishes binary-clean from smoking-gun:
+
+- `0x00` → page < 0x10000 (i.e., < 64 KB) → kernel-reserved range → **smoking gun confirmed**
+- `0x20`–`0xFF` → page ≥ 0x200000 (≥ 2 MB) → safe (above PMM's `pmm_used = 512` watermark)
+
+(Values `0x01`–`0x1F` are theoretically reachable only if PMM exhausts the 2–16 MB range and a wrap-around finds something below 0x200000; not expected for the first 12 page allocations of boot. Treat any `< 0x20` reading as a smoking gun.)
+
+Implementation: two-line `outb(0x70, slot); outb(0x71, val)` pair per stamp, calling existing `outb` helper from `arch/x86_64/io.cyr`. No new helpers. Single static counter `proc_pca_call_n` initialized to 0, incremented on entry. Third+ calls (if `proc_create_address_space` ever runs more than twice during boot) skip stamping (out of slots) to avoid corrupting unrelated CMOS scratch.
+
+**Build verification:**
+
+| Step | Result |
+|------|--------|
+| `sh scripts/build.sh` (agnos) | OK |
+| `build/agnos` size | **254,752 bytes** (+752 from Attempt 22) |
+| multiboot2 (ELF64) / entry | OK / `0x1000a8` (unchanged) |
+| `cyrius build src/read-boot-log.cyr build/read-boot-log` | OK — 12 new slot reads + interpretation block + updated kcp=0x68 verdict; binary **38,344 bytes** (was 36,280) |
+| `sudo install-usb.sh --update /dev/sdb` | Pending (user step) |
+| `timer_isr[]` headroom | Unchanged at 1 byte (kernel growth is all in proc.cyr, not pic.cyr) |
+
+(Build verified clean; pre-existing diagnostic-layer false-positives — `memset` for proc.cyr, `vec_get`/`strlen`/`fmt_byte`/`println` for read-boot-log — are surfaced by the cyrius diagnostic layer but resolve at link time via the include chain. Same pattern as Repair (I).)
+
+---
+
+### Attempt 23 — pending iron burn
+
+Repair (J) carries. Outcome interpretation table above. The mem-iso block above the kernel-CR3 restore stays unchanged from Attempt 22; only `proc.cyr`'s `proc_create_address_space` gains 12 CMOS stamps. Visual ladder unchanged. Sole diagnostic carrier remains the kcp+CMOS readout.
+
+---
+
+## Carry-forward items (not blocking Attempt 23)
 
 - **aarch64 native boot test**: blocked on Pi SSH access. Cyrius
   5.11.30 patched the aarch64 emitter; structural verification

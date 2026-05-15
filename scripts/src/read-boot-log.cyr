@@ -159,6 +159,23 @@ fn main(): i64 {
     var kcp    = cmos_read(80);  # 0x50
     var cr4hi  = cmos_read(84);  # 0x54  CR4 byte 2 (bits 16-23), Attempt-18+ diag (post-cr3-switch)
     var cr4pre = cmos_read(85);  # 0x55  CR4 byte 2 (bits 16-23), Attempt-19+ diag (pre-stac)
+    # Repair (J), Attempt 23+: PMM-allocation byte-2 stamps from proc_create_address_space.
+    # Slots 0x56..0x5B = AS1 call's 6 pmm_alloc results (kernel PML4/PDPT/PD + KPTI user PML4/PDPT/PD).
+    # Slots 0x5C..0x61 = AS2 call's 6 pmm_alloc results, same order.
+    # Each slot = (phys_addr >> 16) & 0xFF. 0x00 = page < 0x10000 (kernel-PT range, smoking gun);
+    # 0x20+ = page >= 0x200000 (safe, above PMM's 2 MB watermark).
+    var as1_pml4 = cmos_read(86);  # 0x56
+    var as1_pdpt = cmos_read(87);  # 0x57
+    var as1_pd   = cmos_read(88);  # 0x58
+    var as1_upml4 = cmos_read(89);  # 0x59
+    var as1_updpt = cmos_read(90);  # 0x5A
+    var as1_upd  = cmos_read(91);  # 0x5B
+    var as2_pml4 = cmos_read(92);  # 0x5C
+    var as2_pdpt = cmos_read(93);  # 0x5D
+    var as2_pd   = cmos_read(94);  # 0x5E
+    var as2_upml4 = cmos_read(95);  # 0x5F
+    var as2_updpt = cmos_read(96);  # 0x60
+    var as2_upd  = cmos_read(97);  # 0x61
 
     print_cmos_line("CMOS[0x53] gnoboot magic    = ", gmagic);
     print_cmos_line("CMOS[0x52] gnoboot checkpt  = ", gcp);
@@ -172,6 +189,27 @@ fn main(): i64 {
     println("    [0x55] expected 0x30 once kcp >= 0x60 (Attempt 21+) or >= 0x1B (pre-21).");
     println("    Either field 0x00 with kcp at/past its site = CR4 cleared downstream.");
     println("    [0x55]=0x00 with kcp pinned at 0x18 = dump never reached (pre-21 cp_fb hang).");
+    syscall(1, 1, "\n", 1);
+
+    # Repair (J), Attempt 23+: dump the 12 PMM-allocation stamps and interpret them.
+    print_cmos_line("CMOS[0x56] AS1 pmm_alloc #1 (new_pml4 byte 2)  = ", as1_pml4);
+    print_cmos_line("CMOS[0x57] AS1 pmm_alloc #2 (new_pdpt byte 2)  = ", as1_pdpt);
+    print_cmos_line("CMOS[0x58] AS1 pmm_alloc #3 (new_pd   byte 2)  = ", as1_pd);
+    print_cmos_line("CMOS[0x59] AS1 pmm_alloc #4 (u_pml4   byte 2)  = ", as1_upml4);
+    print_cmos_line("CMOS[0x5A] AS1 pmm_alloc #5 (u_pdpt   byte 2)  = ", as1_updpt);
+    print_cmos_line("CMOS[0x5B] AS1 pmm_alloc #6 (u_pd     byte 2)  = ", as1_upd);
+    print_cmos_line("CMOS[0x5C] AS2 pmm_alloc #1 (new_pml4 byte 2)  = ", as2_pml4);
+    print_cmos_line("CMOS[0x5D] AS2 pmm_alloc #2 (new_pdpt byte 2)  = ", as2_pdpt);
+    print_cmos_line("CMOS[0x5E] AS2 pmm_alloc #3 (new_pd   byte 2)  = ", as2_pd);
+    print_cmos_line("CMOS[0x5F] AS2 pmm_alloc #4 (u_pml4   byte 2)  = ", as2_upml4);
+    print_cmos_line("CMOS[0x60] AS2 pmm_alloc #5 (u_pdpt   byte 2)  = ", as2_updpt);
+    print_cmos_line("CMOS[0x61] AS2 pmm_alloc #6 (u_pd     byte 2)  = ", as2_upd);
+    println("  Repair (J) PMM scan: byte 2 of each pmm_alloc result.");
+    println("    0x00            = page in [0x0000..0xFFFF] — KERNEL-PT RANGE, smoking gun.");
+    println("    0x01..0x1F      = page in [0x010000..0x1FFFFF] — below 2 MB watermark, also bad.");
+    println("    0x20..0xFF      = page >= 0x200000 — safe (above kernel reservation).");
+    println("    Any slot in [0x56..0x61] reading < 0x20 with kcp >= 0x18 = PMM bug confirmed.");
+    println("    AS1 stamps clean + AS2 stamps clean + kcp=0x68 = PMM ruled out; triage KPTI tail write.");
     syscall(1, 1, "\n", 1);
 
     # --- Verdict layer 1: did gnoboot launch at all? ---
@@ -250,7 +288,7 @@ fn main(): i64 {
     if (kcp == 101) { println("verdict (kernel): CP 0x65 — second cr3_load(as1) survived. Died inside second AS1 SMAP-bracketed access (stac / load64 / clac). Should be unreachable — exact same access pattern as the first AS1 round-trip which succeeded at kcp=0x1D."); return 0; }
     if (kcp == 102) { println("verdict (kernel): CP 0x66 — second stac under AS1 executed. Died on load64(0xC00000) — but the first AS1 pass loaded the same address without fault. Investigate whether the AS2 pass somehow invalidated AS1's PT mirror (cross-AS aliasing)."); return 0; }
     if (kcp == 103) { println("verdict (kernel): CP 0x67 — second load64 under AS1 succeeded. Died on clac (3-byte asm, no memory access). Near-unreachable."); return 0; }
-    if (kcp == 104) { println("verdict (kernel): CP 0x68 — second AS1 round-trip complete. Died on the kernel-CR3 restore asm at main.cyr:575-577 (mov rax, 0x1000 / mov cr3, rax). If kernel CR3 = 0x1000 isn't valid post-mem-iso (e.g., something zeroed kernel PML4), this faults. Audit any code path that might write into 0x1000-0x2FFF during mem-iso execution."); return 0; }
+    if (kcp == 104) { println("verdict (kernel): CP 0x68 — second AS1 round-trip complete. Died on the kernel-CR3 restore asm at main.cyr:575-577 (mov rax, 0x1000 / mov cr3, rax). Kernel PML4 at 0x1000 corrupt — something zeroed it during mem-iso. Repair (J) for Attempt 23 wires 12 PMM-allocation byte-2 stamps at CMOS [0x56..0x61] inside proc_create_address_space. SCAN THE [0x56..0x61] LINES ABOVE: any reading < 0x20 with kcp=0x68 = smoking gun #1 confirmed (pmm_alloc handed out a kernel-PT page in [0x1000..0x3FFF]). All [0x56..0x61] >= 0x20 with kcp=0x68 = PMM ruled out; bug is in the KPTI tail write at proc.cyr:212 or downstream — next repair adds stamps there."); return 0; }
     if (kcp == 105) { println("verdict (kernel): CP 0x69 — kernel CR3 restored to 0x1000 successfully. Mem-iso block fully clean. Stall is in cp_fb(0x19) MAGENTA at main.cyr:586 (FB write — works under kernel CR3) or the serial-print/branch logic at lines 588 onward. Visual check: cell 0x19 MAGENTA should now be painting; if not, cp_fb regressed."); return 0; }
     syscall(1, 1, "verdict (kernel): unexpected checkpoint ", 40);
     print_num(kcp);
