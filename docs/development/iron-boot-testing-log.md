@@ -2194,7 +2194,97 @@ Diagnosis is now: **CMOS-vs-visual desync started somewhere between CP 0x12 (pai
 
 ---
 
-## Carry-forward items (not blocking Attempt 17)
+### Repairs landed for Attempt 18 — 2026-05-14 night
+
+Per-action consent obtained — user approved "Full (1+2+3+4)" bundle: sanity cp_fb at 0x1A + SMAP sub-CPs 0x1B/0x1C/0x1D + CR4 dump to CMOS 0x54 + read-boot-log verdicts.
+
+**1. main.cyr — cp_fb sanity at 0x1A (pre-AS-creation).**
+
+Inserted between `serial_println("Memory isolation test...", 23);` and `var as1 = proc_create_address_space();` at `main.cyr:393-396`. CMOS write + cp_fb paint of cell 0x1A in **YELLOW (0x00FFFF00)** to distinguish from the MAGENTA bisector cells. If 0x1A paints, the cp_fb-vs-AS1 hypothesis survives (cp_fb works on kernel CR3 entering the block). If it doesn't, cp_fb broke upstream and we need a wider bisector.
+
+**2. main.cyr — SMAP sub-CPs 0x1B / 0x1C / 0x1D.**
+
+| CP | Insertion site | Proves on iron |
+|----|----------------|----------------|
+| 0x1B | After `stac` (line 450), before `store64(0xC00000, 0xAAAA)` | `stac` executed without faulting under AS1 CR3 |
+| 0x1C | After `var val_as1 = load64(0xC00000);` (line 452), before `clac` | SMAP-bracketed store64 + load64 succeeded under AS1 |
+| 0x1D | After `clac` (line 453), before `cr3_load(as2)` (line 456) | AS1 SMAP-bracketed round-trip complete; any post-0x1D stall is in AS2 |
+
+All three use CMOS+cp_fb pattern (MAGENTA). If hypothesis (3) from Attempt 17 (cp_fb-under-AS1 broken) is right, these won't fire visually — kcp staying at 0x18 with cell 0x1A as the only new paint is itself the diagnostic signal.
+
+**3. main.cyr — CR4 byte 2 dump to CMOS[0x54].**
+
+Inserted between the CMOS write for CP 0x18 (line 448) and the suspected-fault `cp_fb(0x18)` (line 449). Reads CR4, shifts right 16, writes byte 2 (bits 16-23) to CMOS[0x54]. Port I/O only — runs even if AS1's PT mirror is broken, so we always learn the CR4.SMAP enforcement state on iron.
+
+Byte 2 bit layout (LSB-first within the byte): FSGSBASE / PCIDE / OSXSAVE / - / SMEP / SMAP / PKE / -. **SMAP = 0x20** in this byte.
+
+| Asm encoding | Bytes |
+|--------------|-------|
+| `mov al, 0x54` | `B0 54` |
+| `out 0x70, al` | `E6 70` |
+| `mov rax, cr4` | `0F 20 E0` |
+| `shr rax, 16` | `48 C1 E8 10` |
+| `out 0x71, al` | `E6 71` |
+
+13-byte block. Single-pass; no branches; no memory access.
+
+**4. read-boot-log.cyr — verdicts for kcp 26-29 + CMOS[0x54] readout + kcp=24 verdict refresh.**
+
+| Action | Detail |
+|--------|--------|
+| Added `cmos_read(84)` for CMOS[0x54] | Reads the CR4-byte-2 dump |
+| Added `print_cmos_line("CMOS[0x54] CR4 byte 2 16-23 = ", cr4hi);` | Always printed; meaningful only if `kcp >= 0x18` |
+| Added byte-2 bit-map decode hint (3 lines) | SMAP = 0x20 in this byte; readable by inspection |
+| Added verdicts for `kcp == 26 / 27 / 28 / 29` (CPs 0x1A / 0x1B / 0x1C / 0x1D) | Each verdict points at the next-likely fault domain if stall lands there |
+| Refreshed `kcp == 24` (CP 0x18) verdict | Now references Attempt 17's CMOS-vs-visual desync and the Attempt-18 disambiguation path (cp_fb 0x1A on kernel CR3 vs cp_fb 0x18 under AS1) |
+
+| Build verification | Result |
+|---|---|
+| `sh scripts/build.sh` (agnos) | OK |
+| `build/agnos` size | 253,824 → **253,936 bytes** (+112) |
+| multiboot2 (ELF64) | OK |
+| Entry | `0x1000a8` (unchanged) |
+| `cyrius build src/read-boot-log.cyr build/read-boot-log` | OK |
+| `build/read-boot-log` size | 29,504 → **31,552 bytes** (+2,048 from 5 verdict strings + decode hint + CMOS[0x54] readout) |
+| Pre-existing `vec_get` warning | Inherited; cyrius-side; not blocking |
+| `timer_isr[]` headroom | Unchanged at 1 byte (no pic.cyr edits) |
+
+**Attempt-18 plan — pre-bound expected outcomes:**
+
+The headline signal is whether cell 0x1A paints **AND** what cells appear past 0x1A.
+
+| Cell-painting outcome | kcp likely | Diagnosis |
+|---|---|---|
+| **No new cells past 0x12** (same as Attempt 17) | 0x12 or earlier | cp_fb broke upstream of CP 0x1A — somewhere between line 381 (post-VFS) and line 393 (`serial_println`). World is upside-down; widen the bisector. |
+| **Cell 0x1A YELLOW only, no MAGENTA past 0x12** | 0x18 (or higher via CMOS only) | **cp_fb-under-AS1 hypothesis CONFIRMED.** FB phys not in AS1's per-process PT mirror. Fix: extend the PD-copy to cover the FB phys range, or move the FB into the 0-4 GB identity-mapped region. CMOS[0x54] tells us CR4.SMAP state at the moment of fault. |
+| **Cell 0x1A YELLOW + cell 0x18 MAGENTA**, no 0x1B | 0x18 → did not advance | cp_fb-under-AS1 actually works for the first paint; stall is in `stac` or whatever comes between cp_fb(0x18) and CP 0x1B. Very unlikely — stac is 3 bytes asm. |
+| **Cells 0x1A + 0x18 + 0x1B**, no 0x1C | 0x1B → did not advance | `stac` OK; SMAP'd `store64` faulted. CR4.SMAP confirmed enforcing (or stac didn't set AC). Check CMOS[0x54] for the SMAP bit; if SMAP off, store64 should have worked → different bug. |
+| **Cells 0x1A + 0x18 + 0x1B + 0x1C**, no 0x1D | 0x1C → did not advance | Store + load + load-of-recheck all OK; `clac` faulted. Near-impossible — 3 bytes asm, no memory access. Suspect ISR interaction. |
+| **Cells 0x1A + 0x18 + 0x1B + 0x1C + 0x1D**, no 0x13 | 0x1D → did not advance | AS1 round-trip clean; fault is in `cr3_load(as2)` (line 456) or beyond. Most likely AS2 missing kernel-text mapping → #PF on next instr fetch after `mov cr3, rax`. |
+| **All cells through 0x13 MAGENTA painted** | 0x13 or beyond | Memory-isolation test fully passed. Next gate: userland exec spawn (CP 0x14). |
+
+**Iron readout shortcut**: cell 0x1A YELLOW is the diagnostic primary. Its presence-or-absence resolves whether cp_fb is the broken instruction across the boundary. The CR4[0x54] readout is a sidecar that helps interpret kcp >= 0x18 cases.
+
+**Verification gates skipped** (same as Attempts 15-17): QEMU pre-flight permanently blocked for this kernel.
+
+---
+
+### Attempt 18 — pending iron burn
+
+Build under test:
+
+| Artifact | Version / Size |
+|----------|----------------|
+| cyrius toolchain | 5.11.55 pinned (manifests). Wrapper still resolves 5.11.54 lib snapshot — out-of-scope. |
+| agnos kernel | 1.30.0 + Repair (D) + Repair (E) — Repair (D)'s 4 bisector CPs unchanged; Repair (E) adds sanity cp_fb(0x1A) + CR4 dump + SMAP sub-CPs 0x1B/0x1C/0x1D. `build/agnos` = **253,936 bytes** ELF64 multiboot2, entry `0x1000a8`. `timer_isr[]` headroom still 1 byte. |
+| gnoboot | 0.1.0 unchanged |
+| `scripts/build/read-boot-log` | **31,552 bytes** — CMOS[0x54] readout + 4 new verdicts (kcp 26-29) + refreshed kcp=24 verdict |
+
+(Iron burn pending. Update this entry post-reset with CMOS readout + visual ladder description + photo path.)
+
+---
+
+## Carry-forward items (not blocking Attempt 18)
 
 - **aarch64 native boot test**: blocked on Pi SSH access. Cyrius
   5.11.30 patched the aarch64 emitter; structural verification

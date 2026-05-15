@@ -157,11 +157,16 @@ fn main(): i64 {
     var gcp    = cmos_read(82);  # 0x52
     var kmagic = cmos_read(81);  # 0x51
     var kcp    = cmos_read(80);  # 0x50
+    var cr4hi  = cmos_read(84);  # 0x54  CR4 byte 2 (bits 16-23), Attempt-18+ diag
 
     print_cmos_line("CMOS[0x53] gnoboot magic    = ", gmagic);
     print_cmos_line("CMOS[0x52] gnoboot checkpt  = ", gcp);
     print_cmos_line("CMOS[0x51] kernel  magic    = ", kmagic);
     print_cmos_line("CMOS[0x50] kernel  checkpt  = ", kcp);
+    print_cmos_line("CMOS[0x54] CR4 byte 2 16-23 = ", cr4hi);
+    println("  byte 2 bit map (LSB-first): FSGSBASE PCIDE OSXSAVE - SMEP SMAP PKE -");
+    println("  SMAP = 0x20 in this byte; only meaningful if kcp >= 0x18 (kernel");
+    println("  reached the CR4-dump site between cr3_load(as1) and cp_fb(0x18)).");
     syscall(1, 1, "\n", 1);
 
     # --- Verdict layer 1: did gnoboot launch at all? ---
@@ -226,8 +231,12 @@ fn main(): i64 {
     if (kcp == 35) { println("verdict (kernel): CP 0x23 — sched rotated test_proc_a → test_proc_b OK. Scheduler is alive; proc 0 (kernel idle) starved by round-robin. Sub-case 3b: fix sched_next to include proc 0 OR mark proc 0 ready post-save_context."); return 0; }
     if (kcp == 22) { println("verdict (kernel): CP 0x16 — address spaces created OK (proc_create_address_space x2 returned). Died before proc_map_page x2 (CP 0x17). Investigate AS-table walker or huge-page setup in proc_map_page."); return 0; }
     if (kcp == 23) { println("verdict (kernel): CP 0x17 — per-process page mappings installed OK (proc_map_page x2 returned). Died before first cr3_load (CP 0x18). Should be unreachable — only the cr3_load asm + helper-call sit between 0x17 and 0x18."); return 0; }
-    if (kcp == 24) { println("verdict (kernel): CP 0x18 — first cr3 switch (cr3_load(as1)) survived. Died inside SMAP-bracketed store64/load64 sequence or one of the later CR3 switches. Suspect: stac didn't take effect (CR4.SMAP enforcement), or AS2 page tables missing kernel-text mapping (would #PF on next instr after cr3_load(as2))."); return 0; }
+    if (kcp == 24) { println("verdict (kernel): CP 0x18 — kcp landed via CMOS port-I/O after cr3_load(as1). On Attempt 17 the visual ladder showed NO new cells past 0x12 (cp_fb 0x18 silent). Attempt 18 added cp_fb(0x1A) BEFORE the AS-creation block on kernel CR3 — if 0x1A YELLOW painted but no 0x18 MAGENTA, hypothesis is cp_fb-under-AS1 broken (FB phys not in AS1's PT mirror; per-process PD-copy covers 0-4 GB but UEFI FB typically sits higher). Check CMOS[0x54] for CR4 byte 2 (SMAP bit = 0x20). If kcp advanced past 0x18 via the new sub-CPs, cp_fb-under-AS1 actually works and the SMAP bisector below applies."); return 0; }
     if (kcp == 25) { println("verdict (kernel): CP 0x19 — full memory-isolation access dance completed (3 CR3 switches + stac/store/load/clac x3 + kernel-PT restore asm). Died before CP 0x13 (post-mem-iso). Likely in serial print / branch logic / kprint_num at lines 462-479."); return 0; }
+    if (kcp == 26) { println("verdict (kernel): CP 0x1A — cp_fb sanity painted on kernel CR3 entering mem-iso block (Attempt 18). Visual ladder should show 1 new YELLOW cell at column 0x1A. If kcp stuck here, fault is in proc_create_address_space() — PMM exhaustion, kernel-PT mirror logic broken, or stack overflow in the helper. If kcp advanced past this with no cells past 0x1A, cp_fb-under-AS1 is broken (FB-not-mapped hypothesis confirmed)."); return 0; }
+    if (kcp == 27) { println("verdict (kernel): CP 0x1B — stac executed without faulting under AS1 CR3 (Attempt 18 SMAP bisector). Died inside SMAP-bracketed store64/load64 sequence. CR4.SMAP enforcement state visible via CMOS[0x54] readout above — SMAP bit = 0x20 in byte 2."); return 0; }
+    if (kcp == 28) { println("verdict (kernel): CP 0x1C — SMAP-bracketed store64+load64 succeeded under AS1 (Attempt 18 SMAP bisector). Died on clac or in the brief gap before kernel returns from this access block. Should be near-unreachable — clac is a 3-byte asm with no memory access."); return 0; }
+    if (kcp == 29) { println("verdict (kernel): CP 0x1D — AS1 SMAP-bracketed round-trip complete (Attempt 18 SMAP bisector). Died in cr3_load(as2) at line 456 or beyond. Most likely AS2 missing kernel-text mapping (would #PF on next instr after cr3_load) or AS2's PD-copy diverged from AS1's."); return 0; }
     syscall(1, 1, "verdict (kernel): unexpected checkpoint ", 40);
     print_num(kcp);
     println(" — possibly stale CMOS.");
