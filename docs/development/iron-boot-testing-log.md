@@ -2269,18 +2269,130 @@ The headline signal is whether cell 0x1A paints **AND** what cells appear past 0
 
 ---
 
-### Attempt 18 — pending iron burn
+### Attempt 18 — 2026-05-14 night PDT → CR4.SMAP=0 confirmed (Path C boot shim never enabled SMAP; `stac` was #UD-ing)
+
+**Build under test:**
+
+| Artifact | Version / Size |
+|----------|----------------|
+| cyrius toolchain | 5.11.55 pinned (manifests). Wrapper still resolves 5.11.54 lib snapshot — out-of-scope. |
+| agnos kernel | 1.30.0 + Repair (D) + Repair (E) — Repair (D)'s 4 bisector CPs unchanged; Repair (E) adds sanity cp_fb(0x1A) + CR4 dump (CMOS[0x54]) + SMAP sub-CPs 0x1B/0x1C/0x1D. `build/agnos` = **253,936 bytes** ELF64 multiboot2, entry `0x1000a8`. `timer_isr[]` headroom still 1 byte. |
+| gnoboot | 0.1.0 unchanged |
+| `scripts/build/read-boot-log` | **31,552 bytes** — CMOS[0x54] readout + 4 new verdicts (kcp 26-29) + refreshed kcp=24 verdict |
+
+**CMOS readout (post-reset, user-reported):**
+
+```
+CMOS[0x53] gnoboot magic    = 0xcd  (decimal 205)
+CMOS[0x52] gnoboot checkpt  = 0x05  (decimal 5)
+CMOS[0x51] kernel  magic    = 0xab  (decimal 171)
+CMOS[0x50] kernel  checkpt  = 0x18  (decimal 24)
+CMOS[0x54] CR4 byte 2 16-23 = 0x00  (decimal 0)
+```
+
+**Visual ladder:** unchanged from Attempts 16/17 — no new cells past 0x12 visible post-reset (BIOS POST clears FB after triple-fault; pre-reset cell state unobservable on archaemenid because the box is the user's daily driver). Post-reset photo at [`iron-boot-photos/attempt-18-boot-colors.jpg`](iron-boot-photos/Boot_Colors_18_reset_only.jpeg) shows only the surviving 0x80-0x82 / GREEN/CYAN cells from earlier in this boot — visual disambiguator unusable for this attempt's diagnostic.
+
+**Headline diagnostic — CR4.SMAP = 0 on iron.**
+
+Byte 2 of CR4 reads 0x00, meaning *all* of FSGSBASE/PCIDE/OSXSAVE/SMEP/SMAP/PKE are off. The kernel inherited UEFI's CR4 (PAE + PGE only) and never re-tuned. Root cause traced in one grep pass:
+
+| Site | Verdict |
+|------|---------|
+| `agnos/kernel/arch/x86_64/boot_shim.cyr:70-88` (legacy ELF32 multiboot1 path) | CPUID-gates + sets CR4.SMEP|SMAP. **Doesn't run on iron** — Path C handoff goes through the `#ifdef ELF64_KERNEL` block instead. |
+| `agnos/kernel/arch/x86_64/boot_shim.cyr:160-172` (Path C, runs on iron) | Comment: "*CR0/CR3/CR4/EFER — UEFI configured them; kernel re-tunes later*". **Deferred — but no kernel-side site ever actually re-tunes.** |
+| `agnos/kernel/core/main.cyr:386` (stale) | Comment: "*CR4.SMAP set in the boot shim, line 52 of boot_shim.cyr*". Wrong: `boot_shim.cyr:52` is the COM1 UART IER write now. The legacy SMAP enable is at lines 70-88, and is gated by `#ifndef ELF64_KERNEL`. |
+| `grep -rn "cr4\|SMAP\|SMEP" kernel/**/*.cyr` | Only writers of CR4 in the entire kernel: the legacy ELF32 shim block, plus an unrelated CR4 read at `main.cyr:466` (the Attempt-18 dump itself). No SMEP/SMAP set anywhere else. |
+
+Without CR4.SMAP=1, the `stac` (`0F 01 CB`) at `main.cyr:471` is **`#UD` invalid-opcode** (Intel SDM Vol 2, *STAC*: "If CR4.SMAP is 0, an invalid-opcode exception (#UD) is generated"). The kernel has no working #UD handler on iron (or the handler itself faults) → #DF → triple-fault → CPU reset. kcp pins at 0x18 exactly because the CMOS write at line 458 lands, the CR4 dump at lines 463-469 lands (port I/O only, can't fault), `cp_fb(0x18)` at line 470 paints (or doesn't, but it can't fault either way under kernel CR3 since `cr3_load(as1)` already happened at line 455 — the cp_fb-under-AS1 question is now subsumed by SMAP), and **the next instruction `stac` #UDs before the CP 0x1B write at line 473 can fire.**
+
+This also retro-fits Attempts 16 + 17: those stalled at the same site, but without CMOS[0x54] we couldn't tell #UD from #PF. The reset profile (kernel reaches CP 0x18 then resets ~1-2s later) matches a #UD that recurses to #DF rather than a pure #PF stall.
+
+**cp_fb-under-AS1 hypothesis: NOT confirmed and NOT refuted.** Visual ladder unusable on this attempt. Will only be answerable post-SMAP-fix: if Attempt 19 advances kcp past 0x18 cleanly, cp_fb-under-AS1 is fine; if kcp stays at 0x18 and cell 0x18 didn't paint, cp_fb-under-AS1 is the *next* bug.
+
+**Process note — single data point (`CMOS[0x54]=0x00`) collapsed the entire Attempt-17 fork.** Without it we'd have spent Attempt 18 chasing cp_fb-under-AS1 + ITDB + AS-table mirror logic separately. The CR4 dump cost 13 bytes asm; saved ~3 attempts of misdirected bisection.
+
+---
+
+### Repairs landed for Attempt 19 — 2026-05-14 night
+
+All edits in `agnos/` (kernel boot_shim + main.cyr) and `agnosticos/scripts/` (read-boot-log). Per-action consent: user approved "all three" for the bundle: (1) Path C SMEP+SMAP enable; (2) refresh stale main.cyr boot_shim comment; (3) CMOS[0x55] pre-stac CR4 re-dump. Read-boot-log + this log entry + state.md spot-update bundled as the standard documentation tail (same shape as Attempt 17/18 repair entries).
+
+**1. `boot_shim.cyr` (Path C / `#ifdef ELF64_KERNEL` block) — CPUID-gated SMEP+SMAP enable, then unified CP 5.**
+
+Mirrors the legacy ELF32 shim block (lines 70-88) into the Path C path, inserted *between* `boot_info_capture_rdi()` and the existing `CMOS[0x50] = 5` write. The existing CP 5 marker is moved to *after* the CR4 enable so kcp=5 now means "boot_info_capture_rdi returned AND CR4 SMEP+SMAP enabled" — combined to avoid a CMOS-value collision with `main.cyr:36`'s `CMOS[0x50] = 0x06` (GDT/TSS/IDT loaded). Trade-off: if kcp pins at 4, fault is in either `boot_info_capture_rdi` or the CR4 block (CPUID + `mov cr4, ebx` are routine ring-0 ops, so the merged checkpoint is reasonable).
+
+CPUID leaf 7 sub-leaf 0 returns SMEP at EBX[7] and SMAP at EBX[20]; stash original CPUID-EBX in EAX so each `test`+`jz`+`or ebx, …` uses the unmodified feature mask. Push/pop in long mode default to 64-bit (`0x53` = `push rbx`, `0x5B` = `pop rbx`) — fine because CR4 upper bits are all zero (no defined CR4 bit above 31).
+
+Skips silently on QEMU `qemu64` (lacks both feature bits); enables both on Zen (advertises both) and any qemu `-cpu max`.
+
+**2. `main.cyr:383-401` — refresh stale boot_shim comment.**
+
+Old comment claimed "CR4.SMAP set in the boot shim, line 52 of boot_shim.cyr" — wrong both about the line (now COM1 IER) and the path (only runs under `#ifndef ELF64_KERNEL`). New comment names *both* sites (Path A lines 70-88 / Path C post-CP-5) and notes that pre-v1.30.1 Path C kernels left SMAP=0 → `stac` #UD → triple-fault. Documentation matches the actual enable site again.
+
+**3. `main.cyr:471` — CR4 byte-2 re-dump to CMOS[0x55] right before `stac`.**
+
+Same shape as the Attempt-18 dump but into a fresh CMOS slot (0x55) so we can compare the post-cr3_load(as1) reading (0x54, kept) with the pre-stac reading (0x55, new). If [0x54] reads 0x30 but [0x55] reads 0x00, CR4 got cleared between the cr3 switch and the stac → investigate any CR-mutating call in that window. If both 0x30, CR4 held → stall is in the SMAP-bracketed access block or cp_fb-under-AS1.
+
+13-byte asm block, port I/O only — runs even if AS1's PT mirror is broken.
+
+**4. `scripts/src/read-boot-log.cyr` — CMOS[0x55] readout + verdict refresh.**
+
+| Action | Detail |
+|--------|--------|
+| Added `cmos_read(85)` for CMOS[0x55] | Reads the pre-stac CR4-byte-2 dump |
+| Renamed [0x54] field for clarity | "CR4 byte 2 (post-cr3, pre-stac, attempt-18)" vs "(pre-stac, attempt-19)" |
+| Decode hint expanded | Shows both [0x54] and [0x55] expected readings for Attempt 19; `0x30 = SMEP|SMAP both enabled` |
+| Refreshed `kcp == 4` verdict | Now covers "boot_info_capture_rdi OR the CR4 SMEP/SMAP enable block" |
+| Refreshed `kcp == 24` verdict | Three-fork diagnosis: (a) both [0x54]+[0x55] = 0x30 → CR4 held, stall downstream; (b) [0x54]=0x30, [0x55]=0x00 → CR4 cleared post-cr3; (c) both 0x00 → boot_shim enable didn't stick |
+
+**Build verification:**
+
+| Step | Result |
+|------|--------|
+| `sh scripts/build.sh` (agnos) | OK |
+| `build/agnos` size | 253,936 → **254,000 bytes** (+64 = ~50 bytes boot_shim CR4 block + 13 bytes main.cyr pre-stac dump, rounded by ELF segment alignment) |
+| multiboot2 (ELF64) | OK |
+| Entry | `0x1000a8` (unchanged) |
+| `cyrius build src/read-boot-log.cyr build/read-boot-log` | OK |
+| `build/read-boot-log` size | 31,552 → **32,376 bytes** (+824 from refreshed verdicts + decode hint + [0x55] readout) |
+| Pre-existing `vec_get` warning | Inherited; cyrius-side; not blocking |
+| `timer_isr[]` headroom | Unchanged at 1 byte (no pic.cyr edits) |
+
+**Attempt-19 plan — pre-bound expected outcomes:**
+
+The two diagnostic primaries are: (i) kcp value, (ii) CMOS[0x54] + CMOS[0x55] both reading 0x30.
+
+| kcp / CR4 readout | Diagnosis |
+|---|---|
+| **kcp ≥ 0x1A AND both [0x54]+[0x55] = 0x30** | SMAP fix held all the way through. Stall (if any) is in `cr3_load(as2)` / kernel-PT restore / userland-exec spawn. Next attempt picks up wherever the new kcp lands. |
+| **kcp = 0x18 AND [0x54]+[0x55] = 0x30** | CR4 held but `stac` or downstream still faulted. Investigate stac+store64+load64+clac sequence under AS1 CR3; could be cp_fb-under-AS1 (FB phys not in AS1's PT mirror) interacting with the SMAP-bracketed write. |
+| **kcp = 0x18, [0x54] = 0x30, [0x55] = 0x00** | CR4 cleared between cr3_load(as1) and stac. Walk the call chain in that window for any `mov cr4, …`. |
+| **kcp = 0x18 AND [0x54] = 0x00, [0x55] = 0x00** | boot_shim SMEP/SMAP enable didn't stick. Either CPUID gated both off (improbable on Zen — but verify via direct dump) or the `mov cr4, ebx` got reverted upstream. |
+| **kcp = 4** (regression) | The new CR4 enable block faulted inside boot_shim. Triple-fault during CPUID or `mov cr4, ebx` — would mean Zen's CPUID returned malformed EBX or our CR4 read clobbered something the path-C handoff relied on. Wildly unlikely but the bisector point is there. |
+| **kcp = 5 unchanged from Attempt-18 framing** | Now means "boot_info_capture_rdi + CR4 enable both done, died in main.cyr top before bisector 0x80". Slight semantic shift from prior attempts but mostly invisible — main.cyr's first cp_fb at CMOS=0x80 lands quickly. |
+
+**Verification gates skipped** (same as Attempts 15-18): QEMU pre-flight permanently blocked for this kernel (Path A W^X, Path C launch script not wired, multiboot2 ELF64 fails `qemu -kernel`). Iron is still the only test surface — costs a reboot of archaemenid every time.
+
+**Carry-forward debt (not blocking Attempt 19):**
+
+- `timer_isr[]` buffer headroom still 1 byte (unchanged).
+- read-boot-log `vec_get` warning still inherited from cyrius stdlib snapshot.
+- If Attempt 19 advances cleanly past 0x18, the kcp=4 verdict (boot_info_capture_rdi OR CR4 enable) could be split with another sub-CP; not worth the asm bytes unless an attempt actually pins at 4.
+
+---
+
+### Attempt 19 — pending iron burn
 
 Build under test:
 
 | Artifact | Version / Size |
 |----------|----------------|
 | cyrius toolchain | 5.11.55 pinned (manifests). Wrapper still resolves 5.11.54 lib snapshot — out-of-scope. |
-| agnos kernel | 1.30.0 + Repair (D) + Repair (E) — Repair (D)'s 4 bisector CPs unchanged; Repair (E) adds sanity cp_fb(0x1A) + CR4 dump + SMAP sub-CPs 0x1B/0x1C/0x1D. `build/agnos` = **253,936 bytes** ELF64 multiboot2, entry `0x1000a8`. `timer_isr[]` headroom still 1 byte. |
+| agnos kernel | 1.30.1 candidate — Path C CR4 SMEP/SMAP enable + main.cyr pre-stac CR4 re-dump to CMOS[0x55] + refreshed boot_shim comment. `build/agnos` = **254,000 bytes** ELF64 multiboot2, entry `0x1000a8`. `timer_isr[]` headroom still 1 byte. |
 | gnoboot | 0.1.0 unchanged |
-| `scripts/build/read-boot-log` | **31,552 bytes** — CMOS[0x54] readout + 4 new verdicts (kcp 26-29) + refreshed kcp=24 verdict |
+| `scripts/build/read-boot-log` | **32,376 bytes** — CMOS[0x55] readout + refreshed kcp=4 / kcp=24 verdicts. |
 
-(Iron burn pending. Update this entry post-reset with CMOS readout + visual ladder description + photo path.)
+(Iron burn pending. Update this entry post-reset with CMOS readout — particularly CMOS[0x54] *and* CMOS[0x55] — visual ladder description, and photo path.)
 
 ---
 
