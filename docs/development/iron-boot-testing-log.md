@@ -1735,7 +1735,275 @@ specifically (sub-case 2 territory).
 
 ---
 
-## Carry-forward items (not blocking Attempt 15)
+### Attempt 15 — 2026-05-14 eve PDT → STALL AT 0x23 (repairs A+B insufficient; sub-case 2 confirmed)
+
+**Build under test** (post-Repair-A/B + visual ladder + klib rename):
+
+| Artifact | Version / Size |
+|----------|----------------|
+| cyrius toolchain | 5.11.55 pinned (manifests). Wrapper still resolves 5.11.54 lib snapshot — out-of-scope. |
+| agnos kernel | 1.30.0 + Repair (A) unconditional state→ready post-save + Repair (B) `sched_next` returns proc 0 fallback + new `fb.cyr` visual CP ladder + `kernel/klib/` rename. `build/agnos` = **252,480 bytes** ELF64 multiboot2, entry `0x1000a8`. |
+| gnoboot | 0.1.0 unchanged |
+| `scripts/read-boot-log.sh` | Verdicts for kcp 0x20-0x23 now in place (added in Attempt-14 close). |
+
+**Symptom delta vs Attempt 14:**
+
+| | Attempt 14 | Attempt 15 |
+|---|---|---|
+| End state | Soft lockup, screen intact, no reset | **Same — soft lockup, visual CP ladder painted, no reset** |
+| Kernel CP | 0x23 (sched rotated proc_a → proc_b; proc 0 starved) | **0x23 — identical CMOS readout** |
+| gnoboot CP | 0x05 | 0x05 (unchanged) |
+| Visual ladder | N/A (fb.cyr didn't exist in Attempt 14 build) | **Painted: WHITE stripe + YELLOW × 4 + GREEN × 7 + CYAN × 3** through CP 0x10, then dark — confirms new kernel ran on iron, scheduler armed, but proc 0 never resumed |
+| Diagnostic resolution | "sub-case 3b — proc 0 starved by round-robin" | **Sub-case 3b diagnosis was incomplete; sub-case 2 confirmed** — context save/restore is missing register state |
+
+**CMOS readout (post-reset):**
+
+```
+CMOS[0x53] gnoboot magic    = 0xcd  (decimal 205)
+CMOS[0x52] gnoboot checkpt  = 0x05  (decimal 5)
+CMOS[0x51] kernel  magic    = 0xab  (decimal 171)
+CMOS[0x50] kernel  checkpt  = 0x23  (decimal 35)
+
+verdict (kernel): CP 0x23 — sched rotated test_proc_a → test_proc_b
+OK. Scheduler is alive; proc 0 (kernel idle) starved by round-robin.
+Sub-case 3b: fix sched_next to include proc 0 OR mark proc 0 ready
+post-save_context.
+```
+
+(The verdict text now points at sub-case 3b per the Attempt-14
+read-boot-log update — but the underlying bug was actually
+sub-case 2, not 3b. The hop is documented below in Repair-C.)
+
+**Visual ladder confirms the new kernel ran on iron** (this matters
+— it eliminates the "USB wasn't re-flashed" hypothesis). The
+[`iron-boot-photos/attempt-15-boot-colors.jpg`](iron-boot-photos/attempt-15-boot-colors.jpg) photo from the iron run shows:
+
+- WHITE stripe at y=0 (boot_shim canary, pre-existing)
+- 4 YELLOW cells (CPs 0x80, 0x81, 0x82, 0x06 — early arch)
+- 7 GREEN cells (CPs 0x07-0x0D — subsystem init)
+- 3 CYAN cells (CPs 0x0E, 0x0F, 0x10 — scheduler armed; **0x10 is the closed-beta gate**)
+- Cell 0x12 dark — first hlt in kernel idle's 50-loop never returned to write its CP
+- All MAGENTA cells dark — sched_active = 0 path never reached
+
+`fb.cyr` was added in the Attempt-15 build; its presence on screen
+proves the iron is running the post-Repair-A/B kernel, not a
+stale Attempt-14 image.
+
+**Diagnosis hop — sub-case 3b → sub-case 2 (context-switch bug,
+not policy bug).**
+
+Static walkthrough of `sched_next` + `do_context_switch` *after*
+repairs A and B shows that proc 0 *should* be re-selected on the
+third timer tick (proc 0 → proc_a → proc_b → proc 0). The math
+checks out: state[0] = 1 (ready, set by repair A on the first
+save), proc_current = 2 (proc_b), `start = 3 % 3 = 0`,
+`proc_get_state(0) == 1` → return 0. `do_context_switch` then
+calls `proc_restore_context(0, isr_rsp)` and iretqs into proc 0.
+**This should work on iron.** It doesn't. Therefore the bug is
+not in `sched_next` policy.
+
+Investigating the ISR + context save/restore code path identified
+the actual bug:
+
+**`kernel/arch/x86_64/pic.cyr` `timer_isr_build()` lies about
+what it pushes.** The function-header comment says *"push all
+caller-saved regs, also push rbx/rbp/r12-r15 (callee-saved) so
+we have full state"* — but the actual byte-emission pushes only
+the 9 caller-saved regs (rax/rcx/rdx/rsi/rdi/r8-r11). The
+callee-saved set (rbx, rbp, r12, r13, r14, r15) is *never
+pushed*, *never saved* into the proc slot, *never restored*.
+
+The `Process` struct (`proc.cyr`) *has* slots for those 6 regs
+(offsets 40, 80, 120, 128, 136, 144), but `proc_save_context` /
+`proc_restore_context` only touch the 9 caller-saved + RIP /
+RFLAGS / RSP. So **callee-saved registers leak between procs**
+across every context switch.
+
+**Why this matches the symptom exactly.** When proc 0 (kernel
+idle) is finally re-selected on the third tick, `iretq` lands
+at the post-`hlt` address in `arch_wait` with the correctly-
+restored RSP — so the kernel stack is intact and `ret` pops the
+right address back to the idle loop. **But RBP now contains
+test_proc_b's frame pointer** (pointing into stack_b at
+0x820000+), because it was never saved out and never restored
+in. The kernel idle loop's first access to a local variable
+(`idle_count` at `[rbp - N]`) reads from test_proc_b's stack —
+garbage. The while-loop reads wrong, the increment writes
+wrong, and either the loop spins on a corrupt count or we
+silently fault. Either way, **no CP after 0x23 fires**, which
+is exactly what CMOS shows.
+
+This is *also* consistent with earlier Attempt-13 stalls — same
+class of bug, different surface manifestation depending on
+which proc happened to leave which register set.
+
+**The two-attempt diagnostic arc** (14 → 15) was a clean prediction-
+confirmation cycle: Attempt 14's writeup explicitly named the
+fallback path — *"If QEMU still stalls at 0x23, the bug is not
+in the round-robin policy and we need to look at
+proc_save_context / proc_restore_context for proc 0 specifically
+(sub-case 2 territory)."* Iron Attempt 15 stalled at 0x23. The
+pre-bound sub-case 2 territory is what Repair (C) addresses.
+
+**Process note — visual CP ladder paid off immediately.** Without
+`fb.cyr` we wouldn't have been able to rule out "USB carries
+Attempt-14 kernel" without re-mounting and hashing the USB.
+The painted YELLOW/GREEN/CYAN cells let us confirm from the
+photo alone that the iron was running the Repair-A/B build,
+not a stale image. Worth the +416 bytes.
+
+**Process note — QEMU pre-flight is permanently gone for this
+kernel.** Multiboot2 ELF64 fails `qemu-system-x86_64 -kernel`
+(needs PVH ELF Note or compressed image). Path A's grub-EFI
+relocator is W^X-blocked under OVMF (per `project_grub_mb2_efi_wx_blocker`
+memory). `ktest.sh` exists but its `-kernel` invocation can't
+actually launch the new kernel either. **Until Path-C `gnoboot`
+gains a QEMU+OVMF launch script, iron is the only test surface.**
+Each attempt costs the dev machine a reboot.
+
+---
+
+### Repairs landed for Attempt 16 — 2026-05-14 night
+
+All edits in `agnos/` (no cyrius-side changes per cyrius-hands-off).
+Per-action consent obtained — user approved "(a) land Repair (C)
+as a single coupled edit (pic.cyr ISR + sched.cyr offsets), build,
+report kernel size delta" verbatim. Net kernel size delta:
++1,232 bytes (252,480 → **253,712 bytes**).
+
+**Repair (C) — save/restore all 15 GPRs across the timer ISR.**
+
+The fix is two coupled edits — pushing the 6 callee-saved regs
+in the ISR + reading/writing them through the proc slots in
+save/restore. Everything else in `sched.cyr` shifts by +48 bytes
+because the hardware-pushed frame now sits deeper in the stack.
+
+**1. ISR — push/pop all 15 GPRs** (`kernel/arch/x86_64/pic.cyr`):
+
+```diff
+ fn timer_isr_build() {
+     # Build timer ISR in data buffer.
+-    # Strategy: push all caller-saved regs, also push rbx/rbp/r12-r15 (callee-saved)
+-    # so we have full state. Then call timer_handler(rsp) which may modify
+-    # the stack frame for context switching. Then pop everything and iretq.
++    # Strategy: push ALL 15 general-purpose regs (9 caller-saved + 6 callee-saved)
++    # so the full proc state is captured by proc_save_context. Pre-Attempt-15
++    # this ISR only pushed the 9 caller-saved regs despite a stale comment
++    # claiming otherwise; the missing callee-saved push leaked rbx/rbp/r12-r15
++    # between procs, corrupting frame-pointer-relative locals (idle_count etc.)
++    # when the kernel idle proc was finally re-selected. See iron-boot Attempt
++    # 15 § Repair (C) — sub-case 2 territory.
+     ...
+     store8(p + off, 0x41); store8(p + off + 1, 0x53); off = off + 2;  # push r11
++
++    # Callee-saved: rbx rbp r12 r13 r14 r15 (Attempt-15 Repair C addition).
++    # After these pushes, [rsp+0..47] = {r15,r14,r13,r12,rbp,rbx} and
++    # [rsp+48..119] = {r11,r10,r9,r8,rdi,rsi,rdx,rcx,rax}; hw frame moves
++    # from [rsp+72..104] to [rsp+120..152]. proc_save/restore_context are
++    # updated to read/write these new offsets.
++    store8(p + off, 0x53); off = off + 1;  # push rbx
++    store8(p + off, 0x55); off = off + 1;  # push rbp
++    store8(p + off, 0x41); store8(p + off + 1, 0x54); off = off + 2;  # push r12
++    store8(p + off, 0x41); store8(p + off + 1, 0x55); off = off + 2;  # push r13
++    store8(p + off, 0x41); store8(p + off + 1, 0x56); off = off + 2;  # push r14
++    store8(p + off, 0x41); store8(p + off + 1, 0x57); off = off + 2;  # push r15
+     ...
++    # Pop callee-saved first (reverse of push): r15 r14 r13 r12 rbp rbx
++    store8(p + off, 0x41); store8(p + off + 1, 0x5F); off = off + 2;  # pop r15
++    store8(p + off, 0x41); store8(p + off + 1, 0x5E); off = off + 2;  # pop r14
++    store8(p + off, 0x41); store8(p + off + 1, 0x5D); off = off + 2;  # pop r13
++    store8(p + off, 0x41); store8(p + off + 1, 0x5C); off = off + 2;  # pop r12
++    store8(p + off, 0x5D); off = off + 1;  # pop rbp
++    store8(p + off, 0x5B); off = off + 1;  # pop rbx
++
++    # Pop caller-saved: r11 r10 r9 r8 rdi rsi rdx rcx rax (reverse of push)
+     store8(p + off, 0x41); store8(p + off + 1, 0x5B); off = off + 2;  # pop r11
+     ...
+```
+
+ISR bytecode size: 43 → 63 bytes. `timer_isr` buffer is 64
+bytes — **1 byte of headroom remaining**. Any future ISR addition
+needs to bump `timer_isr[]` first.
+
+**2. proc_save_context / proc_restore_context — handle the 6
+new regs + shift hw frame offsets by +48** (`kernel/core/sched.cyr`):
+
+Hardware-pushed frame offsets:
+
+| Field | Old offset | New offset (Repair C) |
+|-------|-----------|-----------------------|
+| RIP | `isr_rsp + 72` | `isr_rsp + 120` |
+| CS | `isr_rsp + 80` | `isr_rsp + 128` |
+| RFLAGS | `isr_rsp + 88` | `isr_rsp + 136` |
+| RSP | `isr_rsp + 96` | `isr_rsp + 144` |
+| SS | `isr_rsp + 104` | `isr_rsp + 152` |
+
+Caller-saved offsets also +48: rax-slot read moves from
+`isr_rsp + 0` → `isr_rsp + 48`, etc. The pre-existing
+reversed-label pattern is retained (the "rax slot at p+32
+receives [isr_rsp+48] which is actually r11_val" mapping was
+already there; `proc_restore_context` uses the inverse so
+round-trip preserves values).
+
+Six new callee-saved load/store pairs added with clean labels:
+
+| Reg | ISR offset (`isr_rsp + …`) | Slot offset (`p + …`) |
+|-----|----------------------------|-----------------------|
+| r15 | 0 | 144 |
+| r14 | 8 | 136 |
+| r13 | 16 | 128 |
+| r12 | 24 | 120 |
+| rbp | 32 | 80 |
+| rbx | 40 | 40 |
+
+`proc_create_full` already initializes the rbp slot (`p + 80`)
+to `stack_top` (proc.cyr:88), so test_procs enter with a sane
+frame pointer. proc 0 (kernel idle, created via plain
+`proc_create`) starts with rbp slot = 0, but its first
+`proc_save_context` overwrites that with the actual kernel rbp
+captured from the ISR push — so by the time proc 0 is
+re-selected, its rbp restore is correct.
+
+**Build verification:** `./scripts/build.sh` green, ELF64
+multiboot2 OK, entry `0x1000a8`. Cumulative kernel size:
+**253,712 bytes** (+1,232 over Attempt 15 baseline).
+
+**Verification gates skipped:**
+
+- **QEMU pre-flight:** impossible (path A blocked, path C/gnoboot
+  QEMU not yet wired). Documented above.
+- **ktest.sh smoke:** built clean but `qemu -kernel` can't load
+  multiboot2 ELF64 — no output. Not a Repair-C regression; the
+  test infrastructure has been stale since agnos 1.30.0's
+  entry-contract change.
+
+**Attempt-16 plan (pre-bound expected outcomes):**
+
+| Expected kcp on iron | Diagnosis |
+|---------------------|-----------|
+| **0x11** (MAGENTA cell 0x11 lights) | **Closed-beta gate's penultimate milestone hit** — full 50-hlt scheduler cycle completed; proc 0 ↔ proc_a ↔ proc_b round-robin works end-to-end. Repair (C) sufficient. Next gate: post-loop progress (memory-isolation test, exec, kybernet launch, shell). |
+| 0x12 / 0x13 / 0x14 (CYAN→MAGENTA transition on those cells) | **Repair (C) working, but loop didn't reach 50 hlts** — stalled mid-cycle. Investigate which iteration of the idle loop hit a fault. Probably correctness, not policy. |
+| **Still 0x23** | **Repair (C) wrong or incomplete** — the rbp leak hypothesis was wrong, or there's a *second* state-corruption path we haven't found. Next move: add CMOS CP writes *inside* `timer_handler` (pre- and post-`do_context_switch`) to prove the timer ISR is actually firing during proc_b's hlt. If pre-CP fires but post- doesn't, the bug is inside `do_context_switch`. |
+| 0x10 (back to pre-Attempt-14 stall, no test_proc CPs) | **Repair (C) broke the basic context switch** — proc 1 / proc 2 never run. Most likely cause: my offset shift in `sched.cyr` mis-mapped one of the new offsets. Revert Repair (C), study the build's actual ISR bytecode in `build/agnos`, retry. |
+| Triple-fault / reset / lower CP | **Repair (C) introduced a fault in the ISR path** — likely a wrong push opcode or buffer overflow (63 bytes vs 64-byte buffer). Verify `timer_isr[]` didn't get bumped; verify pop opcodes are correct REX-prefixed forms. |
+
+**Iron readout shortcuts:** with the visual ladder in place,
+attempt 16's outcome is readable from the screen alone — no
+reboot+CMOS-mount needed for the headline verdict:
+
+- All cells YELLOW/GREEN/CYAN + cell 0x12 CYAN + cell 0x11
+  MAGENTA = success (CP 0x11 hit, repair C sufficient).
+- All cells YELLOW/GREEN/CYAN + cell 0x12 dark = stall at CP 0x23
+  again (no progress).
+- Cells truncate before CYAN cluster = regression (repair C broke
+  something earlier in boot).
+
+CMOS readout via `sudo ./scripts/read-boot-log.sh` is still the
+authoritative post-mortem.
+
+---
+
+## Carry-forward items (not blocking Attempt 16)
 
 - **aarch64 native boot test**: blocked on Pi SSH access. Cyrius
   5.11.30 patched the aarch64 emitter; structural verification
