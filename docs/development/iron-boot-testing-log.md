@@ -3285,6 +3285,69 @@ CMOS[0x69-0x6A] fb_phys     = 0x00, 0x00  (stale — writer deleted by Repair O)
 
 ---
 
+### Attempt 29 — 2026-05-15 → "worst case" visual diagnosed as non-zero gvar-init bug; Repair (P) lands
+
+**User-reported visual:** "no prompt — only the top canaries disappear leaving the 3 yellow with gnoboot statement remaining."
+
+**CMOS readout (post-reset):**
+
+```
+CMOS[0x53] gnoboot magic   = 0xcd
+CMOS[0x52] gnoboot checkpt = 0x05
+CMOS[0x51] kernel  magic   = 0xab
+CMOS[0x50] kernel  checkpt = 0x15   (kybernet-launch reached MAGENTA)
+CMOS[0x54]/[0x55]          = 0x30 / 0x30   (CR4 SMEP+SMAP held)
+CMOS[0x56-0x61] PMM        = 0x6f×6 / 0x5a×6  (proc_create_address_space live)
+CMOS[0x62-0x68] PML4       = 0x07×7   (stale — Repair-O-deleted writers)
+CMOS[0x69-0x6A] fb_phys    = 0x00 / 0x00   (stale — Repair-O-deleted writers)
+```
+
+**Initial misread, corrected on inspection.** The visual looked like a regression vs Attempt 28 (which painted the full cell sequence). CMOS proved otherwise: kcp=0x15 = kybernet-launch reached MAGENTA = `cp_fb(0x15)` was executed. No fault — kernel ran past the wire-up into `kybernet() → shell()`, then sat waiting on `kb_buf`.
+
+**Diagnosis.** The pattern "rows 1–2 cp_fb cells wiped (y=8..19), row 9 cp_fb cells (y=72..75) survive, no visible prompt" decodes to a single bug at three coordinates:
+
+1. `fb_putc` paints text at `y = FB_CONSOLE_Y0 + fb_cur_y*8`. If `FB_CONSOLE_Y0 = 0` instead of `80`, the kybernet kprintln sequence (~6 lines) writes to y=0..55 — overwriting cp_fb cells 0x06..0x10 (rows 1–7).
+2. The 3 yellow at row 9 (idx 0x80/0x81/0x82, y=72..75) survive because the prompt sits idle at line ~6, never reaching y=72.
+3. The "no visible prompt" half: if `FB_FG = 0` and `FB_BG = 0` (both black) instead of 0x00FFFFFF / 0x00000000, every glyph paints black-on-black. Pixels are written; nothing is visible. **This also clears the canaries** — the "on" pixels of a glyph overpaint colored cp_fb cells to solid black.
+
+`fb_cur_x = 0`, `fb_cur_y = 0`, `fb_console_ready = 0` all work because BSS zero is the desired init — no runtime code needed. The three non-zero initializers (`FB_CONSOLE_Y0=80`, `FB_FG=0x00FFFFFF`, `FB_BG=0x00000000`) require runtime stores; apparently those aren't being emitted at this point in the cyrius gvar-init phase (or are being emitted but not reached on this code path — root cause TBD on cyrius side).
+
+**Repair (P) — explicit assignment at top of `fb_console_init()` (LANDED 2026-05-15):**
+
+```cyrius
+fn fb_console_init() {
+    FB_CONSOLE_Y0 = 80;
+    FB_FG = 0x00FFFFFF;
+    FB_BG = 0x00000000;
+    fset(0x20, ...);  # ...
+}
+```
+
+3 lines + 11-line explanatory comment, no language surface, no cyrius edit. The top-level `var X = literal;` declarations stay (they're correct intent, and once the cyrius issue is fixed they're the canonical path) — the explicit assigns are belt-and-suspenders.
+
+**Build under test:**
+
+| Artifact | Version / Size |
+|----------|----------------|
+| cyrius toolchain | 5.11.55 (pin unchanged) |
+| agnos kernel | 1.30.1 candidate post-Repair-(P) — `build/agnos` = **266,712 bytes** |
+| `kernel/arch/x86_64/fb_console.cyr` | +12 lines (3 assigns + 11-line comment) |
+
+**Decision matrix for Attempt 29 burn:**
+
+| Observed | Interpretation |
+|---|---|
+| Full cp_fb cell sequence visible (rows 1, 2, 9 all painted) **AND** "agnos> " prompt visible below row 9 | ✅ Hypothesis confirmed. Repair P fixes the symptom. cyrius gvar-init bug is real and isolated. File the cyrius issue. |
+| cp_fb cells still missing **OR** prompt still invisible | Repair P insufficient — different root cause (e.g., load32 reading wrong width/height; fb_print being called with bogus len; a different shadowing issue). Re-bisect with stamps inside fb_putc. |
+| kcp drops below 0x15 | Repair P regressed something earlier in boot. Unlikely given the assigns are pure stores to gvars, but possible. Revert and re-investigate. |
+
+**Carry-forward (not blocking Attempt 29):**
+
+- File cyrius issue: "non-zero gvar initializer at module scope not honored at runtime; zero-init unaffected." Reproducer: this repair. Severity: medium (silent wrong-result; works correctly in some contexts — needs minimal repro).
+- If Attempt 29 confirms prompt visible, the original Attempt 28 carry-forward (purge `scripts/src/read-boot-log.cyr` Repair M/N verdict logic; remove cp_fb-internal stamps from `fb.cyr:46-86`) becomes the next housekeeping pass.
+
+---
+
 ## Carry-forward items (not blocking Attempt 28)
 
 - **aarch64 native boot test**: blocked on Pi SSH access. Cyrius
