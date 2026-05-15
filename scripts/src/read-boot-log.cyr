@@ -187,6 +187,11 @@ fn main(): i64 {
     var pml4_clac1   = cmos_read(102);  # 0x66  post first AS1 round-trip (after kcp=0x1D)
     var pml4_clac2   = cmos_read(103);  # 0x67  post AS2 round-trip (after kcp=0x64)
     var pml4_clac3   = cmos_read(104);  # 0x68  post second AS1 round-trip (after kcp=0x68)
+    # Repair (N), Attempt 26+: FB BAR snapshot stamps from cmos_stamp_fb_phys()
+    # called right before cp_fb(0x19) at main.cyr:640. Catches BAR-shift between
+    # BIOS-save-exit and warm-reset boots — the Attempt-25 racy condition.
+    var fb_bar_b2    = cmos_read(105);  # 0x69  (fb_phys >> 16) & 0xFF  — 64KB granularity
+    var fb_bar_b3    = cmos_read(106);  # 0x6A  (fb_phys >> 24) & 0xFF  — 16MB granularity
 
     print_cmos_line("CMOS[0x53] gnoboot magic    = ", gmagic);
     print_cmos_line("CMOS[0x52] gnoboot checkpt  = ", gcp);
@@ -241,6 +246,28 @@ fn main(): i64 {
     println("    First 0x00 at slot N + kcp=0x68 = corruption between checkpoints (N-1) and N.");
     println("    Slot order: 0x62 pre-AS / 0x63 post-create / 0x64 post-map / 0x65 post-cr3(as1) /");
     println("                0x66 post-AS1-clac / 0x67 post-AS2-clac / 0x68 post-AS1-clac-2nd.");
+    syscall(1, 1, "\n", 1);
+
+    # Repair (N), Attempt 26+: FB BAR snapshot — for BAR-shift hypothesis on the
+    # Attempt-25 racy CP-0x19 hang.
+    print_cmos_line("CMOS[0x69] fb_phys byte 2 ((fb_phys >> 16) & 0xFF)  = ", fb_bar_b2);
+    print_cmos_line("CMOS[0x6A] fb_phys byte 3 ((fb_phys >> 24) & 0xFF)  = ", fb_bar_b3);
+    println("  Repair (N) BAR snapshot: bits 16-31 of GOP framebuffer phys, captured");
+    println("  by cmos_stamp_fb_phys() at main.cyr:640 (just before cp_fb(0x19)).");
+    println("  Interpretation: fb_phys[31:16] = (byte 3 << 8) | byte 2.");
+    println("    Typical Zen UEFI value:  byte 2 = 0x00, byte 3 = 0xC0..0xF0 (BAR in");
+    println("                             [0xC000_0000..0xF000_0000]).");
+    println("    Both 0x00 with kcp < 0xE5 = snapshot ran before kernel reached cp_fb,");
+    println("                                but stamp asm itself executed — read it as");
+    println("                                'fb_phys really IS 0' (gnoboot/boot_info broken).");
+    println("    Both 0x00 with kcp = 0x19 = stamp never reached (cmos_stamp_fb_phys");
+    println("                                faulted before any port-I/O write — extremely");
+    println("                                improbable, would imply &boot_info_ptr load broke).");
+    println("    Values DIFFER between BIOS-save-exit boot and warm-reset boot = BAR-shift");
+    println("                                hypothesis confirmed. cp_fb's hardcoded geometry");
+    println("                                points at the wrong physical page on cold boot.");
+    println("    Values IDENTICAL across both reset modes + kcp=0xE8/0xE9 racy = NOT BAR shift.");
+    println("                                Triage MTRR/PAT/cacheability next (Repair (O)).");
     syscall(1, 1, "\n", 1);
 
     # --- Verdict layer 1: did gnoboot launch at all? ---
@@ -307,7 +334,7 @@ fn main(): i64 {
     if (kcp == 23) { println("verdict (kernel): CP 0x17 — per-process page mappings installed OK (proc_map_page x2 returned). Died before first cr3_load (CP 0x18). Should be unreachable — only the cr3_load asm + helper-call sit between 0x17 and 0x18."); return 0; }
     if (kcp == 24) { println("verdict (kernel): CP 0x18 — cr3_load(as1) survived; AS1 has kernel-text mapped. Attempt 20 RESOLVED here: kcp=0x18 + [0x55]=0x00 = cp_fb under AS1's CR3 #PFs (FB MMIO not in AS1's PT mirror — proc_create_address_space only covers 0..4 GB RAM via PD copy + PDPT[1..3] huge pages; Zen UEFI GOP framebuffer is above that). Attempt 21 removed the four under-AS1 cp_fb calls (cp_fb at former 0x18, 0x1B, 0x1C, 0x1D sites); if kcp still pins at 0x18 on an Attempt-21+ kernel, port-I/O under AS1 itself is broken (very unexpected — port-I/O has been working under AS1 across the kcp ladder). Pre-21 verdict-fork retired; the new pre-stac fork lives under kcp=0x60 below."); return 0; }
     if (kcp == 96) { println("verdict (kernel): CP 0x60 — port-I/O ran under AS1 past the former cp_fb(0x18) site (Attempt 21+). Stall is in the [0x55] CR4 dump asm OR stac OR the SMAP-bracketed store64/load64/clac. Read [0x55] to triage: 0x30 = CR4 still healthy under AS1, stall is in stac/store/load (CP 0x1B-0x1D should advance further). 0x00 with kcp >= 0x60 = CR4 actually cleared between the two dumps — unexpected (no CR-mutating ops between them)."); return 0; }
-    if (kcp == 25) { println("verdict (kernel): CP 0x19 — full memory-isolation access dance completed (3 CR3 switches + stac/store/load/clac x3 + kernel-PT restore asm). Repair (L) cleared PML4[0] cold-init bug (Attempt 25 stamps all 0x07). Died before CP 0x13 (post-mem-iso) in the serial-print / branch block at main.cyr:640-660. RACY across resets (cp_fb(0x19) MAGENTA paint visible only intermittently). Repair (M) bisector wires 4 new stamps at 0xE1-0xE4 inside this window — scan the kcp=0xE1/0xE2/0xE3/0xE4 verdicts below to narrow."); return 0; }
+    if (kcp == 25) { println("verdict (kernel): CP 0x19 — full memory-isolation access dance completed (3 CR3 switches + stac/store/load/clac x3 + kernel-PT restore asm). Repair (L) cleared PML4[0] cold-init bug (Attempt 25 stamps all 0x07). Attempt 25 burns showed kcp PEGGED at 0x19 racily (NEVER advanced to 0xE1) AND BIOS-save-exit-correlated — meaning cp_fb(0x19) itself didn't return. Death window collapsed from 'main.cyr:640-660 (21 lines)' to 'one function: cp_fb in fb.cyr'. Repair (N) drops 6 in-cp_fb stamps (kcp=0xE5..0xEA) AND a fb_phys snapshot (CMOS[0x69]/[0x6A]) right before the call. If kcp STILL pegs at 0x19 on Attempt 26, even the in-cp_fb entry stamp didn't fire — function-prologue / call-site fault. Otherwise scan kcp=0xE5/0xE6/0xE7/0xE8/0xE9/0xEA verdicts below."); return 0; }
     if (kcp == 26) { println("verdict (kernel): CP 0x1A — cp_fb sanity painted on kernel CR3 entering mem-iso block (Attempt 18). Visual ladder should show 1 new YELLOW cell at column 0x1A. If kcp stuck here, fault is in proc_create_address_space() — PMM exhaustion, kernel-PT mirror logic broken, or stack overflow in the helper. If kcp advanced past this with no cells past 0x1A, cp_fb-under-AS1 is broken (FB-not-mapped hypothesis confirmed)."); return 0; }
     if (kcp == 27) { println("verdict (kernel): CP 0x1B — stac executed without faulting under AS1 CR3 (Attempt 18 SMAP bisector). Died inside SMAP-bracketed store64/load64 sequence. CR4.SMAP enforcement state visible via CMOS[0x54] readout above — SMAP bit = 0x20 in byte 2."); return 0; }
     if (kcp == 28) { println("verdict (kernel): CP 0x1C — SMAP-bracketed store64+load64 succeeded under AS1 (Attempt 18 SMAP bisector). Died on clac or in the brief gap before kernel returns from this access block. Should be near-unreachable — clac is a 3-byte asm with no memory access."); return 0; }
@@ -326,6 +353,15 @@ fn main(): i64 {
     if (kcp == 226) { println("verdict (kernel): Repair (M) stamp 2/4 — kcp=0xE2: first serial_print('AS1 wrote...', 23) returned. UART first-touch + 23-byte rodata-walk both clean. Death is in kprint_num(val_as1) at main.cyr:643 OR a later print/kprint_num in lines 644-649. Triage: kprint_num reads val_as1 from stack — stack slot reachable under kernel CR3 by definition, so this argues against stack-spill corruption."); return 0; }
     if (kcp == 227) { println("verdict (kernel): Repair (M) stamp 3/4 — kcp=0xE3: full 8-call print block returned (5 serial_print/_println + 3 kprint_num). Death is in the nested if/else branch at main.cyr:651-659. Reads val_as1_check / val_as2 from stack and string-compare-branches. Prime suspect: stack slot values corrupted from the asm-heavy mem-iso block (compiler spilled regs that the asm clobbered). Repair (N) candidate: dump the actual bytes via stamps before each compare."); return 0; }
     if (kcp == 228) { println("verdict (kernel): Repair (M) stamp 4/4 — kcp=0xE4: nested if/else branch completed (all comparison + print arms executed). Death is on the kcp=0x13 stamp asm at main.cyr:661 itself — extremely improbable (identical byte pattern to 24 working stamps). Most likely interpretation: spurious result, retry the burn."); return 0; }
+    # Repair (N) in-cp_fb bisector — 6 stamps inside cp_fb (fb.cyr:46-86).
+    # Reached only if the Attempt-25 racy condition pegged kcp at 0x19 (cp_fb
+    # didn't return). These stamps pin which step inside cp_fb faulted.
+    if (kcp == 229) { println("verdict (kernel): Repair (N) stamp 1/6 — kcp=0xE5: cp_fb function entered (function prologue + first port-I/O survived). Death is in the very first body op: `load64(&boot_info_ptr)`. Implications: either &boot_info_ptr (a kernel data address) is unmapped under restored kernel-CR3 (unlikely — it was reachable on every prior cp_fb call this boot), OR a stack-frame issue from the asm-heavy mem-iso block corrupted the local-var slot for `bi`. Triage: install #PF handler + dump CR2 (Repair O)."); return 0; }
+    if (kcp == 230) { println("verdict (kernel): Repair (N) stamp 2/6 — kcp=0xE6: boot_info_ptr load OK, non-zero. Death is on `load64(bi + 0x48)`. bi points into the gnoboot-written boot_info struct (low memory, identity-mapped 0..4GB). If this access faults under restored kernel-CR3 but not under the SAME kernel-CR3 used by prior cp_fb calls, something in the mem-iso block tore the identity map. Cross-check PML4 stamps [0x62..0x68] for divergence; if all 0x07, the corruption is deeper (PDPT/PD/PT level — not visible here)."); return 0; }
+    if (kcp == 231) { println("verdict (kernel): Repair (N) stamp 3/6 — kcp=0xE7: fb_phys load OK, non-zero. Death is in the pitch/height/geometry block (load32(bi+0x50), load32(bi+0x58), and integer arithmetic). Reads from boot_info struct same as the fb load just above, so the access pattern is proven working. If still pegging here, suspect compiler-generated div/mod on a value that became 0 (unlikely — pitch/height are non-zero on Zen GOP). Very low probability."); return 0; }
+    if (kcp == 232) { println("verdict (kernel): Repair (N) stamp 4/6 — kcp=0xE8: geometry computed, about to do FIRST FB MMIO write. THIS IS THE SMOKING-GUN STALL. The next op is `store32(fb + y*pitch + x*4, color)` — write to the GOP framebuffer. Confirmed working-suspect #3 from state.md: 'FB MMIO TLB-flush gap on restored CR3.' Triage paths (Repair O candidates): (1) BAR shift — check CMOS[0x69]/[0x6A] across BIOS-save-exit vs warm-reset boots, divergence = BAR re-enumerated by cold POST; (2) MTRR/PAT — dump IA32_PAT (MSR 0x277) + MTRR_DEF_TYPE (MSR 0x2FF) to confirm FB range cacheability; (3) page-table — dump the PT entry for fb_phys to check P/RW/PCD/PWT bits."); return 0; }
+    if (kcp == 233) { println("verdict (kernel): Repair (N) stamp 5/6 — kcp=0xE9: first FB MMIO write returned without fault. FB access path is fully clean under restored kernel-CR3. Death is somewhere in the 4x4 fill loop (15 more store32 calls). Improbable to fault on later iterations if the first succeeded — same fb base, adjacent pages at most. If pegging here is reproducible, investigate cache-line crossing (4-byte stores at consecutive addresses don't cross natural boundaries; pitch/4-pixel-stride alignment may matter on some MTRR/PAT configurations)."); return 0; }
+    if (kcp == 234) { println("verdict (kernel): Repair (N) stamp 6/6 — kcp=0xEA: all 16 FB MMIO writes returned. cp_fb completed cleanly. Stall is on the kcp=0xE1 stamp asm at main.cyr (Repair M stamp 1/4) — but that's identical byte pattern to dozens of working stamps. Most likely interpretation: spurious result OR Attempt 25's racy condition has shifted past cp_fb on this burn (different state of the TLB/MTRR/BAR race)."); return 0; }
     syscall(1, 1, "verdict (kernel): unexpected checkpoint ", 40);
     print_num(kcp);
     println(" — possibly stale CMOS.");

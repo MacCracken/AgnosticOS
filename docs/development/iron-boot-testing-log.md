@@ -3001,6 +3001,115 @@ Companion edit at main.cyr:638 — stale "lines 462-479" line-number reference (
 
 ---
 
+### Attempt 26 — 2026-05-15 → kcp PEGGED at 0x19; cp_fb is the killer; BIOS-save-exit-correlated racy
+
+**Build under test:** agnos 1.30.0-candidate post-Repair-(M), 254,832 bytes, multiboot2/ELF64, entry `0x1000a8`. Toolchain pinned at Cyrius 5.11.55. read-boot-log built at 42,288 bytes (Repair (M) verdict adds).
+
+**Observed CMOS readout (full):**
+
+```
+CMOS[0x53] gnoboot magic    = 0xCD   CMOS[0x51] kernel  magic    = 0xAB
+CMOS[0x52] gnoboot checkpt  = 0x05   CMOS[0x50] kernel  checkpt  = 0x19
+CMOS[0x54] CR4 byte 2 (post first cr3_load(as1))   = 0x30
+CMOS[0x55] CR4 byte 2 (pre-stac, post kcp=0x60)    = 0x30
+CMOS[0x56]..[0x5B] AS1 PMM allocs (byte 2)         = 0x2c, 0x2c, 0x2c, 0x2d, 0x2d, 0x2d
+CMOS[0x5C]..[0x61] AS2 PMM allocs (byte 2)         = 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d
+CMOS[0x62]..[0x68] PML4[0] byte 0 (7 stamps)       = 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07
+```
+
+**Headline result:** kcp **pegged at 0x19** across burns. NONE of the Repair (M) stamps (0xE1/0xE2/0xE3/0xE4) fired. By Repair (M)'s decision matrix this is row 1: **`cp_fb(0x19)` itself didn't return** — the death window collapses from "21 lines main.cyr:640-660" to "one function: `cp_fb` in fb.cyr". Working-suspect #3 from Attempt 25 (FB MMIO TLB-flush gap on restored CR3) is the surviving hypothesis. PMM stamps all `0x2c/0x2d` (above 2 MB watermark — clean), PML4 stamps all `0x07` (healthy), CR4 byte 2 = `0x30` (SMEP+SMAP held), CR3 dance through all three switches survived intact.
+
+**New observation — BIOS-save-exit vs save-reset asymmetry (FIRST RECORDED 2026-05-15):** User noted the racy outcome **only manifests after BIOS save-and-exit** (cold POST + PCIe re-enum + DRAM retrain + fresh MTRR/PAT program). Warm reset (save-and-reset without entering setup) reproduces the kcp=0x19 peg **deterministically** — "same as previous attempts". This narrows the suspect ranking:
+
+| Suspect | Save-exit vs reset asymmetry explains it? |
+|---|---|
+| FB MMIO TLB-flush gap on restored CR3 (Attempt-25 working #3) | Partially — TLB is flushed both paths, but the FRESH cached TLB lines differ post-cold-POST. |
+| **GPU BAR re-enumeration** (NEW) | **Yes** — cold POST reassigns PCIe BARs; warm reset preserves them. cp_fb's hardcoded `fb` from `boot_info+0x48` is correct for the BOOT in which it was captured, not necessarily for subsequent warm resets. |
+| **MTRR / IA32_PAT memory-type divergence** (NEW) | **Yes** — BIOS reprograms MTRRs during save-exit POST; warm reset leaves them in the prior-boot state. The FB range's effective memory type (UC / WC / WB) can flip. |
+| RFLAGS.AC residue from SMAP brackets (Attempt-25 working #1) | No — same RFLAGS state both paths. |
+| Stack misalignment from asm-heavy CR3 dance (Attempt-25 working #2) | No — same stack state both paths. |
+
+The asymmetry effectively **rules out** the stack/RFLAGS hypotheses and **rules in** BAR-shift + MTRR/PAT. The in-cp_fb bisector + fb_phys snapshot in Repair (N) directly target these.
+
+**Decision:** proceed to Repair (N). cp_fb-internal bisector + fb_phys snapshot land BEFORE attempting either of the structural fixes (FB pre-map / `wbinvd`/`invlpg` injection) — those are heavier and we want to know *which* hypothesis to fix.
+
+---
+
+### Repair (N) for Attempt 27 — in-cp_fb bisector + fb_phys BAR snapshot
+
+**Status:** Landed 2026-05-15 in `agnos/kernel/arch/x86_64/fb.cyr` + `agnos/kernel/arch/x86_64/mbi.cyr` + `agnos/kernel/core/main.cyr` + `agnosticos/scripts/src/read-boot-log.cyr`. Pending iron burn.
+
+**Goal:** Pin which step inside `cp_fb` faults, and capture the FB BAR address on this boot so cross-attempt comparison reveals BAR drift between BIOS-save-exit and warm-reset paths.
+
+**Stamps landed inside `cp_fb` (fb.cyr):**
+
+| # | Site | Stamp value | What it tells us |
+|---|------|-------------|------------------|
+| 1 | Function entry, before any load | `0xE5` (229) | Did `cp_fb` even get past its prologue? |
+| 2 | Post `load64(&boot_info_ptr)` | `0xE6` (230) | Did the boot_info_ptr load + null check survive? |
+| 3 | Post `load64(bi + 0x48)` | `0xE7` (231) | Did the fb_phys load survive (boot_info struct still reachable)? |
+| 4 | Geometry computed, pre-first-store32 | `0xE8` (232) | Are we about to write FB MMIO? **Smoking-gun stamp.** |
+| 5 | Post first `store32(fb + ..., color)` | `0xE9` (233) | Did the first FB MMIO write survive? |
+| 6 | Post 4×4 fill loop | `0xEA` (234) | Did all 16 FB writes survive? |
+
+Stamps use only port I/O (no memory access) — they fire even if FB MMIO or boot_info access faults. The first FB MMIO write is **hoisted out of the loop** so stamp 5 isolates "first FB write faulted" from "first write OK but later one faulted"; the subsequent 4×4 loop redundantly overwrites pixel (0,0), visually harmless.
+
+**fb_phys snapshot helper landed (mbi.cyr):**
+
+```cyrius
+fn cmos_stamp_fb_phys(): i64 {
+    var p = &boot_info_ptr;          # mov rax, <abs_addr_of_boot_info_ptr>
+    asm {
+        0x48; 0x8B; 0x00;            # mov rax, [rax]       — boot_info_ptr value (struct addr)
+        0x48; 0x8B; 0x40; 0x48;      # mov rax, [rax+0x48]  — rax = fb_phys
+        0x48; 0xC1; 0xE8; 0x10;      # shr rax, 16          — byte 2 in al
+        0x88; 0xC1; 0xB0; 0x69; 0xE6; 0x70; 0x88; 0xC8; 0xE6; 0x71;   # stamp CMOS[0x69]
+        0x48; 0xC1; 0xE8; 0x08;      # shr rax, 8 more      — byte 3 in al
+        0x88; 0xC1; 0xB0; 0x6A; 0xE6; 0x70; 0x88; 0xC8; 0xE6; 0x71;   # stamp CMOS[0x6A]
+    }
+    return 0;
+}
+```
+
+Sibling to `boot_info_capture_rdi` — same `var p = &boot_info_ptr` Cyrius idiom that emits `mov rax, <abs_addr>`, then inline asm walks the struct.
+
+**Call site (main.cyr):** `var _bar_snap = cmos_stamp_fb_phys();` inserted between the `kcp=0x19` stamp at line 639 and the `cp_fb(0x19)` call at line 640. Captures fb_phys bytes 2/3 RIGHT before the call that's been pegging kcp.
+
+**read-boot-log refresh:** 6 new kcp verdicts (kcp = 229..234 / 0xE5..0xEA) added after the Repair (M) bisector block; existing kcp=25 (CP 0x19) verdict refreshed to forward to the new in-cp_fb stamps. New CMOS slot reads for `[0x69]/[0x6A]` (FB BAR bytes 2+3) plus an interpretation block explaining BIOS-save-exit vs warm-reset comparison.
+
+**Decision matrix for Attempt 27 readout:**
+
+| kcp post-Attempt-27 | CMOS[0x69]/[0x6A] | Diagnosis |
+|---|---|---|
+| `0x19` (unchanged) | unchanged from prior | Even the in-cp_fb entry stamp didn't fire — function-prologue / call-site fault. Highly unexpected. Re-verify Repair (N) actually landed in the burned USB. |
+| `0xE5` | unchanged | Entered cp_fb but died on `load64(&boot_info_ptr)`. Implies kernel-data address unreachable under post-mem-iso CR3 (PT-tear scenario). |
+| `0xE6` | non-zero | bi loaded OK, died on `load64(bi + 0x48)`. boot_info struct mapping is the issue. |
+| `0xE7` | non-zero | fb load OK, died in pitch/height load or geometry. Extremely improbable — same boot_info access pattern. |
+| `0xE8` | **compare across boots** | **About to write FB MMIO, didn't.** Triage paths: (a) **BAR shift** — compare [0x69]/[0x6A] across BIOS-save-exit vs warm-reset boots; divergence = cold POST reassigned the BAR. (b) **MTRR/PAT** — values identical across both reset modes → cacheability is the issue, dump IA32_PAT (MSR 0x277) + MTRR_DEF_TYPE (MSR 0x2FF) in Repair (O). |
+| `0xE9` | non-zero | First FB write OK, died in 4×4 fill loop. Improbable (adjacent pages, same cacheability). |
+| `0xEA` | non-zero | All FB writes returned. Stall is in the kcp=0xE1 stamp at main.cyr — identical byte pattern to dozens of working stamps. Most likely interpretation: racy outcome shifted on this burn; capture 2-3 consecutive resets. |
+
+**Build verification:**
+
+| Step | Result |
+|------|--------|
+| `sh scripts/build.sh` (agnos) | OK |
+| `build/agnos` size | **255,048 bytes** (+216 from Repair (M)'s 254,832: 6 × 8-byte in-cp_fb stamps + cmos_stamp_fb_phys body + call-site emit + Cyrius var-init for `_bar_snap`) |
+| multiboot2 (ELF64) / entry | OK / `0x1000a8` (unchanged) |
+| `cyrius build` for read-boot-log | OK — `build/read-boot-log` now ~47,640 bytes (gained ~5 KB of new verdict text since Repair (M) baseline) |
+| `timer_isr[]` headroom | Unchanged at 1 byte (Repair (N) lives in fb.cyr / mbi.cyr / main.cyr body, not the ISR buffer) |
+| `sudo install-usb.sh --update /dev/sdb` | Pending (user step) |
+
+**Pre-burn ask for Attempt 27:** capture **2-3 consecutive resets, ideally with at least one BIOS-save-exit interleaved**. The BAR snapshot makes the cold-vs-warm asymmetry directly readable from CMOS; we want to see whether [0x69]/[0x6A] drift between the two paths.
+
+**Carry-forward debt (not blocking Attempt 27):**
+
+- If Attempt 27 confirms kcp=0xE8 + BAR drift between cold/warm, Repair (O) is the fix-path: either pre-map FB phys into each AS's PT mirror (deferred Repair-H Option-B) OR force fb_phys reload from boot_info on every cp_fb entry (cheaper, but only safe if boot_info itself is stable).
+- If kcp=0xE8 + BAR identical across reset modes, Repair (O) opens with MTRR/PAT diagnostics: `mov rax, cr0` byte 3 + `rdmsr 0x277` byte 0 + `rdmsr 0x2FF` byte 0 stamps.
+- Repair (N) is diagnostic-only. The actual fix is Repair (O+) once we know which hypothesis is in play.
+
+---
+
 ## Carry-forward items (not blocking Attempt 26)
 
 - **aarch64 native boot test**: blocked on Pi SSH access. Cyrius
