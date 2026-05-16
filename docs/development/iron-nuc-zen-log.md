@@ -4151,15 +4151,325 @@ return 0;
 - **R3** (broader completion detection, 3 lines): Inside the poll, also accept `(psc & 0x10) == 0 AND (psc & 0x2) != 0` (PR self-cleared with PED set) as a success signal. **Tests F3.**
 - **R4** (diagnostic, 5 lines, CMOS slot 0x6C): On poll timeout AND on every per-port-reset-failure path, stamp `(psc >> 16) & 0xFF` (PSC change-byte) to CMOS[0x6C]. Update `read-boot-log` decoder. **Adds F4.**
 
-**Recommended Repair (R) bundle for Attempt 38**: R1 + R2 + R4 in a single edit pass. R3 is low-likelihood; defer unless R1+R2 don't help. R5 (Linux PR retry) is held back as Attempt 39 fallback if Repair (R) doesn't break the reset failure.
+**Repair (R) bundle landed 2026-05-16, post-Attempt-37, same session**: R1 + R2 + R4 in a single edit pass. R3 (broader completion detection) is low-likelihood; held for Attempt 39 fallback. R5 (Linux-style PR retry) held for Attempt 40 fallback if R1+R2+R4 don't break the reset failure.
 
-**Execution order**:
-1. Land R1+R2+R4 edits in `xhci_port.cyr` (USB2 reset branch) + `read-boot-log.cyr` (new CMOS[0x6C] decoder).
-2. Rebuild kernel + read-boot-log.
-3. Burn to USB, boot archaemenid, photograph framebuffer.
-4. Read CMOS post-mortem; CMOS[0x6C] localizes whichever sub-state the reset got stuck in.
+**Diff landed** (`agnos/kernel/arch/x86_64/usb/xhci_port.cyr:287-307`, USB2 branch only — USB3 path untouched):
+
+```cyrius
+# Was (pre-Repair-R USB2 path):
+var psc0 = xhci_portsc_read(port_num);
+xhci_portsc_write(port_num, (psc0 & 0xFF01FFFF) | 0x10, 0);   # PR=1
+var wait2 = 0;
+while (wait2 < 1000000) {
+    var psc = xhci_portsc_read(port_num);
+    if ((psc & 0x200000) != 0) {                              # PRC?
+        xhci_portsc_write(port_num, psc & 0xFF01FFFF, 0x200000);
+        var psc2 = xhci_portsc_read(port_num);
+        if ((psc2 & 0x2) != 0) { return 1; }
+        return 0;
+    }
+    wait2 = wait2 + 1;
+}
+return 0;
+
+# Now (Repair R landed):
+var psc0 = xhci_portsc_read(port_num);
+xhci_portsc_write(port_num, psc0 & 0xFF01FFFF, 0x20000);            # R2: clear CSC W1C
+var psc1 = xhci_portsc_read(port_num);
+xhci_portsc_write(port_num, (psc1 & 0xFF01FFFF) | 0x10 | 0x200, 0); # R1: PR=1 + PP=1
+var wait2 = 0;
+var psc_last = 0;
+while (wait2 < 1000000) {
+    var psc = xhci_portsc_read(port_num);
+    psc_last = psc;
+    if ((psc & 0x200000) != 0) {
+        xhci_portsc_write(port_num, psc & 0xFF01FFFF, 0x200000);
+        var psc2 = xhci_portsc_read(port_num);
+        if ((psc2 & 0x2) != 0) { return 1; }
+        xhci_cmos_stamp(0x6C, (psc2 >> 16) & 0xFF);                 # R4: stamp PRC-but-no-PED state
+        return 0;
+    }
+    wait2 = wait2 + 1;
+}
+xhci_cmos_stamp(0x6C, (psc_last >> 16) & 0xFF);                     # R4: stamp poll-timeout state
+return 0;
+```
+
+**Decoder landed** (`agnosticos/scripts/src/read-boot-log.cyr`): new `xh_pscchg = cmos_read(108)` slot read + `print_cmos_line("CMOS[0x6C] xhci PSC change-byte (R4)   = ", xh_pscchg)` + 8-bit decoder (LWS/CSC/PEC/WRC/OCC/PRC/PLC/CEC) + 5 new cheat-sheet entries; CMOS-range comment `0x62..0x6B` → `0x62..0x6C`; kcp=21 verdict refreshed `0x62-0x6B` → `0x62-0x6C` with R4 wording.
+
+**Build under test**:
+| Artifact | Before | After | Δ |
+|---|---|---|---|
+| `agnos/build/agnos` | 342,408 B | **342,584 B** | +176 (R1+R2+R4 in USB2 branch) |
+| `agnosticos/scripts/build/read-boot-log` | 40,456 B | **43,600 B** | +3,144 (0x6C decoder + cheat-sheet) |
+| Multiboot2 ELF64 | OK | OK | unchanged |
+| Entry | `0x1000a8` | `0x1000a8` | unchanged |
+| Cyrius pin | `5.11.55` | `5.11.55` | unchanged |
+| `gnoboot` | `0.2.0` | `0.2.0` | unchanged |
+
+**Iron protocol** (burn pending):
+1. Flash rebuilt USB.
+2. Attach keyboard to any USB-A port that previously showed power (preferably the one Attempt 37 surfaced CCS=0x04 on, but any working port is fine — universal-failure pattern means port choice doesn't matter for R1+R2 hypothesis testing).
+3. Boot archaemenid, photograph the framebuffer block between `xhci: PP=1 asserted, bitmap=…` and `VFS initialized`.
+4. After boot to `agnos>`, run `sudo ./scripts/read-boot-log.sh`.
+
+**Truth channels** (three load-bearing):
+1. **Framebuffer (primary, live)**: does `xhci: port N reset failed (proto=2)` still appear, or has `xhci: port N connected, SPEED, slot=X, VID=Y PID=Z, class=C` surfaced for the first time?
+2. **CMOS[0x64] (reset-OK bitmap)**: non-zero ⇒ at least one port reset succeeded ⇒ R1 and/or R2 broke the deadlock.
+3. **CMOS[0x6C] (PSC change-byte, NEW)**: if reset still fails, the change-byte pattern localizes WHICH sub-state — see decoder cheat-sheet.
+
+**Pre-bound outcome matrix**
+
+| FB line | CMOS[0x64] | CMOS[0x6C] decoded | Interpretation | Next step |
+|---|---|---|---|---|
+| `xhci: port N connected, …` (any N) | ≠ 0 | (any) | ✅ **Repair (R) cleared the blocker.** R1 (PP re-assert) or R2 (CSC pre-clear) was the missing piece. | Move to Phase 4 staging (Configure Endpoint + Set Protocol=boot). |
+| `xhci: port N reset failed (proto=2)` | 0x00 | `<none>` | PR write absorbed silently — controller did NOT enter reset state. R1+R2 didn't help. Likely an HCCPARAMS quirk or controller-side disable at a deeper level than CSC. | Stage R3 (broader completion detection) + audit HCCPARAMS1 bits beyond PPC. |
+| `xhci: port N reset failed (proto=2)` | 0x00 | `CSC` only | Attach observed but no reset progress. PR write took, but controller didn't transition to Reset state. R2 cleared CSC at write time but didn't help. | Suspect port-state precondition (PLS not in expected state) or PR-hold-time race. Stage R5 (Linux-style PR retry) or add explicit PLS read/transition. |
+| `xhci: port N reset failed (proto=2)` | 0x00 | `PRC` (with or without CSC) | Reset DID complete (PRC fired) but PED never followed. Reset-to-Enabled transition failed silicon-side. | Suspect link-training / cable / signal issue at the device side OR controller-side reset-complete-but-not-enabled quirk. Try a different keyboard before code changes. |
+| `xhci: port N reset failed (proto=2)` | 0x00 | `PEC` | Port enable-state changed without clean reset — soft-disable cascade. | Audit downstream xhci_enumerate flow for spurious enable/disable writes. |
+| `xhci: port N reset failed (proto=2)` | 0x00 | `OCC` | Over-current event during reset — physical/power fault. | Check USB-A port for short / faulty device; try different cable. |
+| FB still shows `xhci: PP=1 asserted, bitmap=63` but no `xhci: port N …` line at all | 0x00 | (any) | Reset returned 0 OR CCS check (`if (psc & 0x1) == 0`) tripped — re-verify attached device + correlate CMOS[0x63] CCS bitmap. | If CCS=0 across the board ⇒ regression: Repair (R) somehow broke PP-fixed receiver detection. Bisect by reverting R1's `0x200` addition. |
 
 **On post-Attempt-38**: typing on `agnos>` still produces no echo (Phase 4/5 gated regardless). Attempt 38's win condition is either (a) `xhci: port N connected, …` line surfaces (Repair R cleared the reset blocker) OR (b) CMOS[0x6C] tells us which sub-state the reset is stuck in (which localizes Repair R+1).
+
+_Attempt 38 entry follows below._
+
+### Attempt 38 — 2026-05-16 → ⚠️ PARTIAL — PR write absorbed silently, R1+R2 insufficient; R4 diagnostic localized the failure
+
+Repair (R) [R1+R2+R4] burned cleanly. Outcome maps to **row 2** of the Attempt 38 prep matrix (lines 4226 above): `reset=0x00, CMOS[0x6C]=0x00 (no PSC change bits set)`. R4's diagnostic earned its keep — it tells us the PR write isn't being honored by the controller, not that the state machine is stuck mid-transition.
+
+**CMOS post-mortem** (from `sudo ./scripts/read-boot-log.sh`):
+
+| Slot | Value | Decode |
+|---|---|---|
+| 0x50 (kcp) | `0x15` | kybernet-launch reached (overwrote any xhci kcp) |
+| 0x62 (USBLEGSUP) | `0x01` | already-OS — unchanged across Attempts 35-38 |
+| **0x63 (CCS bitmap)** | **`0x01`** | port 1 reports connect on the captured dump. **User swept the keyboard across multiple physical ports during this burn — all behaved identically** (no `xhci: port N connected` line, no PSC change-byte on any port). Re-confirms Attempt 36's universal-failure pattern; CCS=0x01 is just the last-captured-port. |
+| **0x64 (reset-OK bitmap)** | **`0x00`** | no ports reached PED; reset failed on the connected port (unchanged from Attempt 37) |
+| 0x65/66/67 (proto) | `0x22 0x22 0x33` | p1-p4=USB2, p5-p6=USB3 (unchanged) |
+| 0x68 (xECP cap count) | `0x05` | unchanged |
+| 0x69 (cap-ID bitmap) | `0x03` | USBLEGSUP+SupProto present (unchanged) |
+| 0x6A (1st SupProto) | `0x24` | rev_major=2, port_count=4 (USB2 cap covers p1-p4, unchanged) |
+| **0x6B (PP bitmap)** | **`0x3F`** | Repair (Q) still good — all 6 ports asserted PP=1 |
+| **0x6C (PSC change-byte, NEW)** | **`0x00`** | **no PSC change bits ever set at poll-timeout** — PR write was absorbed silently; controller never entered Reset state |
+
+**Decoded — row 2 of the outcome matrix**:
+
+> "PR write absorbed silently — controller did NOT enter reset state. R1+R2 didn't help. Likely an HCCPARAMS quirk or controller-side disable at a deeper level than CSC."
+>
+> **Next step**: Stage R3 (broader completion detection) + audit HCCPARAMS1 bits beyond PPC.
+
+**State transition since Attempt 37**:
+- Attempt 37: CCS=0x04 (port 3), reset=0x00, no PSC slot (Repair R not yet landed).
+- Attempt 38: CCS=0x01 (port 1, keyboard relocated), reset=0x00, PSC change-byte=0x00 (R4 stamp confirms the PR write doesn't move the state machine at all).
+
+**Eliminated by this attempt's data**:
+- ✗ F1 (PP cleared between Q debounce and PR write) — R1 explicitly re-asserts PP in the same write. Reset still fails ⇒ PP-state isn't the variable.
+- ✗ F2 (CSC blocking reset state-machine entry) — R2 W1C-clears CSC before the PR write. Reset still fails ⇒ CSC isn't gating.
+- ✗ F3 (PR self-cleared + PED=1 without PRC) — would have shown PRC bit or any non-zero change-byte. CMOS[0x6C]=0x00 closes it.
+- ✗ Port-specific physical fault on any single socket — user swept the keyboard across multiple ports during this burn; reset failed identically on every port tried. Universal-failure pattern reconfirmed (third confirmation: Attempts 36, 37 vicinity, 38).
+
+**Surviving hypotheses** (in likelihood order, post-Attempt-38):
+1. **HCCPARAMS1 quirk gating reset-state entry on AMD FCH.** PPC=1 explains the PP gate (closed by Q); a *second* HCCPARAMS1 bit (or HCCPARAMS2 bit, or PORTPMSC quirk) may gate USB2 PR-bit honoring on this silicon. xHCI 1.2 §5.3.6 (HCCPARAMS1) + §5.3.9 (HCCPARAMS2) bits worth surveying: CSZ (closed — `csz=1` already), AC64 (closed — `ac64=1` already), PIND (port-indicators — unlikely related), LHRC, LTC, NSS, PAE, SPC, SEC, CFC. **AMD-specific behavior to check**: does the FCH require an explicit USBCMD bit or PORTPMSC write before per-port PR is honored?
+2. **PLS (Port Link State, bits 5:8) precondition not satisfied.** Spec §4.19.1.1 expects USB2 to be in "Polling" or "Disabled" before PR=1 is honored. We never read PLS pre-write. If PLS is sitting at something unexpected post-PP-debounce (e.g., "Inactive" or "Compliance Mode"), PR is a no-op.
+3. **PR-hold-time race / write absorbed by W1C semantics.** PR is bit 4 in PORTSC; PORTSC is a mixed RW/W1C register. If our write is treated as W1C clearing some adjacent bit (a stale CSC/PEC/PRC that survived R2's clear), the controller may toss the PR set. Less likely — R2 already covers this for CSC.
+4. **Linux-style PR retry** (R5 hypothesis from F5) — held as Attempt-40 fallback if R3 + HCCPARAMS audit doesn't break the deadlock.
+
+**Build under test**:
+| Artifact | State |
+|---|---|
+| `agnos/build/agnos` | `342,584 bytes` (per Attempt 38 prep). R1+R2+R4 live in `xhci_port.cyr:287-307`. |
+| `agnosticos/scripts/build/read-boot-log` | `43,600 bytes`. 0x6C decoder + cheat-sheet active (this burn's truth channel). |
+| `gnoboot` | `0.2.0` (unchanged). |
+| Cyrius pin | `5.11.55` (unchanged). |
+| BIOS state | Quiet Boot OFF; USB Legacy On/Auto; XHCI Enabled (unchanged). |
+
+**Photo**: [`iron-nuc-zen-photos/attempt-38-xhci-phase-3-pp-asserted-reset-failed.jpg`](iron-nuc-zen-photos/attempt-38-xhci-phase-3-pp-asserted-reset-failed.jpg) — framebuffer shows the full kernel init log through `agnos>` prompt, including `xhci: found at … 64 slots, 6 ports`, `USBLEGSUP already OS-owned`, `controller running, HCH=0, ERDP=13336576`, `port reset failed (proto=2)`. Image filed alongside attempts 28–31.
+
+**Pattern hold (per [`feedback_known_knowledge_first`](MEMORY-link))**: before staging R3, grep `docs/development/` for prior AMD FCH / HCCPARAMS / USB2 PR-bit research and Linux kernel `drivers/usb/host/xhci-hub.c` notes the user may have already pulled. Don't burn another iron iteration on an experiment already evaluated.
+
+### Attempt 39 prep — Repair (R10) PLS gate + R7/R8 ride-along diagnostics
+
+**Pre-burn audit completed (post-Attempt-38, same session)**: Explore-agent research surfaced the load-bearing finding — **SeaBIOS `xhci_hub_reset` (src/hw/usb-xhci.c) gates `PR=1` on `PLS==Polling` (state 7) for USB2 ports.** xHCI 1.2 §4.19.1.1 + the USB2 attach sequence (`Disconnected → Powered → Polling → (host PR=1) → Reset → Enabled`) confirm: writing PR=1 against a non-Polling PLS state is undefined behavior on most controllers — AMD FCH absorbs the write silently rather than transitioning. **Our `xhci_port_reset` USB2 path has never read PLS before writing PR.** That is the precondition we've been missing across Attempts 32–38. Linux's `xhci-pci.c` quirks table has **no AMD-specific gate** (Etron `RESET_ON_RESUME` + Promontory `SUSPEND_DELAY` are the only AMD entries; neither applies) — confirming this is spec-compliance debt, not a known AMD quirk.
+
+Filtered from the agent's report: candidate #1 ("assert PP before reading CCS") is already Repair (Q) (landed Attempt 37, CMOS[0x6B]=0x3F verified). Candidate #2 (the PLS gate) is the genuine miss. R3 (broader completion detection) dropped — CMOS[0x6C]=0x00 says we never reach that state; obsoleted by R10. R6 (basic PLS observe) subsumed into R10 — R10 *gates* on PLS, doesn't just stamp.
+
+**Repair (R10) — PLS gate + ride-along diagnostics — landed 2026-05-16 same session, post-Attempt-38**:
+
+| Repair | File | Behavior |
+|---|---|---|
+| **R10** (PLS gate, real fix) | `agnos/kernel/arch/x86_64/usb/xhci_port.cyr:287-349` (USB2 branch) | (1) Read PLS pre-PR; stamp to CMOS[0x6D] **on the connected port only** (CCS==1 gate avoids smearing). Low nibble = PLS field; top nibble = provenance (0x0_=first read, 0xE_=settle-expired, 0xF_=arrived-at-U0-mid-settle). (2) If PLS == U0 (0), return success immediately — port already past reset; Enable Slot will catch real downstream failures. (3) If PLS != Polling (7), poll PLS for ~20ms (200 000 iters) waiting for Polling or U0. If U0 mid-wait → return success with `0xF0`-prefixed stamp; if expired without Polling → continue to R2/R1 path anyway with `0xE_`-prefixed stamp (worst case: same silent-absorb behavior as Attempt 38, which is the floor — not a regression). (4) R2 (CSC pre-clear) + R1 (PR=1 \| PP=1) + R4 (PSC change-byte stamp on fail) retained unchanged. |
+| **R7** (HCCPARAMS1/2 diag stamps) | `agnos/kernel/arch/x86_64/usb/xhci.cyr:171-179` (end of `xhci_probe`) | Read HCCPARAMS2 (xHCI 1.1+ cap reg, offset 0x1C in cap window — not previously read by AGNOS); stamp low byte of HCCPARAMS1 → CMOS[0x6E], low byte of HCCPARAMS2 → CMOS[0x6F]. Surfaces controller-advertised capabilities beyond AC64/CSZ/PPC. |
+| **R8** (PORTPMSC stamp) | `agnos/kernel/arch/x86_64/usb/xhci_port.cyr` USB2 reset fail paths | On every reset-fail return (poll-timeout AND PRC-fired-but-no-PED), load `PORTPMSC` from `xhci_portsc_addr(port_num) + 0x04` (PORTPMSC offset within the per-port block), stamp low byte to CMOS[0x60] (reuses Repair-O retired AS2 slot). USB2 PMSC bits cover L1 status / remote-wake / BESL — surfaces non-standard quirks. |
+
+**agnosticos-side decoder pair (`scripts/src/read-boot-log.cyr`):**
+- Slot range comment: `0x62..0x6C` → `0x62..0x6F + 0x60`. Stamp-author table expanded with R10/R7/R8 attribution.
+- 3 new `cmos_read` slot reads: 0x6D (xh_pls), 0x6E (xh_hccp1), 0x6F (xh_hccp2), plus 0x60 (xh_pmsc) reusing the AS2 slot.
+- 4 new `print_cmos_line` entries below the existing 0x6C row.
+- 12-state PLS decoder (U0/U1/U2/U3/Disabled/RxDetect/Inactive/**Polling**/Recovery/Hot-Reset/Compliance/Test/Reserved) with provenance-nibble interpretation suffixes.
+- 8-bit HCCPARAMS1 decoder (AC64/BNC/CSZ/PPC/PIND/LHRC/LTC/NSS) and 8-bit HCCPARAMS2 decoder (U3C/CMC/FSC/CTC/LEC/CIC/ETC/ETC_TSC) following the existing change-byte-loop pattern.
+- 8 new interpretation cheat-sheet entries tying PLS observations to next-step verdicts.
+
+**Build under test** (rebuild verified 2026-05-16):
+
+| Artifact | Pre | Post | Δ |
+|---|---|---|---|
+| `agnos/build/agnos` | 342,584 B | **343,320 B** | +736 (R10 PLS gate + R7 HCCPARAMS2 read + R8 PORTPMSC stamp surface) |
+| `agnosticos/scripts/build/read-boot-log` | 43,600 B | **48,808 B** | +5,208 (3 new slot reads + 12-state PLS decoder + HCCPARAMS1/2 8-bit decoders + 8 cheat-sheet entries; pre-burn cleanup removed duplicate `CMOS[0x60]` AS2 caption since R8 now owns the slot) |
+| Multiboot2 ELF64 | OK | OK | unchanged |
+| Entry | `0x1000a8` | `0x1000a8` | unchanged |
+| Cyrius pin (both manifests) | `5.11.55` | `5.11.55` | unchanged |
+| Installed `cyrius --version` | (5.11.25 — wrapper lags manifest pin; build resolved against 5.11.54 lib snapshot per shadow-warning) | (same) | (toolchain-side drift; surfaced to user, not blocking — kernel + read-boot-log both built `OK` with multiboot2 ELF64 valid) |
+| `gnoboot` | `0.2.0` | `0.2.0` | unchanged |
+
+**Iron protocol** (burn pending after rebuild):
+1. Flash rebuilt USB.
+2. Attach keyboard to any USB-A port (port choice doesn't matter per Attempt 36 universal-failure carry-forward; if R10 cleared the deadlock, a single port works — if not, port-swap diagnostic value is zero, don't waste cycles on the sweep).
+3. Boot archaemenid, photograph the framebuffer block between `xhci: PP=1 asserted, bitmap=63` and `VFS initialized`.
+4. After boot to `agnos>`, run `sudo ./scripts/read-boot-log.sh`.
+
+**Three load-bearing channels** (order of inspection):
+1. **Framebuffer (primary, live)**: does `xhci: port N connected, …` line surface? If yes → R10 cleared the blocker, Phase 4 staging begins. If `xhci: port N reset failed (proto=2)` still shows → consult CMOS.
+2. **CMOS[0x6D] (PLS pre-PR, R10)**: the single most informative new channel. Decoder maps to specific interpretations in the matrix below.
+3. **CMOS[0x6E]/[0x6F] (HCCPARAMS1/2, R7) + CMOS[0x60] (PORTPMSC, R8)**: only load-bearing if reset still failed — surface what the silicon advertises and whether USB2 PM state is non-standard.
+
+**Pre-bound outcome matrix**
+
+| FB line | CMOS[0x6D] decoded | CMOS[0x64] | Interpretation | Next step |
+|---|---|---|---|---|
+| `xhci: port N connected, …` | `Polling (good)` | non-zero | ✅ **R10 cleared the blocker.** PLS gate was the missing precondition; PR write now honored. | Phase 4 staging (Configure Endpoint + Set Protocol=boot). |
+| `xhci: port N connected, …` | `U0 [arrived at U0 mid-settle]` | (irrelevant) | ✅ **R10's U0 fast-path fired.** Controller decided to enable the port on its own during the settle wait — we correctly skipped PR and returned success. | Phase 4 staging. Confirm Enable Slot completes; if `kcp=0x32` stalls there, downstream issue not reset. |
+| `xhci: port N reset failed (proto=2)` | `Polling (good)` | `0x00` | R10 PLS gate ran clean (PLS was already Polling), R1+R2 still didn't move PR. **Spec-compliant precondition + still silent absorb = HCCPARAMS-level quirk or PORTPMSC quirk.** | Escalate: Linux `xhci-hub.c` line-by-line audit against our reset path. Inspect CMOS[0x6E]/[0x6F]/[0x60] for non-standard bit patterns. Stage R5 (Linux-style PR retry) for Attempt 40 if HCCPARAMS audit doesn't surface anything. |
+| `xhci: port N reset failed (proto=2)` | `[post-settle, never reached Polling]` (any state) | `0x00` | PLS never settled to Polling within 20 ms. **Hardware-level link issue** — device chirp not completing, cable / signal / port-electrical problem. CCS=1 + no Polling = device detected at the PP layer but USB2 reset-link training not converging. | Try a different keyboard / cable first (cheap). If reproduces, audit gnoboot's GOP-handoff for any USB-touching code that leaves ports in a wrong state pre-kernel. |
+| `xhci: port N reset failed (proto=2)` | `Disabled (4)` or `RxDetect (5)` or `Inactive (6)` | `0x00` | Port stuck in a state that shouldn't see CCS=1. Indicates controller-side soft-disable or BIOS USB Legacy mis-state. | Audit BIOS USB Legacy settings (XHCI Hand-off ON, Legacy USB Support, Mass Storage). If clean, escalate to controller-state-machine dump (would need new instrumentation). |
+| `xhci: port N reset failed (proto=2)` | `Compliance (10)` or `Test (11)` | `0x00` | Port locked in Compliance/Test mode — usually a firmware-side artifact or a misconfigured BIOS knob. | BIOS-level investigation; try a BIOS reset / re-save. |
+| `xhci: port N reset failed (proto=2)` | `0x00` (no stamp) | `0x00` | R10 never wrote the slot — either (a) build predates R10 (sanity check kernel size), or (b) no port had CCS==1 at first read (keyboard not detected — re-verify keyboard / port). | (a) Rebuild and reflash. (b) Re-verify physical attach. |
+| `xhci: port N reset failed (proto=2)` | Polling | `0x00` + **HCCP1 has unexpected bits set** | A non-PPC HCCPARAMS1 bit (LHRC / LTC / NSS) suggests controller-specific quirk handling. Cross-reference Linux's per-vendor flags. | Surgical: stage a quirk-specific repair based on the surfaced bit. |
+| `xhci: port N reset failed (proto=2)` | Polling | `0x00` + **PORTPMSC non-zero** | USB2 PM state is non-trivial at reset-fail-time. Could indicate L1 entry blocking PR honoring. | Add PORTPMSC reset to all-zero pre-PR (Repair-R11 candidate, 1 line). |
+
+**Decision gate after Attempt 39**:
+- **R10 success** (row 1 or 2): Phase 3 cycle closes. Move to Phase 4 (~200–400 LOC: Configure Endpoint + Set Protocol=boot) + Phase 5 (~200–400 LOC: HID translation + `kb_buf` feed). Phase 5 closes the typeable-shell gate → 1.30.1 ships → **closed-beta MVP**.
+- **R10 fail with PLS=Polling** (row 3): the spec-compliant precondition didn't help; this is HCCPARAMS / PORTPMSC / Linux-AMD-path territory. Use the HCCP1/HCCP2/PORTPMSC stamps to localize before staging R11. Expect 1–2 more iron iterations before Phase 4 unlocks.
+- **R10 fail with PLS != Polling** (rows 4–6): hardware / cable / BIOS angle; try cheap physical swaps before more code. The R10 gate is doing its job correctly — surfacing that the *port* isn't ready, not that our code is wrong.
+
+**On post-Attempt-39 success**: typing on `agnos>` still produces no echo (Phase 4 + Phase 5 still gated). R10 unlocks Phase 3 but doesn't close the typeable gate by itself.
+
+### Pre-burn verification — Attempt 39 (2026-05-16, post-build, pre-flash)
+
+Read-only artifact sanity sweep against the rebuilt kernel and read-boot-log. All gates green.
+
+**Kernel artifact** (`agnos/build/agnos`):
+
+| Check | Expected | Observed | Status |
+|---|---|---|---|
+| File size | 343,320 B | 343,320 B | ✅ |
+| ELF magic | `\x7fELF` | `7f 45 4c 46` | ✅ |
+| ELF class | 64-bit | ELF 64-bit LSB | ✅ |
+| Machine | AMD x86-64 | Advanced Micro Devices X86-64 | ✅ |
+| Type | EXEC | EXEC | ✅ |
+| Entry point | `0x1000a8` | `0x1000a8` | ✅ |
+| Strip state | stripped | stripped | ✅ |
+
+**Kernel string-table inventory** (`strings build/agnos | grep "xhci:"` — every framebuffer line the iron burn could plausibly render):
+
+Required for Attempt 39 success-path:
+- ✅ `xhci: found at ` (Phase 1)
+- ✅ `xhci: caplen=` + `xhci: dboff=` (Phase 1 cap dump)
+- ✅ `xhci: halted, reset clean` (Phase 2 halt+reset)
+- ✅ `xhci: controller running, HCH=0, ERDP=` (Phase 2 start)
+- ✅ `xhci: PP=1 asserted, bitmap=` (Repair Q — Phase 3.5)
+- ✅ `xhci: USBLEGSUP already OS-owned` (Phase 2.5)
+- ✅ `xhci: port ` + ` connected, ` (Phase 3 happy-path — fires if R10 cleared the deadlock)
+- ✅ `xhci: port ` + ` reset failed (proto=` (Phase 3 fail-path — fires if R10 didn't clear)
+
+Required for the failure-mode triage table (all reset-fail kprint surfaces present):
+- ✅ `xhci: Enable Slot failed, ccode=`
+- ✅ `xhci: Address Device failed, ccode=`
+- ✅ `xhci: get descriptor (8) failed` + `xhci: get descriptor (18) failed`
+- ✅ `xhci: cmd completion timeout` + `xhci: transfer event timeout`
+
+**R10 has no kprint surface by design** — it writes CMOS only (kcp gets overwritten by kybernet, so survivable signal lives in CMOS[0x6D]). Iron-side verification of R10 happens via `read-boot-log`, not framebuffer.
+
+**read-boot-log artifact** (`agnosticos/scripts/build/read-boot-log`):
+
+| Check | Expected | Observed | Status |
+|---|---|---|---|
+| File size | 48,808 B (post-0x60-cleanup) | 48,808 B | ✅ |
+| ELF type | 64-bit statically-linked | ELF 64-bit LSB, statically linked, stripped | ✅ |
+
+**Decoder string inventory** (every new label the post-burn dump should emit):
+- ✅ `CMOS[0x6D] xhci PLS pre-PR (R10)       = ` (R10's main slot)
+- ✅ `CMOS[0x6E] xhci HCCPARAMS1 lo (R7)     = ` (R7)
+- ✅ `CMOS[0x6F] xhci HCCPARAMS2 lo (R7)     = ` (R7)
+- ✅ `CMOS[0x60] xhci PORTPMSC of failed port (R8) = ` (R8, replaces legacy AS2 caption — single line per slot now)
+- ✅ `PLS    (CMOS[0x6D]): pre-PR state         = ` (12-state decoder header)
+- ✅ `Polling (good — PR honored)` (the row-1 outcome string)
+- ✅ `[post-settle, never reached Polling]` (provenance-nibble `0xE_` suffix)
+- ✅ `[arrived at U0 mid-settle — skipped to success]` (provenance-nibble `0xF_` suffix)
+- ✅ `HCCP1  (CMOS[0x6E]): bits set         =` + `HCCP2  (CMOS[0x6F]): bits set         =`
+- ✅ All 8 cheat-sheet rows present (`PLS=Polling (7) + reset=<none>` / `PLS top-nibble 0xE` / etc.)
+
+**Pre-burn checklist for the iron operator** (in order):
+
+1. **Flash**: provision the rebuilt USB via the project's standard `install-usb.sh --update` (or equivalent) — pulls the new `build/agnos` (343,320 B) and any read-boot-log changes onto the boot media.
+2. **Physical setup**: attach the USB keyboard to any USB-A port — port choice is **not** load-bearing per Attempt 36 universal-failure carry-forward. (R10 now handles per-port PLS state; the universal failure was symptomatic of the missing precondition, not port-specific hardware.)
+3. **Boot**: power-cycle archaemenid (cold boot recommended over warm-reset — fresh BIOS state). BIOS settings: Quiet Boot **OFF** (per ongoing GOP rendering regression workaround), USB Legacy Support **On/Auto**, XHCI **Enabled**.
+4. **Frame capture**: photograph the framebuffer **after** `agnos>` renders, with the block visible between `xhci: PP=1 asserted, bitmap=63` and `VFS initialized`. The single most important line: does `xhci: port N connected, …` surface this burn, or does `xhci: port N reset failed (proto=2)` still render?
+5. **CMOS dump**: at the `agnos>` prompt, the shell is render-only this burn (no kb input until Phase 4/5 ships). So power-cycle to the host, mount the USB if needed, and run `sudo /home/macro/Repos/agnosticos/scripts/read-boot-log.sh` to dump CMOS via `/dev/nvram`.
+
+   _Backup path_ if `/dev/nvram` is checksum-mismatched (per `project_archaemenid_cmos_map`): the Cyrius `read-boot-log` binary is the working read channel on archaemenid — that's the one the script invokes.
+
+6. **Interpretation**: open `iron-nuc-zen-log.md` § *Attempt 39 prep* outcome matrix. Find the row matching the observed CMOS[0x6D] PLS state + CMOS[0x64] reset-OK pair. Read the "Next step" cell.
+
+**Expected dump rows on this build** (every line that should appear in `read-boot-log` output, in order):
+
+```
+CMOS[0x53] gnoboot magic    = 0xcd
+CMOS[0x52] gnoboot checkpt  = 0x05
+CMOS[0x51] kernel  magic    = 0xab
+CMOS[0x50] kernel  checkpt  = 0x15        ← kybernet reached (Phase 3+ overwritten)
+CMOS[0x54] CR4 byte 2 ... = 0x30
+CMOS[0x55] CR4 byte 2 ... = 0x30
+... (AS1/AS2 PMM block, vestigial) ...
+CMOS[0x62] xhci USBLEGSUP outcome      = 0x01    ← already-OS (stable across burns)
+CMOS[0x63] xhci port CCS bitmap        = ≥ 0x01  ← at least one port connected
+CMOS[0x64] xhci port reset-OK bitmap   = ?       ← THE primary signal
+CMOS[0x65/66/67] proto                = 0x22 / 0x22 / 0x33  (stable)
+CMOS[0x68] xECP cap walk count         = 0x05
+CMOS[0x69] xECP cap-ID bitmap          = 0x03
+CMOS[0x6A] 1st SupProto rev|count      = 0x24
+CMOS[0x6B] PORTSC.PP=1 bitmap          = 0x3f    ← Repair Q confirmed (must hold)
+CMOS[0x6C] PSC change-byte (R4)        = ?       ← only matters if reset=0
+CMOS[0x6D] PLS pre-PR (R10)            = ?       ← the new diagnostic
+CMOS[0x6E] HCCPARAMS1 lo (R7)          = ?       ← controller advertises what
+CMOS[0x6F] HCCPARAMS2 lo (R7)          = ?
+CMOS[0x60] PORTPMSC of failed port (R8) = ?      ← only matters if reset=0
+```
+
+**What "PASS" looks like** (any of these is sufficient):
+
+| Path | CMOS[0x6B] | CMOS[0x6D] | CMOS[0x64] | FB line |
+|---|---|---|---|---|
+| R10 success — Polling gate honored | `0x3f` | `0x07` (Polling) | non-zero | `xhci: port N connected, …` |
+| R10 U0 fast-path — port already enabled | `0x3f` | `0xF0` or `0xF7` | (irrelevant — short-circuit returned success) | `xhci: port N connected, …` |
+
+**What "FAIL but localized" looks like** (next-repair information, not a regression):
+
+| Path | CMOS[0x6D] | CMOS[0x6E]/[0x6F]/[0x60] | What we learned |
+|---|---|---|---|
+| Spec-compliant but still no PR | `0x07` | non-trivial bits | HCCPARAMS / PORTPMSC quirk territory; stage R5 Linux-retry or surgical quirk fix for Attempt 40 |
+| PLS never settled | `0xE_` (any state) | (irrelevant) | Hardware / cable / link-training issue; try different keyboard/cable before code |
+| Port stuck Disabled / RxDetect / Inactive | `0x04`, `0x05`, `0x06` | (irrelevant) | BIOS USB Legacy state or controller soft-disable; audit BIOS settings |
+
+**What "REGRESSION" looks like** (any of these means R10 broke something):
+
+- `CMOS[0x6B]` != `0x3f` → Repair (Q) PP fix regressed (very unlikely; R10 only adds before R2/R1, doesn't modify the PP path)
+- `CMOS[0x50]` (kcp) < `0x15` → kernel didn't reach kybernet (R10 broke the boot — would need bisection)
+- Multiboot2 fail at gnoboot handoff → kernel ELF surface regressed (build verification says no, but iron is truth)
+
+**If regression**: revert agnos to the Attempt 38 binary (342,584 B). The pre-R10 binary is the floor — we know it boots to shell.
+
+_This pre-burn block is informational; the actual Attempt 39 entry will replace the prep block once the burn completes._
 
 ---
 

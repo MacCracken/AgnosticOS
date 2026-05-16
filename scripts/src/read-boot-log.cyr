@@ -176,14 +176,20 @@ fn main(): i64 {
     var as2_upml4 = cmos_read(95);  # 0x5F
     var as2_updpt = cmos_read(96);  # 0x60
     var as2_upd  = cmos_read(97);  # 0x61
-    # Slots 0x62-0x6C: xhci post-mortem (Attempt 36+). Repurposed from the
-    # retired Repair-K/N mem-iso block. Stamped by:
+    # Slots 0x62-0x6F + 0x60: xhci post-mortem (Attempt 36+, R10 expanded
+    # the range 2026-05-16). Repurposed from the retired Repair-K/N mem-iso
+    # block. Stamped by:
     #   xhci_usblegsup_claim     → 0x62 (USBLEGSUP outcome enum)
-    #   xhci_xecp_classify_ports → 0x68 / 0x69 / 0x6A (cap-walk inventory)
     #   xhci_enumerate           → 0x63 / 0x64 / 0x65-0x67 (CCS, reset, proto)
+    #   xhci_xecp_classify_ports → 0x68 / 0x69 / 0x6A (cap-walk inventory)
     #   xhci_ports_power_on      → 0x6B (PORTSC.PP=1 verified bitmap)
     #   xhci_port_reset (R4)     → 0x6C (PSC change-byte on USB2 reset fail)
+    #   xhci_port_reset (R10)    → 0x6D (PLS observed pre-PR + provenance nibble)
+    #   xhci_probe (R7)          → 0x6E / 0x6F (HCCPARAMS1/2 low bytes)
+    #   xhci_port_reset (R8)     → 0x60 (PORTPMSC low byte on USB2 reset fail;
+    #                                    reuses retired Repair-O AS2 slot)
     # Decoders below.
+    var xh_pmsc    = cmos_read(96);   # 0x60 — PORTPMSC of failing port (R8)
     var xh_usbleg  = cmos_read(98);   # 0x62
     var xh_ccs     = cmos_read(99);   # 0x63
     var xh_reset   = cmos_read(100);  # 0x64
@@ -195,6 +201,9 @@ fn main(): i64 {
     var xh_supp1   = cmos_read(106);  # 0x6A
     var xh_pp      = cmos_read(107);  # 0x6B
     var xh_pscchg  = cmos_read(108);  # 0x6C
+    var xh_pls     = cmos_read(109);  # 0x6D — PLS pre-PR (R10)
+    var xh_hccp1   = cmos_read(110);  # 0x6E — HCCPARAMS1 low byte (R7)
+    var xh_hccp2   = cmos_read(111);  # 0x6F — HCCPARAMS2 low byte (R7)
 
     print_cmos_line("CMOS[0x53] gnoboot magic    = ", gmagic);
     print_cmos_line("CMOS[0x52] gnoboot checkpt  = ", gcp);
@@ -221,7 +230,9 @@ fn main(): i64 {
     print_cmos_line("CMOS[0x5D] AS2 pmm_alloc #2 (new_pdpt byte 2)  = ", as2_pdpt);
     print_cmos_line("CMOS[0x5E] AS2 pmm_alloc #3 (new_pd   byte 2)  = ", as2_pd);
     print_cmos_line("CMOS[0x5F] AS2 pmm_alloc #4 (u_pml4   byte 2)  = ", as2_upml4);
-    print_cmos_line("CMOS[0x60] AS2 pmm_alloc #5 (u_pdpt   byte 2)  = ", as2_updpt);
+    # NOTE: CMOS[0x60] is reused by R8 (xhci PORTPMSC of failed port) —
+    # decoded below in the xHCI block. The legacy AS2 print is intentionally
+    # omitted here to avoid two captions for the same byte.
     print_cmos_line("CMOS[0x61] AS2 pmm_alloc #6 (u_pd     byte 2)  = ", as2_upd);
     println("  Repair (J) PMM scan: byte 2 of each pmm_alloc result.");
     println("    0x00            = page in [0x0000..0xFFFF] — KERNEL-PT RANGE, smoking gun.");
@@ -247,6 +258,10 @@ fn main(): i64 {
     print_cmos_line("CMOS[0x6A] xhci 1st SupProto rev|count = ", xh_supp1);
     print_cmos_line("CMOS[0x6B] xhci PORTSC.PP=1 bitmap     = ", xh_pp);
     print_cmos_line("CMOS[0x6C] xhci PSC change-byte (R4)   = ", xh_pscchg);
+    print_cmos_line("CMOS[0x6D] xhci PLS pre-PR (R10)       = ", xh_pls);
+    print_cmos_line("CMOS[0x6E] xhci HCCPARAMS1 lo (R7)     = ", xh_hccp1);
+    print_cmos_line("CMOS[0x6F] xhci HCCPARAMS2 lo (R7)     = ", xh_hccp2);
+    print_cmos_line("CMOS[0x60] xhci PORTPMSC of failed port (R8) = ", xh_pmsc);
 
     # USBLEGSUP outcome decoder.
     if (xh_usbleg == 0) { println("  USBLEGSUP: n/a (no xECP chain) — controller does not advertise extended caps."); }
@@ -372,6 +387,63 @@ fn main(): i64 {
     if (any_pscchg == 0) { syscall(1, 1, " <none>", 7); }
     syscall(1, 1, "\n", 1);
 
+    # PLS pre-PR (R10) decoder. Stamped by xhci_port_reset USB2 branch
+    # *before* the PR write. Encoding: low nibble = PLS field at first read
+    # on the connected port; top nibble = provenance:
+    #   0x0N = first read PLS=N on connected port (CCS==1)
+    #   0xEN = final PLS=N after ~20ms settle wait (never reached Polling)
+    #   0xFN = arrived at U0 mid-wait (N usually == 0)
+    var pls_lo = xh_pls & 0xF;
+    var pls_hi = (xh_pls >> 4) & 0xF;
+    syscall(1, 1, "  PLS    (CMOS[0x6D]): pre-PR state         = ", 47);
+    if (pls_lo == 0) { syscall(1, 1, "U0 (Enabled)", 12); }
+    if (pls_lo == 1) { syscall(1, 1, "U1 (Suspend)", 12); }
+    if (pls_lo == 2) { syscall(1, 1, "U2 (Suspend2)", 13); }
+    if (pls_lo == 3) { syscall(1, 1, "U3 (Powered-off)", 16); }
+    if (pls_lo == 4) { syscall(1, 1, "Disabled", 8); }
+    if (pls_lo == 5) { syscall(1, 1, "RxDetect", 8); }
+    if (pls_lo == 6) { syscall(1, 1, "Inactive", 8); }
+    if (pls_lo == 7) { syscall(1, 1, "Polling (good — PR honored)", 27); }
+    if (pls_lo == 8) { syscall(1, 1, "Recovery", 8); }
+    if (pls_lo == 9) { syscall(1, 1, "Hot-Reset", 9); }
+    if (pls_lo == 10) { syscall(1, 1, "Compliance", 10); }
+    if (pls_lo == 11) { syscall(1, 1, "Test", 4); }
+    if (pls_lo > 11) { syscall(1, 1, "Reserved/Unknown", 16); }
+    if (pls_hi == 0xE) { syscall(1, 1, " [post-settle, never reached Polling]", 37); }
+    if (pls_hi == 0xF) { syscall(1, 1, " [arrived at U0 mid-settle — skipped to success]", 49); }
+    if (xh_pls == 0)   { syscall(1, 1, " (no stamp — kcp may predate R10, or no connected port)", 56); }
+    syscall(1, 1, "\n", 1);
+
+    # HCCPARAMS1/2 low-byte (R7) decoders. Surfaces controller-advertised
+    # capability bits — particularly relevant for AMD FCH USB2 reset quirks.
+    syscall(1, 1, "  HCCP1  (CMOS[0x6E]): bits set         =", 41);
+    var any_hccp1 = 0;
+    if ((xh_hccp1 & 0x01) != 0) { syscall(1, 1, " AC64", 5); any_hccp1 = 1; }
+    if ((xh_hccp1 & 0x02) != 0) { syscall(1, 1, " BNC", 4); any_hccp1 = 1; }
+    if ((xh_hccp1 & 0x04) != 0) { syscall(1, 1, " CSZ", 4); any_hccp1 = 1; }
+    if ((xh_hccp1 & 0x08) != 0) { syscall(1, 1, " PPC", 4); any_hccp1 = 1; }
+    if ((xh_hccp1 & 0x10) != 0) { syscall(1, 1, " PIND", 5); any_hccp1 = 1; }
+    if ((xh_hccp1 & 0x20) != 0) { syscall(1, 1, " LHRC", 5); any_hccp1 = 1; }
+    if ((xh_hccp1 & 0x40) != 0) { syscall(1, 1, " LTC", 4); any_hccp1 = 1; }
+    if ((xh_hccp1 & 0x80) != 0) { syscall(1, 1, " NSS", 4); any_hccp1 = 1; }
+    if (any_hccp1 == 0) { syscall(1, 1, " <none>", 7); }
+    syscall(1, 1, "\n", 1);
+
+    syscall(1, 1, "  HCCP2  (CMOS[0x6F]): bits set         =", 41);
+    var any_hccp2 = 0;
+    if ((xh_hccp2 & 0x01) != 0) { syscall(1, 1, " U3C", 4); any_hccp2 = 1; }
+    if ((xh_hccp2 & 0x02) != 0) { syscall(1, 1, " CMC", 4); any_hccp2 = 1; }
+    if ((xh_hccp2 & 0x04) != 0) { syscall(1, 1, " FSC", 4); any_hccp2 = 1; }
+    if ((xh_hccp2 & 0x08) != 0) { syscall(1, 1, " CTC", 4); any_hccp2 = 1; }
+    if ((xh_hccp2 & 0x10) != 0) { syscall(1, 1, " LEC", 4); any_hccp2 = 1; }
+    if ((xh_hccp2 & 0x20) != 0) { syscall(1, 1, " CIC", 4); any_hccp2 = 1; }
+    if ((xh_hccp2 & 0x40) != 0) { syscall(1, 1, " ETC", 4); any_hccp2 = 1; }
+    if ((xh_hccp2 & 0x80) != 0) { syscall(1, 1, " ETC_TSC", 8); any_hccp2 = 1; }
+    if (any_hccp2 == 0) { syscall(1, 1, " <none>", 7); }
+    syscall(1, 1, "\n", 1);
+
+    print_cmos_line("  PORTPMSC of failing port (CMOS[0x60], R8) low byte = ", xh_pmsc);
+
     println("  Interpretation cheat-sheet:");
     println("    USBLEGSUP=already-OS + reset-OK bitmap empty + kcp=0x15 = SMI hypothesis falsified; suspect xECP misclassification, paired-port USB2-on-USB3-phys mapping, or controller-side port disable.");
     println("    CCS-bitmap empty + PP bitmap full = port power asserted but no devices attached (or detected); physically re-verify the device on at least one port.");
@@ -380,7 +452,14 @@ fn main(): i64 {
     println("    CCS-bitmap empty + PP NOT in CMOS (slot 0x6B = 0x00) on a kcp >= 0x32 boot = xhci_ports_power_on never ran; check if the build predates the Phase 3.5 PP fix.");
     println("    proto=0 (unknown) on a CCS=1 port = xECP walk did not classify it; check xECP cap inventory above — SupProto=no would explain.");
     println("    SupProto=yes + port_count != all-physical-ports = some ports outside the SupProto coverage; check if more SupProto caps exist (cap walk count > 2).");
-    println("    PSCchg=<none> on a CCS=1 + reset=<none> boot = PR write was absorbed silently — controller did NOT enter reset state. Indicates HCCPARAMS quirk, port-specific disable, or USB2-paired-with-stuck-USB3 (Repair R falsifies that route if change-byte stays empty).");
+    println("    PSCchg=<none> on a CCS=1 + reset=<none> boot = PR write was absorbed silently — controller did NOT enter reset state. **Cross-check CMOS[0x6D] PLS:** if PLS != Polling (7) the controller correctly refused PR (R10 gates this); if PLS == 7 and reset STILL fails the issue is HCCPARAMS-level (see [0x6E]/[0x6F]) or PORTPMSC quirk (see [0x60]).");
+    println("    PLS=Polling (7) + reset=<none> = R10 PLS gate ran clean, R1+R2 still didn't move PR. Escalate to Linux xhci-hub.c line-by-line audit; HCCPARAMS / PORTPMSC bits are the next surface.");
+    println("    PLS=U0 (0) on connected port + reset returned 1 (success path) = port arrived at Enabled state on its own; xhci_port_reset short-circuited. Enable Slot is next gate.");
+    println("    PLS top-nibble 0xE on connected port = R10 settle wait expired without PLS reaching Polling; physical link / cable / device-side issue or controller-side soft-disable.");
+    println("    PLS top-nibble 0xF on connected port = R10 saw PLS arrive at U0 mid-settle; treated as success.");
+    println("    HCCP1 PPC=1 (always on archaemenid AMD FCH) = SW must explicitly assert PORTSC.PP=1 — Repair Q covers this; CMOS[0x6B] should read 0x3F.");
+    println("    HCCP2 LEC=1 = Large ESIT supported; informational. CIC=1 = Configuration Information Capability; informational. CTC=1 = Compliance Transition Capability.");
+    println("    PORTPMSC low byte = USB2 PMSC: bit 0 = L1_HW (RW); bits 4:7 = HIRD/BESL; etc. Non-zero on a reset-fail boot indicates the controller is exposing USB2 PM state — uncommon but possible quirk surface.");
     println("    PSCchg=CSC only on a CCS=1 + reset=<none> boot = device-attach was observed but no reset progress. PR write taken, controller did not transition. Likely needs a longer wait or port-state precondition not met.");
     println("    PSCchg=PRC (with or without CSC) on a CCS=1 + reset=<none> boot = reset DID complete (PRC fired) but PED never followed; controller's reset-to-Enabled transition failed silicon-side. Suspect signal/link issue.");
     println("    PSCchg=PEC on a reset=<none> boot = port enable-state changed without a clean reset. Likely a soft-disable cascade.");
