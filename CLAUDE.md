@@ -77,6 +77,9 @@ The role map below is for orientation. **Versions are intentionally omitted** �
 | **mela** | Agent marketplace | Pending |
 | **seema** | Edge fleet management | Pending |
 | **samay** | Task scheduler | Pending |
+| **gnoboot** | Sovereign UEFI bootloader (PE32+ EFI Application, replaces GRUB) | **Native** |
+| **commandress** | Structured shell prompt renderer (binary `cmdrs`, starship-equivalent) | **Native** |
+| **kriya** | Coreutils-equivalent multi-tool (`cp`/`mv`/`rm`/`mkdir`/`echo`/`wc`/`find`/`grep`/…, BusyBox-style dispatcher) | **Native** |
 
 > **Live versions, sizes, test counts, and per-repo cycle state**: see [`docs/development/state.md`](docs/development/state.md) and [`docs/development/planning/shared-crates.md`](docs/development/planning/shared-crates.md). This table is intentionally version-free — embedded counts drift, and pointer-to-registry is the cleaner pattern.
 

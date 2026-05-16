@@ -79,11 +79,12 @@ Phase 13A items 1–3 (boot → shell on hardware) ──→ CLOSED BETA (MVP)
 
 ### Closed Beta — Selective Summer 2026 Program
 
-**MVP scope: AGNOS boots to a shell prompt on real hardware.** That's the *entry* line. Closed beta is not a single cut date — it's a **selective rolling program through summer 2026**, opening with the first hardware boot (~early June 2026) and running through the summer with a growing-but-curated cohort. Self-hosting, package builds from source, and full userland validation against the AGNOS kernel ABI are NOT required for closed beta — they're Public Beta concerns.
+**MVP scope: AGNOS boots to a shell prompt on real hardware.** That's the *entry* line. Closed beta is not a single cut date — it's a **selective rolling program through summer 2026**, opening with the first hardware boot (achieved 2026-05-15) and running through the summer with a growing-but-curated cohort. Self-hosting, package builds from source, and full userland validation against the AGNOS kernel ABI are NOT required for closed beta — they're Public Beta concerns.
 
-**Opening gate** (early June 2026):
-- [ ] **Boot-to-Shell MVP (13A items 1–3)** — kernel boots, kybernet (PID 1) runs, agnoshi (shell) prompt reachable on real hardware
-- [ ] First hardware boot session on AMD NUC (matrix row 14) or Pi 4 (row 3) — non-founder tester sits at the prompt
+**Opening gate** (target early June 2026):
+- [x] **Boot-to-Shell MVP (13A items 1–3.5)** — ✅ Iron-validated 2026-05-15 on archaemenid (NUC AMD Beelink SER). Kernel completes full init spine → kybernet (PID 1) launches → agnoshi (`AGNOS shell v1.30.0`) prompt rendered on framebuffer. Twenty-nine attempts across three weeks of bring-up; full arc in [`iron-nuc-zen-log.md`](iron-nuc-zen-log.md); generic process pattern in [`iron-bring-up-process.md`](iron-bring-up-process.md). **The shell prompt is visible. The base OS is real.**
+- [ ] **USB-keyboard input** — shell prompt visible but typing produces no echo (modern UEFI doesn't emulate PS/2 over XHCI post-`ExitBootServices`). Native XHCI + USB-HID-boot driver scoped at [`planning/usb-hid-keyboard-driver.md`](planning/usb-hid-keyboard-driver.md) (5 phases, ~1.2–2.1k Cyrius LOC). **Phase 1 landed** (PCIe discovery + capability reads, agnos 1.30.1 [Unreleased]); Phases 2–5 are the 1.30.1 cycle's substantive work to make the prompt typeable. MVP-gate-completing.
+- [ ] First hardware boot session on AMD NUC (matrix row 14) or Pi 4 (row 3) — **non-founder tester sits at the prompt**. Now hardware-ready; awaits keyboard input + tester schedule.
 
 **Through summer 2026** (closed-beta program proper):
 - [ ] Initial cohort: friend-network, 5–15 testers, sitting at a shell on iron
@@ -257,8 +258,9 @@ That's it. No package builds, no recipe sweeps, no self-host loop. Those come af
 | 1 | Kernel boots in QEMU | **MVP** | **Done** | boot.cyr (~81KB Cyrius binary, rebuilt against **5.10.44** on 2026-05-11), kernel **1.29.0** (was 1.26.1 at 248KB; current cycle on 5.10.44 pin) |
 | 2 | Sovereign boot pipeline | **MVP** | **Done** | `make boot-test` from genesis repo |
 | 2.5 | ISO `--iso-check` (Stage 0 component verification) | **MVP** | **Done** | 26-of-26 components READY (2026-04-27 audit), ISO assembly unblocked |
-| **3** | **ISO Stage-4-only first cut (live image, pre-built binaries)** | **MVP** | **🔴 NEXT** — planned, awaiting D1–D4 | See [`iso-stage4-plan.md`](iso-stage4-plan.md). Days, not weeks. **The MVP gate.** |
-| **3.5** | **First hardware boot session — kernel + kybernet + agnoshi shell prompt** | **MVP** | 🔴 Pending Stage-4 | **NUC AMD (matrix row 14) is the primary first-boot target** — that is where the bulk of kernel engineering work has been validated, and where the active iron-boot triage is running (see [`iron-nuc-zen-log.md`](iron-nuc-zen-log.md)). Pi 4 (row 3) is the secondary aarch64 axis. Skytech Legacy 4 (row 12, Intel) is queued **after** AMD is proven, not as a parallel first-boot candidate. |
+| **3** | **ISO Stage-4-only first cut (live image, pre-built binaries)** | **MVP** | **🔴 NEXT** — planned, awaiting D1–D4 | See [`iso-stage4-plan.md`](iso-stage4-plan.md). Days, not weeks. Was the MVP gate; now the **distribution** path (kernel boots iron-direct via gnoboot + USB stick today). |
+| **3.5** | **First hardware boot session — kernel + kybernet + agnoshi shell prompt** | **MVP** | ✅ **Iron-validated 2026-05-15** | NUC AMD (archaemenid / Beelink SER, matrix row 14) — Attempt 28 hit MVP boot spine alive on iron; Attempt 29 + cleanup-pass burn at 16:45 PDT rendered shell prompt + full kernel log on framebuffer. Pi 4 (row 3, aarch64 secondary) pending USB-keyboard-input closure. Skytech Legacy 4 (row 12, Intel) queued post-AMD-proof. See [`iron-nuc-zen-log.md`](iron-nuc-zen-log.md). |
+| **3.6** | **USB-keyboard input on modern UEFI** (no SMM PS/2 emulation post-EBS) | **MVP** | 🟡 In flight (1.30.1) | Native XHCI + USB-HID-boot driver, 5 phases scoped at [`planning/usb-hid-keyboard-driver.md`](planning/usb-hid-keyboard-driver.md). **Phase 1 landed** (PCIe discovery + capability reads). Phases 2–5: controller init / port enum / HID boot protocol / interrupt-driven kb_buf feed. Closes the "typeable" half of "boot-to-typeable-shell." |
 | 8 | CI automation | **MVP-adjacent** | In progress | GitHub Actions workflows — supports MVP and beyond |
 | 4 | LFS Stage 1: bootstrap-toolchain.sh end-to-end | **Post-MVP** (Public Beta) | Deferred | Build cross-compiler from source tarballs. Not in MVP scope — pre-built binaries ship in the Stage-4 ISO. |
 | 5 | LFS Stage 2: build base system in chroot | **Post-MVP** (Public Beta) | Deferred | ark-build all 109 base recipes. Public Beta = self-hosting story. |
@@ -301,6 +303,62 @@ That's it. No package builds, no recipe sweeps, no self-host loop. Those come af
 | V1 | Stretch | t-ron voice — contract Bruce Boxleitner | Direct voice-synthesis contract with the actor *infamous* for the role; permanently hardens t-ron's character identity to its namesake. **The play — the argument is the asset**: AGNOS ships a Tron that actually *exists* — t-ron is a living, executing MCP security monitor that demonstrably fights for users in the real tool layer. Disney's Tron is fiction; t-ron is shipped software. The substantive argument that move makes in public: *"the real version of this is now working software, not a 1982 film."* That argument is the asset — it lands the moment the cultural shift starts, and Disney litigating against it is them defending fiction against a working artifact (i.e. losing the argument). Disney's natural incentive then flips to **alignment** ("Tron is real"), not litigation. Boxleitner's voice/likeness is licensed directly (his to grant). Any litigation pressure is downstream noise, not the substance of the move. **Core idiom** — *"We fight for the users"* is t-ron's operating ethic, the line *made real*: it ties directly to the subsystem's job (MCP security monitor — protect the user from bad actors in the tool layer). **Capture corpus**: the core idiom is the non-negotiable seed; targeted phrase-set captured for inference seeding; everything else naturally generated by the model, no script-reading sessions. Iterative — once natural cadence locks, additional phrases / word recitations can be captured to refine the synthesis. **Reach goal**: Boxleitner's sign-off and active participation — the actor publicly endorsing the subsystem named in his role's honor, on par with the back-pocket-ally tier. **Sequencing**: post-V1, after first-tier ally relationships land. Outreach rides the public AGNOS news cycle (booted OS + DEF CON receipts + articles in circulation) so the conversation isn't cold — momentum opens the door. Budget + outreach path TBD. |
 
 Repo-specific backlog items tracked in their respective repos.
+
+---
+
+## Post-MVP — Closed-Beta Hardening Queue (1.30.x cycle)
+
+> **MVP iron-validated 2026-05-15.** The kernel boots to a shell prompt on real hardware. This section is the work *after* that line — making the prompt typeable, then hardening the cohort surface, then opening the path to OS Independence (Public Beta). Not a hypothetical roadmap — concrete next-cycle items the kernel and ecosystem need before the first non-founder tester sits at the prompt.
+
+### 1.30.1 — Keyboard input (in flight)
+
+Native XHCI + USB-HID-boot driver in `agnos/kernel/arch/x86_64/usb/`. Modern UEFI firmware does not emulate PS/2 over XHCI post-`ExitBootServices`; the legacy port 0x60 path is silent. Native bus + class driver is the real-answer fallback. Scoped: [`planning/usb-hid-keyboard-driver.md`](planning/usb-hid-keyboard-driver.md).
+
+| Phase | Scope | LOC | Status |
+|---|---|---|---|
+| 1 | PCIe discovery + capability reads (`xhci_probe`, MMIO map, `MaxSlots`/`MaxIntrs`/`MaxPorts`/`CSZ`/`DBOFF`/`RTSOFF` cache) | ~150–300 | ✅ Landed [Unreleased] 2026-05-15 |
+| 2 | Controller init (halt + reset + DCBAA + cmd ring + event ring + ERST + start) | ~300–500 | 🔴 Next |
+| 3 | Port enum + device address (Enable Slot + Address Device + Get Descriptor + HID predicate) | ~300–500 | Queued |
+| 4 | HID boot protocol + interrupt endpoint (Configure Endpoint + Set Protocol = boot + transfer ring) | ~200–400 | Queued |
+| 5 | Interrupt/poll-driven `kb_buf` feed (HID usage → PS/2 set-1 scancode + modifier translation) | ~200–400 | Queued |
+
+**1.30.1 ships when**: typing on a USB keyboard plugged into any port produces visible characters in agnoshi on iron, end-to-end.
+
+### 1.31.x — Networking on iron (queued, post-keyboard)
+
+Once keyboard works, networking is the next "shell becomes useful" surface. Existing infrastructure:
+- `kernel/core/virtio_net.cyr` — VirtIO-net driver for QEMU; **does not work on iron** (real NICs are not VirtIO)
+- `kernel/core/net.cyr` — TCP/IP stack (works against virtio_net)
+
+Iron NIC support means a real bus + class driver pair similar to xHCI:
+- **Bus**: PCIe scan (already there per pci.cyr), enumerate Realtek / Intel / Broadcom controllers
+- **Class**: per-vendor driver (Realtek r8169 is the most common; Intel e1000/e1000e/igc next)
+
+Recommendation: ship Realtek r8169 first (most common in NUC-class hardware). Scope estimate: 1.5–2.5k Cyrius LOC. Scoping doc due before 1.31.0 cuts.
+
+### 1.32.x — Mass storage on iron (queued, post-networking)
+
+Same shape — VirtIO-blk works in QEMU; real iron needs NVMe (most common) + AHCI/SATA (legacy). NVMe is the simpler protocol for new code; SATA is older but worth queuing for older hardware.
+
+Recommendation: NVMe first; SATA as time permits. Scope: ~2k Cyrius LOC for NVMe alone (ring-based MMIO + admin queue + I/O queue + SQ/CQ pair).
+
+### 1.33.x — ISO Stage-4 cut + distribution (queued)
+
+The boot pipeline currently flashes via `install-usb.sh` directly. ISO Stage-4 cut packages the kernel + gnoboot + userland into a distributable live image (per [`iso-stage4-plan.md`](iso-stage4-plan.md)). Was a pre-MVP gate; now becomes the *distribution* gate once the typeable shell + network + storage trio is in place.
+
+### Parallel cycle work (no version pin — opportunistic)
+
+These can land in any 1.30.x patch without blocking the gate cycle:
+
+- **kriya v0.2.0** — first 6 small utilities (`echo` / `pwd` / `true` / `false` / `yes` / `sleep`) via the BusyBox-style dispatcher (see [kriya M1](https://github.com/MacCracken/kriya/blob/main/docs/development/roadmap.md#m1--dispatcher--simplest-utilities-v020))
+- **commandress v0.2.0** — minimum viable prompt (config loader + cwd segment + exit-code segment + render pipeline) per [commandress M1](https://github.com/MacCracken/commandress/blob/main/docs/development/roadmap.md#m1--minimum-viable-prompt-v020)
+- **agnos kernel hardening** — single-line correctness fixes surfaced during 1.30.1 iron burns; SMP AP-wakeup IPI gating decided post-1.30.1
+- **gnoboot 0.3.x** — only as iron burns surface bootloader-side bugs; otherwise stable at 0.2.0 per the "lean is good" stance after the CMOS-removal cleanup track
+- **Cyrius bugs filed during iron work** — non-zero gvar-init issue currently filed at `cyrius/docs/development/issues/2026-05-15-cyrius-nonzero-gvar-init-not-honored.md`; the cyrius repo handles its own cycle (per `feedback_cyrius_hands_off`)
+
+### Public-Beta path (Q4 2026 — Phase 13A items 4-7)
+
+Self-hosting LFS-style work moves from "Phase 13A future" to "Public Beta scope" once the closed-beta cohort program has produced hardening receipts across multi-architecture hardware. **Items 4–7 of Phase 13A** below remain the public-beta deliverable; the iron-validated MVP doesn't shift that scope — it just clears the runway for the program that justifies running it.
 
 ---
 

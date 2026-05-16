@@ -2,43 +2,44 @@
 
 > Reusable library crates that form the AGNOS stack. Consumer [applications](../README.md) depend on these — they should never depend on external libraries when an AGNOS crate covers the domain.
 >
-> **77 libraries at v1.0+** (75 standalone + 2 stdlib-folded: sandhi v5.7.0, niyama v5.9.0) — pre-1.0 libs tracked in [development/planning/](../../development/planning/README.md). Binary tools at v1.0+ (agnoshi, argonaut, cyim, cyim-lsp, kybernet, nous, owl) are listed separately in the [full registry](../../development/planning/shared-crates.md#binaries--tools-7-crates).
+> **78 libraries at v1.0+** (76 standalone + 2 stdlib-folded: sandhi v5.7.0, niyama v5.9.0; aegis 1.0.0 graduated from pre-1.0 during v5.10.x) — pre-1.0 libs tracked in [development/planning/](../../development/planning/README.md). Binary tools at v1.0+ (agnos, agnoshi, argonaut, cyim, cyim-lsp, kybernet, nous, owl) are listed separately in the [full registry](../../development/planning/shared-crates.md#binaries--tools-8-crates).
 > Full registry: [Shared Crates Registry](../../development/planning/shared-crates.md) — that doc is the authoritative source; refresh from there.
 >
-> **Last Updated**: 2026-05-09
+> **Last Updated**: 2026-05-15
 
 See also: [First-Party Standards — Own the Stack](../../development/planning/first-party-standards.md#own-the-stack) | [Science Crate Specs](../../development/guides/science-crate-specs.md)
 
 ---
 
-## OS & Infrastructure (24)
+## OS & Infrastructure (25)
 
 | Crate | Version | Domain |
 |-------|---------|--------|
+| aegis | 1.0.0 | Security daemon — graduated from pre-1.0 in the v5.10.x window |
 | agnosai | 1.1.0 | AI orchestration |
-| agnostik | 1.2.0 | Shared types & domain primitives (Cyrius, GitHub-release only) |
-| agnosys | 1.2.1 | Kernel interface — Landlock, seccomp, syscall bindings (Cyrius) |
-| ai-hwaccel | 2.0.0 | GPU detection |
-| bote | 2.5.1 | MCP core (~5us/message, streamable HTTP) |
-| daimon | 1.1.4 | Agent orchestrator (144 MCP tools) |
+| agnostik | 1.2.2 | Shared types & domain primitives (Cyrius, GitHub-release only) |
+| agnosys | 1.2.6 | Kernel interface — Landlock, seccomp, syscall bindings (Cyrius) |
+| ai-hwaccel | 2.2.2 | GPU detection |
+| bote | 2.7.2 | MCP core (~5us/message, streamable HTTP) |
+| daimon | 1.2.3 | Agent orchestrator (144 MCP tools) |
 | hoosh | 2.0.0 | LLM gateway (15 providers) |
 | ifran | 1.3.0 | LLM inference/training |
-| kavach | 3.0.0 | Sandbox execution |
-| libro | 2.0.5 | Cryptographic audit chain |
+| kavach | 3.2.1 | Sandbox execution |
+| libro | 2.6.3 | Cryptographic audit chain |
 | mabda | 3.0.0-rc.2 | GPU foundation |
-| majra | 2.4.1 | Queue/pub-sub |
-| nein | 1.0.0 | Programmatic nftables firewall |
-| patra | 1.9.3 | Structured storage & SQL — B+ tree, WAL (Cyrius-native) |
-| phylax | 1.1.0 | Threat detection — YARA, entropy, magic bytes, ML |
-| sakshi | 2.2.3 | Tracing, error handling, structured logging (Cyrius-native) |
-| sankoch | 2.2.4 | Lossless compression — LZ4, DEFLATE, zlib, gzip |
-| sigil | 3.1.0 | Trust verification & crypto — AES-NI + SHA-NI hardware accel |
+| majra | 2.4.4 | Queue/pub-sub |
+| nein | 1.5.1 | Programmatic nftables firewall |
+| patra | 1.9.4 | Structured storage & SQL — B+ tree, WAL (Cyrius-native) |
+| phylax | 1.1.1 | Threat detection — YARA, entropy, magic bytes, ML |
+| sakshi | 2.2.4 | Tracing, error handling, structured logging (Cyrius-native) |
+| sankoch | 2.2.5 | Lossless compression — LZ4, DEFLATE, zlib, gzip |
+| sigil | 3.1.1 | Trust verification & crypto — AES-NI + SHA-NI hardware accel |
 | soorat | 1.0.0 | GPU rendering |
 | stiva | — | Container runtime — **Rust-era scaffold; Cyrius port pending** (GitHub remote `MacCracken/stiva` last pushed 2026-04-29) |
 | szal | 1.1.0 | Workflow engine |
-| t-ron | 2.0.0 | MCP security |
+| t-ron | 2.1.4 | MCP security |
 | vidya | 2.7.0 | Programming reference |
-| yukti | 2.2.2 | Device abstraction (USB, block, udev) |
+| yukti | 2.2.3 | Device abstraction (USB, block, udev) |
 
 ## Science & Knowledge (27)
 
