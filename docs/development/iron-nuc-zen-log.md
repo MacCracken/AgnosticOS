@@ -3726,6 +3726,85 @@ USB stick re-provision needed before flash (`sudo install-usb.sh --update /dev/s
 
 **Pre-existing Phase 3 risks the burn will validate**: the three pre-bound risks documented above the Phase 3 staging block (USBLEGSUP semaphore lock, USB2/USB3 protocol misclassification, ERDP cycle-bit off-by-one). The xECP walk in `xhci_xecp_classify_ports` should put USB2 vs USB3 in the right buckets; if a port reset still hangs, the USBLEGSUP follow-up adds another ~30 LOC.
 
+### Attempt 32 — 2026-05-15 → ⚠️ PARTIAL — port 3 reset failed, visual clean
+
+Phase 3 burn on archaemenid. Framebuffer rendered cleanly through kernel boot + xhci probe + halt+reset + controller-start. New line surfaced between `xhci: controller running` and `VFS initialized`:
+
+```
+xhci: port 3 reset failed
+```
+
+Maps to row 4 of the Attempt 32 prep table — USB2 `PR` bit was written, `PRC` never set within ~250 ms. Pre-bound hypothesis: BIOS USBLEGSUP semaphore still held on archaemenid; the xECP walk in Phase 3 only reads Supported Protocol caps, doesn't claim ownership. Phase 3's other downstream paths (Enable Slot / Address Device / Get Descriptor) didn't run because reset failed first. Boot continued cleanly to `agnos>` prompt. kcp post-mortem = 0x15 (kybernet overwrite, expected).
+
+No Attempt 32 photo captured separately (the corrupted-visual photo from Attempt 33 is what's on disk as `Corrupted_Visual.jpg`; Attempt 32's clean visual lives only in user memory + this log entry).
+
+Triggered Phase 2.5 staging same session.
+
+### Phase 2.5 staging post-Attempt-32 — USBLEGSUP BIOS handoff
+
+Single-purpose addition: claim controller ownership from BIOS before any operational-register writes. xHCI 1.2 §4.22.1: until SW writes `HC OS Owned` (bit 24) and observes `HC BIOS Owned` (bit 16) clear, SMI handlers for legacy USB emulation can silently absorb PR writes.
+
+**Kernel-side changes** (agnos commit `ec49e44`):
+
+| File | Change |
+|---|---|
+| `kernel/arch/x86_64/usb/xhci_port.cyr` | **NEW fn** `xhci_usblegsup_claim()` (~55 LOC). Walks xECP chain at `mmio + xecp*4` for cap_id 1 (`XHCI_XECP_USBLEGSUP`). Sets bit 24 unconditionally; polls bit 16 to clear with ~1 s timeout (10M-iter spin). Prints one of five lines: `already OS-owned` / `claimed from BIOS` / `n/a (no xECP)` / `n/a (cap not present)` / `BIOS held (timeout)`. Best-effort — timeout does NOT abort init. |
+| `kernel/arch/x86_64/usb/xhci.cyr` | Call site at top of `xhci_init` (right after `xhci_present == 0` early-return, before halt sequence). Spec-correct placement — must precede any operational-register writes. |
+
+**agnosticos-side changes** (commit `d849e6d`):
+
+| File | Change |
+|---|---|
+| `docs/development/planning/usb-hid-keyboard-driver.md` | New §"Phase 2.5 — USBLEGSUP BIOS hand-off" between Phase 2 and Phase 3 — iron-test gate enumeration + falsification matrix |
+| `scripts/src/read-boot-log.cyr` | kcp=0x15 / 0x30 / 0x31 verdict text refreshed to mention the USBLEGSUP line in the framebuffer post-mortem |
+
+### Attempt 33 — 2026-05-16 → ⚠️ REGRESSION — framebuffer rendering corrupted, boot CMOS-clean
+
+USB re-provisioned + flashed + burned post-Phase-2.5. **Visual regression**: entire framebuffer shows scrambled / garbled glyphs across every text row. Regular grid pattern intact (this is glyph-level corruption, not random noise), but every line illegible. Photo saved as `Corrupted_Visual.jpg` at repo root (not yet moved to `iron-nuc-zen-photos/`).
+
+**CMOS post-mortem** (`sudo ./scripts/read-boot-log.sh`):
+
+```
+CMOS[0x53] gnoboot magic    = 0xcd
+CMOS[0x52] gnoboot checkpt  = 0x05
+CMOS[0x51] kernel  magic    = 0xab
+CMOS[0x50] kernel  checkpt  = 0x15
+CMOS[0x54] CR4 byte 2       = 0x30   (SMEP + SMAP)
+CMOS[0x55] CR4 byte 2       = 0x30   (SMEP + SMAP)
+CMOS[0x56..0x5B] AS1 PMM    = 0xb2 × 6   (all pages >= 0x200000, clean)
+CMOS[0x5C..0x61] AS2 PMM    = 0x5a × 6   (all pages >= 0x200000, clean)
+```
+
+Reads identical to Attempt 31 / Attempt 32 — kcp=0x15 means kybernet was reached, magics intact, CR4 SMEP+SMAP both set, PMM scans clean. **The kernel ran end-to-end.** Regression is purely in framebuffer rendering, not boot logic.
+
+**What changed between Attempt 32 (clean) and Attempt 33 (corrupted)**: only Phase 2.5 (commit `ec49e44`). Phase 3 was already burned at Attempt 32 with no visual regression.
+
+### Side-effects — CI surface caught during Attempt 33 triage
+
+GitHub Actions run on the post-Phase-2.5 build flagged three independent items the iron burn would have been gated on:
+
+| Surface | Symptom | Fix |
+|---|---|---|
+| `cyrius fmt --check` | `NEEDS FORMAT: kernel/core/pci.cyr` (lines 119-120 — bitwise-OR continuations indented 15 spaces; fmt wanted 4) and `kernel/user/shell.cyr` (lines 330/332 — `#ifdef TEST` / `#endif` at col 0, fmt wanted 4-space indent) | Reformatted both; full kernel sweep now `FAIL=0` |
+| `x86 size reasonable` test | Cap was `300000` (set when kernel was ~250 KB); current 340,280 B exceeds it. Phases 1–3 grew the kernel legitimately (USB stack from scratch). | `scripts/test.sh:64` cap bumped `300000 → 500000` — gives Phases 4/5 (~40–60 KB more by plan) + future-port headroom |
+| QEMU smoke | Passed. `xhci: no controller found` (QEMU has no xHCI in this config) → Phase 2.5 + Phase 3 paths skipped via the `xhci_present == 0` early return. Full boot chain renders cleanly through `AGNOS shell v1.30.1` line. **Confirms the new code is not the cause when bypassed** — regression only surfaces when xhci is actually present. |
+
+### Attempt 34 prep — Phase 2.5 disabled for bisection
+
+Per user direction: bisect first, theorize later. Phase 2.5 call site commented out in `xhci_init` (`kernel/arch/x86_64/usb/xhci.cyr` ~line 258). Function definition `xhci_usblegsup_claim()` preserved in `xhci_port.cyr` so re-enable is a one-line restore. Kernel re-builds at **340,280 bytes** (unchanged — disabled call is one commented line; fn body now in DCE pool, +810 bytes of dead code that DCE could recover). `bash scripts/test.sh` → 4 passed, 0 failed.
+
+**On-disk state for Attempt 34 burn** matches Attempt 32 (Phase 1 + 2 + 3, no Phase 2.5).
+
+**Pre-bound outcomes**:
+
+| Burn result | Interpretation |
+|---|---|
+| Framebuffer renders clean kernel log + `xhci: port 3 reset failed` line again | Phase 2.5 was the regression. Real-answer triage: MMIO write to `xhci_mmio_base + cap_off`, BIOS-handoff side effect (SMI on archaemenid firmware?), or 10M-spin poll loop side effect. |
+| Framebuffer still corrupted | Phase 3 is the regression (Phase 2.5 was incidental). Next bisection step: also comment `xhci_enumerate()` call in `main.cyr:169`, burn, then narrow within Phase 3. |
+| Boot regresses below kcp=0x15 | Unintended side effect of removing the Phase 2.5 call — improbable (the disabled call was downstream of `xhci_present`). |
+
+**Photo target**: save as `iron-nuc-zen-photos/attempt-34-phase-2-5-disabled.jpg`. Move `Corrupted_Visual.jpg` to `iron-nuc-zen-photos/attempt-33-phase-2-5-corrupted.jpg` after Attempt 34 lands (renaming the artifact while Attempt 34's interpretation is still pending would lose the comparison handle).
+
 ---
 
 ## Carry-forward items (not blocking Attempt 28)
