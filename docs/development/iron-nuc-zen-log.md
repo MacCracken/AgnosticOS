@@ -3554,7 +3554,9 @@ Intel xHCI 1.2 specification §5.3.3 (HCSPARAMS1 layout — MaxSlots/MaxIntrs/Ma
 
 ### Attempt 30 — 2026-05-15 — xHCI Phase 1 + halt/reset verified on iron
 
-**Result: ✅ all three predicted xhci lines + halted/reset clean**, captured in `Shell_Xhci_Reporting.jpg`. Framebuffer reads:
+> Photo: [`iron-nuc-zen-photos/attempt-30-xhci-phase1-controller-found.jpg`](iron-nuc-zen-photos/attempt-30-xhci-phase1-controller-found.jpg) (success burn). Sibling [`attempt-30-xhci-phase1-no-controller-found.jpg`](iron-nuc-zen-photos/attempt-30-xhci-phase1-no-controller-found.jpg) is from an earlier sub-burn that hit `xhci: no controller found` before the fix that landed it cleanly — kept for failure-mode reference.
+
+**Result: ✅ all three predicted xhci lines + halted/reset clean.** Framebuffer reads:
 
 ```
 xhci: found at 4237295616, ver=272, 64 slots, 6 ports
