@@ -3460,6 +3460,100 @@ Post-cleanup-pass kernel (kprint-everywhere, cp_fb call sites removed, FB_CONSOL
 
 ---
 
+### Attempt 30 prep — xHCI Phase 1 verification (pre-burn)
+
+**Status**: ✅ Code landed in `agnos` `[Unreleased]` 2026-05-15 (commit pending user push); USB stick re-provision required before burn.
+
+**This burn does NOT enable keyboard input.** That's an explicit Phase-1-vs-Phase-5 distinction worth stating up front. Phase 1 (PCIe discovery + capability reads) is **report-only**:
+- It locates the XHCI controller via PCI class lookup
+- It reads the capability register window (CAPLENGTH / HCIVERSION / HCSPARAMS1 / HCCPARAMS1 / DBOFF / RTSOFF)
+- It prints what it found
+- It stamps CMOS `kcp=0x30` on success
+
+It does **NOT** halt the controller, reset it, allocate DCBAA / cmd ring / event ring, start it, enumerate ports, address devices, or feed `kb_buf`. Typing on the shell prompt **will still produce no echo** — that's expected and not a regression. Phases 2–5 close the input loop; Phase 1 proves we can find the controller and read its identity.
+
+**Build under test**
+
+| Artifact | Size | Pin |
+|---|---|---|
+| `agnos/build/agnos` | 273,816 B | cyrius 5.11.55 |
+| `gnoboot/build/BOOTX64.EFI` | unchanged (0.2.0) | cyrius 5.11.53 |
+| `agnosticos/scripts/build/read-boot-log` | refreshed (kcp=48 verdict added) | cyrius 5.11.55 |
+
+USB provisioning:
+```sh
+cd ~/Repos/agnosticos/scripts
+sudo ./install-usb.sh --update /dev/sdX     # X = your USB device letter
+```
+
+**Verification gate — what to look for on the framebuffer**
+
+After the existing boot log finishes (`Activating scheduler...` etc.), three new lines should appear before kybernet launches:
+
+```
+xhci: found at <addr>, ver=0xXXXX, N slots, M ports
+xhci: caplen=N csz=N ac64=N intrs=N
+xhci: dboff=N rtsoff=N xecp=N
+```
+
+Where:
+- `<addr>` = the MMIO BAR0 (large hex number; on archaemenid likely below 4 GB)
+- `0xXXXX` = HCIVERSION in BCD (0x0100 / 0x0110 / 0x0120 / 0x0130 — 0x0110 means xHCI 1.10)
+- `N slots` = MaxSlots (typically 32–64 on consumer hardware)
+- `M ports` = MaxPorts (typically 4–16 on a NUC-class box)
+- `csz` = 0 (32-byte contexts) or 1 (64-byte) — affects Phase 2 sizing
+- `ac64` = 1 (64-bit addressing capable) — required for normal operation
+- `dboff` / `rtsoff` = doorbell array + runtime register offsets (need these for Phases 2+)
+
+The shell prompt + full kernel log render exactly like Attempt 29's cleanup-pass burn. Nothing about Phase 1 touches the display path.
+
+**Verification gate — what to look for in `read-boot-log`**
+
+After the burn (boot back into Arch, no reset required between the AGNOS boot and the read):
+
+```sh
+sudo ~/Repos/agnosticos/scripts/build/read-boot-log
+```
+
+Look for:
+- `gnoboot magic = 0xCD` → gnoboot ran this boot
+- `kernel magic = 0xAB` → kernel reached its entry magic
+- `kernel checkpoint (kcp) = 48 (0x30)` → `xhci_probe()` completed cleanly
+
+If `kcp` is 21 (0x15 — kybernet-launch) or lower, xhci_probe never ran or died inside it. The verdict-table entry for kcp=48 was added to `read-boot-log.cyr` same-session as Phase 1 lands; it prints the Phase 2 next-step pointer.
+
+**Failure modes**
+
+| Symptom | Diagnosis | Action |
+|---|---|---|
+| `xhci: no controller found` on screen + kcp reaches 0x30 (xhci_probe returned 0) | XHCI is not on PCI bus 0 (multi-bus chipset). The `pci_scan` only walks bus 0 currently. | `pci.cyr` extension: widen scan to multi-bus enumeration (~30 LOC follow-up). Add as Phase 1.5 if seen. |
+| `xhci: BAR0 is zero (firmware did not assign)` | Firmware didn't assign a memory range to the XHCI BAR. Should not happen on a NUC where UEFI has fully enumerated PCI before handoff. | Diagnostic only — investigate firmware setup. Unlikely on archaemenid. |
+| `xhci: BAR above 4GB (not yet supported) @ <addr>` | XHCI MMIO BAR is ≥ 4 GB. Kernel `pt_init` identity-maps 0–4 GB only. | One-line fix: `vmm_alloc_at(mmio_base)` before capability reads. Add as Phase 1.5 if seen. |
+| No `xhci:` line at all + kcp < 0x30 | xhci_probe() never ran — kernel died somewhere between PCI enumeration (CP 0x0B) and the new probe call. | Read kcp value to bisect. Should not happen — Phase 1 code is below DCE size, build verified, no logic between CP 0x0B stamp and xhci_probe() call. |
+| `xhci: found at...` prints but kcp ≠ 0x30 | The kprint succeeded but the CMOS stamp didn't fire. | Verify build output via `strings build/agnos \| grep "xhci:"` and check the asm block at the end of `xhci_probe()`. |
+
+**Photo convention**
+
+Capture at minimum: the full boot screen showing the new `xhci:` lines + the shell prompt. Save as `iron-nuc-zen-photos/attempt-30-xhci-phase-1.jpg`. If Phase 1 fails in a structured way, capture the screen showing the failure line.
+
+**What success unblocks**
+
+✅ Phase 1 verified → Phase 2 (controller halt + reset + DCBAA + cmd ring + event ring + ERST + start) is the next substantive work. Phase 2 scope is ~300–500 Cyrius LOC in `kernel/arch/x86_64/usb/xhci_ring.cyr` + `xhci_regs.cyr` extension for operational register offsets. Iron-test gate at kcp=0x31.
+
+**What Phase 1 leaves on the table (deliberately)**
+
+- No interrupt handler (Phase 5 — poll-mode via timer ISR is the plan, MSI-X is post-MVP)
+- No DMA buffer allocation (Phase 2)
+- No port scan (Phase 3)
+- No device addressing (Phase 3)
+- No keyboard input — typing the shell will still echo nothing
+
+**Sources to cite when reading the Phase 1 output**
+
+Intel xHCI 1.2 specification §5.3.3 (HCSPARAMS1 layout — MaxSlots/MaxIntrs/MaxPorts), §5.3.6 (HCCPARAMS1 layout — AC64/CSZ/xECP). HCIVERSION values: 0x0100 (1.0) / 0x0110 (1.10) / 0x0120 (1.20) / 0x0130 (1.30) — most contemporary hardware is 0x0110 or 0x0120.
+
+---
+
 ## Carry-forward items (not blocking Attempt 28)
 
 - **aarch64 native boot test**: blocked on Pi SSH access. Cyrius

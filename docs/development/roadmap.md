@@ -260,7 +260,7 @@ That's it. No package builds, no recipe sweeps, no self-host loop. Those come af
 | 2.5 | ISO `--iso-check` (Stage 0 component verification) | **MVP** | **Done** | 26-of-26 components READY (2026-04-27 audit), ISO assembly unblocked |
 | **3** | **ISO Stage-4-only first cut (live image, pre-built binaries)** | **MVP** | **🔴 NEXT** — planned, awaiting D1–D4 | See [`iso-stage4-plan.md`](iso-stage4-plan.md). Days, not weeks. Was the MVP gate; now the **distribution** path (kernel boots iron-direct via gnoboot + USB stick today). |
 | **3.5** | **First hardware boot session — kernel + kybernet + agnoshi shell prompt** | **MVP** | ✅ **Iron-validated 2026-05-15** | NUC AMD (archaemenid / Beelink SER, matrix row 14) — Attempt 28 hit MVP boot spine alive on iron; Attempt 29 + cleanup-pass burn at 16:45 PDT rendered shell prompt + full kernel log on framebuffer. Pi 4 (row 3, aarch64 secondary) pending USB-keyboard-input closure. Skytech Legacy 4 (row 12, Intel) queued post-AMD-proof. See [`iron-nuc-zen-log.md`](iron-nuc-zen-log.md). |
-| **3.6** | **USB-keyboard input on modern UEFI** (no SMM PS/2 emulation post-EBS) | **MVP** | 🟡 In flight (1.30.1) | Native XHCI + USB-HID-boot driver, 5 phases scoped at [`planning/usb-hid-keyboard-driver.md`](planning/usb-hid-keyboard-driver.md). **Phase 1 landed** (PCIe discovery + capability reads). Phases 2–5: controller init / port enum / HID boot protocol / interrupt-driven kb_buf feed. Closes the "typeable" half of "boot-to-typeable-shell." |
+| **3.6** | **USB-keyboard input on modern UEFI** (no SMM PS/2 emulation post-EBS) | **MVP** | 🟡 In flight (1.30.1) | Native XHCI + USB-HID-boot driver, 5 phases scoped at [`planning/usb-hid-keyboard-driver.md`](planning/usb-hid-keyboard-driver.md). **Phase 1 code landed in `agnos` [Unreleased] 2026-05-15** (PCIe discovery + capability reads; report-only, does not enable typing yet). **Awaiting Attempt 30 iron burn** — verification gate, expected `xhci:` framebuffer lines, CMOS `kcp=0x30`, and failure-mode triage captured in [`iron-nuc-zen-log.md`](iron-nuc-zen-log.md) § *Attempt 30 prep*. Phases 2–5: controller init / port enum / HID boot protocol / interrupt-driven kb_buf feed. Closes the "typeable" half of "boot-to-typeable-shell." |
 | 8 | CI automation | **MVP-adjacent** | In progress | GitHub Actions workflows — supports MVP and beyond |
 | 4 | LFS Stage 1: bootstrap-toolchain.sh end-to-end | **Post-MVP** (Public Beta) | Deferred | Build cross-compiler from source tarballs. Not in MVP scope — pre-built binaries ship in the Stage-4 ISO. |
 | 5 | LFS Stage 2: build base system in chroot | **Post-MVP** (Public Beta) | Deferred | ark-build all 109 base recipes. Public Beta = self-hosting story. |
@@ -316,13 +316,15 @@ Native XHCI + USB-HID-boot driver in `agnos/kernel/arch/x86_64/usb/`. Modern UEF
 
 | Phase | Scope | LOC | Status |
 |---|---|---|---|
-| 1 | PCIe discovery + capability reads (`xhci_probe`, MMIO map, `MaxSlots`/`MaxIntrs`/`MaxPorts`/`CSZ`/`DBOFF`/`RTSOFF` cache) | ~150–300 | ✅ Landed [Unreleased] 2026-05-15 |
-| 2 | Controller init (halt + reset + DCBAA + cmd ring + event ring + ERST + start) | ~300–500 | 🔴 Next |
-| 3 | Port enum + device address (Enable Slot + Address Device + Get Descriptor + HID predicate) | ~300–500 | Queued |
-| 4 | HID boot protocol + interrupt endpoint (Configure Endpoint + Set Protocol = boot + transfer ring) | ~200–400 | Queued |
-| 5 | Interrupt/poll-driven `kb_buf` feed (HID usage → PS/2 set-1 scancode + modifier translation) | ~200–400 | Queued |
+| 1 | PCIe discovery + capability reads (`xhci_probe`, MMIO map, `MaxSlots`/`MaxIntrs`/`MaxPorts`/`CSZ`/`DBOFF`/`RTSOFF` cache) | ~150–300 | ✅ Code landed [Unreleased] 2026-05-15 — **Attempt 30 burn pending**. Verification gate + expected output + failure modes in [`iron-nuc-zen-log.md`](iron-nuc-zen-log.md) § *Attempt 30 prep*. Report-only — does NOT enable typing. |
+| 2 | Controller init (halt + reset + DCBAA + cmd ring + event ring + ERST + start) | ~300–500 | Queued (after Phase 1 burn verifies clean). kcp=0x31. |
+| 3 | Port enum + device address (Enable Slot + Address Device + Get Descriptor + HID predicate) | ~300–500 | Queued. kcp=0x32. |
+| 4 | HID boot protocol + interrupt endpoint (Configure Endpoint + Set Protocol = boot + transfer ring) | ~200–400 | Queued. kcp=0x33. |
+| 5 | Interrupt/poll-driven `kb_buf` feed (HID usage → PS/2 set-1 scancode + modifier translation) | ~200–400 | Queued. kcp=0x34. **This is the phase that closes the "typeable" gate.** |
 
 **1.30.1 ships when**: typing on a USB keyboard plugged into any port produces visible characters in agnoshi on iron, end-to-end.
+
+**Phase boundary discipline**: each phase is independently iron-testable. After Phase 1 burn verifies clean (`kcp=0x30` + the three `xhci:` lines), Phase 2 begins. Don't queue Phases 2–5 work against an unverified Phase 1 — the Phase 1 burn might surface a multi-bus / above-4GB-BAR / firmware-edge that's a Phase 1.5 fix before Phase 2 starts.
 
 ### 1.31.x — Networking on iron (queued, post-keyboard)
 
