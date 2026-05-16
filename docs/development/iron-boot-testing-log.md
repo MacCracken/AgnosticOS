@@ -3420,6 +3420,46 @@ Hygiene work landed after the burn, while the shell prompt was still on screen:
 
 ---
 
+### Cleanup-pass burn verification — 2026-05-15 ~16:45 PDT
+
+Post-cleanup-pass kernel (kprint-everywhere, cp_fb call sites removed, FB_CONSOLE_Y0=8, 266,312 B) flashed to USB and booted on archaemenid.
+
+![Attempt 29 cleanup-pass — full kernel log on framebuffer, shell prompt visible](iron-boot-photos/attempt-29-shell-logging-cleanup.jpg)
+
+| Observed | Interpretation |
+|---|---|
+| Full kernel init log rendered on framebuffer in coherent text (no scrambled-digit smashing) — `AGNOS kernel v1.30.0` → `64-bit long mode` → `GDT loaded (ring 3 ready)` → `IDT loaded` → `PIC remapped` → `Timer ISR installed` → `APIC id=0 timer active` → `SMP: 1 CPUs online` → `Keyboard ISR installed (full US QWERTY)` → `Page tables: 1024MB mapped` → `PMM: 3584 free / 4096 pages` → `KASLR: pmm_next_free=1378` → `PMM test: 3584 free` → `UMM: 57005 (expect 57005)` → `Heap initialized` → `Devices registered` → `ACPI: RSDP at 983056` → `PCI: 6 devices` → `VFS: initialized` → `Heap: <addrs>` → `SYSCALL/SYSRET initialized` → `Stack canary initialized` → `Syscall getpid=0` → `HW syscall test: 0` → `Creating test processes...` → `Process A (pid=1) created` → `Process B (pid=2) created` → `Processes: 2 total, 2 ready` → `Interrupts enabled` → `Timer ticks before sched: 3` → `Activating scheduler...` → `Scheduler test done. Timer ticks: 153` → `VFS write: Initrd: 2 files` → `initrd hello.txt: Hello, AGNOS!` → `initrd test: PASS` → `VFS memfile read: HELLO` → `Userland exec test...` → `Spawned pid=3` → `Userland exec complete` → `Launching kybernet` → `kybernet: starting init` → `kybernet: 0 processes` → `kybernet: 3572 free pages` → `kybernet: launching shell` → `AGNOS shell v1.30.0 (type 'help')` → `agnos>` | ✅ **Post-cleanup pass verified end-to-end.** The serial→fb mirror is now coherent; numbers and labels both flow through `kprint*` so the on-screen log matches what an attached serial cable would receive. Closed-beta gate (CP 0x11 MAGENTA at "Activating scheduler") still held. |
+| `gnoboot v0.1.0: handing off to kernel` overlays the AGNOS-kernel banner area at the top of the screen | ⚠️ Cosmetic only — gnoboot's `efi_clear(st)` (0.2 branch) wiped the firmware splash, banner printed at y≈0, kernel's `fb_console.cyr` starts painting at y=8. Overlap is from ConOut firmware-font row height vs kernel's 8-pixel `fb_putc` glyphs — kernel text won the row but didn't fully erase the gnoboot pixels above. Resolution: gnoboot 0.2.0 merge (queued) tightens the banner; if cosmetics still bother after merge, kernel-side `fb_clear_rect(0, 0, W, 8)` immediately after `fb_console_init()` is a one-liner. Not blocking. |
+| USB keyboard still not delivering scancodes — `agnos>` prompt sits idle, no echo on typing | ❌ MVP gap #3 still blocking — confirmed across BIOS knob toggles + every USB-A port swap. Native XHCI + USB-HID-boot driver is the real-answer fallback. See below § *USB-keyboard blocker triage*. |
+
+**Build under test (this burn):**
+
+| Artifact | Size | Pin |
+|---|---|---|
+| cyrius toolchain | — | 5.11.55 |
+| `agnos/build/agnos` | 266,312 B | — |
+| `gnoboot/build/BOOTX64.EFI` | 0.2 branch (CMOS-stripped, banner-tightened, efi_clear) | 5.11.53 |
+| `agnosticos/scripts/build/read-boot-log` | 32,104 B | — |
+
+**State after cleanup-pass burn:**
+
+- Path C sovereign UEFI handoff: ✅ verified (now twice across the cleanup pass)
+- Full kernel init spine on framebuffer in coherent text: ✅ **NEW** (kprint mirror)
+- Shell rendered on iron framebuffer: ✅ held
+- USB keyboard scancodes reaching shell: ❌ still blocked — pivots to driver work
+
+### USB-keyboard blocker triage — 2026-05-15
+
+| Path | Result |
+|---|---|
+| BIOS knob — `Legacy USB Support` / `XHCI Hand-off` / `EHCI Hand-off` toggled across available combinations | ❌ No combination delivers scancodes to `kb_buf`. SMM PS/2 emulation is genuinely off post-EBS on this firmware. |
+| Port swap — every USB-A port tried | ❌ No port routed to a legacy-emulating shim. All ports are pure XHCI. |
+| Native XHCI + USB-HID-boot driver | ⏳ **Real-answer fallback queued.** Scope: ~1.5–2.5k Cyrius LOC for keyboard-only. Discover XHCI via PCIe (already enumerated at CP 0x0B), MMIO map, command/event ring init, reset, slot enable + HID boot-protocol report parse (8-byte report, fixed format, no descriptor parsing required). |
+
+**The kernel-side keyboard buffer (`kb_buf`, `kb_head`, `kb_tail` in `kernel/arch/x86_64/boot_data.cyr`) is structurally correct** — `kb_isr` is wired to IRQ1 in the IDT (`main.cyr:69-70`), `kb_isr_build()` reads port 0x60 and stores into `kb_buf[head]` with proper wrap. The buffer is fine; the issue is **no producer**. IRQ1 never fires because no PS/2 controller (real or emulated) is delivering scancodes. The fix is upstream of the buffer, in the XHCI bus enumeration + HID class driver.
+
+---
+
 ## Carry-forward items (not blocking Attempt 28)
 
 - **aarch64 native boot test**: blocked on Pi SSH access. Cyrius
