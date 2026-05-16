@@ -4060,6 +4060,107 @@ The CCS=0x00 across all 6 ports is exactly what PP=0 across all 6 ports produces
 
 **The "weird power-only socket"**: not load-bearing on this burn. After PP=1 works, that socket may show up as a separate USB controller (Beelink SER series sometimes wire one front port through a USB2-only EHCI/OHCI hub for legacy compatibility) — that surfaces as a Phase 6 (multi-controller) consideration. Document the physical socket position after this burn so future hub-driver work knows where to look.
 
+### Attempt 37 — 2026-05-16 → ⚠️ PARTIAL — PP fix confirmed (`bitmap=63`), CCS=0x04 (port 3), reset still failing
+
+Repair (Q) burned cleanly. Outcome maps to **row 1** of the Attempt 37 prep matrix on the PP side, but the matrix's downstream expectation (per-port `xhci: port N connected, …` line) didn't fire — port-reset failed before enumeration could complete.
+
+**Framebuffer line surfaced** (user-confirmed):
+```
+xhci: PP=1 asserted, bitmap=63
+```
+
+**CMOS post-mortem** (from `sudo ./scripts/read-boot-log.sh`):
+
+| Slot | Value | Decode |
+|---|---|---|
+| 0x50 (kcp) | `0x15` | kybernet-launch reached (overwrote any xhci kcp) |
+| 0x62 (USBLEGSUP) | `0x01` | already-OS — BIOS bit 16 was clear; claim is structurally a no-op (unchanged from Attempts 35-36) |
+| **0x63 (CCS bitmap)** | **`0x04`** | **port 3 reports connect — first non-zero CCS since bring-up began** |
+| **0x64 (reset-OK bitmap)** | **`0x00`** | no ports reached PED; reset failed on the connected port |
+| 0x65/66/67 (proto) | `0x22 0x22 0x33` | p1-p4=USB2, p5-p6=USB3 (unchanged) |
+| 0x68 (xECP cap count) | `0x05` | walked 5 caps (unchanged) |
+| 0x69 (cap-ID bitmap) | `0x03` | USBLEGSUP=yes SupProto=yes (unchanged) |
+| 0x6A (1st SupProto) | `0x24` | rev_major=2, port_count=4 (USB2 cap covers p1-p4, unchanged) |
+| **0x6B (PP bitmap)** | **`0x3F`** | **all 6 ports asserted PP=1 — Repair (Q) confirmed** |
+
+**State transition since Attempt 36**:
+- Attempt 36: CCS=0x00 across all ports (PP gate held receivers off).
+- Attempt 37: CCS=0x04 (port 3 sees device) — **PP gate cleared, device detection unblocked**.
+- New blocker: USB2 port-reset path (port 3 is classified USB2 per proto map) does not produce PRC within ~100ms timeout.
+
+**Eliminated by this attempt's data**:
+- ✗ PP-not-asserted hypothesis (was Attempt 36's root cause). 0x6B=0x3F closes it.
+- ✗ "Device not actually attached" hypothesis. CCS=0x04 confirms port 3 sees the keyboard.
+- ✗ xECP classification of the device's logical port. Port 3 is in the USB2 cap's coverage (`port_count=4`, covers p1-p4). USB2 reset path is correct for this port.
+
+**Surviving hypotheses** (per the cheat-sheet baked into `read-boot-log` for `USBLEGSUP=already-OS + CCS≠0 + reset=0`):
+1. **Paired-port USB2-on-USB3-phys mapping** — keyboard physically plugged into a USB3 socket (p5/p6 phys), surfaces on its paired USB2 logical port 3. USB3 link can't train (no USB3 cable/device); USB2 paired-port reset is refused while the USB3 side is stuck. xHCI 1.2 §4.19.7 paired-port interaction.
+2. **USB2 PR-bit timing / spec audit** — `xhci_port_reset` USB2 branch may have a subtle deviation from §4.19.5 reset state machine. See Attempt 38 prep below for the audit findings.
+3. **Controller-side port disable** (low) — would also show CCS=0; ruled out by CCS=0x04.
+
+**Build under test**:
+| Artifact | State |
+|---|---|
+| `agnos/build/agnos` | `342,408 bytes` (per Attempt 37 prep), Repair (Q) `xhci_ports_power_on` live at xhci_port.cyr top. |
+| `gnoboot` | `0.2.0` (unchanged). |
+| Cyrius pin | `5.11.55` (unchanged). |
+| BIOS state | Quiet Boot OFF; USB Legacy On/Auto; XHCI Enabled. |
+
+No photo for this attempt — boot-log decoder output is the authoritative record (framebuffer line confirmed verbally as `bitmap=63`).
+
+### Attempt 38 prep — §4.19.5 reset-path audit, Repair (R) candidates
+
+**Port-swap sweep ruled inert.** Attempt 36 already cycled the keyboard through every physical socket; user-reconfirmed in Attempt 37 vicinity that all sockets continue to fail post-Q (CCS surfaces on one boot's port-3, but reset fails universally regardless of which socket the keyboard sits in). Paired-port mapping (hypothesis 1) **falsified** by the universal-failure pattern. **USB2 PR-bit path is genuinely broken on this controller.**
+
+#### §4.19.5 reset-path audit findings + Repair (R) candidates
+
+Re-read of `xhci_port_reset` USB2 branch (`xhci_port.cyr:286-307`) against xHCI 1.2 §4.19.5 reset state machine. Code under audit:
+
+```cyrius
+# USB2 path
+var psc0 = xhci_portsc_read(port_num);
+xhci_portsc_write(port_num, (psc0 & 0xFF01FFFF) | 0x10, 0);  # PR=1
+var wait2 = 0;
+while (wait2 < 1000000) {
+    var psc = xhci_portsc_read(port_num);
+    if ((psc & 0x200000) != 0) {                              # PRC?
+        xhci_portsc_write(port_num, psc & 0xFF01FFFF, 0x200000);  # clear PRC
+        var psc2 = xhci_portsc_read(port_num);
+        if ((psc2 & 0x2) != 0) { return 1; }                  # PED?
+        return 0;
+    }
+    wait2 = wait2 + 1;
+}
+return 0;
+```
+
+**Findings ranked by likelihood × cost:**
+
+| # | Finding | Spec ref | Risk | Cost | Likelihood it fixes |
+|---|---------|----------|------|------|---------------------|
+| F1 | PR-write doesn't explicitly re-assert PP=1. `(psc0 & …) | 0x10` preserves PP=1 from `psc0` only if PP was still 1 at read time. If PP got cleared between Repair-Q debounce and this read (e.g., overcurrent transient, or some other write masked it), the write would put PP=0 back. | §4.19.1.1 (PPC=1 controllers gate receiver on PP=0) | Medium | 1 char edit | Low-medium |
+| F2 | CSC (bit 17) not cleared before PR write. CSC is set when the device attached; the write preserves it (correct W1C handling), but some controllers expect a clean change-state before honoring PR. Spec doesn't strictly require, but it's a known compatibility pattern. | §4.19.2 (W1C semantics) | Low-medium | 2 lines | Low-medium |
+| F3 | Poll loop only checks PRC=1; doesn't detect "PR self-cleared + PED=1 without PRC" path. xHCI compliant controllers MUST set PRC, but real silicon varies. | §4.19.5 (PRC always set on Reset→Enabled transition) | Low | 3 lines | Low |
+| F4 | No instrumentation captures **why** reset failed. Currently `(reset=0, kcp=0x15)` is all we know. A CMOS slot capturing PORTSC change-byte (bits 16-23) of the failing port at timeout would distinguish "PR write absorbed" / "PR set but reset never started" / "reset started but stuck" / "reset complete but PED never set". | — | None (diagnostic) | 5 lines | Zero — but localizes next repair |
+| F5 | Linux-style PR retry on PED=0 post-PRC. Some controllers need explicit retry. | (driver convention, not spec) | Medium | 10 lines | Medium |
+
+**Repair (R) candidate set** (combinable in a single burn):
+
+- **R1** (defensive, 1 char): Change `(psc0 & 0xFF01FFFF) | 0x10` → `(psc0 & 0xFF01FFFF) | 0x10 | 0x200`. Always assert PP=1 alongside PR=1. **Tests F1.**
+- **R2** (CSC pre-clear, 2 lines): Before the PR write, issue `xhci_portsc_write(port_num, psc0 & 0xFF01FFFF, 0x20000)` to clear CSC W1C. Re-read PSC before the PR write to pick up post-clear state. **Tests F2.**
+- **R3** (broader completion detection, 3 lines): Inside the poll, also accept `(psc & 0x10) == 0 AND (psc & 0x2) != 0` (PR self-cleared with PED set) as a success signal. **Tests F3.**
+- **R4** (diagnostic, 5 lines, CMOS slot 0x6C): On poll timeout AND on every per-port-reset-failure path, stamp `(psc >> 16) & 0xFF` (PSC change-byte) to CMOS[0x6C]. Update `read-boot-log` decoder. **Adds F4.**
+
+**Recommended Repair (R) bundle for Attempt 38**: R1 + R2 + R4 in a single edit pass. R3 is low-likelihood; defer unless R1+R2 don't help. R5 (Linux PR retry) is held back as Attempt 39 fallback if Repair (R) doesn't break the reset failure.
+
+**Execution order**:
+1. Land R1+R2+R4 edits in `xhci_port.cyr` (USB2 reset branch) + `read-boot-log.cyr` (new CMOS[0x6C] decoder).
+2. Rebuild kernel + read-boot-log.
+3. Burn to USB, boot archaemenid, photograph framebuffer.
+4. Read CMOS post-mortem; CMOS[0x6C] localizes whichever sub-state the reset got stuck in.
+
+**On post-Attempt-38**: typing on `agnos>` still produces no echo (Phase 4/5 gated regardless). Attempt 38's win condition is either (a) `xhci: port N connected, …` line surfaces (Repair R cleared the reset blocker) OR (b) CMOS[0x6C] tells us which sub-state the reset is stuck in (which localizes Repair R+1).
+
 ---
 
 ## Carry-forward items (not blocking Attempt 28)
