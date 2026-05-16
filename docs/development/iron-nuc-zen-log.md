@@ -3552,6 +3552,79 @@ Capture at minimum: the full boot screen showing the new `xhci:` lines + the she
 
 Intel xHCI 1.2 specification §5.3.3 (HCSPARAMS1 layout — MaxSlots/MaxIntrs/MaxPorts), §5.3.6 (HCCPARAMS1 layout — AC64/CSZ/xECP). HCIVERSION values: 0x0100 (1.0) / 0x0110 (1.10) / 0x0120 (1.20) / 0x0130 (1.30) — most contemporary hardware is 0x0110 or 0x0120.
 
+### Attempt 30 — 2026-05-15 — xHCI Phase 1 + halt/reset verified on iron
+
+**Result: ✅ all three predicted xhci lines + halted/reset clean**, captured in `Shell_Xhci_Reporting.jpg`. Framebuffer reads:
+
+```
+xhci: found at 4237295616, ver=272, 64 slots, 6 ports
+xhci: caplen=32 csz=1 ac64=1 intrs=8
+xhci: dboff=1440 rtsoff=1152 xecp=616
+xhci: halted, reset clean
+```
+
+Decoding against the cap-window values archaemenid surfaced:
+
+| Field | Value | Decode |
+|---|---|---|
+| MMIO BAR | `4237295616` = `0xFC900000` | Standard high-PCIe placement well within 4 GB identity-map; no `vmm_alloc_at` extension needed |
+| HCIVERSION | `272` = `0x0110` | xHCI **1.10** spec — current generation, USB 3.x capable |
+| MaxSlots / MaxPorts | 64 / 6 | Modest controller; matches archaemenid's external USB-A + internal headers |
+| caplen | 32 (`0x20`) | Operational register window starts at `mmio + 0x20` |
+| csz | 1 | **64-byte** device contexts (Phase 3 will allocate accordingly) |
+| ac64 | 1 | 64-bit DMA addressing supported — DCBAAP / CRCR / ERSTBA can hold full 64-bit phys |
+| intrs | 8 | 8 interrupter vectors (we use 0 only, MSI-X bring-up post-MVP) |
+| dboff | `0x5A0` | Doorbell array at `mmio + 0x5A0` (Phase 3 ringing) |
+| rtsoff | `0x480` | Runtime register window at `mmio + 0x480`; interrupter 0 at `+0x4A0` |
+| xecp | `0x268` | Extended capability chain at `mmio + 0x268` (USB Legacy Support / USB2/USB3 protocol descriptors live here — Phase 3 walks this for port-protocol classification) |
+
+**Post-mortem CMOS reading**: `kcp = 0x15 (kybernet-launch)`. Expected — single-byte CMOS slot, last-write-wins. xhci_probe stamped 0x30 and the existing xhci_init stamped 0x31 (now relocated, see Phase 2 staging below); both got overwritten by kybernet's 0x15. The framebuffer is the truth channel.
+
+**Verdict block in `read-boot-log.cyr` updated**: kcp=0x15 narrative now acknowledges the overwrite mechanic explicitly (was claiming "no XHCI stamp above it" which was structurally impossible to detect from a single-byte slot — the wording confused the post-mortem story).
+
+### Phase 2 staging post-Attempt-30 — controller-start path landed
+
+Same session, before the Attempt 31 burn. Phase 2 was incrementally on the kernel already (halt + reset, included in Attempt 30's burn under `xhci_init`); the remaining DCBAA/cmd-ring/event-ring/ERST/start work landed as one cohesive bite since the gates only become observable together.
+
+**Kernel-side changes**:
+
+| File | Change |
+|---|---|
+| `kernel/arch/x86_64/usb/xhci_regs.cyr` | +`XhciRtReg` (MFINDEX, IR0_BASE), +`XhciIrReg` (IMAN, IMOD, ERSTSZ, ERSTBA, ERDP), +`XhciTrbType` (Link), +CRCR / CONFIG bit-field comments |
+| `kernel/arch/x86_64/usb/xhci_ring.cyr` | **NEW** — `xhci_rings_init()` allocates four 4 KB pages (DCBAA / cmd ring / event ring / ERST), zero-fills, installs Link TRB at cmd-ring slot 255 with TC=1 + cycle=1, populates ERST entry 0 with event-ring base + segment size = 256. PMM-write-readback sanity check on the first allocation per planning open-question #3 |
+| `kernel/arch/x86_64/usb/xhci.cyr` | +`xhci_rt_base` / `xhci_running` globals; +`xhci_op_write64` / `xhci_rt_read32` / `xhci_rt_write32` / `xhci_rt_write64` accessors; kcp=0x31 stamp **moved** out of end-of-halt+reset (premature per plan); +`xhci_start()` — calls rings_init, programs CONFIG.MaxSlotsEn / DCBAAP / CRCR(RCS=1) / IR0(ERSTSZ=1, ERSTBA, ERDP), sets `USBCMD = R/S | INTE`, waits `USBSTS.HCH=0`, then stamps kcp=0x31 |
+| `kernel/agnos.cyr` | +include `xhci_ring.cyr` between `xhci_regs.cyr` and `xhci.cyr` |
+
+**agnosticos-side changes**:
+
+| File | Change |
+|---|---|
+| `scripts/src/read-boot-log.cyr` | kcp=0x15 / 0x30 / 0x31 verdicts rewritten. 0x15: explains last-write-wins (was misleading). 0x30: enumerates start-step failure modes (DCBAA/cmd/event/ERST alloc, DMA sanity, HCH-cleared timeout). 0x31: declares Phase 2 complete + Phase 3 next |
+
+**Build receipts**:
+
+- `agnos/build/agnos`: **324,736 bytes** (was 273,816 at v1.30.1 cycle open; +50,920). Multiboot2 OK, entry `0x1000a8` unchanged. The growth is heavy for ~300 LOC — most of it is the four 512-iteration zero-fill loops being unrolled / inlined; 7,460 of those bytes are DCE-recoverable (`CYRIUS_DCE=1` if we want to claw it back).
+- `agnosticos/scripts/build/read-boot-log`: 33,592 bytes, OK.
+
+**Cyrius and gnoboot untouched** per `feedback_cyrius_hands_off` and the per-action-consent rule. All edits inside `agnos/` (Claude-owned during iron bring-up per `feedback_bootloader_kernel_ownership`) plus the agnosticos post-mortem decoder.
+
+### Attempt 31 prep — Phase 2 burn pending
+
+USB stick re-provision needed before flash (`sudo install-usb.sh --update /dev/sdb`). Pre-bound outcomes for the burn:
+
+| Framebuffer evidence | Interpretation |
+|---|---|
+| New line `xhci: controller running, HCH=0, ERDP=0x<phys>` between existing `halted, reset clean` and `VFS initialized` | ✅ Phase 2 success. Phase 3 (port enumeration) is next substantive work. Post-mortem kcp will still read 0x15 (kybernet overwrite); the framebuffer line is the only positive signal. |
+| `xhci: DMA sanity check failed (page unreadable)` | First PMM allocation returned a page not actually present in the active page table. Should not happen — `pmm_alloc()` returns pages 0..16 MB, all identity-mapped. If hit: investigate kernel CR3 vs PMM allocator's address basis. |
+| `xhci: DCBAA alloc failed` / `xhci: cmd ring alloc failed` / `xhci: event ring alloc failed` / `xhci: ERST alloc failed` | PMM exhausted. Should not happen — kernel has 3,584 free pages at this point and we need 4. If hit: PMM bug or earlier consumer leaked. |
+| `xhci: start timeout (HCH never cleared)` | Controller never transitioned out of halted state after R/S=1. Possible causes: bad ring base address, BIOS-locked controller (USB Legacy Support handoff not done — Phase 2.5 follow-up if seen), CRCR programmed with wrong cycle bit. |
+| Boot reaches kybernet but no new `xhci: controller running` line | xhci_init returned 0 from xhci_start — read whichever failure line printed above it. If no line printed: xhci_rings_init silently failed pre-allocation (sanity-check guard). |
+| Boot dies before kybernet (no `agnos>` prompt) | Phase 2 introduced a regression in unrelated kernel code — extremely unlikely (no shared globals touched, no IRQ paths modified). Bisect via kcp value. |
+
+**Photo capture**: full boot screen including the new `xhci: controller running` line + shell prompt. Save as `iron-nuc-zen-photos/attempt-31-xhci-phase-2.jpg`.
+
+**On post-Phase-2**: typing on the shell prompt **will still produce no echo**. Phase 3 (port reset + slot enable + Address Device + Get Device Descriptor) and Phase 4 (Configure Endpoint + Set Protocol = boot) precede the keystroke loop close, which is Phase 5's job.
+
 ---
 
 ## Carry-forward items (not blocking Attempt 28)
