@@ -22,10 +22,12 @@ The rule exists because "trust me, it got faster" isn't a receipt. A git tag + a
 
 ## The State of the Language
 
-- **Cyrius v5.5.4** — self-hosting from a 29KB assembly seed, zero external dependencies, bootstrap chain of four items (CPU → seed → compiler → output)
+> **This Volume is locked to Cyrius v5.5.4.** All numbers below were captured at that pin and are not refreshed in place. The optimization arc and subsequent stdlib-fold cycles have shifted the picture; the post-arc re-measurement is the explicit scope of **Volume 2** (see *What Comes Next*). Treating Volume 1 as a frozen snapshot is intentional — the comparison Volume 2 makes against it only works if the snapshot stays still.
+
+- **Cyrius v5.5.4** — self-hosting from a 29 KB assembly seed, zero external dependencies, bootstrap chain of four items (CPU → seed → compiler → output)
 - **Age:** 17 days old when Volume 1 was cut. First commit 2026-04-03. Kernel solid 2026-04-04 23:16 PDT (44 hours in)
 - **Platforms:** x86_64 Linux byte-identical self-host; aarch64 Linux byte-identical on real Pi hardware (v5.3.15+); Apple Silicon Mach-O byte-identical self-host on M-series (v5.3.13); Windows PE32+ Win64 ABI call-site complete on real Windows 11 (v5.5.4)
-- **Optimization arc:** not yet run *at the time of this volume's cut*. v5.6.x opened the arc (O1–O6); subsequent cycles continued it. **Status as of 2026-05-09: O1, O2, O3a, O4a/b/c shipped through v5.6.x → v5.7.x → v5.8.x; O5/O6 codebuf compaction (NOP harvest with jump+fixup) referenced through v5.8.x with status sweep deferred to v5.11.x triage** (v5.9.x ran consumer-rollup catchup + niyama-fold; v5.10.x is the REAL TYPE SYSTEM arc). Volume 2 will carry the post-arc re-measurements.
+- **Optimization arc:** not yet run at the time of this volume's cut. The arc opened with v5.6.x; *current arc status lives in Volume 2 — see [What Comes Next](#what-comes-next).*
 
 The ledger below is the state before the first optimization sprint. That is the relevant framing.
 
@@ -194,18 +196,18 @@ This is a coordination pattern, not a language pattern. It shows up in Volume 2 
 Four categories, all of them enumerated and scheduled:
 
 **1. Zero-copy micro-ops** — `&str` slicing avoids allocation on single-value hot paths. Cyrius's bump allocator + `str_builder` wins when the path allocates + formats + frees, but loses when the path barely touches memory. Examples: ark `cmd_create` 4×, ark `recent_10` 8×, agnostik `sandbox_config` 37×, kybernet `vec_push_get_len` 8×, kybernet `seccomp_build` 44×.
-**Targeted by O2 (peephole) + O3 (IR-driven passes). O2 closed v5.6.11; O3a IR instrumentation v5.6.12. Re-measurement pending in Volume 2.**
+**Targeted by the O2 (peephole) + O3 (IR-driven) passes scheduled for the v5.6.x optimization arc. Re-measurement is Volume 2 scope.**
 
 **2. Constant folding on pure compute** — Rust's LLVM -O3 evaluates `classify_signal` (2 ns), `notify_parse` (2 ns), and `sigset` ops (1 ns) at *compile time* because the inputs are literals in the benchmark. Cyrius computes them at runtime. The 2–19× gaps on these benchmarks are not runtime differences — they are "Rust runs the benchmark in the compiler, Cyrius runs it in the CPU."
-**Targeted by O1 (instrumentation + constant-folding) + O3 IR passes. O1 closed v5.6.4; O3a v5.6.12. Re-measurement pending.**
+**Targeted by O1 (instrumentation + constant-folding) + O3 IR passes. Re-measurement is Volume 2 scope.**
 
 **3. Inlining on sub-nanosecond DSP** — LLVM inlines entire scalar DSP functions at -O3; Cyrius currently emits a call through the benchmark harness. The "300–700× gap" on abaco DSP scalar ops is almost entirely the call overhead. The batch numbers (`sanitize_4096` 4.4×, `poly_blep` 9.6×) show the real gap without SIMD.
-**Targeted by O4 (linear-scan regalloc + Poletto-Sarkar picker) + O5 (maximal-munch). O4 shipped through v5.6.x–v5.8.x; O5/O6 codebuf compaction status sweep deferred to v5.11.x triage (v5.9.x catchup arc closed without it; v5.10.x focused on type system). Re-measurement pending.**
+**Targeted by O4 (linear-scan regalloc + Poletto-Sarkar picker) + O5 (codebuf compaction with NOP harvest). Re-measurement is Volume 2 scope.**
 
 **4. serde string serialization** — Rust's serde is the most-optimized serialization path in any systems language. Cyrius currently emits general-purpose string code for the same work. agnostik shows 5.8–6.8× gaps on string roundtrip.
-**Targeted by stdlib work + IR passes. Stdlib-fold maturity (sandhi v5.7.0 / vani v5.8.0 / niyama v5.9.0) re-shaped the surface. Re-measurement pending.**
+**Targeted by stdlib work + IR passes. Stdlib-fold maturity will re-shape the surface. Re-measurement is Volume 2 scope.**
 
-These are not excuses. They are a backlog with patch numbers — most patches now historical, re-measurement is the open work.
+These are not excuses. They are a backlog with named optimization phases — Volume 2 is where the gaps either close or persist with specific reasons.
 
 ---
 
@@ -235,16 +237,16 @@ The ledger in Volume 1 shows a young language at near-parity or ahead after seve
 
 The ledger is a three-volume arc, then an epilogue:
 
-- **Volume 1 — early (this).** Under twenty ports, pre-v5.6.x optimization. The baseline.
-- **Volume 2 — mid (55–70 ports).** Post-v5.6.x re-measurements written into the ledger next to the Volume 1 originals, plus the mid-era ports (bhava, takumi, aegis, aethersafha, and the ecosystem crates whose receipts weren't formalized in time for Volume 1), **plus the AGNOS kernel re-write.** The v1.22 kernel — 260 KB, 33 subsystems, 26 syscalls — gets frozen and benchmarked, then the re-write ships with the full before/after on the ledger. This is where the four enumerated gaps above either close or don't, *and* where the kernel's specific re-architecture wins get measured end-to-end.
-- **Volume 3 — end.** Full ecosystem ledger. Every port with a Rust antecedent closed and measured. Native subsystems (hadara, takumi, aegis, aethersafha if they land native-first) documented alongside.
+- **Volume 1 — early (this).** Cyrius **v5.5.4** baseline, ten ports, pre-optimization-arc. Frozen.
+- **Volume 2 — measured at v6.0 (or end-of-5.x line, whichever lands first).** The natural measurement point: v5.x closes with v5.11.x as the final minor; v6.x opens the platform-expansion arc (bare-metal target, RISC-V rv64, PIE, closures, language-level async, Class B FFI fold). Either the end-of-5.x close OR the v6.0 cut is the right "snapshot vs Volume 1" point — both represent a full arc of optimization and stdlib-fold work having landed. Volume 2 carries:
+  - **Post-arc re-measurements** against the Volume 1 receipts (the four "Where Rust Still Wins" categories either close, narrow, or persist with specific reasons)
+  - **Mid-era ports**: bhava (when Cyrius port lands), takumi (Cyrius port in progress; `rust-old/` authoritative until parity), aegis (graduated **0.1.0 → 1.0.0** during v5.10.x — qualifies for Volume 2), aethersafha (compositor, biggest port on the schedule), and the ecosystem crates whose receipts weren't formalized in time for Volume 1
+  - **The AGNOS kernel iron-validation receipt.** The kernel reached shell-on-iron 2026-05-15 (Path C sovereign UEFI, 273 KB at 1.30.1 with xHCI Phase 1 staged). The "v1.22 kernel rewrite" framing in earlier drafts is superseded — the iron-validated 1.30.x line is the receipt that lands in Volume 2
+  - **Native subsystems** that landed without a Rust antecedent (hadara, cyrius-doom, gnoboot, commandress, kriya) documented alongside the ported set
+- **Volume 3 — end.** Full ecosystem ledger. Every port with a Rust antecedent closed and measured. The OS Independence story (self-hosting LFS, Public Beta) is in scope.
 - **Epilogue — where we are.** Retrospective. What the three volumes prove about the category. Where the gaps are that Rust still holds. Where Cyrius has pulled into territory Rust cannot reach without external toolchains (RISC-V, bare-metal, self-hosting from 29 KB). The synthesis of the syntheses.
 
-Receipts pending for the near cut:
-- **bhava** (emotion/sentiment) — Rust side exists, port queued
-- **takumi** (build system) — 0.1.0 scaffold, port will be native-first
-- **aegis** (security daemon) — 0.1.0 scaffold
-- **aethersafha** (Wayland compositor) — 0.1.0 scaffold; the biggest port on the schedule
+The deliberate choice to defer re-measurement until v6.0 / end-of-5.x is in itself a measurement: the optimization arc is treated as one continuous body of work whose effect on the gaps is best captured at a single endpoint, not piecemeal across seven minors. Anyone reading Volume 1 today gets honest 29-KB-seed-week numbers; anyone reading Volume 2 gets honest post-arc numbers. The accreted "Status as of 2026-05-X" updates that were drifting through earlier drafts of this body have been removed — they belong in Volume 2, not in mid-paragraph footnotes.
 
 ---
 

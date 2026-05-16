@@ -1,14 +1,18 @@
 # What v5.5.x Taught v5.6.x
 
 > A micro-article. Pin for other articles to cite when they need the "lesson compounded forward" pattern — the discipline where one minor's postmortem becomes the next minor's codified process. Not receipts-driven; just the shape of how AGNOS absorbs its own engineering history.
+>
+> **Article date**: late April 2026 (between v5.6.x close and v5.7.0 open, ~2026-04-25). Dates corrected against `cyrius` git tags 2026-05-15. Subsequent-cycle confirmations appended below.
 
 ---
 
 ## The v5.5.x shape
 
-v5.5.x was the longest minor in Cyrius history — 40 patches. Platform-completion work: Windows PE native self-host, Apple Silicon Mach-O toolchain, aarch64 Linux shakedown, NSS/PAM end-to-end, parser/lexer refactor via nested includes, cc3 retirement. Every patch shipped something real; a fraction of them bundled more than one fix.
+v5.5.x ran **40 patches in 3 days** (v5.5.0 cut 2026-04-20, v5.5.40 cut 2026-04-22). Platform-completion work: Windows PE native self-host, Apple Silicon Mach-O toolchain, aarch64 Linux shakedown, NSS/PAM end-to-end, parser/lexer refactor via nested includes, cc3 retirement. Every patch shipped something real; a fraction of them bundled more than one fix.
 
-v5.6.x is shipping cleaner. The delta isn't that Cyrius got smarter — it's that two specific v5.5.x lessons got codified as process by the time the v5.6.x arc opened, rather than being re-discovered mid-flight.
+It was the **densest minor in Cyrius history at the time of writing** — not the longest in absolute days (3-day burst), and subsequent cycles have since exceeded the patch count (v5.6.x → .45, v5.7.x → .48, v5.8.x → .66, v5.10.x → .50, v5.11.x → .55). But v5.5.x's lessons codified forward.
+
+v5.6.x shipped cleaner. The delta wasn't that Cyrius got smarter — two specific v5.5.x lessons got codified as process by the time the v5.6.x arc opened, rather than being re-discovered mid-flight.
 
 ## Lesson — single-focus-per-patch
 
@@ -41,13 +45,38 @@ When another AGNOS article wants to refer to:
 - **Byte-identity scope split** → link to [§Lesson — byte-identity scope split](#lesson--byte-identity-scope-split)
 - **The general "lesson compounds forward" pattern** → link to the page
 
+---
+
+## How the Pattern Compounded Forward
+
+> Appended 2026-05-15. The two lessons above weren't a one-time codification — each subsequent Cyrius minor either repeated the discipline or extended it. The pattern's load-bearing because the receipts keep landing.
+
+The cycle cadence below uses git-verified dates from `cyrius` tag refs. Patch counts are the highest patch number tagged within each minor; some minors have closed at higher numbers than reflected in older articles.
+
+| Cycle | Opened | Closed | Patches | What the pattern looked like |
+|---|---|---|---|---|
+| v5.5.x | 2026-04-20 | 2026-04-22 | 40 | The lesson was *learned* mid-cycle (bundled-patch bisect cost surfaced ~patch 25) |
+| v5.6.x | 2026-04-22 | ~2026-04-25 | 45 | The lesson was *codified* in the roadmap prose before patch 1 |
+| v5.7.x | 2026-04-25 | 2026-04-30 | 48 | The TS work (cyrius-ts P1.3 through P2.7) showed single-focus discipline at sub-patch granularity — each `P<phase>.<step>` was a complete thought |
+| v5.8.x | 2026-05-01 | 2026-05-05 | 66 | **66-in-4-days became the velocity record.** Discipline scaled — patches stayed single-focus even at >16/day cadence. Phase-based slot ordering (Phase 1 audit, Phase 2 vocabulary, Phase 3 foldin sweep) prevented bundling without slowing throughput |
+| v5.9.x | 2026-05-06 | 2026-05-08 | 44 | Catchup arc — consumer-rollup of pin-lag bands. Each consumer-bump was its own patch; no "fix agnosys + vyakarana in one" temptation |
+| v5.10.x | 2026-05-08 | 2026-05-10 | 50 | Three arcs (typed-simd ABI 11 phases / REAL TYPE SYSTEM 5 phases / struct-byval ABI 3 phases) interleaved without bundling. Each arc's phases were individually tagged |
+| v5.11.x | 2026-05-11 | active | 55+ | 55 patches across 3 days (24+18+13). Stdlib annotation arc + consumer-issue closeout. Discipline held |
+
+**What stayed constant across seven cycles**: every CHANGELOG entry has been one complete thought. `git bisect run` works against the cyrius tree because of that discipline.
+
+**What evolved**: the byte-identity scope split codified in v5.5.x → v5.6.x became a *generic* pattern. By v5.8.x, the stdlib-fold-in framework explicitly captured the same kind of dual-invariant: "narrow-scope = does the fold compile and self-host" vs "broad-scope = does every consumer still build after the fold." Different domain, same lesson.
+
+**Where the pattern showed its limits**: the iron-boot arc (Attempts 17–27, agnosticos `iron-nuc-zen-log.md`) burned 11 attempts on a single bug that turned out to be in a code path the prior research had already flagged as "post-MVP." The discipline that catches *bundled* patches doesn't catch *misplaced* patches. The premise-audit gate (codified in `feedback_known_knowledge_first` and `iron-bring-up-process.md`) is the third lesson in this lineage, extending the v5.5.x pattern into territory it didn't previously cover: not just "is this patch one thought" but "should this patch exist at all."
+
 ## Related
 
 - [cyrius roadmap v5.6.x + v5.7.x sections](https://github.com/MacCracken/cyrius/blob/main/docs/development/roadmap.md) — where the codification lives
 - [design-patterns.md §8 Pain → Procedure (Encode Lessons as First-Class)](../design-patterns.md#8-pain--procedure-encode-lessons-as-first-class) — the master pattern
 - [*Docs Go Stale Before the Commit*](docs-go-stale-before-the-commit.md) — a different instance of the same compounding-forward pattern (agent-era coordination docs)
+- [iron-bring-up-process.md § *The premise-audit gate*](../development/iron-bring-up-process.md) — the third lesson in the lineage
 
 ---
 
 *AGNOS project — [agnosticos.org](https://agnosticos.org)*
-*April 2026*
+*April 2026 (original); appended 2026-05-15 with seven-cycle compounding-forward receipts*

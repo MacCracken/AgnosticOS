@@ -186,6 +186,16 @@ The trap is real. It's not in the chisel.
 
 ---
 
+## Method Accretes Where Method Fails
+
+A claim made in passing above deserves to be made explicitly: **methodology rules accrete in response to specific observed failure modes, not in response to "best practices."** The single-focus-per-patch rule existed because bundled-patch bisect cost was paid in real cycle time. The five-layer CLAUDE.md surface exists because wishlist-CLAUDE.md drift was measured. The duplicate-audit-on-bug-class rule exists because the locname-staleness class actually surfaced multiple times in one cycle.
+
+This is the prediction the article makes that's worth checking against later work: as the system encounters failure modes the existing methodology doesn't address, new rules appear in the methodology surface — *not* in the agent's head, *not* in personal vigilance, but as written artifacts (memory pins, CLAUDE.md rules, ADRs, design-pattern entries). When the existing rule shape catches *bundled* patches but not *misplaced* patches — patches that landed at the right granularity but in code paths the work shouldn't have touched — a new rule shape emerges to catch the misplacement. The premise-audit gate codified in the iron-boot bring-up process is exactly that shape: a rule that fires not on "is this patch one thought" but on "should this patch exist at all."
+
+This is the methodology layer behaving as a layer should — extending its surface in response to load, not collapsing into a list of platitudes. Tools don't do this; methodology does. Which is the point.
+
+---
+
 ## Related
 
 - [*Sovereign Compiler vs Brute Force*](sovereign-compiler-vs-brute-force.md) — the receipt this article argues from. $400 vs $20K, three sequential agents vs sixteen parallel, the Vidya Effect with worked examples.

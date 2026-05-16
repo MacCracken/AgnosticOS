@@ -422,7 +422,7 @@ So the cycle structure has to be *infrastructure-first* — the foundational arc
 
 ## 7. Methodology is the Trap — *direct reply to Lars Faye, "Agentic Coding is a Trap"*
 
-**Status**: ✅ **DRAFT SHIPPED 2026-05-11** — full draft at [`methodology-is-the-trap.md`](methodology-is-the-trap.md). Outline kept here for reference. Pair-ship with outline #6 (still outline-only) intended at v5.11.x close. | **Original Trigger**: paired ship with outline #6 (*Structuring Major Work During Release Cycles*) so the methodology-public-argument piece and the methodology-internal-cycle-structure piece land together. Alternative trigger: a second high-traffic anti-agentic piece in the same vein where AGNOS's existence proof gains rhetorical leverage. Anchored 2026-05-11 against Faye's article + HN #48002442 + Tuszynski's reply.
+**Status**: ✅ **SHIPPED 2026-05-11** — full article at [`methodology-is-the-trap.md`](methodology-is-the-trap.md). Outline retained below as the trace for how the locked thesis + section skeleton + receipt-stack pre-commitments were drafted before the article landed (the pre-commit-then-ship pattern this outlines.md file exists to demonstrate). Pair-ship with outline #6 (still outline-only) intended at v5.11.x close. | **Original Trigger**: paired ship with outline #6 (*Structuring Major Work During Release Cycles*) so the methodology-public-argument piece and the methodology-internal-cycle-structure piece land together. Alternative trigger: a second high-traffic anti-agentic piece in the same vein where AGNOS's existence proof gains rhetorical leverage. Anchored 2026-05-11 against Faye's article + HN #48002442 + Tuszynski's reply.
 
 ### Headline thesis (locked)
 
@@ -543,6 +543,58 @@ The xz-utils backdoor of 2024 produced a wave of supply-chain-focused writing ac
 
 ---
 
+## 8. Shell on Iron — *the iron-boot bring-up story as a public receipt*
+
+**Status**: outline | **Trigger**: keyboard input lands on iron (xHCI Phases 2–5 of [`planning/usb-hid-keyboard-driver.md`](../development/planning/usb-hid-keyboard-driver.md) — at that point the shell is *typeable*, not just visible, and the receipt is complete enough to publish). Anchored 2026-05-15 against the iron-validation milestone of agnos 1.30.0 + the 29-attempt arc captured in [`iron-nuc-zen-log.md`](../development/iron-nuc-zen-log.md) and [`iron-bring-up-process.md`](../development/iron-bring-up-process.md).
+
+### Headline thesis (locked)
+
+> *"A sovereign OS reaching shell-on-iron in 2026 is the headline. The walk that got us there is the receipt."*
+
+### Subtitle / hook
+
+*29 attempts. 16 repair letters. 11 of them deleted. One sovereign UEFI bootloader. One shell prompt on a NUC AMD framebuffer at 4:45 PM on a Friday.*
+
+### Context this article writes against
+
+The "is AGNOS real" question has had a series of answers — first the kernel boots in QEMU; then the toolchain self-hosts byte-identical; then 30+ ports complete; then the sovereign UEFI bootloader replaces GRUB. **The shell-on-iron milestone is the answer that converts believers from "this is impressive scaffolding" to "this is a real OS."** Most readers of the prior receipts haven't internalized what changed in 2024–2026 around UEFI firmware that makes booting a sovereign OS on modern hardware non-trivial. The article makes that change visible by walking the actual walls.
+
+### Sections
+
+1. **Where the walk started** — the kernel that compiled, booted clean in QEMU, and crashed on iron. Last data point of the previous article (*The Road to Iron* private vidya entry). Wall: the QEMU/iron divergence under strict-W^X UEFI was not in any public reference.
+
+2. **GRUB walked itself off the platform** — multiboot2-EFI + strict-W^X is dead under OVMF 2024+. `grub_relocator64_efi_boot` self-patches its own `.text`; the writes fault under NX-marked PE pages. Linux distros don't see this because `linuxefi` uses a different relocator; AGNOS hit the cliff because we used the multiboot path. **The architectural conclusion**: AGNOS needed its own UEFI bootloader (gnoboot) — *the industry had already arranged around this; we got the bill that everyone else paid quietly over 2023–2024.*
+
+3. **Path C — what every modern OS already does** — the 80-byte boot-info struct in RDI is the shape Linux EFI stub / FreeBSD `loader.efi` / OpenBSD `BOOTX64.EFI` / Windows `winload.efi` / Limine all converged on. AGNOS did the same shape in Cyrius. The Cyrius PE32+ emit was the novel part; the architecture is 10+ years old.
+
+4. **The bisector ladder + the rabbit hole** — Attempts 9–27 of the iron-boot walk. Repairs A through N. The eleven-attempt sequence chasing a bug in a memory-isolation test block that turned out to be post-MVP work breaking pre-MVP boot. The **premise-audit gate** that codified out of that pain ("3+ diagnostic rounds without resolving → grep prior research before instrumenting more"). The discipline accreted.
+
+5. **Attempt 28 — MVP spine alive on iron** — the kernel completes its full init spine end-to-end: GDT → TSS → IDT → APIC → timer → SMP → keyboard ISR → paging → PMM → KASLR → heap → ACPI → PCI → VFS → SYSCALL → stack canary → test procs → scheduler armed → idle loop survived → userland exec → kybernet-launch. Closed-beta gate held. Photo.
+
+6. **Attempt 29 — shell visible on iron** — Repair (P) for the cyrius non-zero-gvar-init bug surfaced. The cleanup pass that landed in the same session (cp_fb cells stripped, kprint mirror to fb, FB_CONSOLE_Y0 80 → 8). Burn at 4:45 PM rendered the full kernel log + the `agnos>` prompt on the framebuffer. Photo.
+
+7. **What's left** — USB keyboard input. Modern UEFI doesn't emulate PS/2 over XHCI post-EBS. Native XHCI + USB-HID-boot driver, in scope. Phase 1 (PCIe discovery + capability reads) landed same-session as the cycle close. **This article ships when the rest of the driver lands and the prompt becomes typeable on iron.**
+
+8. **The methodology receipt** — what this walk proves about the AGNOS process: that 29 iron attempts produced a working OS not because of personal heroics but because the methodology bent without breaking. The repair-letter convention emerged. The premise-audit gate codified. The CMOS-as-post-mortem-channel discipline solidified. The dev-setup constraint got memory-pinned after three wasted serial-cable recommendations. Tools were the same throughout; the methodology surface kept extending where the load required it. **Direct line to *Methodology is the Trap*: this is method working under stress, in the most physically real failure-mode the project has yet encountered.**
+
+### Receipts the article pre-commits to
+
+- The cycle-close kernel size: 273,816 B at 1.30.1 [Unreleased] (with xHCI Phase 1 staged); 1.30.0 closed at 266,312 B
+- The 29-attempt timeline (commit-verifiable in `agnos` git log)
+- The 16 repair letters A–P, with 11 of them (Repairs F–N + diagnostic-only stamps) deleted at Repair (O)
+- Photo: `iron-nuc-zen-photos/attempt-28-mvp-spine-alive.jpg` (spine alive)
+- Photo: `iron-nuc-zen-photos/attempt-29-shell-logging-cleanup.jpg` (shell + coherent log)
+- Pointer to `iron-bring-up-process.md` for the generic pattern that this arc generated
+- Pointer to vidya field-notes `kernel.cyml` entries `the_road_to_iron` + `shell_on_iron` for the agent-facing version of the same story
+
+### Cross-captures
+
+- `iron-bring-up-process.md` (the durable process pattern; this article is the narrative receipt that pattern was extracted from)
+- `methodology-is-the-trap.md` § *Method Accretes Where Method Fails* (the premise-audit gate cited there is one of this article's central receipts)
+- vidya `kernel.cyml` entries (the agent-facing version — companion, not duplicate)
+
+---
+
 ## Smaller planned articles (backlog — may or may not land)
 
 These are listed in memory ([`project_article_backlog.md`](../../../../.claude/projects/-home-macro-Repos-agnosticos/memory/project_article_backlog.md)) and carry their own future slot. Not part of the knife-article series; distinct genre.
@@ -567,4 +619,4 @@ These are listed in memory ([`project_article_backlog.md`](../../../../.claude/p
 
 ---
 
-*Last Updated: 2026-04-24*
+*Last Updated: 2026-05-15* — outline #7 marked shipped; outline #8 (*Shell on Iron*) added against the iron-validation milestone of agnos 1.30.0.
