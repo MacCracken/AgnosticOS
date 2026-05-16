@@ -210,7 +210,7 @@ Stretch: Backspace + line-editing work in agnoshi (depends on shell's input loop
 
 ## Related
 
-- [`iron-boot-testing-log.md`](../iron-boot-testing-log.md) § *USB-keyboard blocker triage* — origin of the problem
+- [`iron-nuc-zen-log.md`](../iron-nuc-zen-log.md) § *USB-keyboard blocker triage* — origin of the problem
 - `agnos/kernel/arch/x86_64/keyboard.cyr` — existing scancode → ASCII path the new producer feeds
 - `agnos/kernel/core/pci.cyr` — PCI enumeration surface to extend
 - USB-HID spec §7 (boot protocol report format) — primary reference

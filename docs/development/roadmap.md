@@ -14,7 +14,7 @@
 > agent: **read the plan, then resolve D1–D4 with Robert.** MVP target:
 > shell prompt on NUC AMD (primary) or Pi 4 inside ~3 weeks. Intel hosts (Skytech) queued after AMD is proven.
 >
-> 🟡 **Iron-boot attempts running log**: [`iron-boot-testing-log.md`](iron-boot-testing-log.md). Append-only per-attempt log
+> 🟡 **Iron-boot attempts running log**: [`iron-nuc-zen-log.md`](iron-nuc-zen-log.md). Append-only per-attempt log
 > (symptom / root cause / repair / verification). Attempt 1 (2026-05-12) FAILED on the GRUB
 > `grub_elf32_get_shnum` chain; root cause was Cyrius's `EMITELF_KERNEL`
 > emitting `e_shoff=0` ELFs; repaired in Cyrius 5.11.29 (x86 kernel),
@@ -258,7 +258,7 @@ That's it. No package builds, no recipe sweeps, no self-host loop. Those come af
 | 2 | Sovereign boot pipeline | **MVP** | **Done** | `make boot-test` from genesis repo |
 | 2.5 | ISO `--iso-check` (Stage 0 component verification) | **MVP** | **Done** | 26-of-26 components READY (2026-04-27 audit), ISO assembly unblocked |
 | **3** | **ISO Stage-4-only first cut (live image, pre-built binaries)** | **MVP** | **🔴 NEXT** — planned, awaiting D1–D4 | See [`iso-stage4-plan.md`](iso-stage4-plan.md). Days, not weeks. **The MVP gate.** |
-| **3.5** | **First hardware boot session — kernel + kybernet + agnoshi shell prompt** | **MVP** | 🔴 Pending Stage-4 | **NUC AMD (matrix row 14) is the primary first-boot target** — that is where the bulk of kernel engineering work has been validated, and where the active iron-boot triage is running (see [`iron-boot-testing-log.md`](iron-boot-testing-log.md)). Pi 4 (row 3) is the secondary aarch64 axis. Skytech Legacy 4 (row 12, Intel) is queued **after** AMD is proven, not as a parallel first-boot candidate. |
+| **3.5** | **First hardware boot session — kernel + kybernet + agnoshi shell prompt** | **MVP** | 🔴 Pending Stage-4 | **NUC AMD (matrix row 14) is the primary first-boot target** — that is where the bulk of kernel engineering work has been validated, and where the active iron-boot triage is running (see [`iron-nuc-zen-log.md`](iron-nuc-zen-log.md)). Pi 4 (row 3) is the secondary aarch64 axis. Skytech Legacy 4 (row 12, Intel) is queued **after** AMD is proven, not as a parallel first-boot candidate. |
 | 8 | CI automation | **MVP-adjacent** | In progress | GitHub Actions workflows — supports MVP and beyond |
 | 4 | LFS Stage 1: bootstrap-toolchain.sh end-to-end | **Post-MVP** (Public Beta) | Deferred | Build cross-compiler from source tarballs. Not in MVP scope — pre-built binaries ship in the Stage-4 ISO. |
 | 5 | LFS Stage 2: build base system in chroot | **Post-MVP** (Public Beta) | Deferred | ark-build all 109 base recipes. Public Beta = self-hosting story. |

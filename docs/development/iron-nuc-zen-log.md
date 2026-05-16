@@ -1776,7 +1776,7 @@ sub-case 2, not 3b. The hop is documented below in Repair-C.)
 
 **Visual ladder confirms the new kernel ran on iron** (this matters
 — it eliminates the "USB wasn't re-flashed" hypothesis). The
-[`iron-boot-photos/attempt-15-boot-colors.jpg`](iron-boot-photos/attempt-15-boot-colors.jpg) photo from the iron run shows:
+[`iron-nuc-zen-photos/attempt-15-boot-colors.jpg`](iron-nuc-zen-photos/attempt-15-boot-colors.jpg) photo from the iron run shows:
 
 - WHITE stripe at y=0 (boot_shim canary, pre-existing)
 - 4 YELLOW cells (CPs 0x80, 0x81, 0x82, 0x06 — early arch)
@@ -2033,7 +2033,7 @@ context switch OK. Died between iter 1 and iter 10.
 | `main.cyr:319` (idle loop, `idle_count == 0`) | cell 0x12 **CYAN** | first hlt round-trip OK (1st pass) |
 | `main.cyr:381` (post-VFS/initrd/memfile tests) | cell 0x12 **MAGENTA** (overwrite) | full 50-iter idle loop completed, then VFS tests done |
 
-CMOS records only the *latest* write. The **visual ladder is the disambiguator.** Photo [`iron-boot-photos/attempt-16-boot-colors.jpg`](iron-boot-photos/attempt-16-boot-colors.jpg) shows: WHITE stripe + 4 YELLOW + 7 GREEN + 3 CYAN (Attempt 15's painting through CP 0x10), **plus two new MAGENTA cells** at positions 0x11 and 0x12. That maps to:
+CMOS records only the *latest* write. The **visual ladder is the disambiguator.** Photo [`iron-nuc-zen-photos/attempt-16-boot-colors.jpg`](iron-nuc-zen-photos/attempt-16-boot-colors.jpg) shows: WHITE stripe + 4 YELLOW + 7 GREEN + 3 CYAN (Attempt 15's painting through CP 0x10), **plus two new MAGENTA cells** at positions 0x11 and 0x12. That maps to:
 
 | Cell | Color | Source | Meaning |
 |------|-------|--------|---------|
@@ -2113,7 +2113,7 @@ All four use the existing CMOS-write pattern (`asm { 0xB0 0x50 0xE6 0x70 0xB0 <C
 
 (Updated in the same commit as this log entry. See state.md line 10.)
 
-**4. iron-boot-testing-log.md — this entry.**
+**4. iron-nuc-zen-log.md — this entry.**
 
 (Updated in the same commit.)
 
@@ -2290,7 +2290,7 @@ CMOS[0x50] kernel  checkpt  = 0x18  (decimal 24)
 CMOS[0x54] CR4 byte 2 16-23 = 0x00  (decimal 0)
 ```
 
-**Visual ladder:** unchanged from Attempts 16/17 — no new cells past 0x12 visible post-reset (BIOS POST clears FB after triple-fault; pre-reset cell state unobservable on archaemenid because the box is the user's daily driver). Post-reset photo at [`iron-boot-photos/attempt-18-boot-colors-reset-only.jpg`](iron-boot-photos/attempt-18-boot-colors-reset-only.jpg) shows only the surviving 0x80-0x82 / GREEN/CYAN cells from earlier in this boot — visual disambiguator unusable for this attempt's diagnostic. Filename suffix `-reset-only` notes the user observation: this sparse view appears only after triple-fault reset; on a *non-reset* exit path (kernel hangs intact), the FB carries Attempts 16/17-style coverage through cell 0x12.
+**Visual ladder:** unchanged from Attempts 16/17 — no new cells past 0x12 visible post-reset (BIOS POST clears FB after triple-fault; pre-reset cell state unobservable on archaemenid because the box is the user's daily driver). Post-reset photo at [`iron-nuc-zen-photos/attempt-18-boot-colors-reset-only.jpg`](iron-nuc-zen-photos/attempt-18-boot-colors-reset-only.jpg) shows only the surviving 0x80-0x82 / GREEN/CYAN cells from earlier in this boot — visual disambiguator unusable for this attempt's diagnostic. Filename suffix `-reset-only` notes the user observation: this sparse view appears only after triple-fault reset; on a *non-reset* exit path (kernel hangs intact), the FB carries Attempts 16/17-style coverage through cell 0x12.
 
 **Headline diagnostic — CR4.SMAP = 0 on iron.**
 
@@ -2904,7 +2904,7 @@ Attempts 22–24 stuck at `kcp=0x68` (pre-restore stamp from Repair (I)'s 9-stam
 
 The pre-bound row "kcp ≥ 0x69" in [Repair (L)](#repair-l-for-attempt-25--pt_init-explicit-write-fix) was a forecast typo — the actual final-stamp value is `0x19` (the sub-CP label, not a monotonic counter). Outcome bucket matches "Repair (L) sufficient" exactly; only the predicted readout value was off.
 
-**Visual ladder — RACY.** User reports the screen "occasionally" displays the gnoboot "handing off to kernel" message *plus* a row of colored CP squares at the top-left ([`iron-boot-photos/attempt-25-boot-colors-racy.jpg`](iron-boot-photos/attempt-25-boot-colors-racy.jpg)); otherwise the visual matches recent attempts (silent past column 0x17). The intermittency is the new signal — `cp_fb(0x19)` MAGENTA paint *sometimes* fires, *sometimes* doesn't, on otherwise-identical resets. This non-determinism rules out a deterministic page-table or build error and points at racy state coming out of the mem-iso block (RFLAGS.AC residue from the SMAP brackets? stack misalignment from the asm-heavy CR3 dance? a CR3 that *almost* restored? a TLB-flush gap on FB MMIO?). First racy outcome of the iron-boot ladder — Attempts 1–24 were all deterministic across re-burns.
+**Visual ladder — RACY.** User reports the screen "occasionally" displays the gnoboot "handing off to kernel" message *plus* a row of colored CP squares at the top-left ([`iron-nuc-zen-photos/attempt-25-boot-colors-racy.jpg`](iron-nuc-zen-photos/attempt-25-boot-colors-racy.jpg)); otherwise the visual matches recent attempts (silent past column 0x17). The intermittency is the new signal — `cp_fb(0x19)` MAGENTA paint *sometimes* fires, *sometimes* doesn't, on otherwise-identical resets. This non-determinism rules out a deterministic page-table or build error and points at racy state coming out of the mem-iso block (RFLAGS.AC residue from the SMAP brackets? stack misalignment from the asm-heavy CR3 dance? a CR3 that *almost* restored? a TLB-flush gap on FB MMIO?). First racy outcome of the iron-boot ladder — Attempts 1–24 were all deterministic across re-burns.
 
 **Death window — main.cyr:640–660 (21 lines).** Kernel reaches `kcp=0x19` (line 639) but does NOT reach `kcp=0x13` (line 661, "post-memory-isolation test"). The intervening code:
 
@@ -3221,7 +3221,7 @@ Marker comment left at deletion site referencing this entry + the prior-art doc.
 
 ### Attempt 28 — 2026-05-15 → MVP BOOT SPINE ALIVE ON IRON
 
-![Attempt 28 — full cp_fb cell sequence painted to halt](iron-boot-photos/attempt-28-mvp-spine-alive.jpg)
+![Attempt 28 — full cp_fb cell sequence painted to halt](iron-nuc-zen-photos/attempt-28-mvp-spine-alive.jpg)
 
 **Headline:** Path C end-to-end on archaemenid (NUC AMD, Beelink SER). The kernel completes every checkpoint in its current init sequence and reaches `arch_halt()` at `main.cyr:415` as designed. Closed-beta gate (cp_fb 0x11 MAGENTA) was hit at Attempt 16; this attempt blew **four checkpoints past that gate** — 0x12 / 0x14 / 0x15 all painted MAGENTA, then halt.
 
@@ -3288,7 +3288,7 @@ CMOS[0x69-0x6A] fb_phys     = 0x00, 0x00  (stale — writer deleted by Repair O)
 ### Attempt 29 — 2026-05-15 → "worst case" visual diagnosed as non-zero gvar-init bug; Repair (P) lands
 
 **Photo slot (post-burn):** drop the screen photo at
-`iron-boot-photos/attempt-29-<descriptor>.jpg` (e.g.
+`iron-nuc-zen-photos/attempt-29-<descriptor>.jpg` (e.g.
 `attempt-29-prompt-visible.jpg` if Repair P confirms, or
 `attempt-29-still-broken.jpg` if not), then update the next session
 with the result so the cyrius issue draft (`agnos/docs/development/
@@ -3351,7 +3351,7 @@ fn fb_console_init() {
 
 **Burn outcome — 2026-05-15 (post-Repair-P verification):**
 
-![Attempt 29 — shell visible, USB keyboard not inputting](iron-boot-photos/attempt-29-shell-visible-no-keys.jpg)
+![Attempt 29 — shell visible, USB keyboard not inputting](iron-nuc-zen-photos/attempt-29-shell-visible-no-keys.jpg)
 
 | Observed | Interpretation |
 |---|---|
@@ -3424,7 +3424,7 @@ Hygiene work landed after the burn, while the shell prompt was still on screen:
 
 Post-cleanup-pass kernel (kprint-everywhere, cp_fb call sites removed, FB_CONSOLE_Y0=8, 266,312 B) flashed to USB and booted on archaemenid.
 
-![Attempt 29 cleanup-pass — full kernel log on framebuffer, shell prompt visible](iron-boot-photos/attempt-29-shell-logging-cleanup.jpg)
+![Attempt 29 cleanup-pass — full kernel log on framebuffer, shell prompt visible](iron-nuc-zen-photos/attempt-29-shell-logging-cleanup.jpg)
 
 | Observed | Interpretation |
 |---|---|

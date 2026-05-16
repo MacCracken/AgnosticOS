@@ -18,7 +18,7 @@
 
 ## Why First-Party
 
-The AGNOS sovereignty pattern is: **own your stack**. Cyrius replaced gcc/clang/llvm; agnos replaced Linux; gnoboot replaces GRUB. Until gnoboot existed, AGNOS depended on a third-party bootloader whose multiboot2-EFI relocator broke under modern strict-W^X UEFI (see [iron-boot log § Diagnosis 2](../development/iron-boot-testing-log.md)). gnoboot dissolves that dependency — AGNOS boots end-to-end on its own.
+The AGNOS sovereignty pattern is: **own your stack**. Cyrius replaced gcc/clang/llvm; agnos replaced Linux; gnoboot replaces GRUB. Until gnoboot existed, AGNOS depended on a third-party bootloader whose multiboot2-EFI relocator broke under modern strict-W^X UEFI (see [iron-nuc-zen log § Diagnosis 2](../development/iron-nuc-zen-log.md)). gnoboot dissolves that dependency — AGNOS boots end-to-end on its own.
 
 ## What It Does
 
@@ -61,7 +61,7 @@ Full roadmap: [gnoboot/docs/development/roadmap.md](https://github.com/MacCracke
 - [agnos](agnos.md) (when added) — the kernel gnoboot loads. agnos 1.30.0 cuts the sovereign-struct ABI break that pairs with gnoboot v0.1.0.
 - [cyrius](https://github.com/MacCracken/cyrius) — toolchain. gnoboot's bring-up filed 4 cyrius issues (3 landed in v5.11.49–v5.11.53, 1 pending for v5.11.54).
 - [Path C plan](../development/path-c-sovereign-uefi.md) — full architecture
-- [Iron-boot test log](../development/iron-boot-testing-log.md) — running log of iron boot attempts; gnoboot is Attempt 5+
+- [Iron-boot test log](../development/iron-nuc-zen-log.md) — running log of iron boot attempts; gnoboot is Attempt 5+
 
 ## Related ADRs (in gnoboot)
 

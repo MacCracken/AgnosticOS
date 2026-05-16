@@ -220,7 +220,7 @@ fn main(): i64 {
     # PML4 + FB BAR diagnostic blocks (CMOS[0x62-0x6A]) retired with Repair (O)
     # mem-iso deletion (2026-05-15). Writers no longer exist in the kernel;
     # any stale values in those slots reflect a pre-Attempt-28 burn, not
-    # current state. Refer to iron-boot-testing-log.md § Attempt 28 for
+    # current state. Refer to iron-nuc-zen-log.md § Attempt 28 for
     # context. If a future regression needs PML4 visibility back, re-add
     # both the stamps (kernel side) and the readers + interpretation (here).
 

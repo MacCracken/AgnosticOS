@@ -164,7 +164,7 @@ if [[ "$MODE" == "update" ]]; then
     echo "    sudo ${SCRIPT_DIR}/build/read-boot-log"
     echo "  Reads CMOS slots 0x50-0x53 (battery-backed, survives reset): kcp = highest kernel CP,"
     echo "  magic 0xAB = kernel ran, gcp = gnoboot CP. Pairs with the on-screen color cell to name"
-    echo "  the exact sub-case. See docs/development/iron-boot-testing-log.md for the dec tree."
+    echo "  the exact sub-case. See docs/development/iron-nuc-zen-log.md for the dec tree."
     exit 0
 fi
 
@@ -286,7 +286,7 @@ echo "  Reboot into Linux on the same machine, then:"
 echo "    sudo ${SCRIPT_DIR}/build/read-boot-log"
 echo "  Reads CMOS slots 0x50-0x53 (battery-backed, survives reset): kcp = highest kernel CP,"
 echo "  magic 0xAB = kernel ran, gcp = gnoboot CP. Pairs with the on-screen color cell to name"
-echo "  the exact sub-case. See docs/development/iron-boot-testing-log.md for the dec tree."
+echo "  the exact sub-case. See docs/development/iron-nuc-zen-log.md for the dec tree."
 echo ""
 echo "Iteration loop (refresh without re-provisioning):"
 echo "  (cd ../gnoboot && CYRIUS_TARGET_EFI=1 cyrius build src/main.cyr build/BOOTX64.EFI)"

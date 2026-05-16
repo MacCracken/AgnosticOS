@@ -1,9 +1,9 @@
 # Path A — ELF64 Multiboot2 Boot Kernel
 
 > **Status**: Drafted 2026-05-13 | Approach: ELF64 kernel + multiboot2 + EFI64 entry tag | Scope: NUC AMD (x86_64 UEFI) iron-boot MVP
-> **Diagnosis source**: `docs/development/iron-boot-testing-log.md` § *Diagnosis — 2026-05-13 GRUB source review*
+> **Diagnosis source**: `docs/development/iron-nuc-zen-log.md` § *Diagnosis — 2026-05-13 GRUB source review*
 > **Roadmap pin**: [[project-agnos-bootloader-roadmap]] memory — Path A is the MVP bridge; Path C (sovereign UEFI bootloader, no GRUB) is the long-term destination
-> **NEXT AGENT — START HERE.** Steps 1-5a (cyrius + agnos) and Step 7 (install-usb.sh) landed; Step 5b (QEMU OVMF) **FAILED inside GRUB's relocator under strict-W^X UEFI** (see § *Status update — 2026-05-13* at the bottom and iron-boot log § *Diagnosis 2*). Iron Attempt 5 (Step 8) is on **HOLD** until the resolution path is chosen by the project leader (options 1-4 in the status update). **Do NOT** push iron Attempt 5 against the current build — it will reproduce Attempts 3/4 exactly. **Do NOT** edit cyrius — the language is hands-off per session feedback; cyrius work in this plan is correct and complete. Cross-repo changes (agnos, cyrius) require explicit per-edit approval.
+> **NEXT AGENT — START HERE.** Steps 1-5a (cyrius + agnos) and Step 7 (install-usb.sh) landed; Step 5b (QEMU OVMF) **FAILED inside GRUB's relocator under strict-W^X UEFI** (see § *Status update — 2026-05-13* at the bottom and iron-nuc-zen log § *Diagnosis 2*). Iron Attempt 5 (Step 8) is on **HOLD** until the resolution path is chosen by the project leader (options 1-4 in the status update). **Do NOT** push iron Attempt 5 against the current build — it will reproduce Attempts 3/4 exactly. **Do NOT** edit cyrius — the language is hands-off per session feedback; cyrius work in this plan is correct and complete. Cross-repo changes (agnos, cyrius) require explicit per-edit approval.
 
 ---
 
@@ -20,7 +20,7 @@ shim required.
 **NOT in scope:**
 - Sovereign UEFI bootloader (Path C — long-term, separate cycle).
 - aarch64 boot path (different relocator; addressed when Pi SSH testing
-  resumes — see iron-boot log carry-forward).
+  resumes — see iron-nuc-zen log carry-forward).
 - Removing ELF32 emit from Cyrius — stays as latent capability per
   [[project-agnos-kernel-growth-rules]].
 
@@ -37,7 +37,7 @@ the CPU still in 64-bit long mode. Our ELF32 / EM_386 kernel triple-faults
 at the first instruction because 32-bit opcodes are decoded as 64-bit in
 long mode.
 
-Three options were considered (see iron-boot log Attempt 4 for full
+Three options were considered (see iron-nuc-zen log Attempt 4 for full
 framing); Path A (this plan) was chosen over:
 
 - **Path B** (long-mode-exit prologue keeping ELF32): hand-rolls the
@@ -261,7 +261,7 @@ Everything else can be ignored or deferred.
 | 4a | agnos: bump `cyrius.cyml` pin to 5.11.43 (no flag — sanity check) | Build succeeds; output **bit-identical** to 5.11.29 build (same sha256, same 250968 bytes, ELF32/EM_386/entry 0x100060/5 sections, multiboot1 PASS) | agnos | ✓ Landed 2026-05-13 |
 | 4b | agnos: build invocation sets `CYRIUS_ELF64_KERNEL=1` (in `scripts/build.sh` x86 branch; python validator extended to handle both ELF32/multiboot1 and ELF64/multiboot2) | Build produces 251160-byte ELF64/EM_X86_64 kernel, entry 0x1000a8, 5×64B section headers; multiboot2 header bytes verified at file offset 120; `grub-file --is-x86-multiboot2 build/agnos` PASS | agnos | ✓ Landed 2026-05-13 |
 | 5a | agnos: kernel shim rewrite for long-mode entry — `#ifndef ELF64_KERNEL` wraps legacy 32-bit shim; `#ifdef ELF64_KERNEL` adds new 64-bit shim (stack at 0x200000 / UART verbatim / GDT verbatim / lgdt + push-lea-push-retfq for CS reload / segment reload). New `mbi.cyr` with `fn mbi_capture_rbx()` called immediately after shim (SysV ABI preserves RBX across call; local `var p = &mb_info_ptr;` loads RAX; raw `48 89 18` stores RBX → mb_info_ptr). `var mb_info_ptr[8];` in boot_data.cyr (uninitialized array → bypasses EMIT_GVAR_INITS clobber). `scripts/build.sh` prepends `#define ELF64_KERNEL` when env var set. | Build produces 251128-byte ELF64 with structurally-identical pattern to legacy (123-byte enum-init gap between trampoline target and shim start); `call mbi_capture_rbx` at virtual 0x11A05C resolves to virtual 0x1000AD ✓ | agnos | ✓ Drafted 2026-05-13 |
-| 5b | QEMU OVMF UEFI emulation boot test | Boots into scheduler + tier3 test under emulated UEFI (the `grub_relocator64_efi_boot` path) | scripts/agnos | ✗ FAIL 2026-05-13 — #PF inside GRUB's relocator (W^X). See iron-boot log § *QEMU OVMF gate* + *Diagnosis 2*. |
+| 5b | QEMU OVMF UEFI emulation boot test | Boots into scheduler + tier3 test under emulated UEFI (the `grub_relocator64_efi_boot` path) | scripts/agnos | ✗ FAIL 2026-05-13 — #PF inside GRUB's relocator (W^X). See iron-nuc-zen log § *QEMU OVMF gate* + *Diagnosis 2*. |
 | 6 | agnos version bump 1.29.x → 1.30.0; release | CI green; release artifact | agnos | **HOLD** (blocked on 5b resolution) |
 | 7 | scripts/install-usb.sh: grub.cfg `multiboot` → `multiboot2`, `module` → `module2` | `install-usb.sh` writes a parseable grub.cfg (boot menu shows entries) | scripts | ✓ Landed 2026-05-13 (multiboot/module → multiboot2/module2 in all 3 menuentries + the surrounding comment block) |
 | 8 | Full re-provision `/dev/sdb` (not `--update`); iron Attempt 5 on NUC AMD | Iron boots into the scheduler/tier3 test serial output OR fails with new symptom (further along boot chain than Attempt 4) | scripts | **HOLD** (would re-hit iron Attempt 3/4 reset until 5b resolved) |
@@ -377,8 +377,8 @@ These should be resolved with Robert before cyrius work begins:
 
 ## Doc trail
 
-- Diagnosis: `iron-boot-testing-log.md` § *Diagnosis — 2026-05-13 GRUB
+- Diagnosis: `iron-nuc-zen-log.md` § *Diagnosis — 2026-05-13 GRUB
   source review* — files examined, root cause, hypotheses mapping
 - Decision: this doc + [[project-agnos-bootloader-roadmap]] memory
-- Execution: log each step's verification in the iron-boot log;
+- Execution: log each step's verification in the iron-nuc-zen log;
   Attempt 5 is the integration gate

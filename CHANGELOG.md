@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed — docs
 
-- **`docs/development/iron-boot-testing-log.md`** — Attempts 2 + 3 logged (each with verbatim GRUB symptom, root cause, repair-step table); Attempt 4 placeholder updated to reflect v1.29.1 as the build under test, with an outcome-interpretation table for the no-serial-cable retry. Last-updated bumped to 2026-05-13.
+- **`docs/development/iron-nuc-zen-log.md`** — Attempts 2 + 3 logged (each with verbatim GRUB symptom, root cause, repair-step table); Attempt 4 placeholder updated to reflect v1.29.1 as the build under test, with an outcome-interpretation table for the no-serial-cable retry. Last-updated bumped to 2026-05-13.
 - **`docs/development/state.md`** — Last refresh → 2026-05-13. Active table row 8 expanded from "Attempt 2 pending" to "Attempts 1–3 → 3 repairs → Attempt 4 pending," summarizing all three failure classes and their fixes. Pin-lag spectrum: agnos bumped 1.29.0 → 1.29.1 in the live-bedrock cluster. CVE-2026-31431 immunity-anchor entry re-pinned to 1.29.1 (the syscall-table invariant is unchanged; doc-version-staleness avoidance only).
 
 ### Memory

@@ -34,8 +34,8 @@ docs/archive/
 | `example_claude-rust-era.md` | CLAUDE.md template for Rust-era sibling repos | 2026-04-13 | Each active repo now maintains its own Cyrius-era CLAUDE.md |
 | `first-party-standards-rust-era.md` | First-party application standards, Rust era | 2026-04-08 | `../development/planning/` docs + per-repo CONTRIBUTING.md |
 | `license-fixes-rust-era.md` | 42-item license-cleanup TODO checklist (Cargo.toml, crates.io, SPDX-string fixes) | 2026-05-06 | Moot post-Cyrius pivot — `cyrius.cyml` replaces Cargo.toml, ark/zugot replaces crates.io. Per-repo LICENSE accuracy is per-repo housekeeping. |
-| `monolith-extraction.md` | The extraction roadmap doc — code extraction completed 2026-04-01 but the doc kept describing "reassembly in progress" through April-15 | 2026-05-12 | `../development/state.md` (live ecosystem state) + `../development/iso-pipeline.md` (ISO assembly) + `../development/iron-boot-testing-log.md` (iron-boot attempts) |
-| `end-of-4x-independent-audit.md` | Neutral-infra cold-clone audit from 2026-04-14 finding "Bootstrap ✓ / Kernel Boot ✓" | 2026-05-12 | Bootstrap finding still holds; Kernel-Boot finding contradicted on real iron 2026-05-12 (GRUB rejected `e_shoff=0` ELF; repair in Cyrius v5.11.29/.30/.31). See `../development/iron-boot-testing-log.md`. |
+| `monolith-extraction.md` | The extraction roadmap doc — code extraction completed 2026-04-01 but the doc kept describing "reassembly in progress" through April-15 | 2026-05-12 | `../development/state.md` (live ecosystem state) + `../development/iso-pipeline.md` (ISO assembly) + `../development/iron-nuc-zen-log.md` (iron-boot attempts) |
+| `end-of-4x-independent-audit.md` | Neutral-infra cold-clone audit from 2026-04-14 finding "Bootstrap ✓ / Kernel Boot ✓" | 2026-05-12 | Bootstrap finding still holds; Kernel-Boot finding contradicted on real iron 2026-05-12 (GRUB rejected `e_shoff=0` ELF; repair in Cyrius v5.11.29/.30/.31). See `../development/iron-nuc-zen-log.md`. |
 
 ## `libs-pre-cyrius/` — Library docs before the Cyrius port
 
