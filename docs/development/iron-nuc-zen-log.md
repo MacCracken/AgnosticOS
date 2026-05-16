@@ -3610,22 +3610,121 @@ Same session, before the Attempt 31 burn. Phase 2 was incrementally on the kerne
 
 **Cyrius and gnoboot untouched** per `feedback_cyrius_hands_off` and the per-action-consent rule. All edits inside `agnos/` (Claude-owned during iron bring-up per `feedback_bootloader_kernel_ownership`) plus the agnosticos post-mortem decoder.
 
-### Attempt 31 prep — Phase 2 burn pending
+### Attempt 31 — 2026-05-15 — xHCI Phase 2 (controller-start) verified on iron
+
+> Photo: [`iron-nuc-zen-photos/attempt-31-xhci-phase-2.jpg`](iron-nuc-zen-photos/attempt-31-xhci-phase-2.jpg)
+
+**Result: ✅ first-shot success.** The predicted line lands exactly where the Phase 2 prep table expected it — between `halted, reset clean` and `VFS initialized`:
+
+```
+xhci: found at 4237295616, ver=272, 64 slots, 6 ports
+xhci: caplen=32 csz=1 ac64=1 intrs=8
+xhci: dboff=1440 rtsoff=1152 xecp=616
+xhci: halted, reset clean
+xhci: controller running, HCH=0, ERDP=10256384
+VFS initialized
+```
+
+**Reading the ERDP**: `10256384` = `0x9C8000`. Page-aligned, sits at ~10.26 MB — well inside the 0–16 MB identity-mapped band the PMM hands out, so the controller can DMA event TRBs to a virtual address that matches its programmed physical base. No DMA sanity-check failure printed, no start timeout. The four-page allocation (DCBAA / cmd ring / event ring / ERST) landed cleanly.
+
+**PMM accounting cross-check**: `kybernet: 3568 free pages` post-boot, vs. `PMM: 3584 free` at kernel start = 16 pages consumed during init. XHCI's four pages plus VFS/scheduler/userland-exec/initrd consumers account for the rest. Phase 2 added no leaks.
+
+**Full kernel stack still green post-Phase-2**: scheduler test (`Timer ticks: 153`), VFS initrd read (`PASS`), VFS memfile (`HELLO`), userland exec (`Spawned pid=3, exec complete`), kybernet handoff, agnoshi launches to `agnos>` prompt. Phase 2's new code didn't disturb anything downstream — clean additive land.
+
+**Post-mortem CMOS reading**: `kcp = 0x15 (kybernet-launch)`. Expected and identical to Attempt 30's overwrite mechanic — `xhci_start()` stamps 0x31 successfully, then kybernet's 0x15 stamp lands on top. The framebuffer line is the truth channel, as documented.
+
+**Phase 2 cycle close**: halt + reset (Attempt 30) + DCBAA + cmd ring + event ring + ERST + start (Attempt 31) all verified on iron in two burns. Zero diagnostic rounds, zero repair letters, plan-as-written executed first-shot — the prep table in the Attempt 31 prep block bound every plausible failure mode and none of them fired.
+
+### Phase 3 — port enumeration, next substantive work
+
+**Goal**: discover the connected USB ports, reset them, allocate Slot + Device contexts, issue Address Device, fetch device descriptors, identify HID boot keyboards. Plan reference: [`planning/usb-hid-keyboard-driver.md`](planning/usb-hid-keyboard-driver.md#phase-3--port-enumeration--device-address-300500-loc).
+
+**Kernel-side scope (~300–500 Cyrius LOC)**:
+
+| File | New | Role |
+|---|---|---|
+| `usb/xhci_port.cyr` | NEW | `PORTSC` polling loop over `0..MaxPorts` (= 6 on archaemenid). USB3 ports auto-reset on connect — wait for `PED`. USB2 ports need explicit `PR` write + `PRC` wait. Protocol classification reads from the xECP chain at `mmio + 0x268`. |
+| `usb/xhci_cmd.cyr` | NEW | Generic command-issue + completion helper: write TRB to cmd ring, ring doorbell 0, poll event ring for `Command Completion Event`, return `(slot_id, completion_code)`. Used by Enable Slot + Address Device. |
+| `usb/xhci_ctx.cyr` | NEW | Input Context + Device Context allocation (CSZ=1 → 64-byte contexts, two pages each). Slot Context fields: root hub port, route string, speed. EP0 Context: control endpoint, MPS from speed (8/64/512 for LS/FS/HS / SS). Install DC phys in `DCBAA[slot_id]`. |
+| `usb/xhci.cyr` | +Enable Slot + Address Device + Get Device Descriptor (8-byte then 18-byte fetch via Setup/Data/Status TRB triple) + HID-boot-kbd predicate (`bInterfaceClass=0x03 && SubClass=0x01 && Protocol=0x01`) | |
+
+**CMOS checkpoint**: `kcp=0x32` stamps after the first HID keyboard is successfully addressed.
+
+**Iron-test gate (framebuffer)**:
+
+```
+xhci: port N connected, slot=X, addr=Y, idVendor=0xXXXX idProduct=0xYYYY, HID-boot-kbd=yes/no
+```
+
+…printed once per connected port. On archaemenid the user-facing keyboard plus any mouse + hub should each produce a line.
+
+**agnosticos-side follow-up** (after Phase 3 lands):
+
+- `scripts/src/read-boot-log.cyr`: add `kcp=0x32` verdict block (Phase 3 complete, Phase 4 — Configure Endpoint + Set Protocol = boot — is next).
+
+**Still-no-echo expectation**: typing on `agnos>` will continue to produce nothing through Phase 3 and Phase 4. The keystroke loop closes in Phase 5 (HID usage → PS/2 scancode translation feeding `kb_buf`).
+
+**Risk register for Phase 3** (from prior research, not from this burn):
+
+| Risk | Why plausible | Mitigation |
+|---|---|---|
+| BIOS still holds USB Legacy Support semaphore on a port | NUC firmware may keep ownership for emulated PS/2 BIOS keyboard. Phase 1 didn't see the xECP USBLEGSUP cap matter because we hadn't touched the controller, but per-port BIOS lock can surface during reset. | Walk xECP chain for USBLEGSUP (cap id 1), set OS-owned semaphore, wait for BIOS-owned to clear. Add as Phase 2.5 in `xhci_port.cyr` if iron burn shows `PR` writes ignored. |
+| USB3 vs USB2 port-protocol misclassification | The archaemenid NUC's six ports are a mix of USB2/USB3 root-hub-ports. Phase 3 must walk xECP at `mmio + 0x268` for "Supported Protocol" caps before reset semantics are correct. | xECP walk is in the plan as ~30 LOC of `xhci_port.cyr`. Verify by printing each port's classified speed before issuing the reset. |
+| Event-ring drain hits a race with cmd completion | Phase 2 left ERDP at the initial position; Phase 3 will be the first time we *consume* events. Off-by-one on ERDP advance is the classic bug. | `xhci_cmd.cyr` completion poll re-reads ERDP after every TRB consumed; cycle-bit toggle handled at segment boundary. |
+
+### Phase 3 staging post-Attempt-31 — port enumeration + Address Device landed
+
+Same session as the Attempt 31 success burn. Phase 3 implementation kept to the plan: three new files in `kernel/arch/x86_64/usb/` plus targeted extensions to the existing three.
+
+**Kernel-side changes**:
+
+| File | Change |
+|---|---|
+| `kernel/arch/x86_64/usb/xhci_regs.cyr` | +`XhciTrbType` (Normal/Setup/Data/Status/EnableSlot/AddressDevice/ConfigureEP/EvaluateCtx/TransferEvent/CmdCompletion/PortStatusChange), +`XhciCompletionCode` (Success/StallError/SHORT_PACKET/...), +`XhciPortReg` (PORTSC base/stride), +`XhciPortSpeed` (LS/FS/HS/SS/SS+), +`XhciXecpCap` (USBLEGSUP/SupportedProtocol), +PORTSC bit-field comments |
+| `kernel/arch/x86_64/usb/xhci_cmd.cyr` | **NEW** — generic `xhci_cmd_submit` (writes TRB to cmd ring + advances enqueue with Link-TRB cycle-bit handling at wrap), `xhci_cmd_wait` (polls event ring for matching Command Completion Event, advances ERDP with EHB bit set), `xhci_cmd_issue` combiner. `xhci_last_cmd_slot_id` / `xhci_last_cmd_ccode` globals expose results. |
+| `kernel/arch/x86_64/usb/xhci_ctx.cyr` | **NEW** — `xhci_slot_tables_init` (one-page allocation for 8 parallel slot-tracking arrays, 65 entries each, slot 0 reserved), `xhci_alloc_input_ctx` (zero a page, fill Input Control + Slot + EP0 contexts for CSZ=1 64-byte layout), `xhci_alloc_device_ctx`, `xhci_dcbaa_install`, `xhci_ep0_mps_for_speed` (LS/FS=8, HS=64, SS=512) |
+| `kernel/arch/x86_64/usb/xhci_port.cyr` | **NEW** — `xhci_xecp_classify_ports` (walks xECP chain at `mmio + 0x268`, decodes Supported Protocol caps, builds per-port `xhci_port_proto` array with 2/3 entries), `xhci_portsc_read`/`xhci_portsc_write` (W1C-safe RMW), `xhci_port_reset` (USB3 = poll PED, USB2 = PR write + PRC wait), `xhci_port_speed`, `xhci_print_speed` (LS/FS/HS/SS/SS+ inline kprint) |
+| `kernel/arch/x86_64/usb/xhci.cyr` | +Phase 3 block: `xhci_enable_slot` (Enable Slot cmd, returns slot ID), `xhci_address_device` (Address Device cmd with BSR=0), `xhci_ring_ep0_doorbell` (DB target=1), `xhci_wait_transfer_event` (drain event ring for Transfer Event matching slot, accepts SHORT_PACKET as soft-success), `xhci_ep0_enqueue` (write TRB to per-slot EP0 transfer ring), `xhci_control_in` (Setup/Data/Status 3-TRB control transfer), `xhci_get_device_descriptor` (control IN: bmReqType=0x80, bReq=6, wValue=0x0100), `xhci_enumerate_port` (top-level per-port driver — reset, slot, address, descriptor, HID predicate), `xhci_enumerate` (root-hub walk + kcp=0x32 stamp on any-addressed) |
+| `kernel/agnos.cyr` | +includes for `xhci_cmd.cyr` / `xhci_ctx.cyr` / `xhci_port.cyr` between `xhci_ring.cyr` and `xhci.cyr` |
+| `kernel/core/main.cyr` | +`xhci_enumerate()` call after `xhci_init()` |
+
+**agnosticos-side changes**:
+
+| File | Change |
+|---|---|
+| `scripts/src/read-boot-log.cyr` | kcp=0x15 verdict now mentions Phase 3 stamp (0x32) in the overwrite-mechanic narrative; kcp=0x31 verdict rewritten (no longer "Phase 2 complete + Phase 3 next" — that meaning is gone; 0x31 now means "Phase 2 ran but Phase 3 found no addressable device" with failure-line enumeration); kcp=0x32 verdict added (Phase 3 complete, Phase 4 next) |
+
+**Build receipts**:
+
+- `agnos/build/agnos`: **339,392 bytes** (was 324,736 at Phase 2 close; +14,656 for ~600 Cyrius LOC across the three new files + xhci.cyr extension). Multiboot2 ELF64 OK, entry `0x1000a8` unchanged. DCE-recoverable space stayed at 7,460 bytes — the new code is all reachable (no Phase 4/5 stubs introduced).
+- `agnosticos/scripts/build/read-boot-log`: 34,512 bytes (was 33,592; +920 for the 0x32 verdict + tweaks).
+
+**Cyrius and gnoboot untouched** per `feedback_cyrius_hands_off` and the per-action-consent rule. All edits inside `agnos/` (Claude-owned during iron bring-up per `feedback_bootloader_kernel_ownership`) plus the agnosticos-side post-mortem decoder.
+
+**Build pipeline note**: Phase 3 build initially produced a 344-byte stub because `cyrius build` was invoked directly without the `#define ARCH_X86_64` preprocessor define that `scripts/build.sh` prepends. Without that define, the `#ifdef ARCH_X86_64` block in `agnos.cyr` is excluded and the whole x86_64 kernel content (PMM, VMM, sched, ELF, PCI, xhci, virtio, syscall, main…) gets dropped. Always invoke via `scripts/build.sh` — never `cyrius build kernel/agnos.cyr` directly. Wasted ~3 minutes diagnosing before finding the prep step in the script's last 40 lines.
+
+### Attempt 32 prep — Phase 3 burn pending
 
 USB stick re-provision needed before flash (`sudo install-usb.sh --update /dev/sdb`). Pre-bound outcomes for the burn:
 
 | Framebuffer evidence | Interpretation |
 |---|---|
-| New line `xhci: controller running, HCH=0, ERDP=0x<phys>` between existing `halted, reset clean` and `VFS initialized` | ✅ Phase 2 success. Phase 3 (port enumeration) is next substantive work. Post-mortem kcp will still read 0x15 (kybernet overwrite); the framebuffer line is the only positive signal. |
-| `xhci: DMA sanity check failed (page unreadable)` | First PMM allocation returned a page not actually present in the active page table. Should not happen — `pmm_alloc()` returns pages 0..16 MB, all identity-mapped. If hit: investigate kernel CR3 vs PMM allocator's address basis. |
-| `xhci: DCBAA alloc failed` / `xhci: cmd ring alloc failed` / `xhci: event ring alloc failed` / `xhci: ERST alloc failed` | PMM exhausted. Should not happen — kernel has 3,584 free pages at this point and we need 4. If hit: PMM bug or earlier consumer leaked. |
-| `xhci: start timeout (HCH never cleared)` | Controller never transitioned out of halted state after R/S=1. Possible causes: bad ring base address, BIOS-locked controller (USB Legacy Support handoff not done — Phase 2.5 follow-up if seen), CRCR programmed with wrong cycle bit. |
-| Boot reaches kybernet but no new `xhci: controller running` line | xhci_init returned 0 from xhci_start — read whichever failure line printed above it. If no line printed: xhci_rings_init silently failed pre-allocation (sanity-check guard). |
-| Boot dies before kybernet (no `agnos>` prompt) | Phase 2 introduced a regression in unrelated kernel code — extremely unlikely (no shared globals touched, no IRQ paths modified). Bisect via kcp value. |
+| One or more `xhci: port N connected, SPEED, slot=X, VID=Y PID=Z, class=C` lines between `xhci: controller running` and `VFS initialized` | ✅ Phase 3 success. Each line is a fully-addressed USB device. Post-mortem kcp reads 0x15 (kybernet overwrite); the framebuffer port lines are the only positive signal. Phase 4 (Configure Endpoint + Set Protocol = boot) is next substantive work. |
+| Same as above with `[HID-kbd]` suffix on at least one line | Bonus signal: keyboard's Device Descriptor declares HID-boot at device-class level. Most keyboards declare HID at *interface* level (parsed during Phase 4); device-level HID is rare. Either way, Phase 3 is green if any port line printed. |
+| No `xhci: port N` lines, boot continues to `agnos>` | No PORTSC reported CCS=1 — physically check that a USB device is attached to the NUC during boot. The connect-status check is at the top of `xhci_enumerate_port` so no per-port reset / Enable Slot runs without it. |
+| `xhci: port N reset failed` | USB2 path: `PR` bit was written but `PRC` never set within ~250 ms. Likely BIOS USBLEGSUP semaphore is still held (Phase 2.5 follow-up — walk xECP for cap 1, claim OS-owned). USB3 path: auto-reset never produced PED — usually a cable / signal issue. |
+| `xhci: Enable Slot failed, ccode=N` | Command completion event returned non-Success. ccode=9 (NoSlotsAvailable) means MaxSlots=0 at runtime despite the probe reading 64 — investigate CONFIG.MaxSlotsEn write in `xhci_start`. ccode=5 (TRBError) means the cmd TRB itself was malformed — bisect via `xhci_cmd_submit`. |
+| `xhci: Address Device failed, ccode=N` | ccode=17 (ParameterError) usually means the Input Context's Slot or EP0 context is wrong: bad Root Hub Port Number (verify port_num is 1-based), bad Speed in Slot Context dword 0, or EP0 MPS doesn't match speed. ccode=19 (ContextStateError) means slot wasn't in Enabled state — `xhci_enable_slot`'s return didn't get the expected event ordering. |
+| `xhci: get descriptor (8) failed` or `xhci: get descriptor (18) failed` | Control transfer didn't complete with Success/SHORT_PACKET. Most likely: TR Dequeue Pointer in EP0 context doesn't match the actual xfer ring base (verify the `store64(ictx + 0x88, xfer \| 0x1)` in `xhci_enumerate_port` runs *after* `xhci_alloc_input_ctx`), or DIR bit on Data Stage TRB is wrong. |
+| `xhci: transfer event timeout` | EP0 transfer never produced a Transfer Event within ~250 ms. Either the doorbell didn't ring (verify `xhci_ring_ep0_doorbell` writes the correct offset) or IOC=1 isn't set on the Status Stage TRB. |
+| `xhci: cmd completion timeout` | Same shape as Phase 2 risk — event ring drain found nothing matching the submitted cmd TRB phys. Indicates either the doorbell didn't ring or CRCR programming is now wrong (regression risk from a wrap-handling bug in Phase 3 `xhci_cmd_submit`). |
+| Boot dies before kybernet (no `agnos>` prompt) | Phase 3 introduced a regression in unrelated kernel code — possible but unexpected (no shared globals touched outside `usb/`, all new files self-contained). Bisect via kcp value. |
 
-**Photo capture**: full boot screen including the new `xhci: controller running` line + shell prompt. Save as `iron-nuc-zen-photos/attempt-31-xhci-phase-2.jpg`.
+**Photo capture**: full boot screen including all `xhci: port N` lines + shell prompt. Save as `iron-nuc-zen-photos/attempt-32-xhci-phase-3.jpg`.
 
-**On post-Phase-2**: typing on the shell prompt **will still produce no echo**. Phase 3 (port reset + slot enable + Address Device + Get Device Descriptor) and Phase 4 (Configure Endpoint + Set Protocol = boot) precede the keystroke loop close, which is Phase 5's job.
+**On post-Phase-3**: typing on `agnos>` **will still produce no echo**. Phase 4 (walk Configuration Descriptor → find interrupt-IN endpoint → Configure Endpoint command → SET_PROTOCOL=boot class request → allocate transfer ring for IN reports) lands next; Phase 5 (HID usage → PS/2 set-1 scancode translation + `kb_buf` feed + timer-tick polled event-ring drain) is what closes the keystroke loop.
+
+**Pre-existing Phase 3 risks the burn will validate**: the three pre-bound risks documented above the Phase 3 staging block (USBLEGSUP semaphore lock, USB2/USB3 protocol misclassification, ERDP cycle-bit off-by-one). The xECP walk in `xhci_xecp_classify_ports` should put USB2 vs USB3 in the right buckets; if a port reset still hangs, the USBLEGSUP follow-up adds another ~30 LOC.
 
 ---
 
