@@ -83,6 +83,23 @@ Every phase MUST land a CMOS checkpoint + `kprintln` line so iron-burn behavior 
 - Does the controller reset cleanly? (Some controllers have known reset quirks — log timeout fallback path.)
 - Does `pmm_alloc()` return pages we can safely DMA from? (It should — kernel is identity-mapped. Verify in Phase 2.)
 
+### Phase 2.5 — USBLEGSUP BIOS hand-off (~55 LOC, landed)
+
+**Goal**: Claim controller ownership from BIOS before halt/reset/operational writes. xHCI 1.2 §4.22.1: until SW writes `HC OS Owned` (bit 24) and observes `HC BIOS Owned` (bit 16) clear, SMI handlers wired for legacy USB emulation can silently absorb operational-register writes — including port `PR` writes, which is exactly the symptom Attempt 32 hit (`xhci: port 3 reset failed`).
+
+**Trigger**: Attempt 32 (2026-05-15) — Phase 3 burn showed `port 3 reset failed` after `xhci: controller running`. Pre-bound failure mode from Phase 3 prep table. USB2 path `PR` write absorbed; `PRC` never set within 250 ms. Hypothesis: BIOS-owned USBLEGSUP semaphore still held.
+
+| Component | LOC | Notes |
+|---|---|---|
+| `usb/xhci_port.cyr`: `xhci_usblegsup_claim()` | ~55 | Walk xECP chain at `mmio + xecp*4` for cap_id 1 (`XHCI_XECP_USBLEGSUP`). Set bit 24 unconditionally; poll bit 16 to clear with ~1s timeout. Prints one of four lines (`already OS-owned` / `claimed from BIOS` / `n/a (no xECP)` / `n/a (cap not present)` / `BIOS held (timeout)`). Best-effort — timeout does NOT abort init; the downstream halt/reset/start chain may still succeed on platforms whose BIOS doesn't actively interfere. |
+| `usb/xhci.cyr`: call site | ~7 | At the top of `xhci_init`, right after the `xhci_present == 0` early-return and BEFORE the halt sequence. Spec-correct placement — must precede any operational-register writes. |
+
+**Iron-test gate**: One new line above `xhci: halted, reset clean`:
+- `xhci: USBLEGSUP claimed from BIOS` — **target case**. Port 3 reset should now succeed; Phase 3 enumerates.
+- `xhci: USBLEGSUP already OS-owned` — BIOS hand-off was implicit on this platform. Falsifies hypothesis if port reset still fails.
+- `xhci: USBLEGSUP n/a (...)` — no xECP or no USBLEGSUP cap. Falsifies hypothesis.
+- `xhci: USBLEGSUP BIOS held (timeout)` — BIOS actively refuses release. Confirms hypothesis but escalates to BIOS firmware bug / wrong sequence.
+
 ### Phase 3 — Port enumeration + device address (~300–500 LOC)
 
 **Goal**: Discover connected USB ports, reset them, assign device addresses, fetch device descriptors, identify HID keyboards.
