@@ -3859,6 +3859,113 @@ Single-line restore at `kernel/arch/x86_64/usb/xhci.cyr:253` — `xhci_usblegsup
 
 **On post-Attempt-35**: typing on `agnos>` **will still produce no echo** — Phase 4 (Configure Endpoint + Set Protocol=boot) closes the next gate, Phase 5 (HID usage → PS/2 scancode translation feeding `kb_buf`) closes the keystroke loop. Attempt 35's job is to verify Phase 2.5 + Phase 3 work together with the BIOS workaround in place; Phase 4 staging follows whatever the outcome row signals.
 
+### Attempt 35 — 2026-05-16 → ⚠️ PARTIAL — FB clean in VGA, USBLEGSUP no-op'd, port reset still failing; SMI-semaphore hypothesis falsified
+
+User-reported burn outcome (no photo captured this attempt — verbal report; visual was uncorrupted and read directly off the screen):
+
+- ✅ **No framebuffer corruption.** With BIOS quiet-boot OFF + USB Legacy Support On/Auto + XHCI Enabled, VGA-mode rendering held clean end-to-end. Confirms Attempt 34's bisection finding: **Phase 2.5 is NOT the FB regression source** — the GOP-rendering bug is quiet-boot-mode-specific and orthogonal to xhci init. Roadmap bullet "Framebuffer — quiet-boot GOP rendering regression" remains parked; not blocking 1.30.1.
+- ⚠️ **USBLEGSUP status: `already OS-owned`.** `xhci_usblegsup_claim()` took the early-return branch at [`xhci_port.cyr:118-120`](../../../../agnos/kernel/arch/x86_64/usb/xhci_port.cyr#L118) — bit 16 (HC BIOS Owned) was already clear by the time the kernel walked xECP. No SMI handler was holding the controller at xhci_init. The structural mechanism the function was built for did not apply on archaemenid firmware.
+- ❌ **Port reset still failing.** Phase 3 emitted `xhci: port N reset failed` between `controller running` and `VFS initialized`, same shape as Attempt 32.
+
+#### Outcome decoded against Attempt 35 prep table
+
+Maps cleanly to **row 2** of the prep matrix above: *"USBLEGSUP claimed (or already OS-owned) + port reset still failing → SMI-semaphore hypothesis falsified."* The two hypotheses we entered the burn with:
+
+| Hypothesis entering Attempt 35 | Verdict |
+|---|---|
+| BIOS holds USBLEGSUP semaphore on archaemenid; claiming OS-Owned releases SMI emulation; port reset then succeeds | **Falsified.** BIOS never held the bit by xhci_init time; claim was structurally a no-op. |
+| Phase 2.5 (USBLEGSUP claim + 10M-spin poll) introduces FB rendering corruption via SMI / interrupt-gating side effect | **Falsified.** FB clean with Phase 2.5 live in VGA mode. Quiet-boot ON was the actual GOP-rendering variable per Attempt 34. |
+
+#### Falsified-hypothesis triage table
+
+Next-bug candidates surviving the burn:
+
+| Candidate | Probability | Cheapest test |
+|---|---|---|
+| **xECP USB2/USB3 misclassification** — `xhci_xecp_classify_ports` bucketed port N wrong (e.g., port 3 is USB3 but classified USB2, hits PR-bit path that won't take). | Medium — code is fresh, the xECP walk treats `dw0>>24` as `rev_major` and `dw2 & 0xFF` as `port_off` (1-based); a single bit-field misread would silently misclassify. | Add `proto=X` to the reset-failed line — one-edit diagnostic, single burn reveals the bucket assignment. |
+| **Paired-port USB2/USB3 mapping** — a USB 2.0 keyboard physically plugged into a USB3 socket appears on its paired USB2 logical port number, not the USB3 one. If keyboard is on USB3 phys port and we only see CCS on the USB3 logical port, the USB3 auto-reset path can fail because the keyboard never trains USB3 link. | Medium-high — common xHCI quirk; archaemenid presents 6 ports per Phase 1 data, almost certainly 3 USB2 + 3 USB3 paired. | Port-swap sweep — try each of 6 physical ports, observe which logical port number gets CCS=1. |
+| **Controller-side port disabled** — port held in PED=0 by firmware quirk; reset never makes it. | Low — would be unusual for a working consumer-class keyboard. | Falls out of the port-swap sweep. |
+| **PR-bit write timing / W1C corruption** — `xhci_portsc_write` masks 0xFF01FFFF for value + W1C bits in 0x00FE0000. If we're clobbering a sticky bit the spec wants preserved during reset, PRC never sets. | Low — the W1C math is conservative (only clears bits explicitly passed in `w1c_clear`). | Audit `xhci_portsc_write` + `xhci_port_reset` against xHCI 1.2 §4.19.5 reset state machine. |
+
+#### Decision
+
+Land both (1) the cheap diagnostic and (2) the port-swap sweep in Attempt 36 — they collapse the top two candidates in a single burn. Phase 2.5 stays enabled (the no-op cost is one xECP walk + the early-return branch — ~1 µs); the diagnostic-value-vs-cost still favors keeping it (it'll fire `claimed from BIOS` on hardware that DOES hold the semaphore). Don't detour into the W1C audit yet — the cheap tests come first.
+
+#### Build-under-test (same as Attempt 35)
+
+| Artifact | State |
+|---|---|
+| `agnos/build/agnos` | `340,384 bytes`, multiboot2 ELF64 OK, entry `0x1000a8`. Phase 2.5 call live at `xhci.cyr:253`. |
+| `gnoboot` | `0.2.0` (unchanged since Attempt 30 — sovereign UEFI handoff stable). |
+| Cyrius pin | `5.11.55` (per `agnos/cyrius.cyml` + `agnosticos/scripts/cyrius.cyml`). |
+| BIOS state | Quiet Boot OFF; USB Legacy Support On/Auto; XHCI Enabled; Mass Storage Enabled. |
+
+No photo for this attempt. Verbal report captured the three load-bearing facts (FB clean, USBLEGSUP already-OS-owned, port reset failed) — sufficient to commit the bisection finding. Future bring-up attempts should keep photographing when feasible (the truth channel remains the framebuffer per `Cleanup-pass burn verification` from Attempt 29).
+
+### Attempt 36 prep — `proto=X` diagnostic + port-swap sweep
+
+Twin-purpose burn to collapse the top-two surviving candidates from the Attempt 35 triage in one iron iteration.
+
+**Kernel changes** (two layers — FB diag + CMOS post-mortem):
+
+*Layer 1 — FB diag at [`xhci.cyr:587-591`](../../../../agnos/kernel/arch/x86_64/usb/xhci.cyr#L587):*
+
+```cyrius
+# Was:
+#   kprint("xhci: port ", 11);
+#   kprint_num(port_num);
+#   kprintln(" reset failed", 13);
+# Now:
+kprint("xhci: port ", 11);
+kprint_num(port_num);
+kprint(" reset failed (proto=", 21);
+kprint_num(proto);
+kprintln(")", 1);
+```
+
+Reveals whether the failing port was classified as USB2 (proto=2), USB3 (proto=3), or unknown (proto=0 → falls through to USB2 reset path per `xhci_port_reset` default).
+
+*Layer 2 — Tier 1 + Tier 2 CMOS post-mortem stamps* (slots 0x62-0x6A, reusing the Repair-O retired range). Survives downstream kybernet overwrite of kcp; readable via `read-boot-log` decoders. Stamp sites:
+
+| Slot | Writer | Value | Decoder line in read-boot-log output |
+|---|---|---|---|
+| 0x62 | `xhci_usblegsup_claim` at each return | 0=n/a-no-xECP, 1=already-OS, 2=claimed-from-BIOS, 3=BIOS-timeout, 4=cap-absent | `CMOS[0x62] xhci USBLEGSUP outcome` + decoded text |
+| 0x63 | `xhci_enumerate` post-loop | Per-port CCS bitmap, bits 0-5 = ports 1-6 | `CCS (CMOS[0x63]): ports connected = …` |
+| 0x64 | `xhci_enumerate` post-loop | Per-port reset-success bitmap | `Reset (CMOS[0x64]): ports reset OK = …` |
+| 0x65 | `xhci_enumerate` post-loop | Proto nibbles ports 1+2 (hi\|lo) | `Proto per port: p1=… p2=…` |
+| 0x66 | `xhci_enumerate` post-loop | Proto nibbles ports 3+4 | (same line, p3/p4) |
+| 0x67 | `xhci_enumerate` post-loop | Proto nibbles ports 5+6 | (same line, p5/p6) |
+| 0x68 | `xhci_xecp_classify_ports` post-walk | Cap-walk count (clamped 0xFF) | `xECP (CMOS[0x68/0x69]): walked N caps; …` |
+| 0x69 | `xhci_xecp_classify_ports` post-walk | Cap-ID bitmap (bit0=USBLEGSUP, bit1=SupportedProtocol) | (same line, USBLEGSUP=yes/no SupProto=yes/no) |
+| 0x6A | `xhci_xecp_classify_ports` post-walk | First SupProto rev_major (hi nibble) \| port_count (lo nibble, 0xF if >15) | `1stSupProto (CMOS[0x6A]): rev_major=X port_count=Y` |
+
+Build deltas:
+- `agnos/build/agnos`: `340,384 → 341,864 B` (+1,480 across the diag + stamp surface; entry `0x1000a8` unchanged, multiboot2 ELF64 OK, 32 unreachable fns / 7,460 B DCE-recoverable).
+- `agnosticos/scripts/build/read-boot-log`: `34,512 → 40,456 B` (+5,944 for the decoder block + interpretation cheat-sheet; build OK; pre-existing `vec_get` runtime warning in the baseline is unchanged by this edit).
+
+**Iron protocol** (user-side, no further code change):
+
+1. Burn the rebuilt kernel.
+2. Boot with keyboard in **port 3** (Attempt 32/35 baseline). Photograph or note the exact `xhci: port N ...` lines printed.
+3. Power off, move keyboard to next physical USB port (cycle through all 6 physical sockets the box exposes — primary front-panel + rear-cluster).
+4. Repeat boot + record per-port output for each socket.
+5. Goal: identify (a) which physical sockets surface CCS=1 (any port-N line printed), (b) which logical port number(s) the keyboard manifests on, (c) which proto bucket those ports were assigned.
+
+**Pre-bound outcome matrix**
+
+| Across the sweep | Interpretation | Next step |
+|---|---|---|
+| All sockets → `reset failed (proto=2)` | USB2 PR-bit path is broken on this controller. Audit `xhci_port_reset` USB2 branch + W1C math vs xHCI 1.2 §4.19.5. | Falls into the §4.19.5 audit branch — deep-dive, not iron-burn. |
+| All sockets → `reset failed (proto=3)` | USB3 auto-reset never producing PED. Likely link-training / cable / port issue at signal level. Less likely a code bug. | Try a different keyboard (USB2 explicit) before code dive. |
+| Mix: some `proto=2`, some `proto=3`, all fail | xECP classification ran but every reset path is broken. Same as the all-3 case but with classification confirmed working. | Audit reset paths. |
+| Mix: at least one port produces `xhci: port N connected, …, [HID-kbd]` | ✅ Phase 3 actually works on some ports; the original failure is port-N-specific (cable / paired-port mapping / controller-side disable). | Unblocks Phase 4 staging. Document which logical-port number the keyboard surfaces on. |
+| Some sockets → no `xhci: port N ...` line at all (CCS never set) | Those sockets aren't electrically wired to the xHCI controller (e.g., front-panel routed through a hub the BIOS hasn't initialized post-EBS). | Document for future hub-driver work; not Phase 3's job. |
+| `(proto=0)` appears anywhere | xECP walk didn't classify that port — either no Supported Protocol cap covers it, or the walk hit the safety bound. | Audit `xhci_xecp_classify_ports` against the actual xECP chain on archaemenid (need to add an xECP-dump diag in a follow-up burn). |
+
+**Photo target**: `iron-nuc-zen-photos/attempt-36-port-sweep-port-N.jpg` — one per physical socket tested. Or a single composite photo if the sweep happens fast enough to capture each `xhci: port ...` line block on a single rolling display. Verbal report acceptable if the per-port pattern is clear and consistent.
+
+**On post-Attempt-36**: typing on `agnos>` **will still produce no echo** — Phase 4 work remains gated on Phase 3 producing a clean `[HID-kbd]` line for at least one port. Attempt 36's job is to localize the port-reset bug to (a) a specific path within the kernel (xECP classification / USB2 PR / USB3 auto), (b) a controller-side limitation, or (c) a port-specific physical issue.
+
 ---
 
 ## Carry-forward items (not blocking Attempt 28)

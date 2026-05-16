@@ -176,11 +176,21 @@ fn main(): i64 {
     var as2_upml4 = cmos_read(95);  # 0x5F
     var as2_updpt = cmos_read(96);  # 0x60
     var as2_upd  = cmos_read(97);  # 0x61
-    # NOTE: CMOS slots 0x62-0x6A held PML4-health (Repair K) and FB-BAR-snapshot
-    # (Repair N) stamps during the mem-iso ladder (Attempts 17-27). Repair (O)
-    # deleted the entire mem-iso block + cmos_stamp_fb_phys() — those writers
-    # no longer exist, so the slots return stale values from earlier burns.
-    # Reads + print blocks intentionally omitted post-Attempt-28.
+    # Slots 0x62-0x6A: xhci post-mortem (Attempt 36+). Repurposed from the
+    # retired Repair-K/N mem-iso block. Stamped by:
+    #   xhci_usblegsup_claim   → 0x62 (USBLEGSUP outcome enum)
+    #   xhci_xecp_classify_ports → 0x68 / 0x69 / 0x6A (cap-walk inventory)
+    #   xhci_enumerate         → 0x63 / 0x64 / 0x65-0x67 (CCS, reset, proto)
+    # Decoders below.
+    var xh_usbleg  = cmos_read(98);   # 0x62
+    var xh_ccs     = cmos_read(99);   # 0x63
+    var xh_reset   = cmos_read(100);  # 0x64
+    var xh_proto12 = cmos_read(101);  # 0x65
+    var xh_proto34 = cmos_read(102);  # 0x66
+    var xh_proto56 = cmos_read(103);  # 0x67
+    var xh_capcnt  = cmos_read(104);  # 0x68
+    var xh_capbits = cmos_read(105);  # 0x69
+    var xh_supp1   = cmos_read(106);  # 0x6A
 
     print_cmos_line("CMOS[0x53] gnoboot magic    = ", gmagic);
     print_cmos_line("CMOS[0x52] gnoboot checkpt  = ", gcp);
@@ -217,12 +227,122 @@ fn main(): i64 {
     println("    AS1 stamps clean + AS2 stamps clean + kcp=0x68 = PMM ruled out; triage PML4 stamps below.");
     syscall(1, 1, "\n", 1);
 
-    # PML4 + FB BAR diagnostic blocks (CMOS[0x62-0x6A]) retired with Repair (O)
-    # mem-iso deletion (2026-05-15). Writers no longer exist in the kernel;
-    # any stale values in those slots reflect a pre-Attempt-28 burn, not
-    # current state. Refer to iron-nuc-zen-log.md § Attempt 28 for
-    # context. If a future regression needs PML4 visibility back, re-add
-    # both the stamps (kernel side) and the readers + interpretation (here).
+    # --- xHCI post-mortem (Attempt 36+) ---------------------------------
+    # Slots 0x62-0x6A are stamped by xhci_init paths to make port-reset /
+    # enumeration / xECP-walk state readable independent of the framebuffer.
+    # The kcp slot 0x50 is overwritten by kybernet (last-write-wins), so
+    # these dedicated slots are the only survivable xhci signal post-shell.
+    print_cmos_line("CMOS[0x62] xhci USBLEGSUP outcome      = ", xh_usbleg);
+    print_cmos_line("CMOS[0x63] xhci port CCS bitmap        = ", xh_ccs);
+    print_cmos_line("CMOS[0x64] xhci port reset-OK bitmap   = ", xh_reset);
+    print_cmos_line("CMOS[0x65] xhci proto ports 1+2 (hi|lo)= ", xh_proto12);
+    print_cmos_line("CMOS[0x66] xhci proto ports 3+4 (hi|lo)= ", xh_proto34);
+    print_cmos_line("CMOS[0x67] xhci proto ports 5+6 (hi|lo)= ", xh_proto56);
+    print_cmos_line("CMOS[0x68] xhci xECP cap walk count    = ", xh_capcnt);
+    print_cmos_line("CMOS[0x69] xhci xECP cap-ID bitmap     = ", xh_capbits);
+    print_cmos_line("CMOS[0x6A] xhci 1st SupProto rev|count = ", xh_supp1);
+
+    # USBLEGSUP outcome decoder.
+    if (xh_usbleg == 0) { println("  USBLEGSUP: n/a (no xECP chain) — controller does not advertise extended caps."); }
+    if (xh_usbleg == 1) { println("  USBLEGSUP: already OS-owned — BIOS bit 16 was already clear; claim is structurally a no-op. (Attempt 35 baseline on archaemenid.)"); }
+    if (xh_usbleg == 2) { println("  USBLEGSUP: claimed from BIOS — SMI handoff completed; BIOS released bit 16 within ~1 s spin."); }
+    if (xh_usbleg == 3) { println("  USBLEGSUP: BIOS held (timeout) — bit 16 never cleared within ~1 s. Firmware-specific quirk; best-effort fallthrough."); }
+    if (xh_usbleg == 4) { println("  USBLEGSUP: cap not present — xECP chain walked but no cap_id=1 found. Standard handoff inapplicable."); }
+    if (xh_usbleg > 4) {
+        syscall(1, 1, "  USBLEGSUP: unknown enum value (", 33);
+        print_num(xh_usbleg);
+        println(") — stale CMOS or new enum value not decoded here.");
+    }
+
+    # Per-port CCS + reset bitmaps. archaemenid presents 6 ports.
+    syscall(1, 1, "  CCS    (CMOS[0x63]): ports connected =", 40);
+    var bit = 0;
+    var any_ccs = 0;
+    while (bit < 8) {
+        if ((xh_ccs & (1 << bit)) != 0) {
+            syscall(1, 1, " ", 1);
+            print_num(bit + 1);
+            any_ccs = 1;
+        }
+        bit = bit + 1;
+    }
+    if (any_ccs == 0) { syscall(1, 1, " <none>", 7); }
+    syscall(1, 1, "\n", 1);
+
+    syscall(1, 1, "  Reset  (CMOS[0x64]): ports reset OK   =", 41);
+    bit = 0;
+    var any_reset = 0;
+    while (bit < 8) {
+        if ((xh_reset & (1 << bit)) != 0) {
+            syscall(1, 1, " ", 1);
+            print_num(bit + 1);
+            any_reset = 1;
+        }
+        bit = bit + 1;
+    }
+    if (any_reset == 0) { syscall(1, 1, " <none>", 7); }
+    syscall(1, 1, "\n", 1);
+
+    # Per-port protocol classification. Each byte packs two ports (high
+    # nibble = lower-numbered port, low nibble = next port). Value 0=unknown,
+    # 2=USB 2.x, 3=USB 3.x.
+    syscall(1, 1, "  Proto  per port: ", 19);
+    var pn = 1;
+    while (pn <= 6) {
+        var pbyte = xh_proto12;
+        if (pn == 3) { pbyte = xh_proto34; }
+        if (pn == 4) { pbyte = xh_proto34; }
+        if (pn == 5) { pbyte = xh_proto56; }
+        if (pn == 6) { pbyte = xh_proto56; }
+        var pn_proto = (pbyte >> 4) & 0xF;
+        if (pn == 2) { pn_proto = pbyte & 0xF; }
+        if (pn == 4) { pn_proto = pbyte & 0xF; }
+        if (pn == 6) { pn_proto = pbyte & 0xF; }
+        syscall(1, 1, "p", 1);
+        print_num(pn);
+        syscall(1, 1, "=", 1);
+        if (pn_proto == 0) { syscall(1, 1, "?", 1); }
+        if (pn_proto == 2) { syscall(1, 1, "USB2", 4); }
+        if (pn_proto == 3) { syscall(1, 1, "USB3", 4); }
+        if (pn_proto != 0) {
+            if (pn_proto != 2) {
+                if (pn_proto != 3) {
+                    syscall(1, 1, "?", 1);
+                    print_num(pn_proto);
+                }
+            }
+        }
+        syscall(1, 1, " ", 1);
+        pn = pn + 1;
+    }
+    syscall(1, 1, "\n", 1);
+
+    # xECP cap walk inventory.
+    syscall(1, 1, "  xECP   (CMOS[0x68/0x69]): walked ", 35);
+    print_num(xh_capcnt);
+    syscall(1, 1, " caps; ", 7);
+    if ((xh_capbits & 0x1) != 0) { syscall(1, 1, "USBLEGSUP=yes ", 14); }
+    else { syscall(1, 1, "USBLEGSUP=no  ", 14); }
+    if ((xh_capbits & 0x2) != 0) { syscall(1, 1, "SupProto=yes", 12); }
+    else { syscall(1, 1, "SupProto=no ", 12); }
+    syscall(1, 1, "\n", 1);
+
+    var sup_rev   = (xh_supp1 >> 4) & 0xF;
+    var sup_count = xh_supp1 & 0xF;
+    syscall(1, 1, "  1stSupProto (CMOS[0x6A]): rev_major=", 38);
+    print_num(sup_rev);
+    syscall(1, 1, " port_count=", 12);
+    print_num(sup_count);
+    if (sup_count == 0xF) { syscall(1, 1, " (or higher; clamped to 4-bit nibble)", 37); }
+    syscall(1, 1, "\n", 1);
+
+    println("  Interpretation cheat-sheet:");
+    println("    USBLEGSUP=already-OS + reset-OK bitmap empty + kcp=0x15 = SMI hypothesis falsified; suspect xECP misclassification, paired-port USB2-on-USB3-phys mapping, or controller-side port disable.");
+    println("    CCS-bitmap empty entirely = no devices connected to any port (or controller-side port disable across the board).");
+    println("    proto=0 (unknown) on a CCS=1 port = xECP walk did not classify it; check xECP cap inventory above — SupProto=no would explain.");
+    println("    SupProto=yes + port_count != all-physical-ports = some ports outside the SupProto coverage; check if more SupProto caps exist (cap walk count > 2).");
+    syscall(1, 1, "\n", 1);
+    # End xHCI post-mortem block.
 
     # --- Verdict layer 1: did gnoboot launch at all? ---
     if (gmagic != 0xCD) {
@@ -287,7 +407,7 @@ fn main(): i64 {
     if (kcp == 22) { println("verdict (kernel): CP 0x16 — address spaces created OK from spawn_user_proc (proc_create_address_space returned). Died before proc_map_page (CP 0x17)."); return 0; }
     if (kcp == 23) { println("verdict (kernel): CP 0x17 — per-process page mapping installed OK. Died before user-proc dispatch (CP 0x14)."); return 0; }
     if (kcp == 20) { println("verdict (kernel): CP 0x14 — userland exec test reached (CMOS captures latest write; same slot also stamped at '25 hlts done' inside the idle loop). Most recent stamp wins — assume userland exec reached if kprint log on screen shows 'Userland exec complete'."); return 0; }
-    if (kcp == 21) { println("verdict (kernel): CP 0x15 — kybernet-launch reached. Shell loop is alive (verified Attempt 29 — 'agnos>' prompt rendered). kcp is the LAST stamp written to CMOS[0x50] (single-byte slot, last-write-wins) — if xhci_probe / xhci_init / xhci_start / xhci_enumerate ran, their 0x30 / 0x31 / 0x32 stamps were overwritten by kybernet's 0x15. The framebuffer is the only post-mortem channel for whether xhci ran; check for 'xhci: found at ...' / 'xhci: USBLEGSUP ...' / 'xhci: halted, reset clean' / 'xhci: controller running' / 'xhci: port N connected' lines. No input echoes is expected through Phase 4; HID translation lands in Phase 5."); return 0; }
+    if (kcp == 21) { println("verdict (kernel): CP 0x15 — kybernet-launch reached. Shell loop is alive (verified Attempt 29 — 'agnos>' prompt rendered). kcp is the LAST stamp written to CMOS[0x50] (single-byte slot, last-write-wins) — if xhci_probe / xhci_init / xhci_start / xhci_enumerate ran, their 0x30 / 0x31 / 0x32 stamps were overwritten by kybernet's 0x15. CMOS[0x62-0x6A] above carry the xhci post-mortem (USBLEGSUP outcome / CCS / reset / proto / xECP inventory) that survives the overwrite — use those slots, not kcp, to reconstruct xhci state at this checkpoint. Framebuffer remains the primary truth channel for line-text ('xhci: found at ...' / 'xhci: USBLEGSUP ...' / 'xhci: port N connected' / 'reset failed (proto=X)'). No input echoes is expected through Phase 4; HID translation lands in Phase 5."); return 0; }
     if (kcp == 48) { println("verdict (kernel): CP 0x30 — xhci probe + halt+reset complete, but xhci_start() did NOT reach the running state. Controller located, capability registers cached, USBLEGSUP claim ran (one of 'claimed from BIOS' / 'already OS-owned' / 'n/a' / 'BIOS held (timeout)' on fb above), controller halted with CNR clear. The start sequence (DCBAA / cmd ring / event ring + ERST allocation, op-reg programming, R/S=1, HCH=0 wait) is what stamps 0x31. kcp pegged at 0x30 means a step inside xhci_start failed — check fb for 'xhci: DCBAA alloc failed' / 'xhci: DMA sanity check failed' / 'xhci: cmd ring alloc failed' / 'xhci: event ring alloc failed' / 'xhci: ERST alloc failed' / 'xhci: start timeout (HCH never cleared)'. See agnosticos/docs/development/planning/usb-hid-keyboard-driver.md § Phase 2."); return 0; }
     if (kcp == 49) { println("verdict (kernel): CP 0x31 — xhci Phase 2 complete: controller is RUNNING but Phase 3 enumeration did NOT address any device. Phase 3 (port enumeration + Enable Slot + Address Device + Get Device Descriptor) ran but no connected port survived the full chain. Check fb for 'xhci: port N reset failed' / 'xhci: Enable Slot failed, ccode=N' / 'xhci: Address Device failed, ccode=N' / 'xhci: get descriptor (8|18) failed' / 'xhci: transfer event timeout'. If 'port N reset failed' AND the USBLEGSUP line above shows 'BIOS held (timeout)', that's the confirmed-but-escalated case — BIOS firmware bug or wrong sequence, NOT Phase 2.5 missing. If 'port N reset failed' WITH 'USBLEGSUP claimed from BIOS' / 'already OS-owned' above, the Phase 2.5 hypothesis is FALSIFIED — port reset is failing for a different reason (cable/signal, port-protocol misclassification, or controller-internal). If no port lines appear at all, no PORTSC reported CCS=1 — confirm a USB device is physically attached. See agnosticos/docs/development/planning/usb-hid-keyboard-driver.md § Phase 3."); return 0; }
     if (kcp == 50) { println("verdict (kernel): CP 0x32 — xhci Phase 3 complete: at least one connected port survived reset, Enable Slot, Address Device, and Get Device Descriptor. The framebuffer carries the per-port summary line ('xhci: port N connected, SPEED, slot=X, VID=Y PID=Z, class=C'); '[HID-kbd]' suffix marks any device whose Device Descriptor declared HID-boot-keyboard at device-class level (rare — most kbds expose HID at interface level, surfaced in Phase 4 once Configure Endpoint + Set Protocol = boot land). Typing on shell prompt still produces no echo through Phase 4; HID translation lands in Phase 5. See agnosticos/docs/development/planning/usb-hid-keyboard-driver.md § Phase 4."); return 0; }
