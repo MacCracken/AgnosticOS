@@ -3805,6 +3805,60 @@ Per user direction: bisect first, theorize later. Phase 2.5 call site commented 
 
 **Photo target**: save as `iron-nuc-zen-photos/attempt-34-phase-2-5-disabled.jpg`. Move `Corrupted_Visual.jpg` to `iron-nuc-zen-photos/attempt-33-phase-2-5-corrupted.jpg` after Attempt 34 lands (renaming the artifact while Attempt 34's interpretation is still pending would lose the comparison handle).
 
+### Attempt 34 — 2026-05-16 → ⚠️ INCONCLUSIVE — quiet-boot identified as actual regression variable, Phase 2.5 NOT the sole cause
+
+Burn with Phase 2.5 call site disabled (kernel matching the Attempt 32 on-disk shape per the prep block above). **Visual outcome split by BIOS quiet-boot state:**
+
+- **Quiet boot ON**: framebuffer still garbled — same glyph-level corruption pattern as Attempt 33 (regular grid intact, every glyph row scrambled). **Disabling Phase 2.5 did NOT restore clean rendering.**
+- **Quiet boot OFF**: framebuffer renders cleanly at a legacy VGA-style lower resolution (NOT the 1080p+ GOP mode that quiet-boot ON produces).
+
+**Bisection reframed**: Phase 2.5 is **NOT** the sole regression source. The actual variable is the **BIOS quiet-boot mode**. Quiet boot ON → kernel's `fb_console` against the GOP linear framebuffer renders garbled glyphs. Quiet boot OFF → kernel hits a legacy VGA-style FB mode and renders OK at lower res. The Attempt 34 prep matrix (above) was built on the assumption that "Phase 2.5 disabled + same BIOS state ⇒ Attempt 32 visual repro" — that premise is wrong; BIOS state evidently drifted between Attempt 32 (clean GOP) and Attempts 33/34 (garbled GOP), or the kernel's GOP rendering has a previously-masked sensitivity that surfaces only intermittently.
+
+**Open question (not blocking 1.30.1)**: what changed between Attempt 32 (clean GOP rendering, quiet-boot ON) and Attempts 33/34 (garbled GOP rendering, quiet-boot ON, same hardware)? Candidates: BIOS settings drift across cold boots (per `project_archaemenid_cmos_map` — firmware writes CMOS bytes 0x42/0x43/0x44 every cold POST, suggesting twitchy state); gnoboot's GOP capture path producing different `fb_phys` / pitch / pixel-format across boots; MTRR/PAT cache attributes on the FB region differing post-SMI-exit. Tracked in [`roadmap.md` parallel-cycle work](roadmap.md#parallel-cycle-work-no-version-pin--opportunistic) as the "Framebuffer — quiet-boot GOP rendering regression" bullet.
+
+**Decision**: do NOT detour into the GOP-rendering investigation (real fix, off the critical path to keyboard input). Accept the BIOS workaround (quiet-boot OFF) and continue Phase 2.5 testing under VGA-mode rendering. Phase 2.5 re-enabled same session.
+
+No Attempt 34 photo captured — the corrupted-quiet-boot frame is identical-pattern to `Corrupted_Visual.jpg` (already on disk from Attempt 33); the readable quiet-boot-OFF VGA-mode frame is the new useful artifact and is the photo target for Attempt 35.
+
+### Phase 2.5 re-enable (post-Attempt-34, pre-Attempt-35)
+
+Single-line restore at `kernel/arch/x86_64/usb/xhci.cyr:253` — `xhci_usblegsup_claim()` call uncommented. Stale bisection comment block (lines 253-259, justifying the disable) replaced with a one-line xHCI 1.2 §4.22.1 reference (controller ownership must be claimed from BIOS before any operational-register writes).
+
+**Build receipts**:
+
+- `agnos/build/agnos`: **340,384 bytes** (was 340,280 B with Phase 2.5 disabled; +104 for the re-enabled call site — the function body was already in the binary as dead code, now reachable). Multiboot2 ELF64 OK, entry `0x1000a8` unchanged. DCE-recoverable held at 7,460 bytes.
+- No agnosticos-side changes needed — `read-boot-log.cyr` verdict text for kcp=0x32 / 0x31 / 0x15 was already refreshed during Phase 3 staging.
+- New roadmap bullet for GOP rendering regression landed at `docs/development/roadmap.md` parallel-cycle-work section (Quiet Boot OFF + USB Legacy On/Auto + XHCI Enabled + Mass Storage Enabled documented as the iron-burn workaround).
+
+### Attempt 35 prep — Phase 2.5 re-enabled, BIOS-workaround applied
+
+**BIOS configuration on archaemenid** (per user direction):
+
+| Knob | Value | Rationale |
+|---|---|---|
+| Quiet Boot | **OFF** | Workaround for unresolved GOP-rendering regression — kernel `fb_console` only renders cleanly in legacy VGA-style mode currently |
+| USB Legacy Support | **On/Auto** | **Necessary for Phase 2.5 to do real work** — if BIOS USB Legacy is OFF, no SMI handler owns the xHCI controller, so `xhci_usblegsup_claim()` hits "n/a" or "already OS-owned" and the test is a no-op |
+| XHCI | **Enabled** | xHCI controller must be exposed on PCIe (otherwise `xhci_probe()` short-circuits at the `xhci_present == 0` early return and the whole driver stack skips) |
+| Mass Storage | **Enabled** | Required to boot from USB stick (the install medium) |
+
+**On-disk state**: Phase 1 + 2 + 2.5 + 3 active (all four phases live). Kernel 340,384 B.
+
+**Pre-bound outcomes** (primary signal channel is the framebuffer xhci block at VGA-mode resolution — CMOS kcp is single-byte last-write-wins and kybernet overwrites xhci stamps by the time post-mortem runs):
+
+| Framebuffer evidence | Interpretation |
+|---|---|
+| `xhci: USBLEGSUP: claimed from BIOS` (or `already OS-owned`) AND one or more `xhci: port N connected, slot=X, VID=Y PID=Z, …` lines between `xhci: controller running` and `VFS initialized`, NO `port N reset failed` line | ✅ **Phase 2.5 worked end-to-end.** USBLEGSUP claim freed the BIOS-held SMI handler, port 3 (or whichever port was stuck in Attempt 32) reset cleanly, Phase 3 enumeration completed. Unblocks Phase 4 staging (Configure Endpoint + Set Protocol=boot). |
+| `xhci: USBLEGSUP: claimed from BIOS` followed by `xhci: port N reset failed` | ⚠️ Phase 2.5 claim ran but didn't help — port reset failure is NOT BIOS-SMI-related. Falsifies the SMI-semaphore hypothesis; next-step candidates: xECP USB2/USB3 misclassification in `xhci_xecp_classify_ports`, controller-side issue, signal/cabling, port disabled at controller level. |
+| `xhci: USBLEGSUP: BIOS held (timeout)` | BIOS refused to release ownership within ~1 s of polling. xHCI cap walked correctly but SMI handler isn't releasing. Likely firmware-specific quirk on archaemenid; falls through to the function's "best-effort, continue init" path. Port reset behavior in this case TBD by the same burn. |
+| `xhci: USBLEGSUP: n/a (cap not present)` or `n/a (no xECP)` | xHCI 1.2 §4.22.1 cap absent on this controller. Means BIOS doesn't use the standard handoff protocol on archaemenid — kernel-side claim is structurally inapplicable; look elsewhere for port-reset blockers. |
+| Framebuffer corrupts (glyph-level scramble in VGA mode too) | Phase 2.5 introduces FB corruption independent of the GOP/VGA distinction. Narrow within `xhci_usblegsup_claim` (the 10M-iteration spin loop is the most-likely candidate — it gates other interrupt/SMI activity for a while). |
+| Framebuffer entirely blank / VGA mode fails to render | Different issue — kernel can't paint VGA-mode FB at all. Falls back to CMOS post-mortem (kcp=0x15 typical, no useful Phase 2.5 / 3 signal). Recovery would require a dedicated CMOS slot for Phase 2.5 outcome — defer until needed. |
+| Boot regresses below `agnos>` prompt | Phase 2.5 introduced a regression on the boot path itself — improbable (Attempt 33 burn confirmed boot completes end-to-end even with FB corrupted) but possible if the BIOS-workaround configuration changed something else downstream. Bisect by re-disabling Phase 2.5 + keeping new BIOS config. |
+
+**Photo target**: `iron-nuc-zen-photos/attempt-35-phase-2-5-vga-mode.jpg` — full boot screen at VGA-mode resolution capturing the USBLEGSUP line + xhci port enumeration block + shell prompt. Also photograph the readable-quiet-boot-OFF baseline as `attempt-34-vga-mode-baseline.jpg` if a separate frame is captured before re-enabling Phase 2.5.
+
+**On post-Attempt-35**: typing on `agnos>` **will still produce no echo** — Phase 4 (Configure Endpoint + Set Protocol=boot) closes the next gate, Phase 5 (HID usage → PS/2 scancode translation feeding `kb_buf`) closes the keystroke loop. Attempt 35's job is to verify Phase 2.5 + Phase 3 work together with the BIOS workaround in place; Phase 4 staging follows whatever the outcome row signals.
+
 ---
 
 ## Carry-forward items (not blocking Attempt 28)
