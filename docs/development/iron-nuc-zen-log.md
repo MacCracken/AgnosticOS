@@ -3966,6 +3966,100 @@ Build deltas:
 
 **On post-Attempt-36**: typing on `agnos>` **will still produce no echo** — Phase 4 work remains gated on Phase 3 producing a clean `[HID-kbd]` line for at least one port. Attempt 36's job is to localize the port-reset bug to (a) a specific path within the kernel (xECP classification / USB2 PR / USB3 auto), (b) a controller-side limitation, or (c) a port-specific physical issue.
 
+### Attempt 36 — 2026-05-16 → CCS=0x00 across **every** port; root cause = PORTSC.PP never asserted
+
+**CMOS post-mortem dump** (from `sudo ./scripts/read-boot-log.sh`):
+
+| Slot | Value | Decode |
+|---|---|---|
+| 0x50 (kcp) | `0x15` | kybernet-launch reached, shell loop alive (overwrote any xhci kcp stamp) |
+| 0x62 (USBLEGSUP) | `0x01` | already-OS — BIOS bit 16 was already clear; claim is a no-op (matches Attempt 35) |
+| **0x63 (CCS bitmap)** | **`0x00`** | **no ports report connect — across all 6 sockets** |
+| **0x64 (reset-OK bitmap)** | **`0x00`** | no ports reached PED (corollary of CCS=0) |
+| 0x65 (proto p1+p2) | `0x22` | p1=USB2, p2=USB2 |
+| 0x66 (proto p3+p4) | `0x22` | p3=USB2, p4=USB2 |
+| 0x67 (proto p5+p6) | `0x33` | p5=USB3, p6=USB3 |
+| 0x68 (xECP cap count) | `0x05` | walked 5 caps |
+| 0x69 (cap-ID bitmap) | `0x03` | USBLEGSUP=yes SupProto=yes |
+| 0x6A (1st SupProto) | `0x24` | rev_major=2, port_count=4 (USB2 cap covers p1-p4) |
+
+**User-side observation**: cycled keyboard through every physical USB socket; all sockets failed to produce a `xhci: port N …` line. **One socket** "doesn't appear to provide proper connection for USB power" (likely a BIOS-managed always-on charging port — physically identified, awaiting socket-position mapping but not load-bearing on root cause).
+
+**Eliminated by the post-mortem**:
+- ✗ Phase 2.5 / USBLEGSUP — slot 0x62 says BIOS bit 16 was already clear before our claim. Confirmed n/a on archaemenid (matches Attempt 35).
+- ✗ Phase 2 controller-start — xECP walked 5 caps + got coherent SupProto data + ports are classified (slots 0x68-0x6A). Controller is alive, MMIO works, ports are visible.
+- ✗ xECP misclassification — all 6 ports got non-zero proto bytes (USB2 ×4 + USB3 ×2 matches the published Beelink SER layout).
+- ✗ Paired-port USB2-on-USB3-phys mapping — irrelevant when CCS is 0 across **every** port. (That hypothesis explained partial CCS, not zero CCS.)
+- ✗ "Devices not attached" — user physically attached devices to every socket sequentially. Zero across the board with confirmed attach.
+
+**Surviving root cause**: `PORTSC.PP` (Port Power, bit 9) **never asserted by the kernel**. Code search across `kernel/arch/x86_64/usb/`:
+- `xhci_regs.cyr:196` documents the `PP` bit.
+- No write to bit 9 of any PORTSC anywhere. Only `0x200` hit in the directory is `xhci.cyr:432` for `CRCR.BSR` (different register).
+- `xhci_init` performs `HCRST` (USBCMD bit 1). xHCI 1.2 §4.19.1.1: when `HCCPARAMS1.PPC=1` (the AMD FCH default), `HCRST` resets `PORTSC.PP` to 0 on every port. The controller gates the port receiver until SW asserts PP=1.
+- `xhci_enumerate` does `if ((psc & 0x1) == 0) { return 0; }` on every port — checking CCS while the receiver is gated off.
+- `xhci_port_reset`'s W1C mask `0xFF01FFFF` *preserves* PP if already set (correct), but does not *set* it.
+
+The CCS=0x00 across all 6 ports is exactly what PP=0 across all 6 ports produces. No "weird port" hypothesis or paired-mapping audit explains it as cleanly.
+
+**Photo**: none — verbal report captured the three load-bearing facts (every port tried, every port failed, weird-power-only socket identified).
+
+### Repair (Q) for Attempt 37 — PORTSC.PP=1 assertion + CMOS[0x6B] post-mortem
+
+**Landed 2026-05-16, same session as Attempt 36.**
+
+*Kernel changes* (`agnos`):
+- `kernel/arch/x86_64/usb/xhci_port.cyr`: new `xhci_ports_power_on()` (returns 1 on success). Walks `1..xhci_max_ports`, RMWs PORTSC with `(psc & 0xFF01FFFF) | 0x200` (preserves W1C status-change bits per the existing `xhci_portsc_write` semantics — PP is inside the preserved mask). After all writes, a coarse `wait < 1000000` debounce loop (~100ms scale on Zen, well past the USB 2.0 §11.5.1.5 ~20ms power-on settle). Reads PP back per port; stamps verified bitmap to CMOS[0x6B]. Framebuffer line `xhci: PP=1 asserted, bitmap=<N>` for live-state parity with the established xhci print idiom.
+- `kernel/arch/x86_64/usb/xhci.cyr`: call site in `xhci_enumerate` between `xhci_xecp_classify_ports()` and the per-port enumerate loop.
+- `CHANGELOG.md`: `[Unreleased]` entry under `### Fixed`.
+
+*Decoder changes* (`agnosticos`):
+- `scripts/src/read-boot-log.cyr`: CMOS slot range comment `0x62..0x6A` → `0x62..0x6B`; new `xh_pp = cmos_read(107)` + `print_cmos_line("CMOS[0x6B] xhci PORTSC.PP=1 bitmap     = ", xh_pp)`; per-port `PP=1` bitmap decoder loop adjacent to the existing CCS / reset decoders; interpretation cheat-sheet gains 4 new lines tying PP state to CCS observations; kcp=21 verdict range updated `0x62-0x6A` → `0x62-0x6B`.
+- `scripts/read-boot-log.sh`: also fixed in-session — sudo PATH was stripping `~/.cyrius/bin` so the auto-rebuild leg failed. Now resolves cyrius via `$SUDO_USER`'s home (fallback to PATH, then root's home) and drops privileges to the invoking user for the rebuild so artifacts stay user-owned.
+
+*Build deltas*:
+- `agnos/build/agnos`: `341,864 → 342,408 B` (+544 — `xhci_ports_power_on` + call site + the framebuffer line). Entry `0x1000a8` unchanged, multiboot2 ELF64 OK.
+- `agnosticos/scripts/build/read-boot-log`: regenerated; pre-existing `vec_get` runtime warning unchanged by this edit (cyrius-side issue, surfaced not fixed).
+
+*Safety on PPC=0 silicon*: `xhci_ports_power_on` is a no-op on controllers with `HCCPARAMS1.PPC=0` because PP reads as 1 unconditionally there and the write is a controller-side no-op. The CMOS[0x6B] bitmap will read full on PPC=0 silicon as well — diagnostically indistinguishable from "PPC=1 and writes stuck", but both are the good outcome.
+
+### Attempt 37 prep — Repair (Q) PP-fix burn
+
+**Iron protocol**:
+1. Burn rebuilt kernel (342,408 B) to USB.
+2. Attach **one** keyboard to **any** USB-A port that previously responded to power (i.e., not the always-on charging port).
+3. Boot.
+4. Record framebuffer + CMOS dump.
+
+**Two truth channels — order of inspection**:
+
+1. **Framebuffer (primary, live)**: expect a new line between `xhci: controller running, HCH=0, ERDP=<N>` and the per-port `xhci: port N reset failed (proto=X)` lines:
+   ```
+   xhci: PP=1 asserted, bitmap=<N>
+   ```
+   `<N>` = `63` (decimal for `0x3F`) if all 6 ports report PP=1 — the expected outcome on archaemenid (Zen FCH, HCCPARAMS1.PPC=1).
+2. **CMOS post-mortem (survivable, run after boot to `agnos>`)**: `sudo ./scripts/read-boot-log.sh`. Inspect new line:
+   ```
+   CMOS[0x6B] xhci PORTSC.PP=1 bitmap     = 0x3f
+     PP=1  (CMOS[0x6B]): ports powered    = 1 2 3 4 5 6
+   ```
+   Plus the existing CCS / reset / proto block. Should now show at least one port in CCS=1 (the port with the attached device).
+
+**Pre-bound outcome matrix**
+
+| FB line (`bitmap=`) | CMOS[0x6B] | CMOS[0x63] (CCS) | Interpretation | Next step |
+|---|---|---|---|---|
+| `bitmap=63` | `0x3F` | ≥ 1 bit set | ✅ **Repair (Q) confirmed.** PP gate was the root cause; controller now sees attached devices. Per-port `xhci: port N connected, SPEED, slot=X, VID=Y PID=Z, class=C` lines should appear for any port with a device; `[HID-kbd]` if device-class declares boot keyboard. | Move to Phase 4 staging (Configure Endpoint + Set Protocol=boot). Phase 5 (HID translation + `kb_buf` feed) is the final unblock. |
+| `bitmap=63` | `0x3F` | `0x00` | PP asserted but no CCS. Either: (a) device physically not connected to a working port — re-verify attach + try another port; (b) port-power-on debounce too short — bump the `wait < 1000000` count and re-burn; (c) controller-side port disable upstream (rarer; would need FCH chipset register inspection). | Try (a) first (free), then (b) (one-line bump). |
+| `bitmap < 63` (partial) | matches | (correlate to bit pattern) | Asymmetric PP state. Some ports refused PP=1 — likely controller-side disable on those specific ports OR they're not within the SupProto coverage (1st SupProto cap covers 4 ports — bits not in [0..3] for that cap might be the USB3 pair which has its own cap not yet stamped). Cross-reference with the "weird power-only socket" the user identified. | Add a 2nd SupProto cap stamp + per-port `PORTSC` raw dump diag in a follow-up burn. |
+| `bitmap=0` | `0x00` | `0x00` | PP writes completely refused. Very rare. Either HCCPARAMS1 has a different flag controlling SW PP (PPC=1 but PPC2 or PIND clearing); or the controller is in a state where PORTSC writes silently NAK (unlikely with R/S=1 + HCH=0). | Read HCCPARAMS1 + dump raw PORTSC bytes in a Phase 3.6 instrumentation burn. |
+| FB line absent entirely | (any) | (any) | Repair (Q) call site didn't fire — `xhci_enumerate` not reached OR `xhci_running == 0` guard tripped. Cross-check kcp; if kcp < 0x31 the controller never started running and PP-on was correctly skipped. | If kcp=0x31, the call-site wiring is broken — re-audit `xhci.cyr:716` block. |
+
+**Photo target**: `iron-nuc-zen-photos/attempt-37-pp-fix.jpg` — single shot of the `xhci: PP=1 asserted, bitmap=…` line plus whatever `xhci: port N …` lines follow it. Verbal report acceptable if the bitmap value is read out clearly.
+
+**On post-Attempt-37**: typing on `agnos>` **still produces no echo** — even if Phase 3 enumerates clean, HID input requires Phase 4 (Configure Endpoint + Set Protocol=boot) + Phase 5 (HID-boot translation + `kb_buf` producer). Attempt 37's gate is "at least one `xhci: port N connected, …` line surfaces". Echo-on-shell is two phases out.
+
+**The "weird power-only socket"**: not load-bearing on this burn. After PP=1 works, that socket may show up as a separate USB controller (Beelink SER series sometimes wire one front port through a USB2-only EHCI/OHCI hub for legacy compatibility) — that surfaces as a Phase 6 (multi-controller) consideration. Document the physical socket position after this burn so future hub-driver work knows where to look.
+
 ---
 
 ## Carry-forward items (not blocking Attempt 28)
