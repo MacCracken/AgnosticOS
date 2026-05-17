@@ -4920,7 +4920,77 @@ For BAR ≥1GB (archaemenid's xHCI lands at `0xFC800000` in PDPT[3]'s 1GB huge p
 
 **Floor**: post-V binary (343,752 B from Attempt 43) is the revert target for any X-introduced regression. X is the first vmm-touching change in this arc; revert risk is non-trivial but pre-bounded by a clean binary at the floor.
 
-_Pre-burn block; the actual Attempt 44 entry will replace this footer once the burn completes._
+_Pre-burn block preserved as-is; the Attempt 44 actual outcome below hit prep-matrix Row 2 exactly (silent-absorb survived UC remap, boot-to-shell intact)._
+
+### Attempt 44 — 2026-05-16 → ROW 2 HIT (silent-absorb survives UC remap; X path 1 vs path 2 ambiguous; X' staged)
+
+**Result**: Repair (X) — `vmm_remap_uc_2mb(mmio)` at xhci_probe step 5b — boots cleanly through to `agnos>` shell prompt (no regression from the 1GB-page shatter; PDPT[3] repoint + CR3 reload did not corrupt surrounding RAM), but the PORTSC silent-absorb pattern is identical to Attempts 41/42/43 line-for-line. Two paths from this outcome are indistinguishable with the V/X stamps alone:
+
+- **Path 1 — remap is a no-op**: `vmm_remap_uc_2mb` ran but its `store64` of the rewritten PDE didn't reach the controlling page-table entry (CR3-active table not at expected address, or wrong PDPT[gb_idx] entry rewritten, or some other path-table bug specific to the shatter case).
+- **Path 2 — F5 falsified**: the remap landed correctly (PCD|PWT set, PA3=UC active) but cache attribute was never the actual gate; something else silicon-side absorbs PORTSC writes (controller-internal state-machine, paired-port routing, or an undiscovered xECP gate).
+
+**CMOS post-mortem (Attempt 44)**:
+
+| Slot | Field | Value | Δ vs Attempt 43 | Interpretation |
+|---|---|---|---|---|
+| `[0x50]` | kcp (kybernet) | `0x15` | unchanged | Boot-to-shell preserved; no downstream regression from the 1 GB-page shatter. Floor intact. |
+| `[0x6B]` | PP bitmap | `0x3F` | unchanged | All 6 ports stuck PP=1. |
+| `[0x63]` | CCS bitmap | `0x04` | unchanged | Port 3 connection detected. |
+| `[0x64]` | Reset-OK bitmap | `0x00` | unchanged | PR write still absorbed. |
+| `[0x6C]` | PSC change byte | `0x00` | unchanged | Controller never set PRC/PED/CSC. |
+| `[0x6D]` | PLS pre-PR | `0x07` | unchanged | Polling — precondition holds. |
+| `[0x70]` | PR retry count | `0x03` | unchanged | T loop exhausts identically — UC remap did NOT shift the determinism. |
+| `[0x71]` | MTRR_DEF_TYPE low byte | `0x00` | unchanged | MTRRs still globally disabled; PAT alone governs. |
+| `[0x72]` | PAT MSR byte 0 (PA0) | `0x06` | unchanged | WB. (X targets PA3, not PA0 — this slot is expected unchanged.) |
+
+**Framebuffer (`kernel_versionupdate.jpg`)**: identical to Attempts 41/42/43 line-for-line through `xhci: port 3 reset failed (proto=2)`; downstream boot path runs to `agnos>` shell prompt as expected. Banner reads `AGNOS kernel v1.30.2`. X is read-through on the user-visible failure surface — no user-visible behavior change expected from a cache-attribute repair on the boot console.
+
+**Hypotheses surviving Attempt 44:**
+- F1, F2, F3, F4 — falsified across prior attempts.
+- **F5 (MMIO cache-attribute)** — **status indeterminate**: confirmed by stamps in Attempt 43 (PA0=WB), but Attempt 44's UC remap failed to clear the symptom. Either X is a no-op (Path 1) or F5 is wrong (Path 2). Repair (X') resolves the ambiguity in one burn.
+
+**Decision applied**: Stage **Repair (X') — post-X PDE re-stamp** for Attempt 45. Pure read-only diagnostic; controller behavior unchanged. ~14 LOC walking the page table back to the BAR-controlling 2 MB PDE after `vmm_remap_uc_2mb` returns, stamping the low byte to virgin slot `CMOS[0x73]`. Bit semantics: PCD (bit 4) + PWT (bit 3) + PS (bit 7) — `0x9B` (or `0xBB` with access-bit set by the walk) = PA3=UC mapping landed; `0x83` = remap is a no-op.
+
+### Repair (X') — landed 2026-05-16, post-Attempt-44, pre-Attempt-45
+
+**Files**:
+- `agnos/kernel/arch/x86_64/usb/xhci.cyr` — added step 7c after the V stamps. Two-branch address split mirrors `vmm_remap_uc_2mb`: `mmio < 1 GB` reads back from `PD@0x3000`; `mmio >= 1 GB` reads `PDPT[gb_idx]` first, masks the low 12 flag bits to get the post-shatter PD base, then reads the PDE for that BAR's 2 MB chunk. On archaemenid the BAR is `0xFC800000` so the shatter-path branch is the one under test; the sub-1GB branch is included for forward compatibility (no behavioral difference now). Stamp goes to virgin slot `CMOS[0x73]` via the existing `xhci_cmos_stamp` helper.
+- `agnosticos/scripts/src/read-boot-log.cyr` — added `cmos_read(115)`, print line for `CMOS[0x73]`, and 5 interpretation rows (0x9B/0xBB = UC landed → escalate to V''; 0x83 = remap is a no-op → debug the helper; 0x00 = stamp didn't run; other = flag for triage). Updated the kcp=0x15 verdict line to extend the post-mortem range from `[0x62-0x72]` → `[0x62-0x73]`.
+- `agnos/CHANGELOG.md` — `[1.30.3] — 2026-05-16` section documenting X'.
+- `agnos/VERSION` — `1.30.2` → `1.30.3` (via `scripts/version-bump.sh 1.30.3`).
+
+**Mechanism**: After `vmm_remap_uc_2mb(mmio)` returns, the controlling PDE for the BAR's 2 MB chunk should hold `chunk | 0x9B` (P=1, R/W=1, PWT=1, PCD=1, PS=1 — selects PAT entry 3 = UC under firmware-default PAT MSR). Reading that PDE back from RAM through the boot-time identity map proves whether the `store64` in `vmm_remap_uc_2mb` actually landed at the address the MMU is using on this CR3. The page-table walk itself may set the accessed bit (bit 5), so `0xBB` is equally valid; the load-bearing proof is `(byte & 0x18) == 0x18` (both PWT and PCD set).
+
+**Build delta**: 344,360 → 344,792 B (+432). Pre-X' floor remains 344,360 B (Attempt 44 binary, known-good boot-to-shell). X' is diagnostic-only — zero controller-side risk, zero page-table-modifying code. Regression risk concentrated in the `load64` reads themselves (already standard kernel idioms used throughout `vmm.cyr`). Read-boot-log decoder binary rebuilt clean: `52,976 B`.
+
+**Pre-bound outcome for Attempt 45:**
+
+| Iron-test gate | `[0x73]` PDE low byte | `[0x63]` CCS | `[0x64]` Reset-OK | `[0x70]` PR retry | Interpretation | Next step |
+|---|---|---|---|---|---|---|
+| `xhci: port N reset failed (proto=2)` (symptom unchanged) | `0x9B` or `0xBB` | `0x04` | `0x00` | `0x03` | **Path 2 — F5 falsified.** UC remap landed in the page table, MMU is reading the rewritten PDE, but the silent-absorb persists. Cache attribute was never the gate. | Stage **Repair (V'')** — full PML4→PDPT→PD walk for `xhci_mmio_base` stamping each level's entry low byte to CMOS, to surface any aliasing through another mapping that still hits PA0. Escalate hypothesis space to controller-internal state-machine / paired-port routing / undiscovered xECP gate. |
+| `xhci: port N reset failed (proto=2)` (symptom unchanged) | `0x83` | `0x04` | `0x00` | `0x03` | **Path 1 — remap is a no-op.** `vmm_remap_uc_2mb` ran but the `store64` didn't reach the page-table entry the MMU actually uses for this BAR. Most likely the shatter-path `PDPT[gb_idx]` repoint isn't what CR3 is walking, or a stale TLB entry survives the `mov cr3, rax;` reload (unlikely — full reload flushes non-global TLB). | Debug `vmm_remap_uc_2mb` itself: add a pre-shatter PDPT[3] CMOS stamp + a post-shatter PDPT[3] CMOS stamp to confirm the entry actually changed in memory; verify the `pmm_alloc` for the new PD returned a usable identity-mapped address; consider a 4 KB sub-shatter instead of 2 MB if the 2 MB granularity is the issue. |
+| `xhci: port N connected, …` line above `VFS initialized` | `0x9B` or `0xBB` (or unchanged from absent) | `0x04` | `0x04` | `0x00` or `0x01` | ✅ **Late-arriving fix on the same burn.** The diagnostic stamps cleanly AND the symptom clears — possible if a non-determinism in the shatter path (e.g., pmm_alloc returning a different physical page) makes Attempt 44's apparent failure intermittent. Unlikely but include for completeness. | Re-burn Attempt 45 verbatim to confirm reproducibility; if stable, declare X clean and move to Phase 4. |
+| `kcp != 0x15` (boot regressed downstream) | (any) | (any) | (any) | (any) | **X' caused a regression** — extremely unlikely; X' is read-only with no asm blocks. Most likely an unrelated build/flash issue. | Revert to Attempt 44 binary (344,360 B); re-verify build artifact size before re-flash. |
+| `[0x73]` = `0x00` with `kcp >= 0x18` | `0x00` | (any) | (any) | (any) | xhci_probe didn't reach the X' site (pre-X' build flashed by mistake, or earlier xhci_probe step faulted between V stamps and X' stamp). | Compare flashed binary size to Attempt 45 floor; re-burn after confirming size match. |
+
+**Queued fallback repairs (Attempt 46+ candidates):**
+
+| Repair | When to stage | Behavior | Size |
+|---|---|---|---|
+| **(V'') full PML4→PDPT→PD walk** | If Attempt 45 hits row 1 (X' confirms UC landed; F5 falsified) | Walk `xhci_mmio_base` through PML4→PDPT→PD, stamp each level's entry low byte to virgin CMOS slots `[0x74]/[0x75]/[0x76]`. Surfaces any aliasing through another mapping that still hits PA0 (e.g., a higher-half kernel mapping the BAR a second time at WB). | ~25 LOC + 3 CMOS slots |
+| **(Y) PDPT-repoint bisector** | If Attempt 45 hits row 2 (`[0x73]=0x83`; X is a no-op) | Stamp the pre-shatter and post-shatter PDPT[gb_idx] values to virgin CMOS slots before/after the `store64(0x2000 + gb_idx*8, ...)` write in `vmm_remap_uc_2mb`. Confirms the entry actually changed in memory and that we're reading from the right table. | ~6 LOC + 2 CMOS slots |
+| **(Z) 4 KB sub-shatter** | If Y confirms the shatter ran but the symptom persists at the PDPT level | Replace the 2 MB-page approach with a full 4 KB PT shatter of just the BAR's 2 MB region. Higher TLB pressure but eliminates any PDE-level cache-attribute ambiguity. | ~30 LOC |
+
+**Decision gate after Attempt 45**:
+- **X' row 1 (`[0x73]=0x9B/0xBB` + symptom)**: bundle V'' into Attempt 46. F5 dead, escalate hypothesis space.
+- **X' row 2 (`[0x73]=0x83` + symptom)**: bundle Y into Attempt 46. Localize where the rewrite went wrong.
+- **X' row 3 (symptom clears)**: re-burn for reproducibility, then Phase 4.
+- **X' row 4 (boot regressed)**: revert to 344,360 B.
+- **X' row 5 (stamp blank)**: re-flash and verify build artifact size.
+
+**Floor**: post-X binary (344,360 B from Attempt 44) is the revert target for any X'-introduced regression. X' is read-only diagnostic — risk is negligible; the floor is included for protocol completeness.
+
+_Pre-burn block; the actual Attempt 45 entry will replace this footer once the burn completes._
 
 ---
 
