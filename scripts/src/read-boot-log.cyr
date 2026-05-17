@@ -243,7 +243,9 @@ fn main(): i64 {
     var xh_spcount = cmos_read(128);  # 0x80 — Repair (AA) MaxScratchpadBufs low byte
     var xh_spsent  = cmos_read(129);  # 0x81 — Repair (AA) 0x80-range sentinel (0xAA = slot trustworthy)
     var xh_hcsp2b3 = cmos_read(130);  # 0x82 — Repair (AA) HCSPARAMS2 byte 3 (raw bits 31:24)
-    var xh_spdcba  = cmos_read(131);  # 0x83 — Repair (AA) DCBAA[0] low byte (scratchpad array phys low)
+    var xh_spdcba  = cmos_read(131);  # 0x83 — Repair (AA, 1.30.4 redesigned) sp_array phys byte 2 ((>>16)&0xFF)
+    var xh_bbsent  = cmos_read(132);  # 0x84 — Repair (BB) DNCTRL-write sentinel (0xBB = site executed)
+    var xh_hcsp2b2 = cmos_read(133);  # 0x85 — Repair (AA audit add-on) HCSPARAMS2 byte 2 (raw bits 23:16)
 
     print_cmos_line("CMOS[0x53] gnoboot magic    = ", gmagic);
     print_cmos_line("CMOS[0x52] gnoboot checkpt  = ", gcp);
@@ -321,7 +323,9 @@ fn main(): i64 {
     print_cmos_line("CMOS[0x80] xhci MaxScratchpadBufs (AA)         = ", xh_spcount);
     print_cmos_line("CMOS[0x81] xhci 0x80-range sentinel (AA)       = ", xh_spsent);
     print_cmos_line("CMOS[0x82] xhci HCSPARAMS2 byte 3 raw (AA)     = ", xh_hcsp2b3);
-    print_cmos_line("CMOS[0x83] xhci DCBAA[0] low / sp_array phys lo (AA) = ", xh_spdcba);
+    print_cmos_line("CMOS[0x83] xhci sp_array phys byte 2 (AA 1.30.4) = ", xh_spdcba);
+    print_cmos_line("CMOS[0x84] xhci DNCTRL-write sentinel (BB)     = ", xh_bbsent);
+    print_cmos_line("CMOS[0x85] xhci HCSPARAMS2 byte 2 raw (AA aud) = ", xh_hcsp2b2);
 
     # USBLEGSUP outcome decoder.
     if (xh_usbleg == 0) { println("  USBLEGSUP: n/a (no xECP chain) — controller does not advertise extended caps."); }
@@ -574,10 +578,16 @@ fn main(): i64 {
     println("    Repair (AA) — HCSPARAMS2.MaxScratchpadBufs + DCBAA[0] scratchpad install [0x80..0x83]. First use of CMOS 0x80+ range (0x50-0x7F exhausted). Per xHCI 1.2 §4.20, when MaxScratchpadBufs > 0 the OS MUST allocate N page-sized buffers + a u64 pointer array, then write the array's phys into DCBAA[0] before R/S=1. Pre-AA AGNOS left DCBAA[0]=0 on a TODO comment; on AMD Renoir/Cezanne (1022:1639) this is suspected silent-absorb root cause across Attempts 32-49.");
     println("    [0x81]=0xAA: 0x80-range slot is trustworthy (BIOS/POST didn't clobber). [0x81]!=0xAA: BIOS writes into 0x80+ region OR AA stamp site didn't run — verify build size against Attempt 50 floor in state.md before interpreting [0x80]/[0x82]/[0x83].");
     println("    [0x80]=0x00 + [0x81]=0xAA: controller reports MaxScratchpadBufs=0 — AA is a structural no-op on this hardware; silent-absorb hypothesis (AA) FALSIFIED. Escalate to alternate hardware target or PCIe USB add-in.");
-    println("    [0x80]>0x00 + [0x81]=0xAA + [0x83]=0x00: scratchpad alloc failed (pmm_alloc returned 0 or DCBAA[0] write didn't take); check Phase 2 FB for 'xhci: scratchpad array alloc failed' or 'xhci: scratchpad buf alloc failed' lines.");
+    println("    1.30.4 stamp redesign: [0x83] now captures sp_array phys byte 2 ((>>16)&0xFF), not byte 0. Page-aligned phys is structurally &0xFF==0 (4 KB alignment) which made the Attempt 50 Row 1/Row 4 distinction broken. Byte 2 is non-zero for any phys >= 64 KB (universally true post-kernel-init on x86_64).");
+    println("    [0x80]>0x00 + [0x81]=0xAA + [0x83]=0x00 (post-1.30.4): scratchpad alloc failed (pmm_alloc returned 0) OR the alloc landed at a phys < 64 KB (impossible during normal kernel init — would indicate PMM corruption). Check Phase 2 FB for 'xhci: scratchpad array alloc failed' or 'xhci: scratchpad buf alloc failed'.");
     println("    [0x80]>0x00 + [0x81]=0xAA + [0x83]!=0x00 + [0x64]!=0x00: **REPAIR (AA) IS THE UNBLOCK** → reset succeeded, Phase 3 enumeration runs, Phase 4/5 (HID translation + kb_buf feed) becomes the typeable-shell gate. THIS IS MVP.");
-    println("    [0x80]>0x00 + [0x81]=0xAA + [0x83]!=0x00 + [0x64]=0x00: scratchpad correctly installed but reset still absorbed — AA falsified, silent-absorb gate is somewhere else. Audit Linux xhci-mem.c xhci_mem_init for other init-time writes AGNOS skips (xhci_set_dev_notifications / xhci_add_interrupter ordering / IMOD).");
-    println("    [0x82] raw byte cross-check: encodes HCSPARAMS2 bits 31:24. MaxScratchpadBufs Lo = bits 31:27 = upper 5 bits of [0x82]; SPR = bit 26 = bit 2 of [0x82]; rest of Hi = bits 25:21 (mostly outside [0x82]). Useful when [0x80]>0xFF (>255 scratchpads — unusual but possible on server-grade silicon).");
+    println("    [0x80]>0x00 + [0x81]=0xAA + [0x83]!=0x00 + [0x64]=0x00: scratchpad correctly installed but reset still absorbed — AA falsified. Cross-check Repair (BB) DNCTRL outcome below; if [0x84]=0xBB and reset still failed, gate is somewhere else (next Linux-diff targets: IMOD with INTE-on, per-port event-ring drain ordering, AMD-FCH PCI cap 1022:1639).");
+    println("    [0x82] raw byte cross-check: encodes HCSPARAMS2 bits 31:24. Per Linux HCS_MAX_SCRATCHPAD: count = (bits 25:21 << 5) | bits 31:27. [0x82]=0x00 means bits 31:27 = 0 (low 5 bits of count are 0) AND bits 25:24 = 0 (top 2 bits of bits 25:21). Combined constraint: count must be in {0, 32, 64, 96, 128, 160, 192, 224} (i.e., 32 * X where X = bits 23:21).");
+    println("    [0x85] HCSPARAMS2 byte 2 (1.30.4 audit add-on): captures raw bits 23:16. bits 23:21 = top 3 bits of HCS_MAX_SCRATCHPAD's 'bits 25:21' field. If [0x82]=0 + [0x85] top 3 bits = X, expected count = X * 32. Attempt 50 had [0x80]=0x35 (53) + [0x82]=0 — mathematically impossible (53 isn't 32*X for any integer X). [0x85] disambiguates: if [0x85]'s top 3 bits give a value consistent with [0x80], the original CMOS-capture was correct and the [0x80]/[0x82] mismatch was a Cyrius shift-emit divergence (file cyrius-side issue). If [0x85] also disagrees, capture site has a bug.");
+    println("    Repair (BB) — Device Notification Control (DNCTRL, op_reg 0x14) [0x84] (1.30.4). Audit found XHCI_OP_DNCTRL defined at xhci_regs.cyr:70 but never written anywhere — same shape as AA precedent (register known, write step skipped). Linux xhci_set_dev_notifications writes DEV_NOTE_FWAKE=0x02 unconditionally during xhci_init() before R/S=1; AGNOS now does the same. Sentinel [0x84]=0xBB proves the write site executed.");
+    println("    [0x84]=0xBB + [0x64]!=0x00: **REPAIR (BB) IS THE UNBLOCK** — DNCTRL was the silent-absorb gate; some USB2 port-link-state transitions on AMD Renoir/Cezanne gated on notification handling. Phase 3 enumeration ran. Phase 4/5 becomes the typeable-shell gate.");
+    println("    [0x84]=0xBB + [0x64]=0x00: BB executed cleanly, silent-absorb persists. BB falsified; eleventh hypothesis in the arc. Next Linux-diff targets: IMOD write with INTE-on test, per-port event-ring drain ordering, AMD-FCH-specific PCI cap.");
+    println("    [0x84]=0x00 with kcp >= 0x32: pre-BB binary on iron OR DNCTRL write site faulted. Verify build size against 1.30.4 floor before interpreting BB outcome.");
     syscall(1, 1, "\n", 1);
     # End xHCI post-mortem block.
 

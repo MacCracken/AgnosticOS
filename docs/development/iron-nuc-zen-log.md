@@ -5414,6 +5414,109 @@ Linux unconditionally allocates `HCS_MAX_SCRATCHPAD(hcs_params2)` page-sized scr
 
 ---
 
+_Pre-burn block preserved as-is; the Attempt 50 actual outcome below hit **Row 2** — scratchpad install ran cleanly per FB (`scratchpad array=10420224, count=53` + `scratchpad ready` + `controller running`) but silent-absorb on ports 1+3 survives. Bonus stamp-design finding: `[0x83]` captures `sp_array_phys & 0xFF`, and page-aligned phys is structurally `0x00` in its low byte every time — so the prep matrix's Row 1 vs Row 4 distinction on `[0x83]==0x00` is broken; FB is the load-bearing channel for "did the install run". Second stamp-vs-FB inconsistency: `[0x82]=0x00` (HCSPARAMS2 bits 31:24 all zero, so spec MaxScratchpadBufs Hi = 0 and Lo's top 2 bits = 0 → spec-decoded count ≤ 7) but FB rendered `count=53` — AGNOS's `(hi<<5)|lo` decode in `xhci_ring.cyr` likely reads wrong bit ranges; over-allocates (≤7 actually needed, allocated 53) so functionally safe but worth a separate audit. Load-bearing conclusion unchanged: install ran, controller running clean, ports 1+3 reset still absorbed. Decoupling decision activates as written — non-iron work resumes._
+
+### Attempt 50 — 2026-05-17 → ROW 2 HIT (AA executed cleanly; silent-absorb persists; Decoupling decision activates)
+
+**Build under test**: agnos kernel `349,168 B` (post-AA = HCSPARAMS2 read + scratchpad alloc loop + DCBAA[0] write, multiboot2 ELF64 OK, entry `0x1000a8` unchanged). Read-boot-log decoder `65,688 B` (post-extension with 0x80-0x83 reads + 7-row cheat-sheet). Cyrius pin 5.11.55. gnoboot 0.2.0 untouched. Hardware unchanged from Attempt 49 (USB keyboard on port 1, USB-A BT dongle on port 3).
+
+**CMOS post-mortem (Attempt 50)**:
+
+| Slot | Field | Value | Δ vs Attempt 49 | Interpretation |
+|---|---|---|---|---|
+| `[0x50]` | kcp | `0x15` | unchanged | kybernet-launch reached; shell prompt `agnos>` rendered. No regression from AA. |
+| `[0x62]` | USBLEGSUP outcome | `0x01` | unchanged | Already OS-owned. |
+| `[0x63]` | CCS bitmap | `0x05` | unchanged | Ports 1 + 3 connected. |
+| `[0x64]` | Reset-OK bitmap | `0x00` | unchanged | **Silent-absorb survives AA.** |
+| `[0x6B]` | PP bitmap | `0x3F` | unchanged | All six ports powered. |
+| `[0x6C]` | PSC change byte | `0x00` | unchanged | Controller never set PRC/PED/CSC. |
+| `[0x6D]` | PLS pre-PR | `0x07` | unchanged | Polling — precondition holds. |
+| `[0x70]` | PR retry count | `0x03` | unchanged | T loop exhausts identically. |
+| `[0x77]/[0x78]` | USBSTS bytes 0/1 | `0x10` / `0x00` | unchanged | PCD set, controller running clean per status; gate outside USBSTS. |
+| `[0x79]` | USBCMD byte 0 | `0x05` | unchanged | R/S \| INTE — Linux-standard. |
+| `[0x7F]` | Repair-Z sentinel | `0xAA` | unchanged | Z site still executing on the retry loop (carries forward across Attempt 50, idempotent). |
+| `[0x80]` | MaxScratchpadBufs | `0x35` (53) | **NEW (was 0x00)** | Decoded count surfaced — kernel allocated 53 scratchpads. Spec-correct count ≤ 7 per `[0x82]=0x00`; AGNOS decode likely off (audit follow-up). Over-allocation, functionally safe. |
+| `[0x81]` | 0x80-range sentinel | `0xAA` | **NEW (was 0x00)** | **Per `project_archaemenid_cmos_map`: CMOS 0x80+ range is virgin scratch** — BIOS/POST does NOT clobber 0x80+. AA stamps trustworthy. |
+| `[0x82]` | HCSPARAMS2 byte 3 raw | `0x00` | **NEW (was 0x00 virgin)** | Bits 31:24 of HCSPARAMS2 all zero. Spec MaxScratchpadBufs Hi (bits 31:27) = 0; bits 25:24 = 0 → spec Lo ≤ 7. |
+| `[0x83]` | DCBAA[0] / sp_array phys lo | `0x00` | **NEW (was 0x00 virgin)** | Low byte of `sp_array_phys = 0x9F0000` is structurally `0x00` because pages are 4 KB aligned. **Stamp captures no signal** (Row 1 vs Row 4 distinction broken). FB is the load-bearing channel. |
+
+**Framebuffer**: full kernel init log rendered cleanly. New AA-path lines visible: `scratchpad array=10420224, count=53, COP=10436608` (decimal `10420224 = 0x9F0000` = sp_array phys; `count=53` = decoded MaxScratchpadBufs; `COP=10436608 = 0x9F4000` = consumer-of-pages pointer / next free PMM watermark), then `scratchpad ready`, then `controller running`. AA install confirmed end-to-end (alloc + DCBAA[0] write + post-install controller-running). Downstream: `xhci: port 1 reset failed (proto=2)` + `xhci: port 3 reset failed (proto=2)`, then kybernet boots to `AGNOS shell v1.30.3 (type 'help')` → `agnos>`. Photo: [`iron-nuc-zen-photos/attempt-50-xhci-repair-aa-scratchpad-installed-still-absorbed.jpg`](iron-nuc-zen-photos/attempt-50-xhci-repair-aa-scratchpad-installed-still-absorbed.jpg).
+
+**Verdict**: matches pre-bound matrix **Row 2 (with stamp caveat)** — AA executed cleanly per FB, controller running clean, `[0x64]=0x00` reset-OK bitmap unchanged. The prep matrix's `[0x83]!=0x00` Row 1 indicator was structurally unreachable on page-aligned phys (low byte always zero) — FB is the truth channel that confirms install. Silent-absorb gate is somewhere else.
+
+**Hypotheses surviving Attempt 50** (silent-absorb arc summary):
+- F1, F2, F3, F4 — falsified Attempts 32-42.
+- **F5 (MMIO cache-attribute)** — falsified Attempts 45-46.
+- **(a) Aliased mapping** — falsified Attempt 46.
+- **(b) Controller-side spec-visible gate** — falsified Attempt 47.
+- **(b') Multi-SupProto routing** — falsified Attempt 48.
+- **(c) AMD-FCH PR-write timing** — falsified Attempt 49.
+- **(d) USB SMI re-arming** — falsified Attempt 49.
+- **(e) Interrupter-readiness config-space gate** — falsified Attempt 49.
+- **(AA) DCBAA[0] scratchpad install** — falsified Attempt 50 (install ran, controller running, silent-absorb survives).
+
+**Ten falsified hypotheses across the silent-absorb arc.** Per the boot-log cheat sheet's terminal verdict (carried from Attempt 49): escalation is **decoupled re-evaluation, NOT another diagnostic letter**. AA was the "Linux-diff cycle-break" attempt; landed correctly but didn't unblock. Decoupling decision applies as written.
+
+**Decision applied**: **Pivot to non-iron work** per § Decoupling decision (Row 2 branch). xhci hardware-investigation moves to a parallel-track with its own cadence; Phase 4/5 development proceeds against AGNOS Phase 1-3 infrastructure; iron burns batched, not per-substep. Next Linux-diff target on the parallel-track: `xhci_init` / `xhci_run` register ordering — specifically `xhci_set_dev_notifications`, `xhci_add_interrupter` ordering, IMOD configuration, and device-notification-control register writes that Linux does between scratchpad install and R/S=1 but AGNOS skips.
+
+**Follow-up audits queued (non-blocking)**:
+1. **HCSPARAMS2 decode bit-range correctness** in `xhci_ring.cyr` — `[0x82]=0x00` + FB `count=53` are inconsistent if the spec formula `(spec_Hi<<5)|spec_Lo` with `spec_Hi = bits 31:27` is applied. AGNOS's actual decode at `xhci.cyr:226-228` matches Linux's `HCS_MAX_SCRATCHPAD` macro exactly — `(bits 25:21 << 5) | bits 31:27`. So the spec-decode is correct; the inconsistency is between the CMOS-stamped value (53) and the constraint imposed by `[0x82]=0` (count ≤ 224 in multiples of 32 ↛ 53). Either Cyrius emits the shift differently than expected at the CMOS-capture site, or hcsp2 read returned different values at the two sites. **1.30.4 follow-up**: add `[0x85] = (hcsp2 >> 16) & 0xFF` stamp to capture byte 2 (which contains bits 25:24 of spec_Lo's low end + bits 23:21).
+2. **`[0x83]` stamp redesign** — capture `sp_array_phys >> 16` (byte 2) instead of `& 0xFF` (byte 0). Page-aligned phys is structurally `& 0xFF == 0`; byte 2 is non-zero for any phys ≥ 64 KB. **1.30.4 follow-up: landed.**
+
+---
+
+### Audit-driven 1.30.4 cycle plan (post-Attempt-50)
+
+**Written 2026-05-17, post-Attempt-50 burn, in response to "do we need to step by step audit our code to ensure there isn't any remaining TODO's or stubs"**: AA precedent established that a register/operation defined in headers but never invoked could be the silent-absorb gate. Same-session audit of `agnos/kernel/arch/x86_64/usb/` (`xhci.cyr` + `xhci_regs.cyr` + `xhci_ring.cyr` + `xhci_port.cyr` + `xhci_ctx.cyr` + `xhci_cmd.cyr`, ~2,386 LOC total) found four classes of issue:
+
+**Tier 1 — Silent-absorb suspect (Linux-diff parallel to AA)**:
+- **`XHCI_OP_DNCTRL = 0x14` defined at `xhci_regs.cyr:70` but never written.** Linux's `xhci_set_dev_notifications` writes `DEV_NOTE_FWAKE = 0x02` to op_regs+0x14 during `xhci_init()` unconditionally before R/S=1 (verified via WebFetch against `torvalds/linux drivers/usb/host/xhci.c` master). Default value (0 = no notifications) is spec-allowed but Linux universally writes this. Hypothesis: some USB2 port-link-state transitions on AMD Renoir/Cezanne (1022:1639) are gated on notification handling being enabled — same shape as AA where the register was known but the write step was skipped. **Becomes Repair (BB)**.
+
+**Tier 2 — Real bug, not silent-absorb gate**:
+- **Double xfer-ring allocation in `xhci_enumerate_port`.** `xhci_alloc_input_ctx` (`xhci_ctx.cyr:152`) allocates xfer ring page A and stores its phys (with DCS bit) at `ictx+0x88`. Then `xhci_enumerate_port` (`xhci.cyr:757-765`) allocates xfer ring page B and overwrites the field. Page A leaks. Misleading comment at `xhci.cyr:764` ("xhci_alloc_input_ctx stored a stub") claims the field was a stub; it wasn't. Runs after reset succeeds → not silent-absorb-gating.
+
+**Tier 3 — Diagnostic stamp redesigns**:
+- **`[0x83]` Attempt 50 capture broken** — `sp_array_phys & 0xFF` is structurally zero because pages are 4 KB aligned. Pivot to byte 2 (always non-zero for kernel-init-time phys).
+- **HCSPARAMS2 decode stamp/FB inconsistency** at Attempt 50 — `[0x80]=53` vs `[0x82]=0` is mathematically impossible per the AGNOS decode formula. Add `[0x85]` byte-2 capture to disambiguate.
+
+**Tier 4 — Audited, not bugs**:
+- `xhci_port_reset` PLS==U0 fast-path (`xhci_port.cyr:432-434`) — early-success-return correct per spec; didn't fire on Attempt 50 (`[0x6D]=0x07` = Polling).
+- All `xhci_*_ready` early-success returns — idempotency guards.
+
+**1.30.4 cycle scope (open-ended; no tag cut until coherent ship state)**:
+- **Repair (BB) DNCTRL write** — `~3 LOC` in `xhci_init()` after CNR-clear, before `xhci_halted` flip + sentinel CMOS[0x84]=0xBB + FB `xhci: dev_notifications enabled` line.
+- **`[0x83]` redesign** — `(sp_array >> 16) & 0xFF`.
+- **`[0x85]` HCSPARAMS2 byte-2 cross-check** — `(hcsp2 >> 16) & 0xFF`.
+- **Double xfer-ring leak fix** — replace `xhci_enumerate_port` second `pmm_alloc` + 5 setup lines with `load64(ictx + 0x88) & ~1`.
+- **Phase 4 + Phase 5 code surface** per `agnosticos/docs/development/planning/usb-hid-keyboard-driver.md` — develops in parallel against Phase 1-3 infrastructure regardless of BB iron outcome. Tag cuts when cycle reaches coherent ship state (BB unblocks → MVP typeable, OR BB falsifies → next Linux-diff hypothesis lands).
+
+### Attempt 51 prep — Repair (BB) Device Notification Control
+
+**Hypothesis under test (BB)**: same shape as AA — `XHCI_OP_DNCTRL = 0x14` register defined but write step skipped. Linux writes `DEV_NOTE_FWAKE = 0x02` unconditionally during `xhci_init()` before R/S=1. AGNOS now does the same.
+
+**Code change** (single coherent fix, no diagnostic ride-alongs beyond truth-channel sentinel):
+
+| # | Change | Code site | Prior art | Truth channel |
+|---|---|---|---|---|
+| 1 | After CNR-clear wait in `xhci_init()`, write `0x02` to op_reg `0x14`. Stamp `[0x84]=0xBB` sentinel. Emit FB line `xhci: dev_notifications enabled`. | `xhci.cyr` between line 443 (`CNR never cleared` guard) and line 445 (`xhci_halted = 1`) | Linux `xhci_set_dev_notifications` at `xhci.c` line ~1168 | FB line + `CMOS[0x84]=0xBB` sentinel |
+
+**Pre-bound outcome matrix for Attempt 51**:
+
+| `kcp` | `[0x84]` BB sentinel | `[0x64]` reset-OK | FB lines | Reads as | Next |
+|---|---|---|---|---|---|
+| `0x15` | `0xBB` | non-zero | `xhci: dev_notifications enabled` + `xhci: port N connected, …` | **Row 1 — REPAIR (BB) IS THE UNBLOCK.** DNCTRL was the silent-absorb gate; AMD Renoir/Cezanne gated port-state transitions on notification handling. Phase 3 enumeration ran. MVP-typeable becomes the Phase 4/5 gate. | Tag 1.30.4 when Phase 4 + Phase 5 land. Closed-beta MVP completes when typing produces echoes. |
+| `0x15` | `0xBB` | `0x00` | `xhci: dev_notifications enabled` (no port-connected line) | **Row 2 — BB executed cleanly, silent-absorb persists.** DNCTRL write was a no-op for the gate; eleventh falsified hypothesis. Audit follow-ups still validate (`[0x83]` reads non-zero, `[0x85]` surfaces HCSPARAMS2 byte 2 + disambiguates count=53 mystery). | Next Linux-diff targets: IMOD write with INTE-on test, per-port event-ring drain ordering, AMD-FCH-specific PCI cap (1022:1639). Phase 4/5 development continues in parallel regardless. |
+| `0x15` | `0x00` | (any) | (no BB FB line) | **Row 3 — BB site didn't execute.** Pre-BB binary on iron, or `xhci_op_write32` faulted. | Verify build size against 1.30.4 floor; re-burn after confirming size match. |
+| `kcp != 0x15` | (any) | (any) | (no shell prompt) | **Row 4 — BB caused regression.** Most likely: DNCTRL write triggers something unexpected on AMD FCH. | Revert to post-AA binary (1.30.3, 349,168 B); re-burn. |
+
+**Floor**: post-AA binary (349,168 B from Attempt 50) is the regression-revert target. Risk surface: single op_reg write to a previously-unwritten address; default value already 0 so writing 0x02 enables N1 only. Standard kernel idiom (`xhci_op_write32` used at 5+ existing sites). Read-only audit-driven stamp redesigns ([0x83], [0x85]) are pure CMOS-side risk — no controller behavior change.
+
+**Iron protocol**: flash rebuilt USB, attach Keychron K2 to port 1 or port 3, boot, photograph FB block between `xhci: USBLEGSUP already OS-owned` and `VFS initialized`, then `sudo ./scripts/read-boot-log.sh`. **Four load-bearing channels in order**: (1) FB primary — does `xhci: dev_notifications enabled` line surface? does any `xhci: port N connected, …` line surface? (2) CMOS — `[0x84]=0xBB` BB site executed; (3) `[0x64]` — the binary unblock indicator; (4) `[0x83]` (now byte 2 of sp_array phys, non-zero on success) + `[0x85]` (HCSPARAMS2 byte 2 — disambiguates Attempt 50 decode mystery).
+
+**Decision gate after Attempt 51 burn**: Row 1 (BB unblocks) → stage Phase 4 + Phase 5 in 1.30.4 cycle, tag when typeable shell ships. Row 2 (BB falsifies) → next Linux-diff hypothesis goes into 1.30.5 prep (cycle stays open-ended; Phase 4/5 code surface still develops in parallel). Row 3-4 → as outcome matrix.
+
+---
+
 ### Decoupling decision (replaces Post-Z reckoning)
 
 **Written 2026-05-17, pre-Attempt-49 burn, in response to user signals**: "we've been circling this for two whole days" + "I'm getting tired of holding off other work because of Boot burn allowances" + "all you have done is diagnosis [until I forced a review]" + "we have prior art to refer to... but you've only suggested 1 maybe 2 times".
