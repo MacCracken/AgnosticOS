@@ -4990,7 +4990,90 @@ _Pre-burn block preserved as-is; the Attempt 44 actual outcome below hit prep-ma
 
 **Floor**: post-X binary (344,360 B from Attempt 44) is the revert target for any X'-introduced regression. X' is read-only diagnostic — risk is negligible; the floor is included for protocol completeness.
 
-_Pre-burn block; the actual Attempt 45 entry will replace this footer once the burn completes._
+_Pre-burn block preserved as-is; the Attempt 45 actual outcome below hit prep-matrix Row 1 exactly (X' confirms UC remap landed; F5 falsified)._
+
+### Attempt 45 — 2026-05-16 → ROW 1 HIT (X' confirms UC; F5 falsified; aliased-mapping / controller-gate / FCH-timing trio surfaces)
+
+**Build under test**: agnos 344,792 B (V'+V''-staging-pre = post-X' Attempt 45 binary, multiboot2 ELF64 OK, entry `0x1000a8` unchanged). User cycled USB keyboard and added a USB-A Bluetooth dongle (mouse target, no expectation of working) before flashing.
+
+**CMOS post-mortem (Attempt 45)**:
+
+| Slot | Field | Value | Δ vs Attempt 44 | Interpretation |
+|---|---|---|---|---|
+| `[0x50]` | kcp | `0x15` | unchanged | kybernet reached; boot-to-shell spine intact. |
+| `[0x53]` | gnoboot magic | `0xcd` | unchanged | handoff clean. |
+| `[0x54]/[0x55]` | CR4 byte 2 (pre/post stac) | `0x30 / 0x30` | unchanged | SMEP+SMAP set, both stamp sites hit. |
+| `[0x56]..[0x61]` | PMM AS1+AS2 stamps | all ≥ `0x20` | unchanged | PMM clean across both address-space init runs. |
+| `[0x62]` | USBLEGSUP outcome | `0x01` | unchanged | already-OS; BIOS no-op (confirmed since Attempt 35). |
+| `[0x63]` | CCS bitmap | **`0x05`** | `0x01 → 0x05` | **NEW**: ports 1 AND 3 connected — first dual-port-connected burn in the arc. Port 1 = keyboard, port 3 = BT dongle. |
+| `[0x64]` | reset-OK bitmap | `0x00` | unchanged | both connected ports failed reset. |
+| `[0x65]/[0x66]/[0x67]` | proto map | `0x22/0x22/0x33` | unchanged | p1–p4 USB2, p5–p6 USB3. |
+| `[0x68]/[0x69]/[0x6A]` | xECP walk | `0x05 / 0x03 / 0x24` | unchanged | 5 caps, USBLEGSUP+SupProto identified, 1st SupProto rev=2 count=4. |
+| `[0x6B]` | PP bitmap | `0x3F` | unchanged | Repair Q still good — all 6 ports PP=1. |
+| `[0x6C]` | PSC change byte | `0x00` | unchanged | **PR write still absorbed silently** — controller never entered Reset state on either connected port. |
+| `[0x6D]` | PLS pre-PR | `0x07` | unchanged | Polling; Repair R10 precondition met. |
+| `[0x6E]/[0x6F]` | HCCP1/HCCP2 | `0xE5 / 0x3F` | unchanged | AC64+CSZ+LHRC+LTC+NSS (no PPC); U3C+CMC+FSC+CTC+LEC+CIC. |
+| `[0x60]` | PORTPMSC | `0x00` | unchanged | no USB2 PM state quirks. |
+| `[0x70]` | PR retry count | `0x03` | unchanged | T loop ran to exhaustion (3× silent-absorb) for both connected ports — confirms Attempts 42–44 deterministic-not-racy finding survives second connected device. |
+| `[0x71]/[0x72]` | MTRR / PA0 | `0x00 / 0x06` | unchanged | MTRRs disabled, PAT entry 0 = WB. |
+| **`[0x73]`** | **BAR PDE low byte (X' walk)** | **`0x9B`** | unchanged | **PCD\|PWT\|PS = PA3 = UC. `vmm_remap_uc_2mb` landed in the page table.** |
+
+**Framebuffer**: identical to Attempts 41–44 line-for-line plus per-burn `xhci: port N reset failed (proto=2)` for whichever port the user attached to last (visual report from user: "appeared relatively the same; USB BT for mouse was added and additionally failed, not expecting working").
+
+**Hypotheses surviving Attempt 45:**
+
+- **F5 (MMIO cache-attribute)** — **FALSIFIED**: X' proves the controlling PDE is UC (`0x9B = PCD|PWT|PS`), AND silent-absorb persists. The PDE the X path mutated does carry UC bits, so PORTSC writes through this VA are no longer WB-coalesced — but the controller still ignores them. Either some *other* mapping of the same physical BAR is still WB (aliased mapping), or the controller-side issue is downstream of cache attributes entirely.
+- **(a) Aliased mapping** — *active*. Boot-time PT init may have mapped the BAR's 1GB chunk via a PDPT huge-page entry (`flag=0x83 → PA0=WB`), and `vmm_remap_uc_2mb`'s shatter path may have left a residual mapping somewhere upstream. V'' (full PML4→PDPT→PD walk) surfaces it.
+- **(b) Controller-side gate** — *active*. xECP walked 5 caps, only 2 classified; HCCPARAMS2 had all 6 known bits set; USBSTS never read post-init. Could be HCE/SRE bit set silently, or a vendor-specific cap (debug cap, second SupProto with USB2/USB3 sibling table) the driver hasn't consumed.
+- **(c) AMD-FCH PR-write timing window** — *active*. PSC change byte being `0x00` across 3 PR-retry attempts means the write never moves the state machine; SeaBIOS `xhci_hub_reset` adds an empirical ~10 ms delay between CSC pre-clear and PR write on AMD FCH that AGNOS doesn't replicate.
+
+**Decision applied**: Stage **Burns 46/47/48 isolated ladder** per per-burn discipline (each burn isolates exactly one hypothesis; diagnostic-only first, behavioral last). Burn A lands now (Repair V''); Burns B and C stage as pre-bound matrices only — actual code lands per decision gate after each burn.
+
+### Attempt 46 prep — Repair (V'') — landed 2026-05-16, post-Attempt-45
+
+**Hypothesis under test**: (a) aliased mapping at WB hitting the same physical BAR through a different page-table path.
+
+**Premise**: X' read the controlling PDE via the `vmm_remap_uc_2mb` shortcut (`0x3000` for `mmio < 1 GB`, or `PDPT[gb_idx] → new_pd` for `mmio ≥ 1 GB`) and stamped its low byte `0x9B`. That proves the PDE *X' looked at* is UC — but doesn't prove a four-level walk from PML4 down for the same virtual address resolves to the same PDE. If boot-time `pt_init` mapped the BAR's 1GB chunk via a PDPT huge-page entry (`flag=0x83 → PA0=WB`), and `vmm_remap_uc_2mb` shattered that chunk by allocating a new PD and re-pointing the PDPT entry, then the X' shortcut reads from `PDPT[gb_idx] & 0xFFFFFFFFFFFFF000` (the post-shatter PD); but if the four-level walk reads from an upstream cached translation or a different physical page, divergence between `[0x73]` (X' shortcut) and `[0x76]` (V'' walk) localizes the aliasing.
+
+**Code site**: `xhci.cyr:222-230` (right after the X' stamp). Pure diagnostic; controller behavior unchanged.
+
+**CMOS slots (virgin)**:
+- `[0x74]` PML4E low byte at `xhci_mmio_base`'s `PML4[VA>>39 & 0x1FF]` entry.
+- `[0x75]` PDPTE low byte at `PDPT[VA>>30 & 0x1FF]` entry (where PDPT addr comes from PML4E).
+- `[0x76]` PDE low byte via four-level walk (if PDPTE has PS bit set → 1GB huge page → write `0xFF` sentinel; no PD level exists on this path).
+
+**Pre-bound outcome matrix for Attempt 46**:
+
+| `kcp` | `[0x74]` PML4E | `[0x75]` PDPTE | `[0x76]` PDE (walk) | `[0x64]` reset-OK | Reads as | Next |
+|---|---|---|---|---|---|---|
+| `0x15` | `0x03 / 0x07` (present + RW; +/- A-bit) | `0x03 / 0x07` (present + RW, NOT huge) | **`0x9B / 0xBB`** (PCD\|PWT\|PS) | `0x00` | **Row 1**: Walk matches X' — UC is the only mapping; hypothesis (a) **falsified**. | Stage Burn B (Repair W). |
+| `0x15` | `0x03 / 0x07` | `0x03 / 0x07` | **`0x83`** (P\|W\|PS, PCD=PWT=0 → PA0=WB) | `0x00` | **Row 2**: Walk and X' disagree — X' shortcut read from a different PD than the four-level walk; confirms aliasing or shatter-PD pointer divergence. | Real fix: align X path with what the walk sees; ~10 LOC re-burn. |
+| `0x15` | `0x03 / 0x07` | **`0x83`** (PS bit set in PDPTE → 1GB huge page) | `0xFF` (sentinel) | `0x00` | **Row 3**: Shatter never ran — `vmm_remap_uc_2mb`'s PDPT-repoint write didn't take effect. X is a no-op; F5 may yet be the right hypothesis under a working shatter. | Stage Repair (Y) PDPT-repoint bisector; ~6 LOC, 2 CMOS slots. |
+| `0x15` | `0x03 / 0x07` | `0x03 / 0x07` | (any) | **`0x05`** (both connected ports reset) | **Row 4**: Late-arriving fix from re-burn non-determinism — extremely unlikely on a read-only walk. | Re-burn to confirm reproducibility; if stable, Phase 4. |
+| `0x15` | `0x00` (PML4E unmapped) | (any) | (any) | (any) | **Row 5**: V'' walk faulted or the address is outside the boot identity map — shouldn't be possible for the BAR but stamp the result to surface. | Audit `pt_init` coverage of MMIO range; re-burn after fix. |
+| `kcp != 0x15` | (any) | (any) | (any) | (any) | **Row 6**: V'' caused a regression. V'' is read-only; most likely build/flash issue or accidental code outside the V'' surface. | Revert to post-X' binary (344,792 B); re-verify size match. |
+| `0x15` | (any) | (any) | `0x00` | (any) | **Row 7**: V'' stamp site never executed (xhci_probe didn't reach the walk site, or earlier xhci_probe step faulted between X' and V''). | Compare flashed binary size to Attempt 46 floor; re-burn after confirming size match. |
+
+**Queued fallback repairs (Attempt 47+ candidates, only if Burn A falsifies hypothesis (a))**:
+
+| Repair | Trigger | What it does | LOC |
+|---|---|---|---|
+| **(W) controller-side gate diagnostic** | Burn A row 1 (a falsified) | Reads USBSTS + USBCMD at reset-fail-time, classifies the 3 unclassified xECP cap IDs (only USBLEGSUP + SupProto known so far), stamps results to virgin CMOS [0x77]/[0x78]/[0x79]/[0x7A]. Surfaces HCE/SRE/CNR bits + any vendor-defined caps the driver isn't consuming (e.g., second SupProto with USB2/USB3 sibling-port table). | ~50 LOC kernel + ~30 LOC decoder |
+| **(Z) AMD-FCH PR-write timing** | Burns A and B both falsify | Adds ~10 ms delay between CSC pre-clear and PR write per SeaBIOS `xhci_hub_reset` pattern. Sentinel stamp [0x7B]=0xAA confirms delay site executed. Behavioral change (the only one in this trio), so it goes LAST to keep success attribution clean. | ~10 LOC kernel + ~15 LOC decoder |
+| **(Y) PDPT-repoint bisector** | Burn A row 3 (shatter never ran) | Stamps pre-shatter and post-shatter `PDPT[gb_idx]` values to virgin CMOS slots before/after `store64(0x2000 + gb_idx*8, ...)` in `vmm_remap_uc_2mb`. Confirms the entry actually changed in memory. | ~6 LOC kernel + 2 CMOS slots |
+
+**Decision gate after Attempt 46**:
+- **A row 1 (a falsified)**: bundle W for Attempt 47.
+- **A row 2 (walk vs X' disagree)**: real fix in-place; re-burn under fixed X path; no Burn B yet.
+- **A row 3 (shatter never ran)**: bundle Y for Attempt 47 (replaces W in the queue).
+- **A row 4 (late-arriving fix)**: re-burn for reproducibility; if stable, Phase 4.
+- **A rows 5–7 (regression / faulted walk / non-execution)**: triage per row notes, revert or re-flash, then re-burn.
+
+**Floor**: post-X' binary (344,792 B from Attempt 45) is the regression-revert target for any V''-introduced regression. V'' is read-only diagnostic — risk concentrated in the `load64` reads themselves (already standard kernel idioms used throughout `vmm.cyr`).
+
+**Build deltas (V'' landed 2026-05-16)**: agnos kernel `344,792 → 345,192 B` (+400; multiboot2 ELF64 OK, entry `0x1000a8` unchanged, 32 unreachable fns / 7,460 B DCE-recoverable); read-boot-log `52,976 → 55,312 B` (+2,336 for 3 slot reads + 3 print_cmos_line entries + 7-row cheat-sheet decoder; pre-existing vec_get warning unchanged — cyrius-side surface). Cyrius pin 5.11.55 (both manifests) untouched. gnoboot 0.2.0 untouched.
+
+_Pre-burn block; the actual Attempt 46 entry will replace this footer once the burn completes._
 
 ---
 
