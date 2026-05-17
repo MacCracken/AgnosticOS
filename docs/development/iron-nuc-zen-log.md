@@ -5160,7 +5160,96 @@ _Pre-burn block preserved as-is; the Attempt 46 actual outcome below hit prep-ma
 
 **Build deltas (W landed 2026-05-16)**: agnos kernel `345,192 → 345,736 B` (+544; multiboot2 ELF64 OK, entry `0x1000a8` unchanged, 32 unreachable fns / 7,460 B DCE-recoverable); read-boot-log `55,312 → 60,576 B` (+5,264 for 4 slot reads + 4 print_cmos_line entries + 14-row cheat-sheet decoder for USBSTS bits / USBCMD bits / xECP packed-cap-ID interpretation; pre-existing vec_get warning unchanged — cyrius-side surface, tracked separately). Cyrius pin 5.11.55 (kernel manifest) / 5.11.54 (scripts manifest, shadow note pre-existing) untouched. gnoboot 0.2.0 untouched.
 
-_Pre-burn block; the actual Attempt 47 entry will replace this footer once the burn completes._
+_Pre-burn block preserved as-is; the Attempt 47 actual outcome below hit prep-matrix Row 1 + Row 7 escalated (USBSTS/USBCMD clean, `[0x7A]=0x22` surfaced **two** unclassified SupProto caps vs the matrix's pre-bound `0x20` single-cap expectation)._
+
+### Attempt 47 — 2026-05-17 → ROW 1 + ROW 7 ESCALATED (USBSTS/USBCMD spec-clean; xECP surfaces THREE SupProto caps, driver consumes one)
+
+**Build under test**: agnos 345,736 B (W landed = post-W Attempt 47 binary, multiboot2 ELF64 OK, entry `0x1000a8` unchanged). Read-boot-log decoder 60,576 B. Cyrius pin 5.11.55. No flash-time hardware changes from Attempts 45–46 (USB keyboard on port 1, USB-A BT dongle on port 3).
+
+**CMOS post-mortem (Attempt 47)**:
+
+| Slot | Field | Value | Δ vs Attempt 46 | Interpretation |
+|---|---|---|---|---|
+| `[0x50]` | kcp | `0x15` | unchanged | kybernet reached; W caused no regression. |
+| `[0x53]` | gnoboot magic | `0xcd` | unchanged | handoff clean. |
+| `[0x54]/[0x55]` | CR4 byte 2 | `0x30 / 0x30` | unchanged | SMEP+SMAP set. |
+| `[0x56]..[0x61]` | PMM AS1+AS2 | `0x28..0x28 / 0x5a..0x5a` | AS1 shifted (`0x7a..0x7b` → `0x28..0x28`) | All ≥ `0x20`; PMM clean. PMM-allocator non-determinism across cold boots, expected. |
+| `[0x62]` | USBLEGSUP | `0x01` | unchanged | already-OS. |
+| `[0x63]` | CCS | `0x05` | unchanged | ports 1 + 3 connected. |
+| `[0x64]` | reset-OK | `0x00` | unchanged | both connected ports still failed reset. |
+| `[0x68]/[0x69]/[0x6A]` | xECP walk | `0x05 / 0x03 / 0x24` | unchanged | 5 caps, USBLEGSUP+SupProto classified, 1st SupProto rev=2 count=4 — **3 unclassified caps remain.** |
+| `[0x6B]` | PP | `0x3F` | unchanged | all 6 ports powered. |
+| `[0x6C]/[0x6D]` | PSCchg / PLS pre-PR | `0x00 / 0x07` | unchanged | silent absorb + Polling precondition met. |
+| `[0x6E]/[0x6F]` | HCCP1/HCCP2 | `0xE5 / 0x3F` | unchanged | AC64+CSZ+LHRC+LTC+NSS (no PPC); U3C+CMC+FSC+CTC+LEC+CIC. |
+| `[0x70]` | PR retry | `0x03` | unchanged | 3× silent-absorb on both ports. |
+| `[0x71]/[0x72]` | MTRR / PA0 | `0x00 / 0x06` | unchanged | MTRRs disabled, PAT entry 0 = WB. |
+| `[0x73]` | BAR PDE (X' shortcut) | `0x9B` | unchanged | PCD\|PWT\|PS = PA3 = UC. |
+| `[0x74]/[0x75]/[0x76]` | V'' walk | `0x07 / 0x03 / 0x9B` | unchanged | Four-level walk agrees with X'; UC is the only mapping. |
+| **`[0x77]`** | **USBSTS byte 0** | **`0x10`** | **NEW** | PCD bit 4 set (Port Change Detect, informational RW1C — port-attach event fired and was not cleared). **NO HCH, NO HSE.** Controller running. |
+| **`[0x78]`** | **USBSTS byte 1** | **`0x00`** | **NEW** | **NO CNR, NO HCE, NO SRE.** Controller's own status reports clean — spec-defined silent-absorb gates (CNR=bit11=0x08, HCE=bit12=0x10) NOT set. |
+| **`[0x79]`** | **USBCMD byte 0** | **`0x05`** | **NEW** | R/S\|INTE — Linux-standard. No HCRST=1 in progress, no controller halt. |
+| **`[0x7A]`** | **xECP unclassified packed** | **`0x22`** | **NEW** | High nibble = 2, low nibble = 2 — **both** captured unclassified caps are SupProto (cap ID 2). With cap_count=5 and classified=2 (USBLEGSUP + 1st SupProto), there are **3 SupProto caps total** on this AMD FCH; the 3rd unclassified cap (not captured by the 2-slot pack) is one of Debug Cap / xPM / IO Virt / MSI / vendor. |
+
+**Framebuffer**: identical to Attempts 41–46 (`xhci: found at ...` / `port N connected` / `port N reset failed (proto=2)` for both connected ports). PSCchg `0x00` × 3 retries means W's reads ran without disturbing controller state — pure read-only diagnostic as designed.
+
+**Decision matrix hit**:
+- **Row 1** (`[0x77]=0x10` close to `0x00` template — PCD bit is informational, not a gate; `[0x78]=0x00`; `[0x79]=0x05`): **Hypothesis (b) — spec-visible controller gate — FALSIFIED.** USBSTS shows no CNR rejecting writes, no HCE freezing the controller, no HCRST still in flight. USBCMD shows R/S=1 and INTE=1 — controller is fully running per its own status.
+- **Row 7 escalated** (`[0x7A]=0x22` vs pre-bound `0x20`): the pre-bound matrix anticipated one unclassified 2nd SupProto cap. **Reality: two unclassified SupProto caps.** This AMD FCH exposes three SupProto caps total (cap_count=5 = USBLEGSUP + 3×SupProto + 1×other-cap). The driver classifies only the first SupProto for the [0x6A] fingerprint stamp; the per-port tagging loop (`xhci_port_proto[]`) does run for every SupProto, so the proto map p1-p4=USB2, p5-p6=USB3 is sourced from at least two SupProto caps tagging different ranges.
+
+**Hypotheses surviving Attempt 47:**
+
+- **F5 (MMIO cache-attribute)** — fully falsified by Attempt 46.
+- **(a) Aliased mapping** — falsified by Attempt 46.
+- **(b) Controller-side spec-visible gate** — **falsified** at the spec-visible layer (USBSTS / USBCMD clean).
+- **(b') Multi-SupProto routing / per-cap quirk** — *active and elevated*. THREE SupProto caps total; driver inspects only the first for diagnostics. Per-port tagging covers all but per-cap PSIV vectors (offset 0x10 of each SupProto cap) and per-cap Hardware-LPM / port-routing fields are not consumed. **The failing ports (1 + 3) sit inside the 1st SupProto's range (`port_off=1, port_count=4`)** — so any per-bank quirk encoded in the 2nd or 3rd SupProto cap covering these same ports (e.g., overlapping range for USB2-LS/FS vs USB2-HS, or vendor-defined "minor-rev quirk" entries) is currently invisible to the driver.
+- **(c) AMD-FCH PR-write timing window** — *active*. Last behavioral hypothesis remaining. Will queue after (b') diagnostic surfaces the missing SupProto data.
+
+**Decision applied**: Stage **Repair (b') — multi-SupProto fingerprint capture** for Attempt 48. The pre-bound (Attempt 46) Row 7 plan was "~10 LOC gate removal" — that gate (`first_supproto == 0`) only gates fingerprint stamping into `[0x6A]`, and removing it alone would overwrite the 1st SupProto fingerprint with the *last* SupProto's, a net diagnostic loss. Reality surfaced 3 SupProto caps not 2, so the right form is **keep `[0x6A]` as-is and add per-cap fingerprint slots `[0x7B]/[0x7C]` (2nd SupProto rev\|count + port_off) and `[0x7D]/[0x7E]` (3rd SupProto rev\|count + port_off)**. Pure read-only diagnostic; controller behavior unchanged. Allows Attempt 48 to surface what the 2nd and 3rd SupProto caps actually contain (rev_major + port range), which is the prerequisite for any behavioral repair targeting per-cap routing.
+
+---
+
+### Attempt 48 prep — Repair (b') — per-cap SupProto fingerprint capture
+
+**Hypothesis under test**: (b') — the 2nd and 3rd SupProto caps on this AMD FCH carry per-cap data (rev_major, port_off, port_count, and downstream PSIV/HW-LPM fields) that the driver currently doesn't consume. The 1st SupProto's `port_off=1, port_count=4` covers ports 1-4 (USB2) — including the failing ports 1 + 3. If the 2nd or 3rd SupProto cap also covers any port in `[1..4]`, that's overlapping coverage with per-bank quirks the driver isn't honoring. If neither covers `[1..4]`, the missing data is informational only and the silent-absorb is elsewhere (escalate to Repair Z timing).
+
+**Code site**: `xhci_port.cyr` — `xhci_xecp_classify_ports` body (lines ~125-215, the existing SupProto-handling block). Repair (b') extends the SupProto branch to track per-cap fingerprints into a second/third accumulator pair and stamps them post-walk.
+
+**CMOS slots (virgin — extending W's allocation)**:
+- `[0x7B]` 2nd SupProto rev\|port_count: `((rev_major & 0xF) << 4) | (port_count & 0xF)`. Same nibble packing as `[0x6A]`. `0x00` = no 2nd SupProto cap walked; `0x24` = rev=2 / count=4 (USB2 4-port); `0x32` = rev=3 / count=2 (USB3 2-port); `0x22` = rev=2 / count=2 (USB2 sibling-table likely).
+- `[0x7C]` 2nd SupProto `port_off` (full byte, 1-based). `0x00` = no 2nd SupProto cap walked; `0x01` = starts at port 1 (overlaps 1st SupProto); `0x05` = starts at port 5 (USB3 bank); `0x03` = starts at port 3 (would explain ports 1+3 being inside *two* SupProtos).
+- `[0x7D]` 3rd SupProto rev\|port_count, same packing as `[0x7B]`.
+- `[0x7E]` 3rd SupProto `port_off`, same packing as `[0x7C]`.
+
+**Pre-bound outcome matrix for Attempt 48**:
+
+| `kcp` | `[0x7B]` 2nd rev\|cnt | `[0x7C]` 2nd off | `[0x7D]` 3rd rev\|cnt | `[0x7E]` 3rd off | `[0x64]` reset-OK | Reads as | Next |
+|---|---|---|---|---|---|---|---|
+| `0x15` | `0x32` (rev=3 cnt=2) | `0x05` | `0x22` (rev=2 cnt=2) | `0x01` or `0x03` | `0x00` | **Row 1**: 2nd SupProto is the USB3 bank (ports 5-6); 3rd SupProto **overlaps ports 1-4** with a USB2 sibling-table entry. Per-bank quirk encoded in 3rd cap covers the failing ports. | Stage Repair (b'') — read 3rd SupProto PSIV vector + Hardware-LPM fields; apply per-bank reset preconditions before PR write. ~30-50 LOC. |
+| `0x15` | `0x32` (rev=3 cnt=2) | `0x05` | `0x22` (rev=2 cnt=2) | `0x05` | `0x00` | **Row 2**: Both 2nd + 3rd SupProto cover the USB3 bank (ports 5-6). USB2 ports 1-4 covered by 1st SupProto only — failing ports have NO overlap. b' data is informational; gate is elsewhere. | Stage Repair (Z) — AMD-FCH PR-write timing delay. Last behavioral hypothesis. |
+| `0x15` | `0x22` (rev=2 cnt=2) | `0x01` or `0x03` | `0x32` (rev=3 cnt=2) | `0x05` | `0x00` | **Row 3**: 2nd SupProto **overlaps** USB2 ports (1-4); 3rd SupProto is the USB3 bank. Per-bank quirk in 2nd cap covers the failing ports. | Same as Row 1 — Repair (b'') targets 2nd cap's PSIV vector. |
+| `0x15` | `0x32` (rev=3 cnt=2) | `0x05` | `0x42` (rev=4 cnt=2) | `0x07` | `0x00` | **Row 4**: 2nd = USB3, 3rd = USB4 / SSP. AMD FCH on this Zen part has a phantom SS+ entry the chassis doesn't physically expose. b' data informational; failing ports unaffected. | Stage Repair (Z) — AMD-FCH PR-write timing. |
+| `0x15` | (any non-zero) | (any non-zero) | `0x00` | `0x00` | `0x00` | **Row 5**: Only 2 SupProto caps walked, not 3 — the cap walk hit the chain terminator earlier than W's `[0x7A]=0x22` indicated, OR the 3rd cap is a non-SupProto (`[0x7A]`'s second nibble = 2 came from a different iteration order). Re-decode `[0x7A]` vs cap walk count. | Audit cap-walk order assumption; expand to 4-cap accumulator if cap_count justifies. |
+| `0x15` | `0x00` | `0x00` | `0x00` | `0x00` | (any) | **Row 6**: All b' stamps zero — site never executed. Pre-b' binary on iron, or `xhci_xecp_classify_ports` faulted before the new SupProto branch. | Compare flashed binary to Attempt 48 floor; re-burn after confirming size match. |
+| `kcp != 0x15` | (any) | (any) | (any) | (any) | (any) | **Row 7**: b' caused a regression. Reads are read-only — most likely build/flash issue or accumulator scope bug. | Revert to post-W binary (345,736 B); re-verify size match. |
+
+**Queued fallback repairs (Attempt 49+ candidates)**:
+
+| Repair | Trigger | What it does | LOC |
+|---|---|---|---|
+| **(b'') per-cap PSIV / HW-LPM consumption** | b' Row 1 or Row 3 (overlapping SupProto covers failing ports) | Reads PSIV vector at offset 0x10 of the overlapping SupProto cap (dw3 PSI count, then PSI dwords). Honors per-bank rev/quirk for ports in overlapping range (e.g., apply USB2 LS/FS pre-reset settle if PSIV indicates LS support). Surfaces controller-side per-bank routing. | ~30-50 LOC |
+| **(Z) AMD-FCH PR-write timing** | b' Row 2 or Row 4 (no overlap on failing ports) | Adds ~10 ms delay between CSC pre-clear and PR write per SeaBIOS `xhci_hub_reset` pattern. Sentinel stamp `[0x7F]=0xAA` confirms delay site executed. Behavioral — last hypothesis in the trio. | ~10 LOC kernel + ~15 LOC decoder |
+
+**Decision gate after Attempt 48**:
+- **Row 1 / Row 3 (overlap on failing ports)**: bundle Repair (b'') for Attempt 49 — **silent-absorb traced to missing per-bank routing**.
+- **Row 2 / Row 4 (no overlap)**: bundle Repair (Z) for Attempt 49 — last behavioral hypothesis in the silent-absorb trio.
+- **Row 5 (only 2 SupProto)**: re-decode `[0x7A]` interpretation; consider 4-slot accumulator.
+- **Rows 6–7 (non-execution / regression)**: triage per row notes.
+
+**Floor**: post-W binary (345,736 B from Attempt 47) is the regression-revert target for any b'-introduced regression. b' is read-only diagnostic — risk concentrated in the new accumulator-update statements (already standard kernel idioms used in W's `xhci_xecp_classify_ports` body).
+
+**Build deltas (b' landed 2026-05-17)**: agnos kernel `345,736 → 346,376 B` (+640; multiboot2 ELF64 OK, entry `0x1000a8` unchanged, 32 unreachable fns / 7,460 B DCE-recoverable — same as W). Heavier than the ~+210 pre-burn estimate: the nested-`if` SupProto-rank branch and 4 packed `xhci_cmos_stamp` calls compile to more than bare-var allocations. Read-boot-log decoder unchanged at the build step — will need +~30 lines for the per-cap rev\|count decoder rows in a follow-up edit (decoder is read-only post-mortem; not blocking the iron burn since raw hex values in `[0x7B]`-`[0x7E]` will be readable and the matrix above interprets them). Cyrius pin 5.11.55 untouched. gnoboot 0.2.0 untouched.
+
+_Pre-burn block; the actual Attempt 48 entry will replace this footer once the burn completes._
 
 ---
 
