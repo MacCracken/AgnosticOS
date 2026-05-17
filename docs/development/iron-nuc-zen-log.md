@@ -5249,7 +5249,112 @@ _Pre-burn block preserved as-is; the Attempt 47 actual outcome below hit prep-ma
 
 **Build deltas (b' landed 2026-05-17)**: agnos kernel `345,736 → 346,376 B` (+640; multiboot2 ELF64 OK, entry `0x1000a8` unchanged, 32 unreachable fns / 7,460 B DCE-recoverable — same as W). Heavier than the ~+210 pre-burn estimate: the nested-`if` SupProto-rank branch and 4 packed `xhci_cmos_stamp` calls compile to more than bare-var allocations. Read-boot-log decoder unchanged at the build step — will need +~30 lines for the per-cap rev\|count decoder rows in a follow-up edit (decoder is read-only post-mortem; not blocking the iron burn since raw hex values in `[0x7B]`-`[0x7E]` will be readable and the matrix above interprets them). Cyrius pin 5.11.55 untouched. gnoboot 0.2.0 untouched.
 
-_Pre-burn block; the actual Attempt 48 entry will replace this footer once the burn completes._
+_Pre-burn block preserved; the Attempt 48 actual outcome below hit a Row 2 structural variant — both extra SupProto caps cover USB3 ports (5 and 6) individually rather than the matrix's pre-bound `count=2 @ port_off=5` grouped shape. No overlap with failing USB2 ports → Repair (Z) staged for Attempt 49._
+
+### Attempt 48 — 2026-05-17 → ROW 2 VARIANT (b' falsified for this hardware; all USB3 SupProtos confined to ports 5+6)
+
+**Build under test**: agnos 346,376 B (b' landed = post-b' Attempt 48 binary, multiboot2 ELF64 OK, entry `0x1000a8` unchanged). Read-boot-log decoder 60,576 B (pre-extension; b' slots surfaced via `--dump` raw grid). Cyrius pin 5.11.55. No flash-time hardware changes from Attempts 45–47.
+
+**CMOS post-mortem (Attempt 48, raw `--dump` mode)**:
+
+| Slot | Field | Value | Δ vs Attempt 47 | Interpretation |
+|---|---|---|---|---|
+| `[0x50]` | kcp | `0x15` | unchanged | kybernet reached; b' caused no regression. |
+| `[0x56]..[0x5B]` | AS1 PMM | `0xe5` × 6 | shifted (`0x28` → `0xe5`) | All ≥ `0x20`; PMM clean. Cold-boot non-determinism. |
+| `[0x5C]..[0x61]` | AS2 PMM | `0x5a` × 6 | unchanged | All ≥ `0x20`; PMM clean. |
+| `[0x62]..[0x6F]` + `[0x70]` + `[0x60]` | xhci pre-b' surface | unchanged | unchanged | USBLEGSUP OS-owned, CCS=0x05 (ports 1+3), reset-OK=0x00 (still failing), HCCP1/2 stable, retry=3, PSC change=0, PLS=Polling, PORTPMSC=0. |
+| `[0x71]/[0x72]` | MTRR / PA0 | `0x00 / 0x06` | unchanged | MTRRs disabled, PAT entry 0 = WB. |
+| `[0x73]..[0x76]` | BAR PDE + V'' walk | `0x9B / 0x07 / 0x03 / 0x9B` | unchanged | UC mapping confirmed; four-level walk agrees. |
+| `[0x77]..[0x79]` | USBSTS/USBCMD | `0x10 / 0x00 / 0x05` | unchanged | PCD informational; no CNR/HCE; R/S+INTE asserted. |
+| `[0x7A]` | xECP unclassified packed | `0x22` | unchanged | 2× SupProto cap IDs in the 2-slot pack. |
+| **`[0x7B]`** | **2nd SupProto rev\|count** | **`0x31`** | **NEW** | rev=3, **count=1** — single USB3 port. |
+| **`[0x7C]`** | **2nd SupProto port_off** | **`0x05`** | **NEW** | starts at port 5. |
+| **`[0x7D]`** | **3rd SupProto rev\|count** | **`0x31`** | **NEW** | rev=3, **count=1** — single USB3 port. |
+| **`[0x7E]`** | **3rd SupProto port_off** | **`0x06`** | **NEW** | starts at port 6. |
+| `[0x7F]` | Repair Z sentinel | `0x00` | virgin | Z not landed yet (pre-Z binary on iron). |
+
+**Framebuffer**: identical to Attempts 41–47 (`xhci: found at ...` / `port N connected` / `port N reset failed (proto=2)` for ports 1 + 3).
+
+**Decision matrix hit — Row 2 structural variant**: the pre-bound matrix anticipated either Row 1 (USB2 overlap) or Row 2 (USB3 grouped `count=2`). Reality: this AMD FCH exposes USB3 as **two single-port SupProto caps** (port 5 alone, port 6 alone) rather than one `count=2` cap covering both. The 1st SupProto (rev=2, port_off=1, count=4) is still the only cap covering the failing USB2 ports 1 + 3. **Neither extra SupProto overlaps the failing ports.**
+
+**Hypotheses surviving Attempt 48:**
+
+- **F5 (MMIO cache-attribute)** — falsified Attempt 46.
+- **(a) Aliased mapping** — falsified Attempt 46.
+- **(b) Controller-side spec-visible gate** — falsified Attempt 47.
+- **(b') Multi-SupProto routing** — **falsified for this hardware**. No 2nd/3rd SupProto cap covers the failing ports; per-bank PSIV/HW-LPM data in those caps is irrelevant to USB2 reset on ports 1 + 3.
+- **(c) AMD-FCH PR-write timing window** — *active, last behavioral hypothesis.*
+
+**Decision applied**: Stage **Repair (Z) — AMD-FCH PR-write timing delay** for Attempt 49. ~10 ms TSC-based spin between CSC pre-clear and PR write per SeaBIOS `xhci_hub_reset` pattern. Sentinel stamp `[0x7F]=0xAA` proves the site executed.
+
+**Side-note (worth documenting)**: the "two single-port USB3 SupProto" structure on archaemenid is rarer than `count=2` grouped — most xhci silicon collapses sibling USB3 ports into one cap. Suggests AMD FCH per-port port-power islanding even at the SupProto cap layer. Informational for future driver work; not load-bearing on USB2 reset.
+
+---
+
+### Attempt 49 prep — Upstream plumbing bundle (Z + USBLEGCTLSTS SMI disable + MSI-X enable)
+
+**Cycle break**: this attempt is NOT another single-letter diagnostic-ride-along. After Attempts 32–48 burned 9 letters (Q→R→S/S'→T→V→V''→W→X/X'→b'→Z) on the per-port PORTSC state machine, the prior-art audit (Linux `xhci-pci.c` / `xhci-hub.c` / `xhci.c`, SeaBIOS `usb-xhci.c`, FreeBSD `xhci.c`) surfaced **three real upstream-plumbing gaps** that no PORTSC-letter could have caught. Bundling all three into one iron burn; if any one closes the silent-absorb, success is attributable by which framebuffer / CMOS signal flips.
+
+**Three behavioral changes** (no diagnostic ride-alongs):
+
+| # | Fix | Code site | Prior art | Truth channel |
+|---|---|---|---|---|
+| 1 | **Repair Z** — AMD-FCH timing delay | `xhci_port.cyr:419-433` (~5 LOC: TSC spin 30M cycles ≈ 10 ms) between CSC W1C and PR write | SeaBIOS `xhci_hub_reset` `msleep(10)` between port-state ops on AMD | CMOS `[0x7F]=0xAA` sentinel + FB silent on success |
+| 2 | **USBLEGCTLSTS SMI disable** | `xhci_port.cyr:256-289` new `xhci_usblegctlsts_disable_smi(cap_off)` + 3 call sites in `xhci_usblegsup_claim` | Linux `xhci-pci.c` `quirk_usb_handoff_xhci` — mask `0xFFFFE01F`, OR `0x1FFF0000` to clear enables + W1C status | FB-only: rides existing `xhci: USBLEGSUP already OS-owned` / `claimed from BIOS` line |
+| 3 | **MSI-X enable (Function Mask)** | `pci.cyr:99` new `pci_find_cap` + `pci_enable_msix_masked`; `xhci.cyr` call after `pci_enable_bus_master_idx` | Linux `xhci_setup_msix` unconditional probe-time enable; some xhci silicon gates op-reg state-machine progress on interrupter-readiness in config space | FB-only: new line `xhci: MSI-X enabled (function-mask)` / `xhci: MSI enabled` / `xhci: no MSI/MSI-X cap advertised` |
+
+**Why bundle, not stage three separate letters**: attribution is preserved by the truth channels (MSI-X FB line + USBLEGSUP FB line + Z CMOS sentinel are independent). Bundling avoids three iron-burns @ ~1 hour each, matching the user's directive to stop letting boot-burn cadence gate other work. Tradeoff: if the bundle works, we know "one of these three was the gate" without knowing which exactly — to bisect attribution, a follow-up burn with selective disables would localize it (cheap, post-success).
+
+**Surviving silent-absorb hypothesis (this trio addresses all three)**:
+- F5/X/V'' falsified Attempts 43-46 (cache attribute / aliased mapping)
+- (b)/W falsified Attempt 47 (spec-visible USBSTS/USBCMD gate)
+- (b')/Attempt 48 falsified (multi-SupProto routing — extra caps don't cover failing ports)
+- (c) AMD-FCH PR-write timing — addressed by Repair Z
+- **NEW (d)** USB SMI re-arming post-handoff (BIOS-left enables in USBLEGCTLSTS continue firing SMI on USB activity, stealing cycles from PORTSC writes) — addressed by SMI disable
+- **NEW (e)** Interrupter-readiness gate in PCI config (some xhci silicon won't progress op-reg state machine until MSI/MSI-X enable is asserted in config space) — addressed by MSI-X enable
+
+**Pre-bound outcome matrix for Attempt 49**:
+
+| `kcp` | FB `MSI-X enabled` line | FB `USBLEGSUP` line | CMOS `[0x7F]` | CMOS `[0x64]` reset-OK | Reads as | Next |
+|---|---|---|---|---|---|---|
+| `0x15` | present | present | `0xAA` | non-zero | **Row 1 — BUNDLE UNBLOCKS RESET.** One of {timing, SMI, MSI-X} was the gate. Phase 3 closes. | Stage Phase 4 code surface (Address Device + Configure Endpoint + Set Protocol=boot) + Phase 5 (HID translation + `kb_buf` feed) WITHOUT per-substep iron burns. Optional one-shot bisect burn to localize which fix was load-bearing. |
+| `0x15` | present | present | `0xAA` | `0x00` | **Row 2 — BUNDLE EXECUTED, RESET STILL FAILS.** All three new fixes ran, none was the gate. Silent-absorb is genuinely outside the surfaces consulted so far. **Pivot to non-iron work** per § Decoupling decision below. | Switch development cadence: develop Phase 4/5 against the existing simulator-friendly Phase 1-3 infrastructure; iron burns batched, not per-substep. Re-engage xhci hardware-investigation as a separate parallel-track. |
+| `0x15` | missing | present | `0xAA` | (any) | **Row 3 — MSI-X path didn't run.** Probe-time regression in cap-list walk OR `pci_find_cap` faulted silently. Validate build size (348,032 B); re-burn if mismatch. | Audit `pci_find_cap` against archaemenid's PCI config-space layout. |
+| `0x15` | present | present | `0x00` | (any) | **Row 4 — Z didn't run.** Pre-Z site faulted OR DCE'd out. Validate build size (348,032 B). | Audit `xhci_port_reset` for early-return path bypassing the new TSC spin. |
+| `kcp != 0x15` | (any) | (any) | (any) | (any) | **Row 5 — bundle caused regression.** Most likely culprit: MSI-X write to PCI config space upset firmware-managed state OR SMI clear write triggered immediate SMI loop. | Revert to post-b' binary (346,376 B); re-burn one fix at a time. |
+
+**Build under test**: agnos kernel `346,376 → 348,032 B` (+1,656 across Z `+80` / SMI clear `+224` / MSI-X enable `+1,352`; multiboot2 ELF64 OK, entry `0x1000a8` unchanged, 32 unreachable fns / 7,460 B DCE-recoverable). Read-boot-log decoder `60,576 → 63,184 B` (+2,608 for [0x7B]-[0x7F] slot reads + cheat-sheet; only Z has a CMOS sentinel — SMI clear and MSI-X enable are FB-only because the 0x50-0x7F virgin scratch is exhausted). Cyrius pin 5.11.55. gnoboot 0.2.0 untouched.
+
+**Floor**: post-b' binary (346,376 B from Attempt 48) is the regression-revert target. Risk surface concentrated in the MSI-X write to PCI config space (untested on archaemenid pre-this-burn) — Function Mask bit is set, so even if a spurious MSI fires, no IDT vector dispatches (INTE in USBCMD is the second gate).
+
+---
+
+### Decoupling decision (replaces Post-Z reckoning)
+
+**Written 2026-05-17, pre-Attempt-49 burn, in response to user signals**: "we've been circling this for two whole days" + "I'm getting tired of holding off other work because of Boot burn allowances" + "all you have done is diagnosis [until I forced a review]" + "we have prior art to refer to... but you've only suggested 1 maybe 2 times".
+
+**What the user is telling me**:
+
+1. Iron-burn-test loops are the dev cadence; that's broken.
+2. Pure-spec-text diagnostic letters are wasted effort when reference implementations have already addressed the quirks.
+3. Closed-beta MVP (boot-to-shell on iron) is alive since Attempt 28 — keyboard input is real-OS-criterion territory, not closed-beta-gate territory.
+
+**Two-track decision after Attempt 49 burn**:
+
+**If bundle works (Row 1)**: develop Phase 4 + Phase 5 code surface against existing Phase 1-3 infrastructure; iron-burn ONLY when there's a structurally complete chunk to verify. No more per-substep burns.
+
+**If bundle doesn't work (Row 2)**: stop letting xhci hardware-investigation gate everything else. The silent-absorb arc has surfaced 9 falsified hypotheses + 3 surviving ones that ran in this burn; the next investigation step is **not** another letter. It's:
+
+- **Move USB-HID hardware-investigation to a parallel-track** with its own cadence, not gating MVP polish work. Make progress on documentation, other repos (ark / aegis / libro / etc.), agnoshi feature surface, philosophy.md accretion, the design-patterns through-line layer, etc.
+- **Develop Phase 4 + Phase 5 code surface anyway** against AGNOS Phase 1-3 infrastructure. If/when the silent-absorb is unblocked at a future date, Phase 4/5 lands immediately rather than spinning up cold.
+- **Consult prior art FIRST when the parallel-track engages** — Linux `xhci.c` `xhci_setup_msi`, `xhci-hub.c` `xhci_handshake` (read-back barrier pattern), FreeBSD `xhci.c` (AMD-empirical longer-than-spec wait timings). See [reference_xhci_prior_art](../../../../../../home/macro/.claude/projects/-home-macro-Repos-agnosticos/memory/reference_xhci_prior_art.md) memory.
+
+**What the user is NOT being asked to accept**:
+- **Not** "ship a non-typeable OS." Keyboard input is essential; the question is which path, not whether.
+- **Not** "give up on xhci." The arc continues, just with cadence decoupled from MVP polish work.
+- **Not** PS/2 / i8042 as a side-channel. Dead hardware on modern targets per `feedback_no_ps2_suggestions`; doesn't exist on archaemenid.
+
+**The bottom line**: Bundle is one burn. Whether it works or not, the development cadence after this burn pivots away from per-letter iron-burn loops. Other work resumes immediately regardless of outcome.
 
 ---
 

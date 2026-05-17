@@ -235,6 +235,11 @@ fn main(): i64 {
     var xh_sts_hi  = cmos_read(120);  # 0x78 — USBSTS byte 1 at reset-fail-time (SSS/RSS/SRE/CNR/HCE) (Repair W)
     var xh_cmd_lo  = cmos_read(121);  # 0x79 — USBCMD byte 0 at reset-fail-time (R/S/HCRST/INTE/HSEE/LHCRST) (Repair W)
     var xh_capxc   = cmos_read(122);  # 0x7A — unclassified xECP cap IDs packed (Repair W)
+    var xh_sup2    = cmos_read(123);  # 0x7B — 2nd SupProto rev|port_count (Repair b')
+    var xh_sup2off = cmos_read(124);  # 0x7C — 2nd SupProto port_off (Repair b')
+    var xh_sup3    = cmos_read(125);  # 0x7D — 3rd SupProto rev|port_count (Repair b')
+    var xh_sup3off = cmos_read(126);  # 0x7E — 3rd SupProto port_off (Repair b')
+    var xh_zsent   = cmos_read(127);  # 0x7F — Repair Z timing-delay sentinel (0xAA = site executed)
 
     print_cmos_line("CMOS[0x53] gnoboot magic    = ", gmagic);
     print_cmos_line("CMOS[0x52] gnoboot checkpt  = ", gcp);
@@ -304,6 +309,11 @@ fn main(): i64 {
     print_cmos_line("CMOS[0x78] xhci USBSTS byte1 reset-fail (W)  = ", xh_sts_hi);
     print_cmos_line("CMOS[0x79] xhci USBCMD byte0 reset-fail (W)  = ", xh_cmd_lo);
     print_cmos_line("CMOS[0x7A] xhci unclassified xECP cap IDs (W)= ", xh_capxc);
+    print_cmos_line("CMOS[0x7B] xhci 2nd SupProto rev|count (b')  = ", xh_sup2);
+    print_cmos_line("CMOS[0x7C] xhci 2nd SupProto port_off  (b')  = ", xh_sup2off);
+    print_cmos_line("CMOS[0x7D] xhci 3rd SupProto rev|count (b')  = ", xh_sup3);
+    print_cmos_line("CMOS[0x7E] xhci 3rd SupProto port_off  (b')  = ", xh_sup3off);
+    print_cmos_line("CMOS[0x7F] xhci Repair-Z timing-delay sentinel = ", xh_zsent);
 
     # USBLEGSUP outcome decoder.
     if (xh_usbleg == 0) { println("  USBLEGSUP: n/a (no xECP chain) — controller does not advertise extended caps."); }
@@ -543,6 +553,16 @@ fn main(): i64 {
     println("    [0x7A]=0xA0 (high=0xA, low=0): first unclassified is Debug Cap only (no second SupProto). Less likely on AMD FCH but possible. Driver isn't claiming the debug cap; not the silent-absorb gate but worth surfacing.");
     println("    [0x7A]=0x00 with cap_count [0x68] >= 3 = walk reached extra caps but classify-skip path didn't fire — either both unclassified slots stayed 0 (impossible if cap_count > 2) or the kernel build lacks Repair (W) (re-burn after size check).");
     println("    [0x7A]=0xXY where X or Y is in [3..F]: spec-defined caps — see ID list above. Anything ≥ 0xC after clipping = vendor cap (caller should re-burn with full-byte capture if it matters).");
+    println("    Repair (b') per-cap SupProto fingerprints [0x7B..0x7E]: nibble-packed rev|count + raw port_off. 1st SupProto fingerprint stays in [0x6A]. With cap_count [0x68] = 5 and 3 unclassified caps observed in [0x7A], the AMD FCH on archaemenid exposes 3 SupProto caps total (plus USBLEGSUP + one other).");
+    println("    [0x7B]/[0x7D]: high nibble = rev_major (2 = USB2 / 3 = USB3 / 4 = USB4-SSP). Low nibble = port_count (1..F).");
+    println("    [0x7C]/[0x7E]: raw port_off (1-based). 1 = starts at port 1; 5 = USB3 bank; 6 = port 6 only.");
+    println("    Failing ports across the silent-absorb arc are 1 + 3 (USB2). If 2nd or 3rd SupProto covers any port in [1..4], that's the overlap row → per-bank PSIV / HW-LPM quirk. If neither covers [1..4], the b' data is informational and the gate is elsewhere (escalate to Repair Z timing).");
+    println("    [0x7B]=0x31 + [0x7C]=0x05 + [0x7D]=0x31 + [0x7E]=0x06: archaemenid AMD FCH shape — 2nd cap = USB3 port 5 alone, 3rd cap = USB3 port 6 alone. **NEITHER overlaps failing USB2 ports 1+3** → (b') falsified for this hardware. Behavioral repair = Z timing.");
+    println("    [0x7B]=0x32 + [0x7C]=0x05 + [0x7D]=0x22 + [0x7E]=0x01 or 0x03: 2nd cap = USB3 grouped, 3rd cap = USB2 sibling overlap with the failing ports → (b'') per-bank PSIV consumption needed.");
+    println("    All [0x7B..0x7E] = 0x00 with kcp >= 0x32: pre-b' build flashed (size != 346,376 B) OR cap walk faulted before SupProto branch.");
+    println("    Repair (Z) sentinel [0x7F]: 0xAA = Z timing-delay site executed at least once across the per-port reset loop (last-write-wins is fine). 0x00 = pre-Z binary on iron (size != 346,456 B) OR Z site faulted / regressed / DCE'd out.");
+    println("    [0x7F]=0xAA + [0x64]=0x00: Z executed but didn't break the silent-absorb → ALL behavioral hypotheses in the silent-absorb trio (F5/X/V'', b/W, b'/c/Z) exhausted. Escalation = decoupled re-evaluation, NOT another diagnostic letter.");
+    println("    [0x7F]=0xAA + [0x64] non-zero: Z is the unblock → Phase 3 closes; xhci enumeration proceeds to Address Device + control transfers.");
     syscall(1, 1, "\n", 1);
     # End xHCI post-mortem block.
 
