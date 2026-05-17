@@ -4855,7 +4855,72 @@ Identical to Attempt 41's framebuffer line-for-line — T does not change the us
 
 **Floor**: post-T binary (343,624 B from Attempt 42) is the revert target for any V-introduced regression. V is purely additive (new helper + new stamps) — regression risk is concentrated in the asm-block byte sequence for `rdmsr` itself.
 
-_Pre-burn block; the actual Attempt 43 entry will replace this footer once the burn completes._
+_Pre-burn block preserved as-is; the Attempt 43 actual outcome below hit prep-matrix Row 1 exactly (F5 confirmed; BAR is genuinely WB-cached)._
+
+### Attempt 43 — 2026-05-16 → ROW 1 HIT (F5 CONFIRMED; MMIO BAR is WB-cached, PORTSC writes coalesce in cache)
+
+**Result**: Repair (V)'s `rdmsr` helper executed cleanly; both diagnostic slots populated with the F5-confirming pair. `MTRR_DEF_TYPE` reads `0x00` (MTRRs globally disabled — bit 11 E=0, byte=UC default — PAT alone governs caching), `PAT[0]` reads `0x06` (WB). The `vmm_map(BAR, BAR, 0x83)` path AGNOS uses for MMIO selects PAT entry 0 = PA0 = WB, so every PORTSC write coalesces in L1/L2 and never reaches the xHCI controller. F5 is the surviving load-bearing hypothesis; Repair (X) is the fix.
+
+**CMOS post-mortem (Attempt 43)**:
+
+| Slot | Field | Value | Δ vs Attempt 42 | Interpretation |
+|---|---|---|---|---|
+| `[0x6B]` | PP bitmap | `0x3F` | unchanged | S' constants holding; all 6 ports stuck PP=1. |
+| `[0x63]` | CCS bitmap | `0x04` | unchanged | Port 3 connection detected; attach state stable. |
+| `[0x64]` | Reset-OK bitmap | `0x00` | unchanged | PR write still absorbed — Repair-T 3× retry exhausts identically. |
+| `[0x6C]` | PSC change byte | `0x00` | unchanged | Controller never set PRC/PED/CSC at any retry boundary. |
+| `[0x6D]` | PLS pre-PR | `0x07` | unchanged | Polling — spec-compliant precondition holds. |
+| `[0x70]` | PR retry count | `0x03` | unchanged | T loop ran to exhaustion (3× silent-absorb) — confirms Attempt 42 was deterministic, not a race. |
+| `[0x71]` | MTRR_DEF_TYPE low byte | `0x00` | **NEW** | bit 11 E=0 → MTRRs globally disabled; default-type byte=UC but inert since E=0. PAT alone governs. |
+| `[0x72]` | PAT MSR byte 0 (PA0) | `0x06` | **NEW** | WB. With MTRRs disabled, this IS the effective memory type for any 2MB PDE that selects PA0 (PCD=PWT=PAT=0, which `vmm_map(..., 0x83)` does). |
+
+**Framebuffer (`XHCI_Repair_V_Logs.jpg`)**: identical to Attempt 41/42 line-for-line — V is read-only diagnostic, no user-visible behavior change expected.
+
+**Hypotheses surviving Attempt 43:**
+- F1, F2, F3, F4 — all falsified across prior attempts.
+- **F5 (MMIO cache-attribute / write coalescing)** — **confirmed**. MTRRs ruled out as a possible UC-override path (globally disabled). PAT default at PA0=WB. The default `0x83` PDE flag puts the BAR on PA0 → WB → silent-absorb mechanism explained end-to-end.
+
+**Decision applied**: Stage **Repair (X) — MMIO UC remap via `vmm_remap_uc_2mb`** for Attempt 44. F5 confirmed → straightforward fix → 1.30.2 unblock (1.30.1 was the pre-iron-validation S-only tag; 1.30.2 supersedes).
+
+### Repair (X) — landed 2026-05-16, post-Attempt-43, pre-Attempt-44
+
+**Files**:
+- `agnos/kernel/core/vmm.cyr` — new `vmm_remap_uc_2mb(phys)` function (~40 LOC including doc comment) handling both <1GB PDE-rewrite and ≥1GB 1GB-page-shatter cases.
+- `agnos/kernel/arch/x86_64/usb/xhci.cyr` — call `vmm_remap_uc_2mb(mmio)` immediately after caching `xhci_mmio_base`, ahead of the first CAPLENGTH read.
+- `agnos/CHANGELOG.md` — `[1.30.2] — 2026-05-16` section rolling up S' + T + V + X.
+- `agnos/VERSION` — `1.30.1` → `1.30.2`.
+
+**Mechanism**: For 2MB pages the PAT-index bits are {PWT=bit 3, PCD=bit 4, PAT=bit 12}. Setting PWT|PCD with PAT=0 → PAT index 3 → PA3 = UC under firmware-default PAT MSR `0x0007040600070406`. PA3 is the *only* firmware-default PAT entry reachable with PAT-bit=0 that yields UC. The BAR's 2MB chunk becomes UC; surrounding RAM stays WB.
+
+For BAR ≥1GB (archaemenid's xHCI lands at `0xFC800000` in PDPT[3]'s 1GB huge page), the function shatters the 1GB region into a fresh PD, fills 512 identity 2MB entries (WB), overrides the BAR's chunk to UC, and repoints PDPT[gb_idx] at the new PD with PS=0. CR3 reload evicts the stale 1GB-page TLB entry. Surrounding RAM in the shattered 1GB stays WB-cached.
+
+**Build delta**: 343,752 → 344,360 B (+608). LSP cross-file diagnostics flagged `pmm_alloc` as undefined when called from `vmm.cyr` (the existing `vmm_alloc_at` already calls it through the same kernel-tree resolution path; build verified clean).
+
+**Pre-bound outcome for Attempt 44:**
+
+| Iron-test gate | `[0x63]` CCS | `[0x64]` Reset-OK | `[0x6C]` PSCchg | `[0x70]` PR retry | Interpretation | Next step |
+|---|---|---|---|---|---|---|
+| `xhci: port N connected, …` line above `VFS initialized` | `0x04` | `0x04` (port 3 bit set) | `0x21` (PRC+PED) or `0x01` (PRC) | `0x00` or `0x01` | ✅ **Repair (X) cleared the silent-absorb.** F5 confirmed end-to-end; PA3=UC mapping reaches the controller. PR write engaged on first retry (or `[0x70]=0x01` if second retry was needed for debounce). | Phase 4 (Configure Endpoint + Set Protocol=boot). 1.30.2 closeout. |
+| `xhci: port N reset failed (proto=2)` | `0x04` | `0x00` | `0x00` | `0x03` | **X didn't unblock.** Silent-absorb survives UC mapping. F5 falsified, the cache hypothesis is wrong, or `vmm_remap_uc_2mb` didn't actually take effect on this PDE (verify by re-reading the PDE post-remap → CMOS). Re-stamp `[0x71]/[0x72]` post-X to confirm the PDE flags actually changed. | Stage **Repair (X')** — PTE flag re-stamp after remap (proves the PDE rewrite landed) + escalate to **Repair (V'')** if PDE shows the new flags but symptom persists. |
+| `xhci: port N reset failed (proto=2)` AND boot regressed downstream | (any) | (any) | (any) | (any) | **X caused a regression** — most likely the 1GB-page shatter (new PD allocation, PDPT rewrite, CR3 reload) corrupted something the surrounding 1GB range was relying on. | Revert to pre-X binary (343,752 B from Attempt 43). |
+| `kcp != 0x15` (boot didn't reach kybernet) | (any) | (any) | (any) | (any) | Boot stuck early — most likely the asm-block in `vmm_remap_uc_2mb` (`mov rax, cr3; mov cr3, rax;`) faulted, or the new PD allocation broke pmm state. | Revert to pre-X binary; bisect via a CMOS stamp before/after the remap call. |
+
+**Queued fallback repairs (Attempt 45+ candidates):**
+
+| Repair | When to stage | Behavior | Size |
+|---|---|---|---|
+| **(X') post-remap PDE flag re-stamp** | If Attempt 44 hits row 2 (silent-absorb survives UC) | After `vmm_remap_uc_2mb(mmio)`, read the controlling PDE back and stamp its flags byte (PWT/PCD/PAT bits) to CMOS — proves the rewrite landed in the page table. | ~10 LOC + 1 CMOS slot |
+| **(V'') PTE walk for BAR addr** | If X' confirms PDE flags ARE PCD|PWT|PAT=0 but symptom persists | Full PML4→PDPT→PD walk for `xhci_mmio_base`, stamp each level's entry low byte to CMOS — would surface any aliasing through another mapping that still hits PA0. | ~25 LOC + 3 CMOS slots |
+
+**Decision gate after Attempt 44**:
+- **X row 1 (port connected, reset OK)**: Phase 4 staging next iron iteration. 1.30.2 closeout in sight.
+- **X row 2 (silent-absorb survives)**: bundle X' for Attempt 45; one diagnostic iteration to localize whether the rewrite took.
+- **X row 3 (downstream regression)**: revert to 343,752 B; consider 4KB-page sub-shatter instead of 2MB.
+- **X row 4 (early boot stuck)**: revert; bisect.
+
+**Floor**: post-V binary (343,752 B from Attempt 43) is the revert target for any X-introduced regression. X is the first vmm-touching change in this arc; revert risk is non-trivial but pre-bounded by a clean binary at the floor.
+
+_Pre-burn block; the actual Attempt 44 entry will replace this footer once the burn completes._
 
 ---
 
