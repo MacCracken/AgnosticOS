@@ -353,7 +353,7 @@ The boot pipeline currently flashes via `install-usb.sh` directly. ISO Stage-4 c
 
 These can land in any 1.30.x patch without blocking the gate cycle:
 
-- **kriya v0.3.0** — M2 file-operations milestone (`cp` / `mv` / `rm` / `mkdir` / `touch` / `ln`) per [kriya M2](https://github.com/MacCracken/kriya/blob/main/docs/development/roadmap.md#m2--file-operations-v030). **Also gates iron Attempt 54** — burns bundled with kriya ship per `feedback_iron_burns_block_other_work` (single-machine dev setup; burns disrupt unrelated work).
+- **kriya v0.3.0** — M2 file-operations milestone (`cp` / `mv` / `rm` / `mkdir` / `touch` / `ln`) per [kriya M2](https://github.com/MacCracken/kriya/blob/main/docs/development/roadmap.md#m2--file-operations-v030). **Co-gates iron Attempt 54 alongside the active Cyrius agent cycle** — burn fires after BOTH gates release (single-machine dev setup; burns disrupt unrelated work; per `feedback_iron_burns_block_other_work`).
 - **commandress v0.2.0** — minimum viable prompt (config loader + cwd segment + exit-code segment + render pipeline) per [commandress M1](https://github.com/MacCracken/commandress/blob/main/docs/development/roadmap.md#m1--minimum-viable-prompt-v020)
 - **agnos kernel hardening** — single-line correctness fixes surfaced during 1.30.x iron burns; SMP AP-wakeup IPI gating decided post-Attempt-54 outcome
 - **gnoboot 0.3.x** — only as iron burns surface bootloader-side bugs; otherwise stable at 0.2.0 per the "lean is good" stance after the CMOS-removal cleanup track

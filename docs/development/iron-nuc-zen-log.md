@@ -5728,7 +5728,7 @@ Closes the public-beta xHCI spec-compliance debt. Per-repair detail in [`agnos/C
 
 ### Attempt 54 prep — first iron exposure of agnos 1.30.5 (Phase 4 + Phase 5 landed)
 
-**Status**: pending — **externally gated on kriya 0.3.0 (M2 file-operations milestone) ship**. No iron burn scheduled until kriya M2 lands; burns are bundled to amortize the per-burn cost of disrupting the single-machine dev setup (`feedback_iron_burns_block_other_work` + `project_single_machine_dev_setup`).
+**Status**: pending — **externally gated on two upstream completions**: (1) kriya 0.3.0 (M2 file-operations milestone) ship, and (2) the Cyrius agent finishing its current work cycle. **Burn fires only after BOTH gates release.** Burns are bundled to amortize the per-burn cost of disrupting the single-machine dev setup (`feedback_iron_burns_block_other_work` + `project_single_machine_dev_setup`); waiting on the Cyrius cycle also means any toolchain-side fixes / changes land in the same burn rather than forcing a second burn shortly after.
 
 **Honest framing — this is NOT a Phase 4/5 validation burn.** Phase 4 (`hid_kbd_configure` walking the configuration descriptor + Configure Endpoint + SET_PROTOCOL=boot + transfer ring) and Phase 5 (HID-usage → PS/2 translation + report differ + event-ring drain + `kb_buf` writer) landed in 1.30.5 staging via per-Cyrius build verify (kernel 350,272 B → 364,736 B, +14,464 B / ~600 LOC). **Phase 4/5 only executes when Phase 3 successfully addresses a USB device** — `main.cyr` iterates `xhci_slot_input_ctx` slots and calls `hid_kbd_configure` only on populated entries. Archaemenid's USB2 port-reset silent-absorb (Attempt 52 / twelfth-falsified hypothesis) means **no slots get addressed on this hardware**, so Phase 4/5 stays dormant. QEMU xhci-pci emulation is the load-bearing validation surface for Phase 4/5 itself — clean spec-compliant controller, Phase 3 enumeration completes, end-to-end exercise is possible there. **Burn 54 on archaemenid is therefore a non-regression confirmation + opportunistic re-probe**, not a Phase 4/5 outcome gate.
 
@@ -5742,9 +5742,9 @@ Closes the public-beta xHCI spec-compliance debt. Per-repair detail in [`agnos/C
 
 | Component | Version | Size | Source |
 |---|---|---|---|
-| agnos kernel | 1.30.5 | 364,736 B | post-Phase-4/5 + post-fmt; `./scripts/build.sh` clean |
+| agnos kernel | 1.30.5+ | 364,736 B (1.30.5 floor; may grow if toolchain-cycle changes prompt rebuild) | post-Phase-4/5 + post-fmt; `./scripts/build.sh` clean |
 | gnoboot | 0.2.0 | (stable) | no changes since 2026-05-15 merge |
-| cyrius toolchain | 5.11.55 | — | pinned in `agnos/cyrius.cyml` |
+| cyrius toolchain | **TBD pending agent cycle** | — | **external gate — burn waits on agent completion**; whichever cyrius version is in `agnos/cyrius.cyml` at burn time |
 | agnosticos boot pipeline | 2026.5.13+ | — | `install-usb.sh --update` provisions |
 | kriya | **0.3.0 pending** | — | **external gate — burn waits on M2 ship** |
 
@@ -5784,13 +5784,14 @@ Closes the public-beta xHCI spec-compliance debt. Per-repair detail in [`agnos/C
 9. Save photo to `iron-nuc-zen-photos/attempt-54-<descriptive>.jpg` per the established naming convention.
 10. Write up outcome inline below this prep block (per the conventions section at the bottom of this log).
 
-**Why kriya 0.3.0 is the external gate**:
+**Why the two external gates**:
 
-Per `project_single_machine_dev_setup` archaemenid is both the iron-boot target and the development host — every iron burn freezes the user's unrelated dev work for ~30 min (boot, photograph, read-boot-log, repower, switch USBs back to dev). Bundling 1.30.5 iron exposure with kriya M2 ship lets a single burn cover both:
-- agnos 1.30.5 non-regression confirmation (this attempt's primary purpose)
-- whatever userland surface kriya 0.3.0 brings to the installer/build pipeline path (M2 includes `cp`/`mv`/`rm`/`mkdir`/`touch`/`ln` — direct relevance to any installer that needs file ops)
+Per `project_single_machine_dev_setup` archaemenid is both the iron-boot target and the development host — every iron burn freezes the user's unrelated dev work for ~30 min (boot, photograph, read-boot-log, repower, switch USBs back to dev). Bundling burns across stable points releases this cost amortization-style:
 
-kriya's M2 ledger lives at [`kriya/docs/development/roadmap.md` § M2 — File operations](https://github.com/MacCracken/kriya/blob/main/docs/development/roadmap.md). When that milestone closes, this gate releases.
+- **kriya 0.3.0** — M2 file-operations milestone (`cp` / `mv` / `rm` / `mkdir` / `touch` / `ln`). Direct relevance to any installer / boot-pipeline surface that needs file ops. Ledger: [`kriya/docs/development/roadmap.md` § M2 — File operations](https://github.com/MacCracken/kriya/blob/main/docs/development/roadmap.md).
+- **Cyrius agent current cycle** — whatever toolchain-side work the active Cyrius agent session is mid-flight on (per `feedback_cyrius_hands_off`, Cyrius is owned by another driver; this log doesn't speculate about scope). Bundling means any cyrius cycle outcome — pin bump, codegen fix, sandhi fold, anything — lands cleanly in the same burn rather than forcing a follow-up burn shortly after.
+
+Both gates release independently. Burn fires only after the second one closes (whichever closes second is the trigger).
 
 **Decision gate after Attempt 54 burn**:
 
@@ -5799,6 +5800,50 @@ kriya's M2 ledger lives at [`kriya/docs/development/roadmap.md` § M2 — File o
 - Row 3 → Phase 4/5 bug surfaced; triage per FB line; QEMU smoke is the iteration loop until repro.
 - Row 4 → revert + bisect (see floor).
 - Row 5 → BIOS workaround; independent of code state.
+
+---
+
+### Attempt 54 — 2026-05-17 → ROW 1 HIT (1.30.5 iron-clean baseline; silent-absorb persists per Attempt 52)
+
+USB reflashed with 1.30.5 binary (post-Phase-4/5 + H1-H4 hardening). Keychron K2 on **port 3** (not port 1 as the prep doc anticipated — operator chose the alternate USB2 bank; both have shown the silent-absorb in Attempt 52). Boot, FB photo + `sudo ./scripts/read-boot-log.sh`.
+
+**FB outcome (primary truth channel)**: image at `XHCI_Phase4-5_included.jpg` (root of repo; pre-rename). Renders:
+
+- `AGNOS kernel v1.30.5` banner
+- `xhci: msi enabled (function-mask)` / `xhci: found at … 64 slots, 6 ports`
+- `xhci: USBLEGSUP already OS-owned`
+- `xhci: dev_notifications enabled` ← BB carry-forward
+- `xhci: halted, reset clean` / `xhci: scratchpad ready` / `xhci: controller running, HCH=0, ERDP=4542464`
+- `xhci: drained 1 events` ← DD carry-forward (event-ring drain firing; same firmware residue as Attempt 52)
+- `xhci: port 3 reset failed (proto=2)` ← silent-absorb on USB2 bank persists
+- **`hid: keyboard layer initialized`** ← **Phase 5 init line — proves new code surface is alive and didn't fault**
+- (no `hid: keyboard configured ...` line — Phase 4 dormant as designed, no slot addressed)
+- VFS / syscall / scheduler / userland / kybernet init normal
+- `AGNOS shell v1.30.5 (type 'help')` → `agnos>`
+
+**CMOS post-mortem (Attempt 54)**:
+
+| Slot | Meaning | Value | Reading |
+|---|---|---|---|
+| `[0x50]` | kcp | `0x15` | Shell reached; no regression below kybernet. |
+| `[0x63]` | CCS bitmap | `0x04` | Port 3 connected only (Keychron on port 3 this burn). |
+| `[0x64]` | reset-OK bitmap | `0x00` | **Silent-absorb persists on port 3** (thirteenth confirmation). |
+| `[0x77]/[0x78]` | USBSTS bytes 0+1 at reset-fail | `0x00`/`0x00` | Controller running clean — same shape as Attempt 52 (no HCH / HSE / CNR / HCE / PCD at fail time; H2 IMAN.IP clear + DD PCD clear both holding). |
+| `[0x84]` | BB sentinel | `0xBB` | Carries forward; DNCTRL write site executed. |
+| `[0x86]` | CC sentinel (expected `0xCC`) | `0x5A` | **Identical anomaly to Attempt 52** — extended-CMOS offset ≥ 6 aliases on FCH 1022:1639. Reproducible quirk, not a new symptom. |
+| `[0x87]` | DD sentinel (expected `0xDD`) | `0xA5` | Same anomaly. FB `drained 1 events` line is the load-bearing proof DD ran. |
+| `[0x80]` | MaxScratchpadBufs (CC-routed) | `0x02` | Real value (consistent with Attempt 52). |
+
+**Verdict**: **Row 1 hit clean.** 1.30.5 binary (kernel 364,736 B, +14,464 B / ~600 LOC vs 1.30.4 floor) ships iron-clean. `hid_kbd_init()` runs without faulting and `hid_poll()` shell-tick call from `kb_has_key()` is structurally inert under the no-slot-addressed condition (early-return at line ~1 when `hid_kbd_slot_id == 0`). Silent-absorb on USB2 port reset unchanged — thirteenth observation of the gate. Phase 4/5 code surface dormant per design (no slot to address).
+
+The two external gates that held Attempt 54 (`kriya 0.3.0` ship + Cyrius agent cycle) both released ahead of the burn. Bundling discipline held: non-regression confirmation of 1.30.5 + H1-H4 hardening + Phase 4/5 init landed in one iron exposure.
+
+**Decisions applied (per prep matrix Row 1)**:
+
+- Phase 4/5 validation continues on QEMU xhci-pci (spec-compliant controller, Phase 3 completes, end-to-end exercise possible).
+- xHCI silent-absorb arc remains parallel-track only — no Attempt 55 without either (a) real silent-absorb unblock hypothesis or (b) substantive new Linux-diff finding. Vendor PCI cap dump on 1022:1639 still candidate for a future read-only instrumentation burn but explicitly NOT bundled with code repairs.
+- CC/DD extended-CMOS anomaly closed as known FCH 1022:1639 quirk (offset ≥ 6 in extended bank aliases firmware-managed scratch). Workaround stays: confine sentinel + payload slots to `[0x80..0x85]`. FB lines remain load-bearing for `>0x85` site-executed proofs.
+- 1.30.5 is the iron-confirmed baseline for any follow-on cycle work (sandhi fold, post-burn pin sweep, etc.).
 
 ---
 
