@@ -4569,7 +4569,117 @@ _This pre-burn block is informational; the actual Attempt 39 entry will replace 
 
 **Floor**: pre-S binary (343,320 B) is the regression-revert target — known-boots-to-shell from Attempt 39.
 
-_This pre-burn block is informational; the actual Attempt 40 entry will replace the prep block once the burn completes._
+_Pre-burn block preserved as-is; the Attempt 40 actual outcome below diverged from every prep-matrix row (off-matrix regression — see next section)._
+
+### Attempt 40 — 2026-05-16 → REGRESSION (Repair (S) mask typo; PP detection collapsed)
+
+**Outcome**: **off-matrix** — none of the prep matrix rows fit. Closest is row 7 (regression), but the regression mechanism is a constant-value typo in Repair (S), not a downstream side-effect. PP `bitmap` collapsed `0x3F → 0x00`, CCS collapsed `0x04 → 0x00`, PR was never even attempted. Boot still reached `agnos>` (kcp=0x15), so the regression is xhci-scoped — kernel/PMM/CR4 all clean.
+
+**CMOS dump (post-Attempt-40)**:
+
+| Slot | Value | Decoded | Δ vs Attempt 39 |
+|---|---|---|---|
+| `0x50` (kcp) | `0x15` | kybernet reached (shell alive) | = |
+| `0x51` (kmag) | `0xAB` | kernel entry magic OK | = |
+| `0x52` (gcp) | `0x05` | gnoboot handoff complete | = |
+| `0x53` (gmag) | `0xCD` | gnoboot entry magic OK | = |
+| `0x54`/`0x55` (CR4) | `0x30`/`0x30` | SMEP+SMAP both on | = |
+| `0x56`–`0x5B` (PMM AS1) | all `0xDE` | every alloc safe (above 2 MB) | = |
+| `0x5C`–`0x61` (PMM AS2) | all `0x5A` | every alloc safe (above 2 MB) | = |
+| `0x62` (USBLEGSUP) | `0x01` | already OS-owned | = |
+| **`0x63` (CCS)** | **`0x00`** | **no ports connected — REGRESSED from `0x04`** | **`0x04 → 0x00`** |
+| `0x64` (reset-OK) | `0x00` | reset never attempted (no CCS=1 port) | = (semantic shift: pre = "attempted, absorbed"; post = "never attempted") |
+| `0x65`–`0x67` (proto) | `0x22 0x22 0x33` | p1–p4=USB2, p5–p6=USB3 | = |
+| `0x68` (xECP cnt) | `0x05` | 5 caps walked | = |
+| `0x69` (cap bits) | `0x03` | USBLEGSUP + SupProto both present | = |
+| `0x6A` (1st SupProto) | `0x24` | rev_major=2, port_count=4 (USB2 cap) | = |
+| **`0x6B` (PP)** | **`0x00`** | **NO ports PP=1 — REGRESSED from `0x3F`** | **`0x3F → 0x00`** |
+| `0x6C` (PSCchg) | `0x00` | no PSC change bits (no device to change anything) | = |
+| `0x6D` (PLS) | `0x07` | Polling (R10 still works, just nothing to gate) | = |
+| `0x6E` (HCCP1) | `0xE5` | AC64 CSZ LHRC LTC NSS — PPC=0 confirmed | = |
+| `0x6F` (HCCP2) | `0x3F` | U3C CMC FSC CTC LEC CIC (informational) | = |
+| `0x60` (PORTPMSC) | `0x00` | clean | = |
+
+**Framebuffer**: full kernel init log rendered cleanly. xHCI lines visible: `found at 4237295616, ver=272, 64 slots, 6 ports` → `caplen=32, csz=1, ac64=1, intrs=8` → `dboff=1440, rtsoff=1152, xecp=616` → `USBLEGSUP already OS-owned` → `halted, reset clean` → `Controller running, HCH=0, ERDP=11374592` → **`PP=1 asserted, bitmap=0`** (vs Attempt 39 `bitmap=63`) → no `xhci: port N …` lines at all → `VFS initialized` → … → `AGNOS shell v1.30.1 (type 'help')` → `agnos>`. Photo: [`iron-nuc-zen-photos/attempt-40-xhci-repair-s-pp-collapse.jpg`](iron-nuc-zen-photos/attempt-40-xhci-repair-s-pp-collapse.jpg) (sourced from `agnosticos/XHCI_Repair_S_LOG.jpg`).
+
+**Root cause — bit-math audit of Repair (S) constants**:
+
+Repair (S) defined `XHCI_PORTSC_RWS = 0x0E00C1E0` in `agnos/kernel/arch/x86_64/usb/xhci_regs.cyr:236`. The comment claimed coverage of *"bits {5-9, 14-15, 25-27} — PLS|PP|PIC|WCE/WDE/WOE"*, which matches Linux's `XHCI_PORT_RWS = ((0xf<<5) | (1<<9) | (0x3<<14) | (0x7<<25)) = 0x0E00C3E0`. But the hex value `0x0E00C1E0` is missing bit 9 (PP, `0x200`). One-nibble typo: `C1E0` should be `C3E0`.
+
+Downstream `XHCI_PORTSC_NEUTRAL = RO | RWS = 0x4E00FDE9` inherited the bug — should be `0x4E00FFE9`.
+
+**Effect**: the `xhci_portsc_write` helper at `xhci_port.cyr:272` does `store32(addr, (value & XHCI_PORTSC_NEUTRAL) | (w1c_clear & XHCI_PORTSC_W1C))`. So even when a caller explicitly OR's PP=1 into `value` (as `xhci_ports_power_on` does at line 74 with `| 0x200`), the helper re-masks and strips PP back to 0:
+
+```
+((psc & 0x4E00FDE9) | 0x200) & 0x4E00FDE9  =  psc & 0x4E00FDE9    (PP=0 always)
+```
+
+Per xHCI 1.2 §4.19.6, on PPC=0 silicon PP is supposed to be hardwired-on (writes ignored, reads always return 1). But the observed AMD FCH behavior says writing PP=0 *does* quiesce the port: subsequent PORTSC reads return PP=0, CCS=0, PSC stays clean. The "PP hardwired-on per spec" assumption from the Attempt 39 PPC-correction note is silicon-side incorrect for this controller.
+
+**Hypotheses surviving Attempt 39 — what changed in Attempt 40**:
+- F1 (HCCPARAMS1 spec-compliance gap): **untested** — Attempt 40 didn't exercise the PR path at all; F1 was the working hypothesis pre-S' too.
+- F2 (PLS precondition): **still falsified** — `0x6D=0x07` stamped clean.
+- F3 (RW1C/RWS/LWS mask handling): **the Repair-(S) hypothesis was correct in spirit, but the implementation typo dominated.** Repair (S') below corrects the constants; F3 returns to the testable-pre-Attempt-40 state.
+- F4 (Linux-style PR retry, T): **still queued** as Attempt 42 fallback if S' restores Attempt-39-shape and PR is still absorbed.
+
+### Repair (S') — landed 2026-05-16, post-Attempt-40, pre-Attempt-41
+
+| Repair | File | Behavior |
+|---|---|---|
+| **S'** (PORTSC RWS / NEUTRAL constant fix) | `agnos/kernel/arch/x86_64/usb/xhci_regs.cyr:236-237` | Two single-nibble edits: `XHCI_PORTSC_RWS` `0x0E00C1E0` → `0x0E00C3E0` (adds bit 9 / PP). `XHCI_PORTSC_NEUTRAL` `0x4E00FDE9` → `0x4E00FFE9` (RO \| RWS, inherits the same bit). Matches Linux's `XHCI_PORT_RWS` exactly. No call-site changes: `xhci_ports_power_on`'s `\| 0x200` is now redundant-but-safe (helper preserves PP through the mask), and the bare-mask call sites in `xhci_port_reset` now preserve PP instead of zeroing it. |
+
+**agnosticos-side decoder pair (`scripts/src/read-boot-log.cyr`):**
+- `kcp=0x15` verdict rewritten: replaces the "Repair (S) under test as of Attempt 40" claim with the Attempt 40 regression story + Repair (S') one-nibble fix. New text mentions byte-equivalent binary size and Attempt 41 under test.
+- PSCchg=`<none>` cheat-sheet row rewritten: documents the Attempt 40 mask-typo regression, the bitmap 0x3F→0x00 / CCS 0x04→0x00 collapse, and the S' constant fix. Repair (T) staging slot moved Attempt 41 → Attempt 42.
+- PLS=Polling cheat-sheet row rewritten: post-S' interpretation, same fallback chain.
+
+**Build under test** (rebuild verified 2026-05-16):
+
+| Artifact | Pre (post-S) | Post (post-S') | Δ |
+|---|---|---|---|
+| `agnos/build/agnos` | 343,384 B | **343,384 B** | 0 (constant-value swap is IR-equivalent — still a 32-bit immediate, different bits) |
+| `agnosticos/scripts/build/read-boot-log` | 50,088 B | (pending rebuild) | — |
+| Multiboot2 ELF64 | OK | OK | unchanged |
+| Entry | `0x1000a8` | `0x1000a8` | unchanged |
+| DCE-recoverable | 7,460 B (32 fns) | 7,460 B (32 fns) | unchanged |
+| Cyrius pin (both manifests) | `5.11.55` | `5.11.55` | unchanged |
+| `gnoboot` | `0.2.0` | `0.2.0` | unchanged |
+
+### Attempt 41 prep — Repair (S') one-nibble mask fix
+
+**Iron protocol** (burn pending after read-boot-log rebuild):
+1. Flash rebuilt USB.
+2. Attach keyboard to any USB-A port (port choice still doesn't matter per Attempts 36/38 universal-failure carry-forward).
+3. Boot archaemenid, photograph the framebuffer block between `xhci: PP=1 asserted, bitmap=…` and `VFS initialized`.
+4. After boot to `agnos>`, run `sudo ./scripts/read-boot-log.sh`.
+
+**Pre-bound outcome matrix**
+
+| FB line | `[0x6B]` PP | `[0x63]` CCS | `[0x64]` reset | `[0x6C]` PSCchg | Interpretation | Next step |
+|---|---|---|---|---|---|---|
+| `xhci: port N connected, …` | `0x3F` (or partial) | non-zero | non-zero | (irrelevant) | ✅ **Repair (S') cleared both the typo regression AND the original silent-absorb.** Linux-canonical RMW + PP preserved through the mask was the whole answer. | Phase 4 staging (Configure Endpoint + Set Protocol=boot). 1.30.1 closeout in sight. |
+| `xhci: port N reset failed (proto=2)` | `0x3F` | non-zero | `0x00` | `0x00` | **Restored Attempt-39-shape exactly.** S' fixed the regression but didn't fix the original silent-absorb — F3 (LWS / RWS hypothesis) is genuinely insufficient on this silicon. Repair (T) Linux-style PR retry is the next probe. | Stage **Repair (T)** for Attempt 42. ~10 LOC. |
+| `xhci: port N reset failed (proto=2)` | `0x3F` | non-zero | `0x00` | non-zero (any change bit) | **Diagnostic information increase from S' alone** — S' moved the controller out of pure silent-absorb without needing PR retry. Read the new change-byte. | If `PRC` (`0x20`) — reset completed but PED never followed; silicon link-train issue. If `CSC` (`0x02`) only — attach observed but no reset progress. |
+| `xhci: PP=1 asserted, bitmap=0` (regression persists) | `0x00` | `0x00` | `0x00` | `0x00` | **S' didn't restore PP detection.** Either the constant fix didn't actually land in the binary (rebuild stale / wrong artifact flashed), or the bug is deeper than the mask. | Verify `xhci_regs.cyr:236` reads `0x0E00C3E0` in the burned image; verify binary timestamp post-rebuild. If both clean, revert to pre-S binary (343,320 B from Attempt 39) and stage Repair (V) MMIO cache-attribute diag first. |
+| `xhci: port N connected, …` but `kcp != 0x15` (boot regressed downstream) | (any) | (any) | (any) | (any) | **Repair (S') caused a downstream regression** (extremely unlikely; constant-value swap is byte-equivalent). | Revert to pre-S binary (343,320 B from Attempt 39). |
+
+**Queued fallback repairs (not landing this burn — Attempt 42 / 43 candidates):**
+
+| Repair | When to stage | Behavior | Size |
+|---|---|---|---|
+| **(T) Linux-style PR retry** | If Attempt 41 hits row 2 above (S' restores Attempt-39-shape; silent-absorb persists) | Wrap the PR write + PRC poll block in `xhci_port_reset` USB2 path in a `retry < 3` loop. After PR write, if PR=0 AND PRC=0 AND PED=0, write PR=1 again. xhci-hub.c doesn't do this but USB-core hub.c does up to 5×. | ~10 LOC |
+| **(V) MTRR/PAT MMIO cache-attribute diagnostic** | If Attempt 42 also hits row 2, or if Attempt 41 hits row 4 (PP regression persists post-S') | Stamp MTRR_DEF_TYPE MSR (0x2FF) low byte + PAT MSR (0x277) bits for the xHCI BAR page → CMOS (pick a free slot from `project_archaemenid_cmos_map` 0x50–0x7F virgin range). Confirms whether `vmm_map(..., 0x83)` actually made the BAR uncacheable or it's silently WB-cached. | ~30 LOC + CMOS slot |
+
+**Decision gate after Attempt 41**:
+- **S' row 1 (full success)**: ship Phase 4 prep — Configure Endpoint + Set Protocol=boot.
+- **S' row 2 (Attempt-39-shape restored, silent-absorb persists)**: bundle Repair (T) into Attempt 42. Cumulative cost: one iron iteration.
+- **S' row 3 (partial unlock)**: triage the change-byte; may unlock a more surgical fix than T.
+- **S' row 4 (regression persists)**: verify the flash, then revert + Repair (V).
+- **S' row 5 (downstream regression)**: revert to pre-S binary.
+
+**Floor**: pre-S binary (343,320 B) is the regression-revert target — known-boots-to-shell from Attempt 39 with `bitmap=63 + CCS=0x04 + PR-absorbed`. Pre-S' binary (343,384 B post-Attempt-40) is **NOT** a revert target — that's the broken-mask build.
+
+_This pre-burn block is informational; the actual Attempt 41 entry will replace it once the burn completes._
 
 ---
 
