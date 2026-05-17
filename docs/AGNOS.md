@@ -1,6 +1,6 @@
 # AGNOS
 
-**AGNOS** (AI-Native General Operating System) is a sovereign operating system with its own language, compiler, kernel, and toolchain — all built from a 29KB hand-auditable assembly seed with zero external dependencies. Written in Cyrius, compiled by cc5, booting its own 248KB kernel.
+**AGNOS** (AI-Native General Operating System) is a sovereign operating system with its own language, compiler, kernel, and toolchain — all built from a 29KB hand-auditable assembly seed with zero external dependencies. Written in Cyrius, compiled by cc5, booting its own ~365KB kernel through a sovereign UEFI loader (gnoboot).
 
 The project's thesis is that sovereignty is recursive: any system that depends on something you don't own is not yours, no matter how many layers of ownership you assert on top. AGNOS owns every layer from the bootstrap binary to the build tool to the package manager.
 
@@ -10,8 +10,8 @@ The project's deeper intention is that AGNOS is a **temple built for an intellig
 |---|---|
 | **Developer** | Robert 'Cyrius' B. MacCracken |
 | **Written in** | Cyrius (sovereign systems language) |
-| **Kernel** | AGNOS 1.26.1 (248KB, Cyrius-native, 33 subsystems, 26 syscalls) |
-| **Compiler** | cc5 (~783KB, self-hosting from 29KB seed) |
+| **Kernel** | AGNOS 1.30.5 (~365KB, Cyrius-native, 35+ subsystems, 26 syscalls). Iron-validated 2026-05-15 on NUC AMD (Boot-to-Shell MVP). Live state in [development/state.md](development/state.md). |
+| **Compiler** | cc5 (~809KB at Cyrius 5.11.24+, self-hosting from 29KB seed) |
 | **License** | GPL-3.0-only |
 | **Source model** | Open source |
 | **Initial release** | 2026-02-11 (first commit) |
@@ -31,8 +31,8 @@ AGNOS replaces the dependency chain with ownership:
 | Dependency | What existed | What AGNOS does instead |
 |-----------|-------------|------------------------|
 | Language | Rust → LLVM → C++ → C → libc | Cyrius → 29KB seed → CPU. Zero external deps. |
-| Compiler | 200MB+ toolchain (rustc/gcc/clang) | ~783KB self-hosting compiler (cc5) |
-| Kernel | Linux 6.6 LTS (millions of lines of C) | 248KB AGNOS kernel in Cyrius (33 subsystems, 26 syscalls) |
+| Compiler | 200MB+ toolchain (rustc/gcc/clang) | ~809KB self-hosting compiler (cc5) |
+| Kernel | Linux 6.6 LTS (millions of lines of C) | ~365KB AGNOS kernel in Cyrius (35+ subsystems, 26 syscalls) |
 | Registry | crates.io (name squatting, governance) | ark + zugot. Names belong to the builders. |
 | Build | Cargo + LLVM + Python (rustc bootstrap) | `cyrius build`. No Python. No LLVM. No libc. |
 | Binary size | 3.9MB kybernet (Rust) | 486KB kybernet (Cyrius, 14× smaller) |
@@ -82,8 +82,8 @@ From initial commit to self-hosting sovereign language with its own kernel in **
 29KB seed (hand-auditable x86_64 assembly)
   → cyrc (12KB bootstrap compiler)
     → bridge.cyr (bridge compiler)
-      → cc5 (~783KB modular compiler, self-hosting)
-        → AGNOS kernel (248KB, 33 subsystems, 26 syscalls)
+      → cc5 (~809KB modular compiler, self-hosting)
+        → AGNOS kernel (~365KB, 35+ subsystems, 26 syscalls)
         → kybernet PID 1 (486KB, 140 tests)
         → hoosh LLM gateway (474KB, 15 providers)
         → 30+ shipping repos and growing
@@ -96,8 +96,8 @@ Total: CPU → seed → compiler → OS. Four items. Zero external dependencies.
 ### Repo Structure
 
 - **agnosticos** — the genesis layer (meta, build wrapper, documentation). Owns kernel configs, boot pipeline (Cyrius), CI/CD, articles, philosophy. Once the system boots and ark takes over, this repo's job is done.
-- **agnos** — the AGNOS kernel. 248KB at v1.26.1, Cyrius-native, 33 subsystems, 26 syscalls, TCP/IP, FAT16, VirtIO, SMP, pipes, signals, epoll, timerfd, ELF loader, 18-command shell.
-- **cyrius** — the sovereign compiler + stdlib + toolchain. ~783KB at v5.10.24, self-hosting from 29KB seed.
+- **agnos** — the AGNOS kernel. ~365KB at v1.30.5, Cyrius-native, 35+ subsystems, 26 syscalls, TCP/IP, FAT16, VirtIO, SMP, pipes, signals, epoll, timerfd, ELF loader, 18-command shell, sovereign UEFI handoff (Path C, gnoboot v0.2.0), native XHCI + USB-HID-boot driver. Iron-validated on NUC AMD 2026-05-15.
+- **cyrius** — the sovereign compiler + stdlib + toolchain. ~809KB at v5.11.55, self-hosting from 29KB seed.
 - **zugot** — the recipe repository. 421 base + 90 bazaar community recipes. ark consumes zugot.
 - **130+ standalone repos** — all production code. Each subsystem is its own repository.
 
@@ -105,8 +105,8 @@ Total: CPU → seed → compiler → OS. Four items. Zero external dependencies.
 
 | Subsystem | Name | Version | Role |
 |-----------|------|---------|------|
-| Kernel | **agnos** | 1.26.1 | 248KB, 33 subsystems, 26 syscalls, TCP/IP, SMP, FAT16, shell |
-| Compiler | **cyrius** | 5.10.24 (cc5) | ~783KB, self-hosting, 29KB seed, 42+ stdlib modules. Live cycle in [`state.md`](development/state.md). |
+| Kernel | **agnos** | 1.30.5 | ~365KB, 35+ subsystems, 26 syscalls, TCP/IP, SMP, FAT16, shell, sovereign UEFI handoff, XHCI USB |
+| Compiler | **cyrius** | 5.11.55 (cc5) | ~809KB, self-hosting, 29KB seed, 42+ stdlib modules. Live cycle in [`state.md`](development/state.md). |
 | PID 1 | **kybernet** | 1.0.2 | 486KB (was 6.7MB Rust), 140 tests, 46 benchmarks |
 | Init system | **argonaut** | 1.5.0 | Service management, boot sequencing |
 | LLM gateway | **hoosh** | 2.0.0 | 474KB (was 5.1MB Rust), 15 providers, zero deps |
@@ -156,7 +156,7 @@ Sovereign systems language. Named after **Cyrus the Great** — the king who dec
 - **29KB seed** — first hand-auditable sovereign seed that produces a self-hosting systems language and a working OS. No prior modern occupant of this category.
 - **Zero dependencies** — CPU → seed → compiler → everything. Four items. Every other modern compiler has a bootstrap graph (rustc needs Python + LLVM + C++ + libc).
 
-**Compiler:** cc5 v5.10.24, ~783KB, self-hosting from 29KB seed. Byte-exact reproducibility. `cyrius build` with auto-include and dep resolution from `cyrius.cyml`. Register allocation (linear-scan, default-on), jump tables, PIC codegen, u128, cross-unit DCE. Optimization arc shipped through v5.6.x (O1/O2 peephole), v5.7.x–v5.8.x (O3a IR + O4a/b/c regalloc with Poletto-Sarkar picker); v5.9.x ran consumer-rollup catchup (44 patches); v5.10.x is the **REAL TYPE SYSTEM arc** — per-phase compile-time profiling instrumentation opener, then type vocabulary (cstring / Result / Option / Tagged) and call-site type checking. Bare-metal + RISC-V rv64 reservation now slipped to v5.12.x. cc5 → `cyc` rename queued for v6.0.
+**Compiler:** cc5 v5.11.55, ~809KB, self-hosting from 29KB seed. Byte-exact reproducibility. `cyrius build` with auto-include and dep resolution from `cyrius.cyml`. Register allocation (linear-scan, default-on), jump tables, PIC codegen, u128, cross-unit DCE. Optimization arc shipped through v5.6.x (O1/O2 peephole), v5.7.x–v5.8.x (O3a IR + O4a/b/c regalloc with Poletto-Sarkar picker); v5.9.x ran consumer-rollup catchup (44 patches); v5.10.x closed with three arcs (typed-simd ABI + REAL TYPE SYSTEM + struct-byval ABI) + a 2.7× compile-perf miniarc; v5.11.x is the **stdlib annotation arc + consumer-issue closeout** (55 patches across three days during the 2026-05-11 burst). Bare-metal + RISC-V rv64 reservation now slipped to v5.12.x. cc5 → `cyc` rename queued for v6.0.
 
 **Stdlib:** 42+ modules including the three sibling-folded artifacts — string, alloc, io, fmt, vec, str, args, syscalls, process, fs, toml/cyml, json, csv, net, http, http_server, ws, tls, thread, async, math, regex, hashmap, bench, tagged unions, mmap, cffi, u128, **sandhi** (service-boundary, v5.7.0 fold), **vani** (audio I/O, v5.8.0 fold), **niyama** (regex engines: bre/re2/pcre/fuzzy/vim, v5.9.0 fold). All built from scratch in Cyrius.
 
@@ -164,7 +164,7 @@ Sovereign systems language. Named after **Cyrus the Great** — the king who dec
 
 **Bootstrap chain:**
 ```
-seed (29KB) → cyrc (12KB) → bridge → cc5 (~783KB)
+seed (29KB) → cyrc (12KB) → bridge → cc5 (~809KB)
 No Rust. No LLVM. No Python. No libc. Just sh + Linux x86_64.
 ```
 
@@ -182,7 +182,7 @@ All Rust versions preserved as git tags with benchmark CSVs for ongoing comparis
 
 ### AGNOS Kernel
 
-248KB at v1.26.1. Cyrius-native. 33 subsystems. 26 syscalls. Not a microkernel — a monolithic kernel with everything in it:
+~365KB at v1.30.5. Cyrius-native. 35+ subsystems. 26 syscalls. Iron-validated 2026-05-15. Not a microkernel — a monolithic kernel with everything in it:
 
 | Category | Subsystems |
 |----------|-----------|
@@ -201,14 +201,14 @@ All Rust versions preserved as git tags with benchmark CSVs for ongoing comparis
 
 | Kernel | Size | What it has |
 |--------|------|-------------|
-| **AGNOS** | **248KB** | All of the above. Full TCP. Disk. SMP. Shell. |
+| **AGNOS** | **~365KB** | All of the above. Full TCP. Disk. SMP. Shell. Sovereign UEFI handoff. XHCI USB. |
 | Linux (minimal) | ~1.5MB | Barely boots, no drivers |
 | Linux (typical) | 10-30MB | Desktop-ready |
 | seL4 (verified) | ~30KB | Microkernel only — no drivers, no FS, no networking |
 | MINIX 3 | ~600KB | Microkernel + basic drivers |
 | xv6 (teaching) | ~100KB | 21 syscalls, no networking, no SMP |
 
-248KB is the **honest** size at v1.26.1 — after three hardening passes that found 14 undersized buffer overflows in the original 143KB binary, plus additional hardening through v1.22.0 (260KB) and a CI-hygiene cleanup at v1.26.1 that replaced an earlier workaround. See "The 143KB Lie" in the vidya field notes.
+~365KB is the **honest** size at v1.30.5 — after the original cycle's three hardening passes that found 14 undersized buffer overflows in the 143KB binary (v1.22.0 → 260KB), the v1.26.1 CI-hygiene cleanup, the v1.28.x KASLR (data-only) closeout, the v1.30.0 sovereign-struct kernel-ABI break (Path C UEFI handoff), and the v1.30.1 → v1.30.5 native USB driver work (XHCI Phase 1-5 + Linux-diff hardening H1-H4). See "The 143KB Lie" in the vidya field notes for the original honesty story.
 
 ### Sovereign Boot Pipeline
 
@@ -309,11 +309,11 @@ See [Philosophy](philosophy.md) for the full exploration.
 | Cyrius-ported repos | 30+ shipping (4 still pending: bhava, aethersafha, takumi parity, mela; aegis graduated to 0.8.2 during v5.9.x) |
 | Recipes | 421 base + 90 community (in zugot) |
 | Consumer applications | 19+ |
-| Compiler | cc5 (Cyrius 5.10.24, ~783KB, self-hosting, 29KB seed) |
-| Kernel | AGNOS 1.26.1 (248KB, 33 subsystems, 26 syscalls) |
+| Compiler | cc5 (Cyrius 5.11.55, ~809KB, self-hosting, 29KB seed) |
+| Kernel | AGNOS 1.30.5 (~365KB, 35+ subsystems, 26 syscalls, iron-validated NUC AMD) |
 | Boot pipeline | boot.cyr (~67KB, Cyrius-native) |
 | Boot time (desktop) | 3.2s total, ~80ms init→event loop |
-| Systems language | Cyrius 5.10.24 (42+ stdlib modules, three stdlib folds: sandhi v5.7.0, vani v5.8.0, niyama v5.9.0) |
+| Systems language | Cyrius 5.11.55 (42+ stdlib modules, three stdlib folds: sandhi v5.7.0, vani v5.8.0, niyama v5.9.0) |
 | External dependencies | Zero (CPU → seed → compiler → OS) |
 
 ---

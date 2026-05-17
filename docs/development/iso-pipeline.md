@@ -32,9 +32,9 @@ Locate (or build) every artifact needed for the rootfs:
 
 | Component | Source | Artifact |
 |-----------|--------|----------|
-| AGNOS kernel | `../agnos/build/agnos` | ELF binary (~248KB at v1.26.1) |
+| AGNOS kernel | `../agnos/build/agnos` | ELF binary (~365KB at v1.30.5) |
 | kybernet (PID 1) | `../kybernet/build/kybernet` | ELF binary (~486KB) |
-| Cyrius toolchain | `../cyrius/build/cc5` | Compiler binary (~783KB at v5.10.24) |
+| Cyrius toolchain | `../cyrius/build/cc5` | Compiler binary (~809KB at v5.11.24+) |
 | ark (package manager) | `../ark/build/ark` | Binary |
 | nous (resolver) | `../nous/build/nous` | Binary |
 | takumi (build system) | `../takumi/` | Build tool (pending Cyrius port) |

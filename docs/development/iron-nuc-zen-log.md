@@ -3760,7 +3760,7 @@ Single-purpose addition: claim controller ownership from BIOS before any operati
 
 ### Attempt 33 — 2026-05-16 → ⚠️ REGRESSION — framebuffer rendering corrupted, boot CMOS-clean
 
-USB re-provisioned + flashed + burned post-Phase-2.5. **Visual regression**: entire framebuffer shows scrambled / garbled glyphs across every text row. Regular grid pattern intact (this is glyph-level corruption, not random noise), but every line illegible. Photo saved as `Corrupted_Visual.jpg` at repo root (not yet moved to `iron-nuc-zen-photos/`).
+USB re-provisioned + flashed + burned post-Phase-2.5. **Visual regression**: entire framebuffer shows scrambled / garbled glyphs across every text row. Regular grid pattern intact (this is glyph-level corruption, not random noise), but every line illegible. Photo: [`iron-nuc-zen-photos/attempt-33-phase-2-5-corrupted.jpg`](iron-nuc-zen-photos/attempt-33-phase-2-5-corrupted.jpg).
 
 **CMOS post-mortem** (`sudo ./scripts/read-boot-log.sh`):
 
@@ -5552,7 +5552,7 @@ _Pre-burn block preserved as-is; the Attempt 50 actual outcome below hit **Row 2
 
 **Iron protocol executed as written**: USB reflashed, Keychron K2 on port 1, boot, FB photo + `sudo ./scripts/read-boot-log.sh`.
 
-**FB outcome (primary truth channel)**: image at `XHCI_dev_notifications.jpg`. Renders:
+**FB outcome (primary truth channel)**: image at [`iron-nuc-zen-photos/attempt-51-xhci-repair-bb-dnctrl-still-absorbed.jpg`](iron-nuc-zen-photos/attempt-51-xhci-repair-bb-dnctrl-still-absorbed.jpg). Renders:
 - `xhci installed` / `found at … 64 slots, 6 ports`
 - `USBLEGSUP already OS-owned`
 - `dev_notifications enabled` ← **BB site executed**
@@ -5633,6 +5633,172 @@ Three slots BCD-encode wall-clock 19:04:48 — RTC time at `read-boot-log` invoc
 **Decision gate after Attempt 52 burn**:
 - Row 1 → Phase 4 + Phase 5 stage in 1.30.4 cycle, tag when typeable shell ships, closed-beta MVP complete.
 - Row 2/3/4 → **Phase 4/5 pivot fires regardless**. xHCI silent-absorb arc closes as "non-spec gate, parallel-track only." No more iron diagnostics without explicit authorization.
+
+### Attempt 52 — 2026-05-17 → ROW 2 HIT (DD falsified; CC routing partial; Phase 4/5 pivot active)
+
+USB reflashed with 1.30.4 binary (350,008 B). Keychron K2 on port 1, boot, FB photo + `sudo ./scripts/read-boot-log.sh`.
+
+**FB outcome (primary truth channel)**: image at [`iron-nuc-zen-photos/attempt-52-xhci-repair-cc-dd-still-absorbed.jpg`](iron-nuc-zen-photos/attempt-52-xhci-repair-cc-dd-still-absorbed.jpg). Renders:
+
+- `xhci installed` / `found at … 64 slots, 6 ports`
+- `USBLEGSUP already OS-owned`
+- `dev_notifications enabled` ← BB carry-forward
+- `halted, reset clean`
+- `scratchpad ready`
+- `controller running, HCH=0, ERDP=13479936`
+- `drained 1 events` ← **DD site executed (1 event drained, real firmware residue)**
+- `xhci: port 1 reset failed (proto=2)`
+- `xhci: port 3 reset failed (proto=2)`
+- kybernet init → `AGNOS shell v1.30.4 (type 'help')` → `agnos>`
+
+**CMOS post-mortem (Attempt 52)**:
+
+| Slot | Meaning | Value | Reading |
+|---|---|---|---|
+| `[0x50]` | kcp | `0x15` | Shell reached. |
+| `[0x64]` | reset-OK bitmap | `0x00` | **Silent-absorb persists on ports 1+3.** |
+| `[0x77]/[0x78]` | USBSTS bytes 0+1 at reset-fail | `0x00`/`0x00` | Controller running clean — no HCH / HSE / CNR / HCE / PCD set at fail time. PCD cleared (DD did its job). |
+| `[0x84]` | BB sentinel | `0xBB` | Carries forward; DNCTRL write site executed. |
+| `[0x86]` | CC sentinel (expected `0xCC`) | `0x5A` | **CC routing partial** — extended-CMOS bank doesn't honor 0x86 cleanly on AMD FCH 1022:1639. See sub-section below. |
+| `[0x87]` | DD sentinel (expected `0xDD`) | `0xA5` | Same anomaly as CC. FB-line is the load-bearing channel for DD execution proof. |
+| `[0x80]` | MaxScratchpadBufs (CC-routed) | `0x02` | Real value (consistent with FB `count=2`). |
+| `[0x83]` | sp_array phys byte 2 (CC-routed) | `0xF6` | Real phys (`~0xF60000` region; consistent with FB `array=10420224` minus alloc-time offset). |
+
+**Verdict**: **Row 2 / Row 4 hybrid.** DD executed cleanly per FB (`drained 1 events` rendered, 1 real event consumed), silent-absorb persists on ports 1+3. **Twelfth falsified hypothesis** in the silent-absorb arc. CC routing landed for `[0x80..0x85]` but `[0x86]/[0x87]` returned mystery values — diagnostic infrastructure question, not behavioral.
+
+**Decoupling decision fires unconditionally per prep matrix row 2**:
+- xHCI silent-absorb arc closes as **"non-spec gate, parallel-track only."**
+- No Attempt 53 without explicit new-burn-authorization.
+- Phase 4 + Phase 5 (USB HID translation + kb_buf feed) move from "shovel-ready plan" to active work surface.
+- xHCI Linux-diff hardening backlog (PAGESIZE / IMAN / IMOD / HSEE) lands when convenient on agnos-1.30.x cycle, not on iron burns.
+
+#### CC sentinel oddity — diagnostic infrastructure, not load-bearing
+
+Kernel writes `0xCC` at slot `0x86` via `outb(0x72, 0x06); outb(0x73, 0xCC)`. Readback returns `0x5A`. Same anomaly at `[0x87]` (write `0xDD`, read `0xA5`). But `[0x80..0x85]` round-trip correctly (real MaxScratchpadBufs / sp_array byte / BB sentinel all readable).
+
+Working hypothesis: AMD FCH 1022:1639 extended-CMOS bank honors offsets `0..5` (slots `0x80..0x85`) cleanly; offsets ≥ 6 alias or are clobbered by some firmware-managed scratch surface (POST sequencing — analogous to the `0x40-0x43` clobber found on archaemenid 2026-05-14). Empirical only; **no spec citation either way**. Workaround for future diagnostics: confine extended-CMOS sentinel + payload slots to `0x80..0x85`. FB lines remain the load-bearing truth channel for site-executed proofs (`drained N events` proved DD ran; the `[0x87]` sentinel did not).
+
+#### Post-Attempt-52 handoff / AMD-quirk audit (read-only research)
+
+Per `feedback_known_knowledge_first`: before any further behavioral hypothesis, audited Linux for AMD-Renoir-specific xHCI bring-up workarounds. **Result: no Renoir-specific cold-boot quirks exist that AGNOS does not already mirror.**
+
+**Existing AGNOS coverage** (verified via grep against `kernel/arch/x86_64/usb/xhci*.cyr`):
+
+- **USBLEGSUP ownership flip** — `xhci_port.cyr:379` (`xhci_usblegsup_claim`), called from `xhci.cyr:407` before any operational-register writes. Matches Linux `quirk_usb_handoff_xhci` shape.
+- **USBLEGCTLSTS SMI-disable** — `xhci_port.cyr:354` (`xhci_usblegctlsts_disable_smi`). Mask `(ctlsts & 0xFFFFE01F) | 0x1FFF0000` clears enables bits 5-12 and W1C-clears status bits 16-28 — bit-for-bit equivalent to Linux's `XHCI_LEGACY_DISABLE_SMI` + `XHCI_LEGACY_SMI_EVENTS`. Called on all three USBLEGSUP paths (already-OS / claimed / timeout) at lines 406/418/428.
+- **Halt + HCRST + CNR-wait** — `xhci.cyr:401-449`. Sequence: clear `USBCMD.R/S`, poll `USBSTS.HCH`, write `USBCMD.HCRST=1`, poll for self-clear, poll `USBSTS.CNR` clear. Matches xHCI 1.2 §4.22.1 spec sequence.
+
+**AMD-Renoir quirks Linux applies in `xhci-pci.c`** (verified against `torvalds/linux/drivers/usb/host/xhci-pci.c`):
+
+| Quirk | Trigger | Cold-boot relevance |
+|---|---|---|
+| `XHCI_BROKEN_D3COLD_S2I` | Renoir 0x1639 | ❌ Suspend-to-idle only; not cold boot |
+| `XHCI_AMD_PLL_FIX` | SB700/SB800/Hudson2/Bolton (SMBus probe) | ❌ Pre-Zen southbridges; Renoir is Zen-2 era — `usb_amd_find_chipset_info` does not match |
+| `XHCI_LIMIT_ENDPOINT_INTERVAL_9` | Ariel/Starship/Fireflight/Raven | ❌ Different APU family; also endpoint-config-level, not port-reset |
+| `XHCI_U2_DISABLE_WAKE` / `XHCI_NO_SOFT_RETRY` | Promontory A (0x43b9-0x43bc) | ❌ Different SKU |
+| `XHCI_SUSPEND_DELAY` / `XHCI_SNPS_BROKEN_SUSPEND` / `XHCI_RESET_ON_RESUME` | Misc AMD SKUs | ❌ Suspend/resume path, not cold boot |
+
+**`usb_amd_quirk_pll`** (Linux `drivers/usb/host/pci-quirks.c`): touches a separate SMBus controller + northbridge device via PCI config + I/O port pair (0xcd6/0xcd7). Detection probes ATI/AMD SMBus PCI IDs against SB600/SB700/SB800/Hudson2/Bolton/Yangtze/Taishan. **Renoir SMBus controller does not match any** — quirk function returns `need_pll_quirk = false` for any chipset newer than Bolton. Not applicable on archaemenid.
+
+**Linux `usb_enable_intel_xhci_ports`**: Intel-vendor-gated; explicitly skipped on AMD per `xhci-pci.c` line ~733.
+
+**Conclusion**: the handoff/firmware-residue hypothesis the user opened post-Attempt-52 is **largely falsified by read-only research**. Linux's clean-boot path on AMD Renoir 0x1639 is essentially identical to what AGNOS already does. The `drained 1 events` FB line in Attempt 52 represents real firmware residue (a Port Status Change event was on the event ring from UEFI's USB driver during boot services), but DD already proved consuming it isn't the unblock.
+
+**What remains unaudited** (low-priority, parallel-track only):
+
+- HCCPARAMS3 register at cap-regs offset 0x1C — Linux reads this for primary-stream-offset hints. Not on the silent-absorb critical path; could land during xHCI hardening backlog.
+- Vendor-specific PCI configuration capabilities on the 1022:1639 device — undocumented in public AMD specs, may hold port-routing / PHY-power state. Would require empirical config-space dumps, not spec-derivable.
+
+Neither justifies a new repair letter. The arc closes as written.
+
+#### H1-H4 spec-discipline closeout (2026-05-17, agnos 1.30.4)
+
+Pre-Attempt-52 connectivity audit also surfaced four Linux-diff spec gaps in `kernel/arch/x86_64/usb/` init sequencing. **Pre-flagged as not silent-absorb gates** (structurally inert under current iron evidence); each is a real spec-compliance gap worth closing before public-beta. Landed as the 1.30.4 closeout (~10 LOC total, kernel build 350,008 B → 350,272 B, **no iron burn** — cyrius-compile gate is the validation surface).
+
+| # | Gap | Spec ref | Fix |
+|---|---|---|---|
+| H1 | `XHCI_OP_PAGESIZE` never validated | xHCI 1.2 §5.4.3 | Reads PAGESIZE bit 0 before scratchpad alloc; bails with `xhci: PAGESIZE rejects 4KB, bitmap=N` if 4 KB not advertised. `xhci_ring.cyr` scratchpad path. |
+| H2 | `XHCI_IR_IMAN.IP` never cleared | xHCI 1.2 §5.5.2.1 | Writes IP=1 (RW1C) after ERDP in `xhci_start` — clears stale firmware-era pending bit. IMAN.IE stays 0 (poll mode). |
+| H3 | `XHCI_IR_IMOD` at HW default 0 | xHCI 1.2 §5.5.2.2 | Writes 0x3E8 (250 µs moderation) in same block — matches Linux's default; harmless under poll mode, prevents interrupt storms when MSI-X lands. |
+| H4 | `USBCMD.HSEE` (bit 3) never set | xHCI 1.2 §5.4.1.4 | Start mask widened from 0x05 → 0x0D (R/S \| INTE \| HSEE) so any subsequent Host System Error surfaces via USBSTS.HSE + interrupter assertion instead of fail-silent. |
+
+Closes the public-beta xHCI spec-compliance debt. Per-repair detail in [`agnos/CHANGELOG.md` § 1.30.4](https://github.com/MacCracken/agnos/blob/main/CHANGELOG.md).
+
+---
+
+### Attempt 54 prep — first iron exposure of agnos 1.30.5 (Phase 4 + Phase 5 landed)
+
+**Status**: pending — **externally gated on kriya 0.3.0 (M2 file-operations milestone) ship**. No iron burn scheduled until kriya M2 lands; burns are bundled to amortize the per-burn cost of disrupting the single-machine dev setup (`feedback_iron_burns_block_other_work` + `project_single_machine_dev_setup`).
+
+**Honest framing — this is NOT a Phase 4/5 validation burn.** Phase 4 (`hid_kbd_configure` walking the configuration descriptor + Configure Endpoint + SET_PROTOCOL=boot + transfer ring) and Phase 5 (HID-usage → PS/2 translation + report differ + event-ring drain + `kb_buf` writer) landed in 1.30.5 staging via per-Cyrius build verify (kernel 350,272 B → 364,736 B, +14,464 B / ~600 LOC). **Phase 4/5 only executes when Phase 3 successfully addresses a USB device** — `main.cyr` iterates `xhci_slot_input_ctx` slots and calls `hid_kbd_configure` only on populated entries. Archaemenid's USB2 port-reset silent-absorb (Attempt 52 / twelfth-falsified hypothesis) means **no slots get addressed on this hardware**, so Phase 4/5 stays dormant. QEMU xhci-pci emulation is the load-bearing validation surface for Phase 4/5 itself — clean spec-compliant controller, Phase 3 enumeration completes, end-to-end exercise is possible there. **Burn 54 on archaemenid is therefore a non-regression confirmation + opportunistic re-probe**, not a Phase 4/5 outcome gate.
+
+**Hypothesis under test (54)**: the 1.30.5 binary (1.30.4 H1-H4 hardening + 1.30.5 Phase 4/5 + post-fmt whitespace normalization) still boots cleanly through to `agnos>` on archaemenid with the silent-absorb pattern unchanged. Three things this *could* surface that the QEMU smoke can't:
+
+1. **Inadvertent silent-absorb unblock from H1-H4 + Phase 4/5 binary deltas.** Audit-judged low probability (none of H1-H4 touch port-reset state machine; Phase 4/5 are dormant absent slot address). But the 14 KB binary growth changes ELF layout, page-table memory pressure, and CR3 cache residency — chipset-level state machines occasionally surprise on those.
+2. **New regression below kybernet** from H1-H4 / Phase 4/5 init paths. `kb_has_key()` now calls `hid_poll()` on every shell-tick → if `hid_kbd_slot_id == 0` (the archaemenid case), `hid_poll()` early-returns at line ~1; structurally inert. But it's a new shell-hot-path call worth confirming under iron.
+3. **Vendor PCI cap dump** (read-only audit follow-up from post-Attempt-52). Not landed as a kernel feature; would be a follow-on burn with explicit instrumentation. NOT bundled with Attempt 54 per `feedback_iron_burns_block_other_work` ("never bundle pure instrumentation with behavioral repair for free").
+
+**Build under test**:
+
+| Component | Version | Size | Source |
+|---|---|---|---|
+| agnos kernel | 1.30.5 | 364,736 B | post-Phase-4/5 + post-fmt; `./scripts/build.sh` clean |
+| gnoboot | 0.2.0 | (stable) | no changes since 2026-05-15 merge |
+| cyrius toolchain | 5.11.55 | — | pinned in `agnos/cyrius.cyml` |
+| agnosticos boot pipeline | 2026.5.13+ | — | `install-usb.sh --update` provisions |
+| kriya | **0.3.0 pending** | — | **external gate — burn waits on M2 ship** |
+
+**Truth channels in order**:
+
+1. **FB primary** — does the kernel boot through to `agnos>` cleanly? Look for:
+   - `xhci: drained N events` (H1-H4 + DD carry-forward — DD line still fires per Attempt 52 baseline)
+   - `xhci: port 1 reset failed (proto=2)` + `xhci: port 3 reset failed (proto=2)` (silent-absorb baseline)
+   - `hid: keyboard layer initialized` (Phase 5 init line — proves new code surface is alive)
+   - No `hid: keyboard configured ...` line expected (no slot addressed → Phase 4 dormant)
+   - `AGNOS shell v1.30.5 (type 'help')` + `agnos>` prompt
+2. **CMOS** — `kcp=0x15` (kybernet reached, unchanged from Attempt 52 baseline). `[0x84]=0xBB` + `[0x64]=0x00` carry-forward expected. Phase 4 kcp=0x33 stamp will NOT land (gated on `hid_kbd_configure` success).
+3. **Type test** — opportunistic. Plug Keychron K2, try typing at `agnos>`. **Expected**: no echo (silent-absorb dormant). **Surprise case**: characters appear → silent-absorb spontaneously unblocked AND Phase 4/5 worked end-to-end → MVP closes in one burn (extremely unlikely; the spontaneous unblock alone would be the headline).
+
+**Pre-bound outcome matrix for Attempt 54**:
+
+| FB Phase 5 init line | `kcp` | `[0x64]` reset-OK | Type test | Reads as | Next |
+|---|---|---|---|---|---|
+| `hid: keyboard layer initialized` rendered | `0x15` | `0x00` | no echo | **Row 1 — baseline confirmed.** 1.30.5 ships cleanly to iron with Phase 4/5 dormant; silent-absorb persists per Attempt 52. Non-regression confirmed. | Phase 4/5 validation moves to QEMU smoke; iron arc stays parallel-track. |
+| `hid: keyboard layer initialized` rendered | `0x15` | non-zero | echoes work | **Row 2 — MIRACLE: silent-absorb spontaneously unblocked AND Phase 4/5 ran end-to-end.** Most likely a chipset-state-dependent transient; not a code fix. | Photograph everything, repeat on cold-boot N≥3 times to confirm determinism, then close MVP. |
+| `hid: keyboard layer initialized` rendered | `0x15` | non-zero | no echo | **Row 3 — Phase 3 enumerated cleanly but Phase 4/5 failed.** Look for `hid: get config descriptor ... failed` or `hid: SET_PROTOCOL=boot failed` or `hid: keyboard configured` line surfaced but no key echoes. Phase 4 succeeded but Phase 5 silent = translation / poll / event-drain bug. | Triage per FB line; Phase 5 bugs are pure-data testable; QEMU repro lane. |
+| `hid: ...` line missing | `kcp != 0x15` | (any) | (n/a) | **Row 4 — REGRESSION.** Most likely H1-H4 or Phase 4/5 integration disturbed init order; `hid_kbd_init()` faulted; `kb_has_key()` regression via `hid_poll()` empty-state. | Revert to 1.30.4 floor (350,272 B) and bisect; re-burn after fix. |
+| (any framebuffer corruption / no shell) | varies | (any) | (n/a) | **Row 5 — GOP rendering regression** (per the quiet-boot interaction at `roadmap.md` § Parallel cycle work). Try Quiet Boot OFF in BIOS, USB Legacy On/Auto. | Independent of 1.30.5 code state; BIOS workaround until real fix. |
+
+**Floor**: agnos 1.30.4 (350,272 B with H1-H4 only, no Phase 4/5) is the revert target if Row 4 fires. Floor binary is git-tagged `v1.30.4` on the agnos remote.
+
+**Iron protocol** (executed when kriya 0.3.0 ships):
+
+1. Confirm `agnos/build/agnos` is built clean from current main (`./scripts/build.sh` → 364,736 B or whatever 1.30.5 settles at after kriya-window edits).
+2. Confirm `gnoboot/build/BOOTX64.EFI` matches v0.2.0 floor.
+3. `sudo ./scripts/install-usb.sh --update` on the dev USB drive (or full re-provision if any of `grub.cfg` / partition layout / boot-shim changed).
+4. Attach Keychron K2 to **port 1** (the canonical failing port from Attempt 52).
+5. Cold-boot archaemenid (full power cycle, not reset — flushes any CMOS-pinned firmware state).
+6. Photograph FB block from `xhci: USBLEGSUP already OS-owned` through `agnos>` prompt.
+7. At the prompt, attempt to type `help` + Enter. Photograph result.
+8. `sudo ./scripts/read-boot-log.sh` on the same USB after reboot back to dev host.
+9. Save photo to `iron-nuc-zen-photos/attempt-54-<descriptive>.jpg` per the established naming convention.
+10. Write up outcome inline below this prep block (per the conventions section at the bottom of this log).
+
+**Why kriya 0.3.0 is the external gate**:
+
+Per `project_single_machine_dev_setup` archaemenid is both the iron-boot target and the development host — every iron burn freezes the user's unrelated dev work for ~30 min (boot, photograph, read-boot-log, repower, switch USBs back to dev). Bundling 1.30.5 iron exposure with kriya M2 ship lets a single burn cover both:
+- agnos 1.30.5 non-regression confirmation (this attempt's primary purpose)
+- whatever userland surface kriya 0.3.0 brings to the installer/build pipeline path (M2 includes `cp`/`mv`/`rm`/`mkdir`/`touch`/`ln` — direct relevance to any installer that needs file ops)
+
+kriya's M2 ledger lives at [`kriya/docs/development/roadmap.md` § M2 — File operations](https://github.com/MacCracken/kriya/blob/main/docs/development/roadmap.md). When that milestone closes, this gate releases.
+
+**Decision gate after Attempt 54 burn**:
+
+- Row 1 → confirms 1.30.5 is iron-clean baseline; Phase 4/5 validation continues on QEMU; the next iron burn (Attempt 55) waits for either a real silent-absorb unblock hypothesis or a new substantive Linux-diff finding.
+- Row 2 → close MVP, draft v1.30.5 release notes for ship.
+- Row 3 → Phase 4/5 bug surfaced; triage per FB line; QEMU smoke is the iteration loop until repro.
+- Row 4 → revert + bisect (see floor).
+- Row 5 → BIOS workaround; independent of code state.
 
 ---
 

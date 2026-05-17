@@ -60,7 +60,7 @@ AGNOS is a sovereign operating system written in Cyrius. The architecture consis
 |  +---------------------------------------------------------------+   |
 |  |              AGNOS Kernel (Cyrius-native)                     |   |
 |  |  +---------------------------------------------------+       |   |
-|  |  |         v1.26.1 — 248KB, 33 subsystems             |       |   |
+|  |  |        v1.30.5 — ~365KB, 35+ subsystems            |       |   |
 |  |  |  +-----------+ +-----------+ +----------------+    |       |   |
 |  |  |  |  Memory   | | Process  | |   Network      |    |       |   |
 |  |  |  |  Manager  | | Manager  | |   (TCP/IP)     |    |       |   |
@@ -88,13 +88,15 @@ AGNOS is a sovereign operating system written in Cyrius. The architecture consis
 
 AGNOS runs its own sovereign kernel, written in Cyrius. No Linux dependency at runtime.
 
-**AGNOS kernel v1.26.1** — 248KB, 33 subsystems, 26 syscalls:
+**AGNOS kernel v1.30.5** — ~365KB, 35+ subsystems, 26 syscalls. Iron-validated 2026-05-15 on NUC AMD (Boot-to-Shell MVP). Live size in [`development/state.md`](development/state.md):
 - Memory management, process management, SMP
 - TCP/IP networking, VirtIO-Net/Blk
 - FAT16 filesystem, ELF loader
 - Pipes, signals, epoll, timerfd
 - 18-command built-in shell
-- kybernet as PID 1 (486KB, 140 tests)
+- kybernet as PID 1
+- Sovereign UEFI handoff (Path C, RDI = `&boot_info` via gnoboot v0.2.0)
+- Native XHCI + USB-HID-boot keyboard driver (all 5 phases landed; iron-side blocker remains on archaemenid silent-absorb arc)
 
 The `kernel/` directory in this repo contains Linux kernel configs for **host bootstrap only** — building the cross-compiler toolchain on an existing Linux host before AGNOS can self-host.
 
@@ -102,7 +104,7 @@ The `kernel/` directory in this repo contains Linux kernel configs for **host bo
 
 > Conceptual decomposition. Layers 1–5 shipped. Live per-subsystem status: [agnos repo](https://github.com/MacCracken/agnos). Live size: [`development/state.md`](development/state.md).
 
-The kernel was originally planned as five layers — *boots*, *runs programs*, *storage*, *talks to the world*, *usable*. All five landed inside a ~7-week window (Cyrius scaffold 2026-04-03 → kernel v1.22.0 on 2026-04-14, hardened through to v1.26.1 / 248KB by 2026-04-28). The decomposition below reflects where each layer sits today.
+The kernel was originally planned as five layers — *boots*, *runs programs*, *storage*, *talks to the world*, *usable*. All five landed inside a ~7-week window (Cyrius scaffold 2026-04-03 → kernel v1.22.0 on 2026-04-14, hardened to v1.26.1 / 248KB by 2026-04-28). Subsequent 1.27.x → 1.30.5 work has been bring-up and hardening: KASLR (data-only) shipped 1.28.x, sovereign-struct kernel ABI shipped 1.30.0 (Path C UEFI handoff), native XHCI + USB-HID-boot driver across 1.30.1 → 1.30.5. The decomposition below reflects where each layer sits today.
 
 ### Layer 1 — Can Boot and Respond
 
@@ -156,7 +158,7 @@ The kernel was originally planned as five layers — *boots*, *runs programs*, *
 | + Layer 5 (shell) | ~42–45 KB | — |
 | + VFS + signals + pipes | ~50 KB | — |
 | + VirtIO + basic TCP | ~65 KB | — |
-| Full Layer 1–5 | ~70–80 KB | **248 KB (v1.26.1)** |
+| Full Layer 1–5 | ~70–80 KB | **~365 KB (v1.30.5)** |
 
 The shipped kernel is ~3× the original estimate because it carries features outside the original 5-layer shortest-path plan: SMP infrastructure (APIC, IPI, trampoline, per-CPU stacks); cross-architecture (x86_64 + aarch64 in one binary); full TCP instead of UDP-only; slab allocator with 8 size classes; FAT16 driver; Ring 3 with proper TSS; Local APIC timer.
 
@@ -298,7 +300,7 @@ User Request -> agnoshi -> daimon -> Agent Process (kavach-sandboxed)
 ### Boot Flow
 
 ```
-AGNOS kernel (248KB at v1.26.1, Cyrius-native)
+AGNOS kernel (~365KB at v1.30.5, Cyrius-native)
   -> kybernet PID 1 (486KB)
   -> argonaut init sequence
   -> daimon agent runtime
@@ -310,8 +312,8 @@ AGNOS kernel (248KB at v1.26.1, Cyrius-native)
 
 | Layer | Technology | Notes |
 |-------|-----------|-------|
-| Kernel | Cyrius (AGNOS-native) | 248KB (v1.26.1), 33 subsystems, 26 syscalls |
-| Compiler | Cyrius 5.9.0 (cc5) | ~741KB, self-hosting from 29KB seed, 42+ stdlib modules |
+| Kernel | Cyrius (AGNOS-native) | ~365KB (v1.30.5), 35+ subsystems, 26 syscalls |
+| Compiler | Cyrius 5.11.55 (cc5) | ~809KB, self-hosting from 29KB seed, 42+ stdlib modules |
 | User space | Cyrius | All ported subsystems compile with `cyrius build` |
 | Host bootstrap | Linux kernel configs | For building cross-compiler on existing host only |
 | Build recipes | TOML (zugot repo) | 421 base + 90 bazaar recipes |
@@ -334,7 +336,7 @@ Recently shipped (no longer pending): phylax 1.0.0, shakti 0.2.2, hisab 2.2.0 (a
 
 ### 1. Sovereign Kernel
 
-AGNOS has its own kernel written in Cyrius (248KB, v1.26.1). No Linux dependency at runtime. Linux kernel configs in this repo are for host bootstrap only.
+AGNOS has its own kernel written in Cyrius (~365KB at v1.30.5, iron-validated on NUC AMD). No Linux dependency at runtime. Linux kernel configs in this repo are for host bootstrap only.
 
 ### 2. Cyrius for Everything
 

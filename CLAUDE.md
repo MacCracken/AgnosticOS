@@ -23,7 +23,7 @@ This repo is the **genesis layer** — meta, narrative, and the infrastructure t
 - **docker/** — Dockerfiles for dev/edge/installer
 
 **Does NOT own (extracted):**
-- **AGNOS kernel** → `agnos` repo (33 subsystems, Cyrius-native — current version/size in `state.md`)
+- **AGNOS kernel** → `agnos` repo (35+ subsystems, Cyrius-native — current version/size in `state.md`)
 - **Cyrius compiler** → `cyrius` repo (self-hosting from 29KB seed — current toolchain in `state.md`)
 - **Recipes** → `zugot` repo (421 base + 90 bazaar recipes)
 - **Production code** → 130+ standalone repos under `/home/macro/Repos/{name}/`

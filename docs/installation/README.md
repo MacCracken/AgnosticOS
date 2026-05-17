@@ -9,7 +9,7 @@
 ## What Works Today
 
 - **Sovereign boot pipeline** — `scripts/boot.cyr` (Cyrius, ~67KB compiled) launches the AGNOS kernel in QEMU.
-- **AGNOS kernel** — v1.26.1, 248KB, 33 subsystems, 26 syscalls, Cyrius-native. Boots to shell.
+- **AGNOS kernel** — v1.30.5, ~365KB, 35+ subsystems, 26 syscalls, Cyrius-native. Boots to shell on iron (NUC AMD, validated 2026-05-15).
 - **Component verification** — `make iso-check` walks every downstream repo and confirms the artifacts an ISO would need are present and current.
 - **Per-subsystem builds** — every subsystem (kybernet, ark, nous, sigil, libro, agnoshi, …) builds standalone from its own repo via `cyrius build`.
 

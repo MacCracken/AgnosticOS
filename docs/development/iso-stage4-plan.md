@@ -61,7 +61,7 @@ PASS: All required ISO components present.
 
 | Layer | Components |
 |---|---|
-| Boot Chain | kernel (agnos 1.26.1), kybernet 1.0.2, cyrius 5.7.21, ark 0.8.0, nous 1.1.1 |
+| Boot Chain | kernel (agnos 1.30.5), kybernet 1.2.1, cyrius 5.11.55, gnoboot 0.2.0, ark 0.8.0, nous 1.1.1 |
 | Security | sigil 2.9.4, kavach 3.0.0 |
 | Agent Layer | daimon 1.1.4, hoosh 2.0.0, agnoshi 1.0.0, bote 2.5.1, t-ron 2.0.0 |
 | Infrastructure | agnostik 1.0.0, agnosys 1.0.2, argonaut 1.5.0, libro 2.0.5, itihas 2.2.0, sankoch 2.1.0 |

@@ -2,7 +2,7 @@
 
 > **Kernel Version:** 6.6 LTS | **Last Updated:** 2026-03-10
 >
-> **Fossil notice (2026-04-14, refreshed 2026-05-06):** AGNOS now has its own sovereign kernel written in Cyrius (current version in [`development/state.md`](../state.md); ~248KB, 33 subsystems, 26 syscalls). This guide describes Linux kernel module development for the **host bootstrap layer only** — used to build the cross-compiler toolchain on an existing Linux host before AGNOS can self-host. The AGNOS kernel is developed in the `agnos` repo — see `agnos/CLAUDE.md` for current kernel development instructions.
+> **Fossil notice (2026-04-14, refreshed 2026-05-17):** AGNOS now has its own sovereign kernel written in Cyrius (current version in [`development/state.md`](../state.md); ~365KB at v1.30.5, 35+ subsystems, 26 syscalls, iron-validated on NUC AMD). This guide describes Linux kernel module development for the **host bootstrap layer only** — used to build the cross-compiler toolchain on an existing Linux host before AGNOS can self-host. The AGNOS kernel is developed in the `agnos` repo — see `agnos/CLAUDE.md` for current kernel development instructions.
 
 This guide covers building the AGNOS kernel, writing custom kernel modules, and contributing to the kernel layer.
 

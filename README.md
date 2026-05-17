@@ -3,11 +3,11 @@
 > **A**rtificial **G**eneral **N**etwork **O**perating **S**ystem
 
 [![License](https://img.shields.io/badge/license-GPLv3-blue)](LICENSE)
-[![Kernel](https://img.shields.io/badge/kernel-AGNOS%201.26.1-orange)](https://github.com/MacCracken/agnos)
-[![Language](https://img.shields.io/badge/Cyrius-5.10.24-red)](https://github.com/MacCracken/cyrius)
+[![Kernel](https://img.shields.io/badge/kernel-AGNOS%201.30.5-orange)](https://github.com/MacCracken/agnos)
+[![Language](https://img.shields.io/badge/Cyrius-5.11.55-red)](https://github.com/MacCracken/cyrius)
 [![Status](https://img.shields.io/badge/status-pre--beta-yellow)](docs/development/roadmap.md)
 
-**AGNOS** is a sovereign operating system written in **Cyrius** — a systems language with a 29KB seed, zero external dependencies, and a self-hosting compiler. The kernel is 248KB. The compiler is ~783KB. 30+ subsystems ported from Rust to Cyrius. No Linux dependency at runtime.
+**AGNOS** is a sovereign operating system written in **Cyrius** — a systems language with a 29KB seed, zero external dependencies, and a self-hosting compiler. The kernel is ~365KB and iron-validated on NUC AMD (Boot-to-Shell MVP, 2026-05-15). The compiler is ~809KB. 30+ subsystems ported from Rust to Cyrius. No Linux dependency at runtime.
 
 > *AGI doesn't run on infrastructure built for web apps. It runs on infrastructure built for AGI.*
 >
@@ -22,9 +22,9 @@
 |  Desktop                |  Agent Runtime          |  Kernel       |
 |  +--------------------+ |  +--------------------+ |  +----------+ |
 |  | aethersafha        | |  | daimon (1.1.4)     | |  | AGNOS    | |
-|  | Wayland compositor | |  | 144 MCP tools      | |  | 1.26.1   | |
-|  |                    | |  | Agent orchestrator | |  | 248KB    | |
-|  +--------------------+ |  +--------------------+ |  | 33 sub-  | |
+|  | Wayland compositor | |  | 144 MCP tools      | |  | 1.30.5   | |
+|  |                    | |  | Agent orchestrator | |  | ~365KB   | |
+|  +--------------------+ |  +--------------------+ |  | 35+ sub- | |
 |  | agnoshi (1.0.0)    | |  | hoosh (2.0.0)      | |  | systems  | |
 |  | AI shell           | |  | LLM gateway        | |  | 26 sys-  | |
 |  |                    | |  | 15 providers       | |  | calls    | |
@@ -39,8 +39,8 @@
 
 | Layer | Component | Version | Notes |
 |-------|-----------|---------|-------|
-| **Kernel** | AGNOS | 1.26.1 | 248KB, 33 subsystems, Cyrius-native |
-| **Compiler** | Cyrius | 5.10.24 | ~783KB, self-hosting from 29KB seed |
+| **Kernel** | AGNOS | 1.30.5 | ~365KB, 35+ subsystems, Cyrius-native, iron-validated NUC AMD |
+| **Compiler** | Cyrius | 5.11.55 | ~809KB, self-hosting from 29KB seed |
 | **PID 1** | kybernet | 1.0.2 | 486KB, 140 tests |
 | **Init** | argonaut | 1.5.0 | 3 boot modes |
 | **Sandbox** | kavach | 3.0.0 | 344KB, Landlock + seccomp-bpf |
@@ -92,7 +92,7 @@ All ship as `.agnos-agent` marketplace bundles:
 
 | Milestone | Status |
 |-----------|--------|
-| Sovereign kernel (248KB, 33 subsystems) | Done |
+| Sovereign kernel (~365KB, 35+ subsystems, iron-validated 2026-05-15) | Done |
 | Cyrius compiler (self-hosting, 42+ stdlib modules) | Done |
 | 30+ subsystem ports (Rust to Cyrius) | Done |
 | Sovereign boot pipeline (Cyrius) | Done |

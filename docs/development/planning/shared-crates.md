@@ -123,7 +123,7 @@ Full documentation for each library: [docs/applications/libs/](../../application
 
 | Crate | Version | Domain |
 |-------|---------|--------|
-| [agnos](https://github.com/MacCracken/agnos) | 1.30.1 | AGNOS kernel (Cyrius-native, ELF64 + sovereign UEFI handoff). Iron-validated 2026-05-15 on NUC AMD; 1.30.1 cycle target = native XHCI + USB-HID-boot driver to close MVP gap #3 (keyboard input). |
+| [agnos](https://github.com/MacCracken/agnos) | 1.30.5 | AGNOS kernel (Cyrius-native, ELF64 + sovereign UEFI handoff). Iron-validated 2026-05-15 on NUC AMD (Boot-to-Shell MVP). 1.30.4 closed 2026-05-17 with xHCI Linux-diff hardening (H1-H4); 1.30.5 staging absorbed native XHCI + USB-HID-boot driver Phases 4-5 (all 5 phases now landed, MVP gap #3 code-complete). Iron-side gate: archaemenid silent-absorb arc (parallel-track investigation; not blocking other work). |
 | [agnoshi](https://github.com/MacCracken/agnoshi) | 1.3.2 | AI shell (Cyrius) — depends on hoosh, daimon |
 | [argonaut](https://github.com/MacCracken/argonaut) | 1.7.0 | Init system library (Cyrius) — depends on agnosys. v1.7.0 adds BOOT_MINIMAL agnoshi-as-no-deps-console-service (unblocks closed-beta MVP without aethersafha). |
 | [cyim](https://github.com/MacCracken/cyim) | 1.7.0 | Sovereign modal text editor (Cyrius-native, VIM-inspired, zero attack surface, no embedded scripting). Consumes vyakarana + niyama (regex via stdlib fold v5.9.0); consumers: agnoshi, aethersafha, daimon-orchestrated agents (the AI-agent edit loop closes through cyim). |
