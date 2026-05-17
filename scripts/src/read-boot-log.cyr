@@ -188,6 +188,9 @@ fn main(): i64 {
     #   xhci_probe (R7)          → 0x6E / 0x6F (HCCPARAMS1/2 low bytes)
     #   xhci_port_reset (R8)     → 0x60 (PORTPMSC low byte on USB2 reset fail;
     #                                    reuses retired Repair-O AS2 slot)
+    #   xhci_port_reset (T)      → 0x70 (PR retry count — Linux-style hub.c
+    #                                    retry loop, 0..2 = retries fired
+    #                                    before success/giveup, 3 = exhausted)
     # Decoders below.
     var xh_pmsc    = cmos_read(96);   # 0x60 — PORTPMSC of failing port (R8)
     var xh_usbleg  = cmos_read(98);   # 0x62
@@ -204,6 +207,7 @@ fn main(): i64 {
     var xh_pls     = cmos_read(109);  # 0x6D — PLS pre-PR (R10)
     var xh_hccp1   = cmos_read(110);  # 0x6E — HCCPARAMS1 low byte (R7)
     var xh_hccp2   = cmos_read(111);  # 0x6F — HCCPARAMS2 low byte (R7)
+    var xh_retry   = cmos_read(112);  # 0x70 — PR retry count (Repair T)
 
     print_cmos_line("CMOS[0x53] gnoboot magic    = ", gmagic);
     print_cmos_line("CMOS[0x52] gnoboot checkpt  = ", gcp);
@@ -262,6 +266,7 @@ fn main(): i64 {
     print_cmos_line("CMOS[0x6E] xhci HCCPARAMS1 lo (R7)     = ", xh_hccp1);
     print_cmos_line("CMOS[0x6F] xhci HCCPARAMS2 lo (R7)     = ", xh_hccp2);
     print_cmos_line("CMOS[0x60] xhci PORTPMSC of failed port (R8) = ", xh_pmsc);
+    print_cmos_line("CMOS[0x70] xhci PR retry count (T)           = ", xh_retry);
 
     # USBLEGSUP outcome decoder.
     if (xh_usbleg == 0) { println("  USBLEGSUP: n/a (no xECP chain) — controller does not advertise extended caps."); }
@@ -452,8 +457,12 @@ fn main(): i64 {
     println("    CCS-bitmap empty + PP NOT in CMOS (slot 0x6B = 0x00) on a kcp >= 0x32 boot = xhci_ports_power_on never ran; check if the build predates the Phase 3.5 PP fix.");
     println("    proto=0 (unknown) on a CCS=1 port = xECP walk did not classify it; check xECP cap inventory above — SupProto=no would explain.");
     println("    SupProto=yes + port_count != all-physical-ports = some ports outside the SupProto coverage; check if more SupProto caps exist (cap walk count > 2).");
-    println("    PSCchg=<none> on a CCS=1 + reset=<none> boot = PR write was absorbed silently — controller did NOT enter reset state. **Cross-check CMOS[0x6D] PLS + CMOS[0x6E] HCCP1.** Attempt 39 hit this row with PLS=Polling + PPC=0; Repair (S) landed but introduced a regression at Attempt 40 (`XHCI_PORTSC_RWS` constant dropped bit 9 / PP — `0x0E00C1E0` instead of Linux's `0x0E00C3E0`; bitmap collapsed 0x3F→0x00, CCS collapsed 0x04→0x00). Repair (S') 2026-05-16 fixes the constants to `RWS=0x0E00C3E0` / `NEUTRAL=0x4E00FFE9`; Attempt 41 under test. If post-S' [0x6C]=0x00 persists with CCS≠0 back, stage Repair (T) Linux-style PR retry (Attempt 42).");
-    println("    PLS=Polling (7) + reset=<none> = R10 PLS gate ran clean. Post-S' (Attempt 41+), this row means the canonical Linux RMW pattern also wasn't enough; stage R (T) PR retry, or R (V) MTRR/PAT MMIO cache-attribute diagnostic.");
+    println("    PSCchg=<none> on a CCS=1 + reset=<none> boot = PR write was absorbed silently — controller did NOT enter reset state. **Cross-check CMOS[0x6D] PLS + CMOS[0x6E] HCCP1 + CMOS[0x70] PR retry count.** Attempt 41 hit this row with PLS=Polling + PPC=0 + S' constants verified, falsifying F3 (LWS/RWS hypothesis); Repair (T) Linux-style PR retry (wraps PR write + PRC poll in `retry < 3`, stamps retry count to CMOS[0x70]) landed for Attempt 42. If post-T [0x70]=0x03 with [0x6C]=0x00 and CCS≠0, silent-absorb survives 3 PR writes — escalate to Repair (V) MTRR/PAT MMIO cache-attribute diagnostic.");
+    println("    PLS=Polling (7) + reset=<none> = R10 PLS gate ran clean. Post-T (Attempt 42+), this row paired with [0x70]=0x03 means PR retry exhausted; stage Repair (V) MTRR/PAT MMIO cache-attribute diagnostic — confirms whether the BAR is genuinely UC or silently WB-cached (write coalescing would explain silent-absorb).");
+    println("    PR retry [0x70]=0x00 + reset=<none> = first PR write engaged the controller (PR/PRC/PED bit set at timeout) but failed downstream — read PSCchg + PLS for the failure mode; T not load-bearing here.");
+    println("    PR retry [0x70]=0x01 or 0x02 + reset=<none> = silent-absorb on early writes then controller engaged on retry N; T was partially load-bearing. Diagnostic of independent value: silicon is non-deterministic on first PR write. Read PSCchg for the post-engagement state.");
+    println("    PR retry [0x70]=0x03 + reset=<none> = 3 consecutive silent-absorbs; T did not unblock. Escalate to Repair (V) — pure MMIO-cache hypothesis test (no controller-side risk).");
+    println("    PR retry [0x70]=0x01..0x02 + reset≠<none> = retry succeeded; T load-bearing. Phase 4 staging can proceed.");
     println("    PLS=U0 (0) on connected port + reset returned 1 (success path) = port arrived at Enabled state on its own; xhci_port_reset short-circuited. Enable Slot is next gate.");
     println("    PLS top-nibble 0xE on connected port = R10 settle wait expired without PLS reaching Polling; physical link / cable / device-side issue or controller-side soft-disable.");
     println("    PLS top-nibble 0xF on connected port = R10 saw PLS arrive at U0 mid-settle; treated as success.");

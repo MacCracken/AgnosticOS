@@ -4679,7 +4679,113 @@ Per xHCI 1.2 §4.19.6, on PPC=0 silicon PP is supposed to be hardwired-on (write
 
 **Floor**: pre-S binary (343,320 B) is the regression-revert target — known-boots-to-shell from Attempt 39 with `bitmap=63 + CCS=0x04 + PR-absorbed`. Pre-S' binary (343,384 B post-Attempt-40) is **NOT** a revert target — that's the broken-mask build.
 
-_This pre-burn block is informational; the actual Attempt 41 entry will replace it once the burn completes._
+_Pre-burn block preserved as-is; the Attempt 41 actual outcome below hit prep-matrix Row 2 exactly (Attempt-39-shape restored, silent-absorb persists)._
+
+### Attempt 41 — 2026-05-16 → ROW 2 HIT (Attempt-39-shape restored, silent-absorb persists; F3 falsified)
+
+**Result**: Repair (S') landed cleanly. The typo regression from Attempt 40 is gone, but the original silent-absorb that S was reaching for is still present. PR retry (Repair T) is now the indicated next probe.
+
+**CMOS post-mortem (`sudo ./scripts/read-boot-log.sh` post-boot, abridged to deltas-of-interest):**
+
+| Slot | Field | Value | Δ vs Attempt 40 | Δ vs Attempt 39 | Interpretation |
+|---|---|---|---|---|---|
+| `[0x50]` | kcp | `0x15` | unchanged | unchanged | Shell loop alive; `agnos>` prompt rendered (kybernet last-write-wins overwrote downstream xhci stamps as expected). |
+| `[0x6B]` | PP bitmap | `0x3F` | `0x00` → `0x3F` (full restore) | unchanged | ✅ S' restored PP detection — all 6 ports stuck high after the PORTSC RMW. RWS-mask typo confirmed as the Attempt 40 sole regression vector. |
+| `[0x63]` | CCS bitmap | `0x04` | `0x00` → `0x04` (full restore) | unchanged | ✅ Port 3 connection detected; matches Attempt 39 attach state exactly. |
+| `[0x64]` | reset bitmap | `0x00` | unchanged | unchanged | ❌ PR silent-absorb persists; S' was necessary but not sufficient. |
+| `[0x6C]` | PSC change-byte | `0x00` | unchanged | unchanged | ❌ No PSC change bits fired during the entire poll window — same shape as Attempt 39 / 38. |
+| `[0x6D]` | PLS pre-PR | `0x07` (Polling) | unchanged | unchanged | R10 precondition gate is correct; controller is in the spec-prescribed state for PR=1. |
+| `[0x6E]` | HCCPARAMS1 lo | `0xE5` | unchanged | unchanged | PPC=0 confirmed (no PPC bit); SW PP-assert remains a structural no-op on this silicon — the bitmap=0x3F restore was Repair (Q)'s debounce loop reading hardwired-high PP, not the PORTSC write taking effect. |
+| `[0x6F]` | HCCPARAMS2 lo | `0x3F` | unchanged | unchanged | LEC | CIC | CTC | FSC | CMC | U3C — no exotic bits. |
+| `[0x60]` | PORTPMSC lo | `0x00` | unchanged | unchanged | USB2 PM state on the failing port is unset; PMSC quirk hypothesis stays cold. |
+| `[0x62]` | USBLEGSUP | `0x01` (already-OS) | unchanged | unchanged | BIOS handoff is a structural no-op on archaemenid (bit 16 was already clear at boot — SMI hypothesis stayed falsified). |
+| `[0x6B]` PP bitmap (decoded) | — | `1 2 3 4 5 6` | regression cleared | match | All 6 ports report PP=1 post-debounce. |
+| `[0x6A]` | 1stSupProto | `0x24` | unchanged | unchanged | rev_major=2, port_count=4 (USB2 supproto covers 4 ports — informational). |
+
+**Framebuffer (kept on phone via Iron protocol step 3, transcribed):**
+
+```
+xhci: PP=1 asserted, bitmap=63
+xhci: port 3 connected, USB2
+xhci: port 3 reset failed (proto=2)
+…
+agnos>
+```
+
+**Hypotheses surviving Attempt 41:**
+- F1 (HCCPARAMS1 spec-compliance gap): **still untested** — Attempt 41 exercised the PR path but the path is the same silent-absorb as Attempt 39; F1 stays the active hypothesis.
+- F2 (PLS precondition): **still falsified** — `0x6D=0x07` stamped clean.
+- F3 (RW1C/RWS/LWS mask handling): **falsified by Attempt 41**. S' implemented Linux's exact `xhci_port_state_to_neutral` semantics (LWS zeroed, RsvdZ zeroed, PED/PR/CAS/WPR zeroed at RMW time) and the silent-absorb survives anyway. F3 is no longer load-bearing.
+- F4 (Linux-style PR retry, T): **escalated from queued to active** — stage for Attempt 42.
+- **F5 NEW (MMIO cache-attribute / write coalescing)**: motivated by F3 falsification. If the xHCI BAR is silently WB-cached despite `vmm_map(..., 0x83)`, PORTSC writes coalesce in L1/L2 and never reach the controller — matches "absorbed silently" exactly. Diagnosable via Repair (V) (MTRR_DEF_TYPE + PAT MSR stamps); held until T's outcome.
+
+**Decision applied**: Stage Repair (T) for Attempt 42 per the prep-matrix Row 2 next-step. Iron iteration cost: one burn cycle.
+
+### Repair (T) — landed 2026-05-16, post-Attempt-41, pre-Attempt-42
+
+| Repair | File | Behavior |
+|---|---|---|
+| **T** (Linux-style PR retry) | `agnos/kernel/arch/x86_64/usb/xhci_port.cyr:347-397` | Wraps the existing PR write + PRC poll block in `xhci_port_reset` USB2 path in a `retry < 3` outer loop. Inner loop is the S' Linux-canonical RMW + PRC-poll-up-to-1M-iters block unchanged. At each iteration's timeout boundary, if `(PR | PRC | PED) == 0` on the last-read PORTSC (silent-absorb signature), re-read PORTSC into `psc1` and re-write PR=1. If any of those three bits is set, the controller engaged — break to the existing failure-stamp path. New CMOS stamp `[0x70]` carries the retry count (0..3) into the survivable post-mortem range. Mirrors USB-core `hub.c:hub_port_reset`'s up-to-5× retry pattern (xhci-hub.c doesn't do this but the layer above does). |
+
+**agnosticos-side decoder pair (`scripts/src/read-boot-log.cyr`):**
+- New slot read `xh_retry = cmos_read(112)` for `[0x70]`.
+- New `print_cmos_line` entry surfacing `CMOS[0x70] xhci PR retry count (T)`.
+- Stamped-by block extended to document `[0x70]` ownership by `xhci_port_reset (T)`.
+- PSCchg=`<none>` cheat-sheet row rewritten: documents Attempt 41 outcome (F3 falsified), Repair (T) staging, and the `[0x70]` retry-count interpretation chain.
+- PLS=Polling cheat-sheet row rewritten: post-T (Attempt 42+) meaning — paired with `[0x70]=0x03`, escalates to Repair (V).
+- Four new cheat-sheet rows for `[0x70]` retry-count decoder (0x00 / 0x01-0x02 / 0x03 / 0x01-0x02-with-reset-bit).
+
+**Build under test** (verified 2026-05-16):
+
+| Artifact | Pre (post-S') | Post (post-T) | Δ |
+|---|---|---|---|
+| `agnos/build/agnos` | 343,384 B | **343,624 B** | +240 B (retry loop + 3 new CMOS stamps + one extra branch) |
+| `agnosticos/scripts/build/read-boot-log` | 50,088 B | **51,416 B** | +1,328 B (one slot read + decoder strings + 4 cheat-sheet rows) |
+| Multiboot2 ELF64 | OK | OK | unchanged |
+| Entry | `0x1000a8` | `0x1000a8` | unchanged |
+| DCE-recoverable | 7,460 B (32 fns) | 7,460 B (32 fns) | unchanged |
+| Cyrius pin (both manifests) | `5.11.55` | `5.11.55` | unchanged |
+| `gnoboot` | `0.2.0` | `0.2.0` | unchanged |
+
+### Attempt 42 prep — Repair (T) Linux-style PR retry
+
+**Iron protocol** (burn pending USB reflash):
+1. Flash rebuilt USB (agnos 343,624 B + read-boot-log 51,416 B).
+2. Attach keyboard to any USB-A port — port choice still doesn't matter per Attempts 36/38/39/41 carry-forward (the connect already lands on port 3 reliably; the failure mode is reset-side, not attach-side).
+3. Boot archaemenid, photograph the framebuffer block between `xhci: PP=1 asserted, bitmap=…` and `agnos>`.
+4. After boot to `agnos>`, run `sudo ./scripts/read-boot-log.sh`. **Critical new slot: `CMOS[0x70]` PR retry count.**
+
+**Pre-bound outcome matrix**
+
+| FB line | `[0x64]` reset | `[0x6C]` PSCchg | `[0x70]` retry | Interpretation | Next step |
+|---|---|---|---|---|---|
+| `xhci: port N connected, …` | non-zero | (irrelevant) | `0x00` | ✅ **First PR write engaged + reset completed cleanly.** T was wired but not load-bearing — the silent-absorb was non-deterministic at Attempt 41 and the first write happened to take this time. Independent diagnostic of value: AMD FCH is non-deterministic on the first PR write under our current setup. | Phase 4 staging (Configure Endpoint + Set Protocol=boot). 1.30.1 closeout in sight. |
+| `xhci: port N connected, …` | non-zero | (irrelevant) | `0x01` or `0x02` | ✅ **PR retry succeeded after N silent-absorbs.** T was load-bearing. Matches USB-core `hub.c:hub_port_reset`'s motivation — silicon expects retries. | Phase 4 staging. Document the retry-count as the new floor expectation for subsequent boots; consider widening retry budget to 5× (matching Linux exactly) if `[0x70]=0x02` becomes the norm. |
+| `xhci: port N reset failed (proto=2)` | `0x00` | non-zero (any change bit) | (any) | **Diagnostic information increase from T** — silent-absorb partially broken; controller engaged on some retry but the engagement didn't complete cleanly. Read the change-byte. | If `PRC` (`0x20`) only — reset completed but PED never followed; silicon link-train issue (cable / port). If `CSC` (`0x02`) + nothing else — attach observed but no reset progress; T not enough. |
+| `xhci: port N reset failed (proto=2)` | `0x00` | `0x00` | `0x03` | **3 consecutive silent-absorbs.** T did not unblock; F4 falsified. The remaining hypothesis is F5 (MMIO write coalescing / cache-attribute mismatch). | Stage **Repair (V) — MTRR/PAT MMIO cache-attribute diagnostic** for Attempt 43. Pure diag, no controller-side risk; ~30 LOC stamping MSR 0x2FF + 0x277 to a free CMOS slot. |
+| `xhci: port N reset failed (proto=2)` | `0x00` | `0x00` | `0x00` | **Controller engaged on first PR write (PR/PRC/PED bit was set at timeout, broke the retry early) but failed downstream.** T's loop ran exactly once; the silent-absorb shape has shifted. | Read `[0x6C]` decoder bits — different PSCchg pattern than Attempt 41 means the controller is reacting to PR now, just not completing. Likely a Phase 3 downstream issue (e.g., link state not transitioning to U0); triage independent of T. |
+| `xhci: PP=1 asserted, bitmap=0` (regression persists) | `0x00` | `0x00` | (any) | **PP detection collapsed despite S' constants in source.** Either Attempt 41 was a fluke (unlikely — bitmap=0x3F was photographed) or T introduced an unintended regression. | Verify `xhci_regs.cyr:236` reads `0x0E00C3E0`; if clean, revert T (single-block revert; pre-T floor is 343,384 B post-S') and re-test S'. |
+| `xhci: port N connected, …` but `kcp != 0x15` (boot regressed downstream) | (any) | (any) | (any) | **T caused a downstream regression** (extremely unlikely; T is a localized loop addition with no shared-state changes). | Revert to pre-T binary (343,384 B post-S' from Attempt 41). |
+
+**Queued fallback repairs (not landing this burn — Attempt 43 candidates):**
+
+| Repair | When to stage | Behavior | Size |
+|---|---|---|---|
+| **(V) MTRR/PAT MMIO cache-attribute diagnostic** | If Attempt 42 hits row 4 (`[0x70]=0x03 + reset=0x00 + PSCchg=0x00`) | Stamp `MTRR_DEF_TYPE` MSR (`0x2FF`) low byte + `PAT` MSR (`0x277`) bits for the xHCI BAR page → CMOS. Pick a free slot from `project_archaemenid_cmos_map` 0x50–0x7F virgin range (0x71+ still free after T's 0x70). Confirms whether `vmm_map(..., 0x83)` actually made the BAR uncacheable or it's silently WB-cached. If WB-cached, PORTSC writes would coalesce in the L1/L2 cache and never reach the controller — matches "absorbed silently" symptom exactly. **Pure diagnostic, no controller-side risk.** | ~30 LOC + 2 CMOS slots |
+| **(W) widen retry budget to 5×** | If Attempt 42 hits row 2 with `[0x70]=0x02` as the norm | Bump `retry < 3` → `retry < 5` matching Linux's hub-driver exact behavior. Trivial follow-up; held until we know 3 isn't enough. | 1 LOC |
+
+**Decision gate after Attempt 42**:
+- **T row 1 (first-write success)**: Phase 4 prep; flag non-determinism as a known archaemenid quirk.
+- **T row 2 (retry success)**: Phase 4 prep; if `[0x70]=0x02` becomes norm, stage Repair (W) to widen the budget.
+- **T row 3 (partial engagement)**: triage `[0x6C]` change-byte for the new failure mode.
+- **T row 4 (retry exhausted)**: bundle Repair (V) into Attempt 43. F4 falsified, F5 (MMIO cache) becomes primary.
+- **T row 5 (early-engage failure)**: T's retry not exercised; symptom shifted independent of T.
+- **T row 6 (PP regression)**: revert T, re-test S'.
+- **T row 7 (downstream regression)**: revert T.
+
+**Floor**: post-S' binary (343,384 B from Attempt 41) is the revert target for any T-introduced regression — known to boot-to-shell with `bitmap=0x3F + CCS=0x04 + PR-absorbed`. Pre-S binary (343,320 B from Attempt 39) remains the deeper floor for an S/S' rollback.
+
+_Pre-burn block; the actual Attempt 42 entry will replace this footer once the burn completes._
 
 ---
 
