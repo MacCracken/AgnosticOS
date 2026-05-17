@@ -4785,7 +4785,77 @@ agnos>
 
 **Floor**: post-S' binary (343,384 B from Attempt 41) is the revert target for any T-introduced regression — known to boot-to-shell with `bitmap=0x3F + CCS=0x04 + PR-absorbed`. Pre-S binary (343,320 B from Attempt 39) remains the deeper floor for an S/S' rollback.
 
-_Pre-burn block; the actual Attempt 42 entry will replace this footer once the burn completes._
+_Pre-burn block preserved as-is; the Attempt 42 actual outcome below hit prep-matrix Row 4 exactly (retry exhausted at `[0x70]=0x03`; F4 falsified; F5 MMIO cache-attribute escalated to primary)._
+
+### Attempt 42 — 2026-05-16 → ROW 4 HIT (retry exhausted; F4 falsified; F5 escalated)
+
+**Result**: Repair (T)'s 3× PR-write retry loop ran to exhaustion. All three writes silently absorbed — controller never set `PR | PRC | PED` at any retry's timeout boundary. T was wired correctly (stamp `[0x70]=0x03` proves the loop completed all iterations) but not load-bearing on this silicon. F4 (Linux-style retry pattern) is falsified; F5 (MMIO cache-attribute / write coalescing) is the surviving hypothesis.
+
+**CMOS post-mortem (`sudo ./scripts/read-boot-log.sh` post-boot, abridged to deltas-of-interest):**
+
+| Slot | Field | Value | Δ vs Attempt 41 | Interpretation |
+|---|---|---|---|---|
+| `[0x50]` | kcp | `0x15` | unchanged | Shell loop alive; `agnos>` prompt rendered. |
+| `[0x6B]` | PP bitmap | `0x3F` | unchanged | All 6 ports PP=1 (PPC=0 hardwired). |
+| `[0x63]` | CCS bitmap | `0x04` | unchanged | Port 3 connection detected; attach state identical to Attempt 41. |
+| `[0x64]` | reset bitmap | `0x00` | unchanged | ❌ PR silent-absorb persists across all 3 retries. |
+| `[0x6C]` | PSC change-byte | `0x00` | unchanged | ❌ No PSC change bits fired in any of the 3 PR-write windows — controller never reacted. |
+| `[0x6D]` | PLS pre-PR | `0x07` (Polling) | unchanged | R10 precondition correct on every retry. |
+| `[0x6E]` | HCCPARAMS1 lo | `0xE5` | unchanged | PPC=0; PP behavior unchanged. |
+| `[0x6F]` | HCCPARAMS2 lo | `0x3F` | unchanged | No exotic bits. |
+| `[0x60]` | PORTPMSC lo | `0x00` | unchanged | USB2 PM state untouched. |
+| `[0x62]` | USBLEGSUP | `0x01` (already-OS) | unchanged | BIOS handoff no-op. |
+| **`[0x70]`** | **PR retry count (T)** | **`0x03`** | **NEW slot** | **All 3 retries silently absorbed.** Loop ran to exhaustion; `(PR \| PRC \| PED) == 0` was true at every timeout boundary. Diagnostic of independent value: the AMD FCH USB2 reset path is **deterministically** silent-absorb on this silicon, not racy. F4 falsified. |
+| `[0x65]` `[0x66]` `[0x67]` | proto inventory | `0x22 0x22 0x33` | unchanged | p1-4=USB2, p5-6=USB3 — classification clean. |
+| `[0x6A]` | 1stSupProto | `0x24` | unchanged | rev_major=2, port_count=4. |
+
+**Framebuffer (transcribed from phone capture):**
+
+```
+xhci: PP=1 asserted, bitmap=63
+xhci: port 3 connected, USB2
+xhci: port 3 reset failed (proto=2)
+…
+agnos>
+```
+
+Identical to Attempt 41's framebuffer line-for-line — T does not change the user-visible failure surface, only the post-mortem stamp set.
+
+**Hypotheses surviving Attempt 42:**
+- F1 (HCCPARAMS1 spec-compliance gap): **still untested** — every repair through T has touched the PR write path. F1 would require a different probe (e.g., a synthetic dump of the controller's HCSPARAMS3 / CAPLENGTH chain to detect a missing feature gate).
+- F2 (PLS precondition): **still falsified** — `[0x6D]=0x07` clean across S, S', T.
+- F3 (RW1C/RWS/LWS mask): **still falsified** — Linux-canonical `xhci_port_state_to_neutral` semantics didn't help.
+- F4 (Linux-style PR retry, T): **falsified by Attempt 42**. 3 deterministic silent-absorbs. The retry pattern only helps if the silicon is racy on the first write; archaemenid's AMD FCH is not. Repair (W) (widen retry to 5×) is therefore also pre-falsified — it would just stamp `0x05` and exhaust identically.
+- **F5 (MMIO cache-attribute / write coalescing)**: **escalated to active hypothesis**. The structural concern: `vmm_map(..., 0x83)` for 2MB pages sets bits 0 (P), 1 (W), 7 (PS=2MB). For PS=1 PDEs the PAT bit moves to bit 12 (out of `0x83`'s range), and PCD (bit 4) + PWT (bit 3) are both **0**. With `PCD=PWT=PAT=0`, the page's effective PAT index is **0**, which maps to **PA0**. PA0's firmware default is **WB (0x06)**. Unless an MTRR variable-range entry overrides the BAR address (`[0x6E]` decoder shows AC64+CSZ+LHRC+LTC+NSS only — no MTRR info), the xHCI BAR is silently write-back cached. PORTSC writes would coalesce in L1/L2 and never reach the controller — matches the silent-absorb signature exactly. Repair (V) confirms or refutes.
+
+**Decision applied**: Stage **Repair (V) — MTRR/PAT MMIO cache-attribute diagnostic** for Attempt 43. Pure diagnostic, no controller-side risk. Adds an `rdmsr` Cyrius helper in `kernel/arch/x86_64/io.cyr` (≤10 LOC), then stamps `MTRR_DEF_TYPE` (MSR `0x2FF`) low byte + `PAT` (MSR `0x277`) byte-at-index-0 to virgin CMOS slots in `0x71`+ range (per `project_archaemenid_cmos_map` — `0x70` now T-owned, `0x71` onward virgin).
+
+**Pre-bound outcome for Attempt 43:**
+
+| `[0x71]` MTRR_DEF | `[0x72]` PA0 byte | Interpretation | Next step |
+|---|---|---|---|
+| bit 11 (E) clear OR bit 7..0 = WB (`0x06`) + no variable-range MTRR overriding the BAR | `0x06` (WB) | **F5 confirmed.** BAR is genuinely WB-cached. PORTSC writes coalesce in cache. | Stage **Repair (X)** — switch BAR mapping to UC. Two equivalent paths: (a) flip PWT bit (`0x83` → `0x8B`) in `vmm_map` call for MMIO ranges to land on PA1=WT by default (still wrong), better (b) add a new `vmm_map_mmio(virt, phys)` that sets `PCD=1 + PWT=1 + PAT=0` to land on PA3=UC (firmware default). ~20 LOC. |
+| MTRR enabled, default type ≠ WB, but PA0=WB | `0x06` | Variable-range MTRRs would dominate; need a deeper diag (MTRR_PHYSBASE/MASK pair walk) to confirm whether the BAR's range has an explicit UC override. | Stage **Repair (V')** — variable-range MTRR walk dumping `0x200/0x201..0x20E/0x20F` low bytes to CMOS. ~40 LOC. |
+| PA0 ≠ `0x06` (something other than WB) | non-WB | AGNOS has reprogrammed PAT somewhere (or firmware shipped non-standard defaults). F5 weakens; need to revisit the PTE walk for our specific virt addr. | Stage **Repair (V'')** — PTE walk for `xhci_mmio_base` dumping flags byte to CMOS. ~25 LOC. |
+| `[0x71]` = `0x00` AND `[0x72]` = `0x00` | both zero | rdmsr helper didn't execute (rebuild stale / wrong artifact flashed / asm-block byte sequence wrong). | Verify build product timestamp + binary size delta; re-burn. |
+
+**Queued fallback repairs (not landing this burn — Attempt 44+ candidates):**
+
+| Repair | When to stage | Behavior | Size |
+|---|---|---|---|
+| **(X) MMIO UC mapping** | If Attempt 43 stamps confirm BAR is WB-cached | New `vmm_map_mmio` variant setting PCD+PWT for PA3=UC mapping of the xHCI BAR (and other MMIO ranges going forward). Re-map `xhci_mmio_base` at probe time. | ~20 LOC |
+| **(V') variable-range MTRR walk** | If MTRR_DEF_TYPE indicates enabled but PA0=WB | Walk MSR 0x200..0x20F pairs, stamp count of UC-overriding ranges + first range's base low byte to free CMOS. | ~40 LOC |
+| **(V'') PTE walk for BAR addr** | If PAT default reprogrammed (PA0 ≠ WB) | Walk PML4→PDPT→PD entry for `xhci_mmio_base`, stamp the PD entry's flags byte (PCD/PWT/PS/PAT bits) to free CMOS. | ~25 LOC |
+
+**Decision gate after Attempt 43**:
+- **V row 1 (WB-cached)**: bundle Repair (X) into Attempt 44. F5 confirmed → ~20 LOC fix → 1.30.1 unblock.
+- **V row 2 (variable MTRR may override)**: stage V' for Attempt 44; diagnostic-only burn.
+- **V row 3 (PAT reprogrammed)**: stage V'' for Attempt 44; diagnostic-only burn.
+- **V row 4 (stamps blank)**: re-flash + verify.
+
+**Floor**: post-T binary (343,624 B from Attempt 42) is the revert target for any V-introduced regression. V is purely additive (new helper + new stamps) — regression risk is concentrated in the asm-block byte sequence for `rdmsr` itself.
+
+_Pre-burn block; the actual Attempt 43 entry will replace this footer once the burn completes._
 
 ---
 

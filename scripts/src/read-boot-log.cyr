@@ -191,6 +191,9 @@ fn main(): i64 {
     #   xhci_port_reset (T)      → 0x70 (PR retry count — Linux-style hub.c
     #                                    retry loop, 0..2 = retries fired
     #                                    before success/giveup, 3 = exhausted)
+    #   xhci_probe (V)           → 0x71 / 0x72 (MTRR_DEF_TYPE + PAT MSR low
+    #                                    bytes — MMIO cache-attribute diag
+    #                                    for F5 silent-absorb hypothesis)
     # Decoders below.
     var xh_pmsc    = cmos_read(96);   # 0x60 — PORTPMSC of failing port (R8)
     var xh_usbleg  = cmos_read(98);   # 0x62
@@ -208,6 +211,8 @@ fn main(): i64 {
     var xh_hccp1   = cmos_read(110);  # 0x6E — HCCPARAMS1 low byte (R7)
     var xh_hccp2   = cmos_read(111);  # 0x6F — HCCPARAMS2 low byte (R7)
     var xh_retry   = cmos_read(112);  # 0x70 — PR retry count (Repair T)
+    var xh_mtrr    = cmos_read(113);  # 0x71 — MTRR_DEF_TYPE MSR 0x2FF byte 0 (Repair V)
+    var xh_pat0    = cmos_read(114);  # 0x72 — PAT MSR 0x277 byte 0 (PA0) (Repair V)
 
     print_cmos_line("CMOS[0x53] gnoboot magic    = ", gmagic);
     print_cmos_line("CMOS[0x52] gnoboot checkpt  = ", gcp);
@@ -267,6 +272,8 @@ fn main(): i64 {
     print_cmos_line("CMOS[0x6F] xhci HCCPARAMS2 lo (R7)     = ", xh_hccp2);
     print_cmos_line("CMOS[0x60] xhci PORTPMSC of failed port (R8) = ", xh_pmsc);
     print_cmos_line("CMOS[0x70] xhci PR retry count (T)           = ", xh_retry);
+    print_cmos_line("CMOS[0x71] MTRR_DEF_TYPE MSR 0x2FF byte0 (V) = ", xh_mtrr);
+    print_cmos_line("CMOS[0x72] PAT MSR 0x277 byte0 (PA0) (V)     = ", xh_pat0);
 
     # USBLEGSUP outcome decoder.
     if (xh_usbleg == 0) { println("  USBLEGSUP: n/a (no xECP chain) — controller does not advertise extended caps."); }
@@ -474,6 +481,10 @@ fn main(): i64 {
     println("    PSCchg=PRC (with or without CSC) on a CCS=1 + reset=<none> boot = reset DID complete (PRC fired) but PED never followed; controller's reset-to-Enabled transition failed silicon-side. Suspect signal/link issue.");
     println("    PSCchg=PEC on a reset=<none> boot = port enable-state changed without a clean reset. Likely a soft-disable cascade.");
     println("    PSCchg=OCC = over-current event during reset — physical/power fault.");
+    println("    MTRR_DEF_TYPE [0x71]: bits 0-7 = default mem-type (0=UC, 1=WC, 4=WT, 5=WP, 6=WB); bit 10 = FE (fixed-range enable); bit 11 = E (global MTRR enable). On AGNOS the kernel does NOT touch MSR 0x2FF, so this is firmware-programmed. Typical PC firmware: 0x0C = E|FE|WB (variable-range MTRRs may override to UC for MMIO holes). 0x00 = MTRRs disabled (caching governed by PAT alone).");
+    println("    PA0 [0x72]: PAT entry 0 byte (0=UC, 1=WC, 4=WT, 5=WP, 6=WB, 7=UC-). 2MB-page PDEs with flag 0x83 (P|W|PS) have PWT=PCD=PAT-bit=0 → PAT index 0 → this byte IS the BAR's effective memory type unless a variable-range MTRR overrides it. Firmware-default PAT MSR 0x0007040600070406 → PA0=0x06 (WB). PA0=0x06 + MTRR_DEF=WB + no variable MTRR for the BAR range = F5 CONFIRMED: BAR is silently write-back cached, PORTSC writes coalesce in L1/L2, silent-absorb explained. Stage Repair (X) — new vmm_map_mmio variant landing PCD=1+PWT=1+PAT=0 on PA3=UC.");
+    println("    PA0=0x00 (UC) + reset=<none> = PAT entry 0 already UC. F5 weakens; the BAR mapping is genuinely uncacheable but writes are still absorbed. Suspect controller-side gate (HCCPARAMS3 / xECP cap we missed); stage Repair (V') variable-range MTRR walk (MSR 0x200-0x20F) to rule out the only remaining cache path.");
+    println("    [0x71]=0x00 AND [0x72]=0x00 = rdmsr helper didn't execute; the diagnostic-stamp pair never ran. Verify build artifact timestamp + binary size delta vs post-T floor (343,624 B); re-burn.");
     syscall(1, 1, "\n", 1);
     # End xHCI post-mortem block.
 
