@@ -5367,6 +5367,53 @@ _Pre-burn block preserved; the Attempt 48 actual outcome below hit a Row 2 struc
 
 ---
 
+### Attempt 50 prep — Repair (AA) — HCSPARAMS2.MaxScratchpadBufs + DCBAA[0] scratchpad install
+
+**Cycle recovery via Linux diff** (post-Decoupling, same session): user prompted "you are on the same dev machine bro!!" — archaemenid IS the dev box, Linux on it IS the proof of correct xhci behavior (this conversation is being typed through the Keychron K2 on bus 1-3, exactly matching AGNOS's `CCS=0x05` ports 1+3). The Decoupling decision's "Linux verification step" had its answer on disk all along. Memory `feedback_known_knowledge_first` flagged precisely this failure mode (3+ diagnostic rounds without checking what's already known) — applies here at the 18-attempt scale.
+
+**Diff method**: `lspci -nn -v` → confirmed AMD Renoir/Cezanne 1022:1639 at BAR `0xFC900000` (matches AGNOS's iron probe). Keychron K2 traces to `0000:04:00.3` via `readlink -f /sys/bus/usb/devices/1-3`. Pulled Linux `xhci-hub.c` USB2 reset handler + `xhci.c` xhci_run + `xhci-mem.c` scratchpad_alloc via WebFetch from torvalds/linux master. Side-by-side against AGNOS `xhci_port.cyr` / `xhci.cyr` / `xhci_ring.cyr`.
+
+**Finding**: Linux's USB2 reset handler is three lines (`portsc |= PORT_RESET; writel; readl`) — AGNOS's Repair S already implements equivalent canonical RMW + R10 PLS gate + Z timing wrap. The reset *handler* isn't the gap. The gap is at controller-init time in `xhci_mem_init`/`scratchpad_alloc`:
+
+```
+xhci->dcbaa->dev_context_ptrs[0] = cpu_to_le64(xhci->scratchpad->sp_dma);
+```
+
+Linux unconditionally allocates `HCS_MAX_SCRATCHPAD(hcs_params2)` page-sized scratchpad buffers, builds a u64 pointer array, and writes the array's phys into `DCBAA[0]` **before** R/S=1. AGNOS leaves `DCBAA[0] = 0` — confirmed by a TODO comment in `agnos/kernel/arch/x86_64/usb/xhci_ring.cyr:6-11` admitting the assumption "MaxScratchpadBufs is expected to be 0 on archaemenid" and queuing the follow-up scratchpad allocation. The assumption was never validated; AMD Renoir/Cezanne (1022:1639) advertises non-zero scratchpad bufs per Linux's standard xhci probe path.
+
+**Hypothesis (AA)**: xHCI 1.2 §4.20 — when `HCSPARAMS2.MaxScratchpadBufs > 0`, the controller "may not function correctly" until the OS programs the scratchpad array into `DCBAA[0]`. The per-port reset state machine relies on scratchpad-backed context save/restore; without scratchpad, PR writes are absorbed silently because the reset path can't park its internal state. This explains why every behavioral letter in the silent-absorb trio (F5/X/V'', b/W, b'/c/d/e/Z) burned cleanly without unblocking — none of them touched `DCBAA[0]`. Single-step explanation for Attempts 32-49 silent-absorb that no prior hypothesis covered.
+
+**Three behavioral changes** (single coherent fix, no diagnostic ride-alongs beyond truth-channel stamps):
+
+| # | Change | Code site | Prior art | Truth channel |
+|---|---|---|---|---|
+| 1 | Read `HCSPARAMS2` at probe time, decode `MaxScratchpadBufs` = `(hi << 5) \| lo` (bits 25:21 \| 31:27) | `xhci.cyr` post-HCCPARAMS2 read | xHCI 1.2 §5.3.4 | FB `xhci: scratchpad bufs=N` + CMOS[0x80] count + [0x81]=0xAA sentinel + [0x82] HCSPARAMS2 byte 3 raw |
+| 2 | If `MaxScratchpadBufs > 0`, allocate u64 pointer array (1 page) + N page-sized scratchpad buffers; write each phys to `sp_array[i]`; write `sp_array_phys` to `DCBAA[0]` | `xhci_ring.cyr` `xhci_rings_init` step 1b (post-DCBAA alloc, pre-cmd ring) | Linux `xhci_setup_scratchpad_bufs` (`xhci-mem.c` line 2666+) | FB `xhci: scratchpad ready, array=0xPHYS` + CMOS[0x83] = `sp_array_phys & 0xFF` |
+| 3 | Update agnosticos `read-boot-log.cyr` decoder: read CMOS slots 0x80-0x83, print decoded lines, add 7-row cheat-sheet covering AA outcome matrix | `agnosticos/scripts/src/read-boot-log.cyr` | Same pattern as Repair Z's [0x7F] sentinel | Decoder output on `sudo ./scripts/read-boot-log.sh` |
+
+**First use of CMOS 0x80+ range**: per `project_archaemenid_cmos_map`, slots 0x50-0x7F are now exhausted (Repair Z's [0x7F] was the last). 0x80+ is untested but BIOS writes 0x42/0x43/0x44 cold-boot side and doesn't appear to touch 0x80+. Sentinel `0xAA` at `[0x81]` validates the slot range survived BIOS/POST — if it reads back as `0xAA`, the AA stamps are trustworthy; if not, BIOS clobbers the 0x80 range and we need higher addresses.
+
+**Pre-bound outcome matrix for Attempt 50**:
+
+| `kcp` | `[0x80]` MaxScratchpadBufs | `[0x81]` sentinel | `[0x83]` DCBAA[0] low | `[0x64]` reset-OK | Reads as | Next |
+|---|---|---|---|---|---|---|
+| `0x15` | `> 0x00` | `0xAA` | `!= 0x00` | non-zero | **Row 1 — REPAIR (AA) IS THE UNBLOCK.** Scratchpad install closed silent-absorb; Phase 3 enumeration ran. MVP-typeable becomes the Phase 4/5 gate. | Stage Phase 4 (Configure Endpoint + SET_PROTOCOL=boot) + Phase 5 (HID translation + `kb_buf` feed) — ~1.2–2.1 KLOC per `planning/usb-hid-keyboard-driver.md` § Phase 4-5. Closed-beta MVP completes when typing produces echoes. |
+| `0x15` | `> 0x00` | `0xAA` | `!= 0x00` | `0x00` | **Row 2 — AA executed cleanly, silent-absorb persists.** Scratchpad correctly installed but reset still absorbed → silent-absorb gate is somewhere else AGNOS still skips. Audit Linux `xhci-mem.c` `xhci_mem_init` for other init-time writes AGNOS misses (`xhci_set_dev_notifications` / `xhci_add_interrupter` ordering / IMOD / device notification control reg). | Bisect Linux's `xhci_init` vs AGNOS `xhci_start` line-by-line; identify the next missed step. |
+| `0x15` | `0x00` | `0xAA` | `0x00` | (any) | **Row 3 — controller advertises MaxScratchpadBufs=0.** AA is a structural no-op on this hardware; hypothesis falsified. (Unexpected for AMD Renoir/Cezanne but spec-allowed.) | Escalate to alternate hardware target or PCIe USB add-in card with different controller silicon. |
+| `0x15` | `> 0x00` | `0xAA` | `0x00` | `0x00` | **Row 4 — scratchpad alloc failed.** `pmm_alloc` returned 0 OR `store64(dcbaa, sp_array)` didn't take. Check FB for `xhci: scratchpad array alloc failed` / `xhci: scratchpad buf alloc failed` lines. | Triage PMM exhaustion or DCBAA mapping bug; fix and re-burn. |
+| `0x15` | (any) | `!= 0xAA` | (any) | (any) | **Row 5 — CMOS 0x80+ slot not trustworthy.** Either BIOS writes into 0x80+ region on archaemenid OR AA stamp site didn't run (pre-AA binary on iron — verify build size != 349,168 B). | If size matches: BIOS clobbers 0x80; pivot stamps to higher addresses (0x90+ probe). If size mismatches: re-flash. |
+| `kcp != 0x15` | (any) | (any) | (any) | (any) | **Row 6 — bundle caused regression.** Most likely culprit: scratchpad alloc consumed PMM pages needed elsewhere OR `store64(dcbaa, sp_array)` corrupted surrounding DCBAA entries. | Revert to post-Z binary (348,032 B); re-burn with allocation guard. |
+
+**Build under test**: agnos kernel `348,032 → 349,168 B` (+1,136 across HCSPARAMS2 read +~40 / scratchpad alloc loop + DCBAA[0] write +~600 / FB kprintln + CMOS stamps +~500; multiboot2 ELF64 OK, entry `0x1000a8` unchanged, 32 unreachable fns / 7,460 B DCE-recoverable). Read-boot-log decoder `63,184 → 65,688 B` (+2,504 for 4 new slot reads + 4 print_cmos_line entries + 7-row cheat sheet). Cyrius pin 5.11.55. gnoboot 0.2.0 untouched.
+
+**Floor**: post-Z binary (348,032 B from Attempt 49) is the regression-revert target. Risk surface: PMM consumption (allocates `MaxScratchpadBufs + 1` extra pages; Renoir/Cezanne typically advertises 1-4 scratchpads → 2-5 page consumption, well under PMM headroom per Attempt 28 mem-iso baseline). `store64(dcbaa, sp_array)` writes to the first 8 bytes of an already-zeroed page — no aliasing with anything else.
+
+**Iron protocol**: flash rebuilt USB, attach Keychron K2 to port 1 or port 3 (matches Linux-confirmed working ports), boot, photograph FB block between `xhci: USBLEGSUP already OS-owned` and `VFS initialized`, then `sudo ./scripts/read-boot-log.sh`. **Three load-bearing channels in order**: (1) FB primary — does `xhci: scratchpad bufs=N` line surface with N > 0? does `xhci: scratchpad ready, array=0xPHYS` follow? does any `xhci: port N connected, SPEED, slot=X` line surface? (2) CMOS post-mortem — `[0x80]/[0x81]/[0x83]` per outcome matrix; (3) `[0x64]` — the binary unblock indicator.
+
+**Decision gate after Attempt 50 burn**: Row 1 (AA unblocks) → close Phase 3, stage Phase 4/5 next iron burn (Decoupling decision's "structurally complete chunk" rule — Phase 4+5 batched into one burn, not per-substep). Row 2 (executed but didn't unblock) → next Linux-diff target is `xhci_init` / `xhci_run` register ordering. Row 3-5 → as outcome matrix. **Phase 4 + Phase 5 design is shovel-ready in `planning/usb-hid-keyboard-driver.md`** — code-write can begin in parallel with Row 1 iron burn so the next burn ships typeable shell.
+
+---
+
 ### Decoupling decision (replaces Post-Z reckoning)
 
 **Written 2026-05-17, pre-Attempt-49 burn, in response to user signals**: "we've been circling this for two whole days" + "I'm getting tired of holding off other work because of Boot burn allowances" + "all you have done is diagnosis [until I forced a review]" + "we have prior art to refer to... but you've only suggested 1 maybe 2 times".

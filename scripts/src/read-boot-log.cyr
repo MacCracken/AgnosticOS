@@ -240,6 +240,10 @@ fn main(): i64 {
     var xh_sup3    = cmos_read(125);  # 0x7D — 3rd SupProto rev|port_count (Repair b')
     var xh_sup3off = cmos_read(126);  # 0x7E — 3rd SupProto port_off (Repair b')
     var xh_zsent   = cmos_read(127);  # 0x7F — Repair Z timing-delay sentinel (0xAA = site executed)
+    var xh_spcount = cmos_read(128);  # 0x80 — Repair (AA) MaxScratchpadBufs low byte
+    var xh_spsent  = cmos_read(129);  # 0x81 — Repair (AA) 0x80-range sentinel (0xAA = slot trustworthy)
+    var xh_hcsp2b3 = cmos_read(130);  # 0x82 — Repair (AA) HCSPARAMS2 byte 3 (raw bits 31:24)
+    var xh_spdcba  = cmos_read(131);  # 0x83 — Repair (AA) DCBAA[0] low byte (scratchpad array phys low)
 
     print_cmos_line("CMOS[0x53] gnoboot magic    = ", gmagic);
     print_cmos_line("CMOS[0x52] gnoboot checkpt  = ", gcp);
@@ -314,6 +318,10 @@ fn main(): i64 {
     print_cmos_line("CMOS[0x7D] xhci 3rd SupProto rev|count (b')  = ", xh_sup3);
     print_cmos_line("CMOS[0x7E] xhci 3rd SupProto port_off  (b')  = ", xh_sup3off);
     print_cmos_line("CMOS[0x7F] xhci Repair-Z timing-delay sentinel = ", xh_zsent);
+    print_cmos_line("CMOS[0x80] xhci MaxScratchpadBufs (AA)         = ", xh_spcount);
+    print_cmos_line("CMOS[0x81] xhci 0x80-range sentinel (AA)       = ", xh_spsent);
+    print_cmos_line("CMOS[0x82] xhci HCSPARAMS2 byte 3 raw (AA)     = ", xh_hcsp2b3);
+    print_cmos_line("CMOS[0x83] xhci DCBAA[0] low / sp_array phys lo (AA) = ", xh_spdcba);
 
     # USBLEGSUP outcome decoder.
     if (xh_usbleg == 0) { println("  USBLEGSUP: n/a (no xECP chain) — controller does not advertise extended caps."); }
@@ -563,6 +571,13 @@ fn main(): i64 {
     println("    Repair (Z) sentinel [0x7F]: 0xAA = Z timing-delay site executed at least once across the per-port reset loop (last-write-wins is fine). 0x00 = pre-Z binary on iron (size != 346,456 B) OR Z site faulted / regressed / DCE'd out.");
     println("    [0x7F]=0xAA + [0x64]=0x00: Z executed but didn't break the silent-absorb → ALL behavioral hypotheses in the silent-absorb trio (F5/X/V'', b/W, b'/c/Z) exhausted. Escalation = decoupled re-evaluation, NOT another diagnostic letter.");
     println("    [0x7F]=0xAA + [0x64] non-zero: Z is the unblock → Phase 3 closes; xhci enumeration proceeds to Address Device + control transfers.");
+    println("    Repair (AA) — HCSPARAMS2.MaxScratchpadBufs + DCBAA[0] scratchpad install [0x80..0x83]. First use of CMOS 0x80+ range (0x50-0x7F exhausted). Per xHCI 1.2 §4.20, when MaxScratchpadBufs > 0 the OS MUST allocate N page-sized buffers + a u64 pointer array, then write the array's phys into DCBAA[0] before R/S=1. Pre-AA AGNOS left DCBAA[0]=0 on a TODO comment; on AMD Renoir/Cezanne (1022:1639) this is suspected silent-absorb root cause across Attempts 32-49.");
+    println("    [0x81]=0xAA: 0x80-range slot is trustworthy (BIOS/POST didn't clobber). [0x81]!=0xAA: BIOS writes into 0x80+ region OR AA stamp site didn't run — verify build size against Attempt 50 floor in state.md before interpreting [0x80]/[0x82]/[0x83].");
+    println("    [0x80]=0x00 + [0x81]=0xAA: controller reports MaxScratchpadBufs=0 — AA is a structural no-op on this hardware; silent-absorb hypothesis (AA) FALSIFIED. Escalate to alternate hardware target or PCIe USB add-in.");
+    println("    [0x80]>0x00 + [0x81]=0xAA + [0x83]=0x00: scratchpad alloc failed (pmm_alloc returned 0 or DCBAA[0] write didn't take); check Phase 2 FB for 'xhci: scratchpad array alloc failed' or 'xhci: scratchpad buf alloc failed' lines.");
+    println("    [0x80]>0x00 + [0x81]=0xAA + [0x83]!=0x00 + [0x64]!=0x00: **REPAIR (AA) IS THE UNBLOCK** → reset succeeded, Phase 3 enumeration runs, Phase 4/5 (HID translation + kb_buf feed) becomes the typeable-shell gate. THIS IS MVP.");
+    println("    [0x80]>0x00 + [0x81]=0xAA + [0x83]!=0x00 + [0x64]=0x00: scratchpad correctly installed but reset still absorbed — AA falsified, silent-absorb gate is somewhere else. Audit Linux xhci-mem.c xhci_mem_init for other init-time writes AGNOS skips (xhci_set_dev_notifications / xhci_add_interrupter ordering / IMOD).");
+    println("    [0x82] raw byte cross-check: encodes HCSPARAMS2 bits 31:24. MaxScratchpadBufs Lo = bits 31:27 = upper 5 bits of [0x82]; SPR = bit 26 = bit 2 of [0x82]; rest of Hi = bits 25:21 (mostly outside [0x82]). Useful when [0x80]>0xFF (>255 scratchpads — unusual but possible on server-grade silicon).");
     syscall(1, 1, "\n", 1);
     # End xHCI post-mortem block.
 
