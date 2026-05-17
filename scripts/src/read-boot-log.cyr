@@ -42,7 +42,18 @@ include "lib/args.cyr"
 #   - First local `val` lives at [rbp - 0x10]; we write the result there.
 #   - OUT 0x70 / IN 0x71 use the immediate-port form (ports < 256),
 #     so DX is left untouched.
-fn cmos_read(cmos_off: i64): i64 {
+#
+# Two-bank routing (CC fix 2026-05-17). Port 0x70 latches a 7-bit index
+# — bit 7 is the NMI mask. Reading slot 0x84 via 0x70/0x71 actually
+# returns slot 0x04 (RTC hours) and toggles NMI. Slots ≥ 0x80 live on
+# the extended bank addressed by 0x72/0x73 (0x72 takes a 7-bit offset
+# with no NMI bit, real slot = offset + 0x80). Attempt 51 readback
+# confirmed slots 0x80/0x82/0x84 had been returning BCD time-of-day
+# from the RTC for the entire AA+BB diagnostic arc; 0x81/0x83/0x85
+# happened to alias to RTC alarm regs and preserved kernel writes,
+# masking the bug. Empirical sentinel at slot 0x86 (kernel writes
+# 0xCC) verifies extended-bank support on AMD FCH 1022:1639.
+fn cmos_read_lo(cmos_off: i64): i64 {
     var val = 0;
     asm {
         # mov al, byte [rbp - 0x08]   ; low byte of cmos_off → AL
@@ -57,6 +68,25 @@ fn cmos_read(cmos_off: i64): i64 {
         0x48; 0x89; 0x45; 0xF0;
     }
     return val;
+}
+
+fn cmos_read_hi(cmos_off: i64): i64 {
+    var val = 0;
+    asm {
+        0x8A; 0x45; 0xF8;
+        # out 0x72, al                ; select extended CMOS register
+        0xE6; 0x72;
+        # in al, 0x73                 ; read extended CMOS data byte
+        0xE4; 0x73;
+        0x0F; 0xB6; 0xC0;
+        0x48; 0x89; 0x45; 0xF0;
+    }
+    return val;
+}
+
+fn cmos_read(cmos_off: i64): i64 {
+    if (cmos_off < 0x80) { return cmos_read_lo(cmos_off); }
+    return cmos_read_hi(cmos_off - 0x80);
 }
 
 fn print_cmos_line(label, b) {
@@ -246,6 +276,8 @@ fn main(): i64 {
     var xh_spdcba  = cmos_read(131);  # 0x83 — Repair (AA, 1.30.4 redesigned) sp_array phys byte 2 ((>>16)&0xFF)
     var xh_bbsent  = cmos_read(132);  # 0x84 — Repair (BB) DNCTRL-write sentinel (0xBB = site executed)
     var xh_hcsp2b2 = cmos_read(133);  # 0x85 — Repair (AA audit add-on) HCSPARAMS2 byte 2 (raw bits 23:16)
+    var xh_ccsent  = cmos_read(134);  # 0x86 — Repair (CC) extended-CMOS bank sentinel (0xCC = 0x72/0x73 pair live)
+    var xh_ddsent  = cmos_read(135);  # 0x87 — Repair (DD) event-ring drain sentinel (0xDD = site executed)
 
     print_cmos_line("CMOS[0x53] gnoboot magic    = ", gmagic);
     print_cmos_line("CMOS[0x52] gnoboot checkpt  = ", gcp);
@@ -326,6 +358,8 @@ fn main(): i64 {
     print_cmos_line("CMOS[0x83] xhci sp_array phys byte 2 (AA 1.30.4) = ", xh_spdcba);
     print_cmos_line("CMOS[0x84] xhci DNCTRL-write sentinel (BB)     = ", xh_bbsent);
     print_cmos_line("CMOS[0x85] xhci HCSPARAMS2 byte 2 raw (AA aud) = ", xh_hcsp2b2);
+    print_cmos_line("CMOS[0x86] xhci extended-CMOS sentinel (CC)    = ", xh_ccsent);
+    print_cmos_line("CMOS[0x87] xhci event-drain sentinel (DD)      = ", xh_ddsent);
 
     # USBLEGSUP outcome decoder.
     if (xh_usbleg == 0) { println("  USBLEGSUP: n/a (no xECP chain) — controller does not advertise extended caps."); }
@@ -588,6 +622,13 @@ fn main(): i64 {
     println("    [0x84]=0xBB + [0x64]!=0x00: **REPAIR (BB) IS THE UNBLOCK** — DNCTRL was the silent-absorb gate; some USB2 port-link-state transitions on AMD Renoir/Cezanne gated on notification handling. Phase 3 enumeration ran. Phase 4/5 becomes the typeable-shell gate.");
     println("    [0x84]=0xBB + [0x64]=0x00: BB executed cleanly, silent-absorb persists. BB falsified; eleventh hypothesis in the arc. Next Linux-diff targets: IMOD write with INTE-on test, per-port event-ring drain ordering, AMD-FCH-specific PCI cap.");
     println("    [0x84]=0x00 with kcp >= 0x32: pre-BB binary on iron OR DNCTRL write site faulted. Verify build size against 1.30.4 floor before interpreting BB outcome.");
+    println("    Repair (CC) — Extended-CMOS bank sentinel [0x86] (1.30.4 post-Attempt-51). Port 0x70 bit 7 is the NMI mask; slots 0x80+ via 0x70/0x71 alias to RTC seconds/minutes/hours (bits 6:0). Attempt 51 [0x80]=0x48 / [0x82]=0x04 / [0x84]=0x19 were RTC BCD time-of-day (19:04:48 wall clock), NOT the kernel's intended bytes. [0x81]/[0x83]/[0x85] aliased to RTC alarm regs which happen to be unused scratch, preserving kernel writes and masking the bug across Attempts 50+51. xhci_cmos_stamp + cmos_read now route slots >= 0x80 through ports 0x72/0x73 (extended CMOS bank, 7-bit offset, no NMI bit). Sentinel [0x86]=0xCC verifies the AMD FCH 1022:1639 honors the extended port pair.");
+    println("    [0x86]=0xCC: extended CMOS bank live — slots 0x80..0xFF on 0x72/0x73 are now trustworthy. Re-interpret [0x80]/[0x82]/[0x84] as actual kernel writes (HCSPARAMS2.MaxScratchpadBufs / HCSPARAMS2 byte 3 / BB sentinel).");
+    println("    [0x86]=0x00 or other: extended CMOS not supported on this chipset OR sentinel site faulted. [0x80]+ remain unreliable for diagnostics; rely on FB lines until a different transport lands.");
+    println("    Repair (DD) — Event-ring drain + USBSTS.PCD clear before PR write [0x87] (post-Attempt-51). USBSTS [0x77]=0x10 across the silent-absorb arc = PCD (Port Change Detect, bit 4) set, signaling at least one Port Status Change event sitting un-acknowledged on the event ring. Linux's xhci-hub.c drains events between port operations; AGNOS only drained from EP0 doorbell completions (post-reset). Hypothesis: AMD FCH 1022:1639 gates subsequent PORTSC writes (silent-absorb) until prior change events are consumed + PCD cleared. xhci_drain_port_change_events walks event TRBs cycle-bit-match, advances ERDP with EHB bit, then writes USBSTS=0x10 to RW1C-clear PCD. FB line 'xhci: drained N events' surfaces drained count.");
+    println("    [0x87]=0xDD + [0x64]!=0x00: **REPAIR (DD) IS THE UNBLOCK** — event-ring drain + PCD clear was the silent-absorb gate. Phase 3 enumeration runs. Phase 4/5 becomes the typeable-shell gate.");
+    println("    [0x87]=0xDD + [0x64]=0x00: DD executed cleanly, silent-absorb persists. DD falsified; twelfth hypothesis in the arc. Remaining Linux-diff targets: IMOD-with-INTE write, per-slot doorbell ordering, vendor PCI cap dump. Decoupling decision remains in force — Phase 4/5 continues in parallel.");
+    println("    [0x87]=0x00 with kcp >= 0x32: pre-DD binary on iron OR drain site faulted. Verify build size against 1.30.4 DD floor (350,008 B) before interpreting outcome.");
     syscall(1, 1, "\n", 1);
     # End xHCI post-mortem block.
 

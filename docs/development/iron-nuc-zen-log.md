@@ -5546,6 +5546,96 @@ _Pre-burn block preserved as-is; the Attempt 50 actual outcome below hit **Row 2
 
 ---
 
+### Attempt 51 — 2026-05-17 → ROW 2 HIT (BB falsified; CMOS-alias bug exposed in post-mortem)
+
+**Build under test**: agnos 1.30.4 staging (post-BB), 346,376 B floor. Kernel banner `AGNOS kernel v1.30.4`.
+
+**Iron protocol executed as written**: USB reflashed, Keychron K2 on port 1, boot, FB photo + `sudo ./scripts/read-boot-log.sh`.
+
+**FB outcome (primary truth channel)**: image at `XHCI_dev_notifications.jpg`. Renders:
+- `xhci installed` / `found at … 64 slots, 6 ports`
+- `USBLEGSUP already OS-owned`
+- `dev_notifications enabled` ← **BB site executed**
+- `halted, reset clean`
+- `controller running, HCH=0, ERDP=3506176`
+- `port 1 reset failed (proto=2)` ← **silent-absorb persists**
+- `port 3 reset failed (proto=2)`
+- Shell line `agnos>` (kybernet+shell active)
+
+**Decision matrix hit**: **Row 2 — BB executed cleanly, silent-absorb persists.** Eleventh hypothesis falsified.
+
+**CMOS post-mortem — `[0x80..0x85]` aliased to RTC time-of-day**:
+
+| Slot | Read | Decode |
+|------|------|--------|
+| `[0x80]` | `0x48` | RTC seconds (BCD) = 48 |
+| `[0x81]` | `0xAA` | seconds-alarm — kernel write **preserved** |
+| `[0x82]` | `0x04` | RTC minutes (BCD) = 4 |
+| `[0x83]` | `0xc5` | minutes-alarm — kernel write **preserved** |
+| `[0x84]` | `0x19` | RTC hours (BCD) = 19 = 7pm |
+| `[0x85]` | `0x00` | hours-alarm — kernel write (zero) preserved |
+
+Three slots BCD-encode wall-clock 19:04:48 — RTC time at `read-boot-log` invocation. **Root cause**: `outb(0x70, slot)` treats bit 7 as the NMI mask, so `slot=0x84` selects CMOS index `0x04` (RTC hours), not slot 0x84. The kernel writes to "slot 0x84" had been silently writing RTC hours register; the kernel writes to "0x81/0x83/0x85" happened to alias to RTC alarm registers (rarely-touched scratch) and persisted, masking the bug across Attempts 50 + 51.
+
+**Retroactive corrections to Attempt 50 + 51 records**:
+- Attempt 50 `[0x80]=0x35` (53 decimal) was **RTC seconds at read time, NOT MaxScratchpadBufs=53.** The "53 isn't 32×N" mathematical impossibility wasn't a stamp-design bug; it was the CMOS-alias bug. Actual MaxScratchpadBufs was never captured.
+- Attempt 51 `[0x84]=0x19` does NOT falsify BB by itself (since the slot was never readable). BB falsification rests **entirely on FB lines**: `dev_notifications enabled` rendered (site executed) + `port N reset failed` rendered downstream (still absorbed). FB is the load-bearing channel for BB conclusion.
+
+**Behavioral hypothesis count**: 11 falsified across the silent-absorb arc.
+
+**Connectivity audit (post-Attempt-51, pre-Attempt-52)** — to avoid a third AA/CC-class discovery on iron:
+- All 71 `XHCI_*` constants checked for usage; no critical-path disconnects.
+- Latent Linux-diff gaps surfaced (PAGESIZE / IMAN / IMOD / USBCMD.HSEE) — flagged in `agnos/docs/development/roadmap.md § 1.30.x xHCI hardening`; **none plausible silent-absorb gates**.
+- CMOS stamp/decoder symmetry: all 39 stamped slots are decoded; no asymmetry.
+- All raw `outb(0x70/0x71)` sites outside `xhci_cmos_stamp` use slots ≤ 0x7F (safe range).
+
+---
+
+### Attempt 52 prep — Repair (CC) extended-CMOS routing + Repair (DD) event-ring drain
+
+**Iron-burn discipline**: **This is the last just-testing burn** before pivot to Phase 4/5 non-iron development per the decoupling decision and [`feedback_iron_burns_block_other_work`](../../../../../../home/macro/.claude/projects/-home-macro-Repos-agnosticos/memory/feedback_iron_burns_block_other_work.md). Future instrumentation proposals require line-by-line audit BEFORE proposing a burn.
+
+**Hypothesis under test (DD)**: AMD FCH 1022:1639 gates further PORTSC writes (silent absorb) until prior Port Status Change events are consumed and `USBSTS.PCD` is cleared. Attempt 51 `[0x77]=0x10` = USBSTS.PCD=1 across the silent-absorb arc; AGNOS never drained the event ring during init (only post-EP0-doorbell). Twelfth hypothesis; first one to act directly on a USBSTS bit AGNOS had been observing but never acknowledging.
+
+**Tooling fix (CC) bundled**: extended-CMOS routing through 0x72/0x73 for slots ≥ 0x80, fixing the alias bug that corrupted Attempts 50+51 readback. CC is instrumentation, NOT a behavioral repair; bundled with DD only because the alias bug was discovered same-session as DD. Future bundling of this shape is explicitly disallowed per the new memory.
+
+**Code changes** (both built clean; kernel 346,376 → 350,008 B, +3,632 B):
+
+| # | Change | Code site | Truth channel |
+|---|---|---|---|
+| 1 | Split `xhci_cmos_stamp(slot, val)` on slot 0x80: <0x80 → 0x70/0x71, ≥0x80 → 0x72/0x73 (offset = slot − 0x80). Mirror in `cmos_read` (read-boot-log). | `xhci_port.cyr:45` + `agnosticos/scripts/src/read-boot-log.cyr:45` | `[0x86]=0xCC` sentinel |
+| 2 | Add `xhci_cmos_stamp(0x86, 0xCC)` right after BB stamp. | `xhci.cyr:471` | sentinel readback |
+| 3 | Add `xhci_drain_port_change_events()` — walks event TRBs cycle-bit-match, advances ERDP with EHB bit, clears USBSTS.PCD via write-1-to-clear. Safety bound 64 TRBs. | `xhci_port.cyr:91` new fn | FB `xhci: drained N events` + `[0x87]=0xDD` sentinel |
+| 4 | Call `xhci_drain_port_change_events()` from `xhci_port_reset` after Z timing delay, before PR retry loop. | `xhci_port.cyr:504` insertion | (same as #3) |
+
+**Pre-bound outcome matrix for Attempt 52**:
+
+| `[0x86]` CC | `[0x87]` DD | `[0x64]` reset-OK | FB lines | Reads as | Next |
+|---|---|---|---|---|---|
+| `0xCC` | `0xDD` | non-zero | `xhci: drained N events` + `xhci: port N connected, …` | **Row 1 — DD IS THE UNBLOCK.** Event-ring drain + PCD clear was the silent-absorb gate; Linux's drain-between-port-operations pattern matters on AMD FCH 1022:1639. CC fix confirmed (extended CMOS live). Phase 3 enumeration ran. | Stage Phase 4 + Phase 5 in 1.30.4 cycle; tag when typeable shell ships. Closed-beta MVP completes. |
+| `0xCC` | `0xDD` | `0x00` | `xhci: drained N events` (no port-connected line) | **Row 2 — DD executed cleanly, silent-absorb persists.** Twelfth falsified hypothesis. CC fix confirmed; slots 0x80+ now trustworthy for future diagnostics. | **Decoupling-decision branch fires unconditionally**: pivot fully to Phase 4/5 non-iron development. xHCI hardening backlog (PAGESIZE / IMAN / IMOD / HSEE) lands when convenient. No Attempt 53 without explicit new-burn-authorization. |
+| `0xCC` | `0x00` | (any) | (no DD FB line) | **Row 3 — DD site didn't execute.** Pre-DD binary on iron, or call site faulted. | Verify build size against 350,008 B floor; re-burn after confirming size match. |
+| `≠ 0xCC` | (any) | (any) | (DD line may or may not surface) | **Row 4 — CC fix didn't take.** AMD FCH 1022:1639 doesn't honor 0x72/0x73 port pair (chipset-side spec deviation). Fall back to FB-only diagnostics for >0x7F. | DD outcome judged purely on FB line + `[0x64]`. Phase 4/5 pivot applies regardless. |
+| `kcp != 0x15` | (any) | (any) | (no shell prompt) | **Row 5 — CC or DD caused regression.** Most likely: extended-CMOS write or USBSTS.PCD clear triggers something unexpected. | Revert to post-BB binary (1.30.4 floor at 346,376 B); re-burn. |
+
+**Floor**: post-BB binary (346,376 B from Attempt 51) is the regression-revert target. Risk surface:
+- CC adds 2 outb calls per stamp on slots ≥0x80; standard chipset idiom, no documented AMD FCH counter-indications.
+- DD reads 64 event TRBs max + writes ERDP + writes USBSTS bit 4. Operations all spec-compliant; ERDP write idiom matches existing `xhci_wait_transfer_event` pattern at `xhci.cyr:653`.
+- Per-action audit completed pre-burn (this attempt). No third AA/CC-class disconnect found in critical path.
+
+**Iron protocol**: flash rebuilt USB (`sudo install-usb.sh --update`), attach Keychron K2 to port 1 or port 3, boot, photograph FB block between `xhci: USBLEGSUP already OS-owned` and `VFS initialized`, then `sudo ./scripts/read-boot-log.sh`. **Four load-bearing channels in order**:
+
+1. **FB primary** — does `xhci: drained N events` line surface? does any `xhci: port N connected, …` line surface downstream?
+2. **`[0x86]=0xCC`** — CC fix landed; slots 0x80+ now real CMOS (retroactively decodes Attempts 50/51 `[0x80]/[0x82]/[0x84]`).
+3. **`[0x87]=0xDD`** — DD drain site executed.
+4. **`[0x64]` reset-OK bitmap** — the binary unblock indicator (the only outcome that matters for MVP).
+
+**Decision gate after Attempt 52 burn**:
+- Row 1 → Phase 4 + Phase 5 stage in 1.30.4 cycle, tag when typeable shell ships, closed-beta MVP complete.
+- Row 2/3/4 → **Phase 4/5 pivot fires regardless**. xHCI silent-absorb arc closes as "non-spec gate, parallel-track only." No more iron diagnostics without explicit authorization.
+
+---
+
 ## Carry-forward items (not blocking Attempt 28)
 
 - **aarch64 native boot test**: blocked on Pi SSH access. Cyrius
