@@ -4874,7 +4874,7 @@ _Pre-burn block preserved as-is; the Attempt 43 actual outcome below hit prep-ma
 | `[0x71]` | MTRR_DEF_TYPE low byte | `0x00` | **NEW** | bit 11 E=0 → MTRRs globally disabled; default-type byte=UC but inert since E=0. PAT alone governs. |
 | `[0x72]` | PAT MSR byte 0 (PA0) | `0x06` | **NEW** | WB. With MTRRs disabled, this IS the effective memory type for any 2MB PDE that selects PA0 (PCD=PWT=PAT=0, which `vmm_map(..., 0x83)` does). |
 
-**Framebuffer (`XHCI_Repair_V_Logs.jpg`)**: identical to Attempt 41/42 line-for-line — V is read-only diagnostic, no user-visible behavior change expected.
+**Framebuffer**: identical to Attempt 41/42 line-for-line — V is read-only diagnostic, no user-visible behavior change expected. Photo: [`iron-nuc-zen-photos/attempt-43-xhci-repair-v-f5-confirmed-bar-wb-cached.jpg`](iron-nuc-zen-photos/attempt-43-xhci-repair-v-f5-confirmed-bar-wb-cached.jpg) (sourced from `agnosticos/XHCI_Repair_V_Logs.jpg`).
 
 **Hypotheses surviving Attempt 43:**
 - F1, F2, F3, F4 — all falsified across prior attempts.
@@ -4943,7 +4943,7 @@ _Pre-burn block preserved as-is; the Attempt 44 actual outcome below hit prep-ma
 | `[0x71]` | MTRR_DEF_TYPE low byte | `0x00` | unchanged | MTRRs still globally disabled; PAT alone governs. |
 | `[0x72]` | PAT MSR byte 0 (PA0) | `0x06` | unchanged | WB. (X targets PA3, not PA0 — this slot is expected unchanged.) |
 
-**Framebuffer (`kernel_versionupdate.jpg`)**: identical to Attempts 41/42/43 line-for-line through `xhci: port 3 reset failed (proto=2)`; downstream boot path runs to `agnos>` shell prompt as expected. Banner reads `AGNOS kernel v1.30.2`. X is read-through on the user-visible failure surface — no user-visible behavior change expected from a cache-attribute repair on the boot console.
+**Framebuffer**: identical to Attempts 41/42/43 line-for-line through `xhci: port 3 reset failed (proto=2)`; downstream boot path runs to `agnos>` shell prompt as expected. Banner reads `AGNOS kernel v1.30.2`. X is read-through on the user-visible failure surface — no user-visible behavior change expected from a cache-attribute repair on the boot console. Photo: [`iron-nuc-zen-photos/attempt-44-xhci-repair-x-uc-remap-still-absorbed.jpg`](iron-nuc-zen-photos/attempt-44-xhci-repair-x-uc-remap-still-absorbed.jpg) (sourced from `agnosticos/kernel_versionupdate.jpg`).
 
 **Hypotheses surviving Attempt 44:**
 - F1, F2, F3, F4 — falsified across prior attempts.
@@ -5326,6 +5326,44 @@ _Pre-burn block preserved; the Attempt 48 actual outcome below hit a Row 2 struc
 **Build under test**: agnos kernel `346,376 → 348,032 B` (+1,656 across Z `+80` / SMI clear `+224` / MSI-X enable `+1,352`; multiboot2 ELF64 OK, entry `0x1000a8` unchanged, 32 unreachable fns / 7,460 B DCE-recoverable). Read-boot-log decoder `60,576 → 63,184 B` (+2,608 for [0x7B]-[0x7F] slot reads + cheat-sheet; only Z has a CMOS sentinel — SMI clear and MSI-X enable are FB-only because the 0x50-0x7F virgin scratch is exhausted). Cyrius pin 5.11.55. gnoboot 0.2.0 untouched.
 
 **Floor**: post-b' binary (346,376 B from Attempt 48) is the regression-revert target. Risk surface concentrated in the MSI-X write to PCI config space (untested on archaemenid pre-this-burn) — Function Mask bit is set, so even if a spurious MSI fires, no IDT vector dispatches (INTE in USBCMD is the second gate).
+
+### Attempt 49 — 2026-05-17 → ROW 2 HIT (bundle executed, silent-absorb survives; Decoupling decision activates)
+
+**Build under test**: agnos kernel `348,032 B` (post-bundle = Z + USBLEGCTLSTS SMI disable + MSI-X enable, multiboot2 ELF64 OK, entry `0x1000a8` unchanged). Read-boot-log decoder `63,184 B`. Cyrius pin 5.11.55. gnoboot 0.2.0 untouched. Hardware unchanged (USB keyboard on port 1, USB-A BT dongle on port 3).
+
+**CMOS post-mortem (Attempt 49)**:
+
+| Slot | Field | Value | Δ vs Attempt 48 | Interpretation |
+|---|---|---|---|---|
+| `[0x50]` | kcp | `0x15` | unchanged | kybernet-launch reached; shell prompt `agnos>` rendered. |
+| `[0x62]` | USBLEGSUP outcome | `0x01` | unchanged | Already OS-owned at probe time. SMI clear runs unconditionally on this path. |
+| `[0x63]` | CCS bitmap | `0x05` | unchanged | Ports 1 + 3 connected. |
+| `[0x64]` | Reset-OK bitmap | `0x00` | unchanged | **Silent-absorb survives the full bundle.** |
+| `[0x6B]` | PP bitmap | `0x3F` | unchanged | All six ports powered. |
+| `[0x6C]` | PSC change byte | `0x00` | unchanged | Controller never set PRC/PED/CSC across the per-port retry loop. |
+| `[0x6D]` | PLS pre-PR | `0x07` | unchanged | Polling — precondition holds. |
+| `[0x70]` | PR retry count | `0x03` | unchanged | T loop exhausts identically — neither MSI-X enable nor SMI clear nor Z's ~10 ms TSC spin shifted determinism. |
+| `[0x77]/[0x78]` | USBSTS bytes 0/1 | `0x10` / `0x00` | unchanged | PCD set (informational), no HCH/HSE/CNR/HCE — controller running clean per its own status; gate remains outside USBSTS purview. |
+| `[0x79]` | USBCMD byte 0 | `0x05` | unchanged | R/S \| INTE — Linux-standard. |
+| `[0x7F]` | Repair-Z sentinel | `0xAA` | **NEW (was 0x00)** | Z site executed at least once across the per-port reset loop. |
+
+**Framebuffer**: full kernel init log rendered cleanly. New `xhci: enabled (function-mask)` line visible at controller-enable boundary, confirming MSI-X path executed (cap-walk found MSI-X cap 0x11, set Enable bit 31 + Function Mask bit 30 in PCI config space). `xhci: USBLEGSUP already OS-owned` line preserves the Attempt 47/48 shape — SMI clear runs on this path but has no FB-visible line of its own. Downstream: `xhci: port 1 reset failed (proto=2)` + `xhci: port 3 reset failed (proto=2)`, then kybernet boots to `AGNOS shell v1.30.3 (type 'help')` → `agnos>`. Photo: [`iron-nuc-zen-photos/attempt-49-xhci-plumbing-bundle-msi-x-still-absorbed.jpg`](iron-nuc-zen-photos/attempt-49-xhci-plumbing-bundle-msi-x-still-absorbed.jpg) (sourced from `agnosticos/XHCI_MSI_addition.jpg`).
+
+**Verdict**: matches pre-bound matrix **Row 2** exactly — `[0x7F]=0xAA` + `[0x64]=0x00` + `function-mask` FB line present + `USBLEGSUP already OS-owned` FB line present. All three behavioral fixes executed in this binary, none was the silent-absorb gate.
+
+**Hypotheses surviving Attempt 49** (silent-absorb arc summary):
+- F1, F2, F3, F4 — falsified Attempts 32-42.
+- **F5 (MMIO cache-attribute)** — falsified Attempts 45-46 (X' confirmed UC mapping landed, V'' four-level walk agreed).
+- **(a) Aliased mapping** — falsified Attempt 46.
+- **(b) Controller-side spec-visible gate** (USBSTS/USBCMD/xECP) — falsified Attempt 47 (W stamps showed spec-clean controller state at reset-fail-time).
+- **(b') Multi-SupProto routing** — falsified Attempt 48 (extra SupProto caps confine to USB3 ports 5+6, no overlap with failing USB2 ports 1+3).
+- **(c) AMD-FCH PR-write timing** — falsified Attempt 49 (Z's ~10 ms TSC spin executed per `[0x7F]=0xAA`, didn't break absorb).
+- **(d) USB SMI re-arming post-handoff** — falsified Attempt 49 (USBLEGCTLSTS SMI disable ran on the already-OS-owned path, didn't break absorb).
+- **(e) Interrupter-readiness config-space gate** — falsified Attempt 49 (MSI-X enable with Function Mask ran per `function-mask` FB line, didn't break absorb).
+
+**All behavioral hypotheses in the silent-absorb trio (F5/X/V'', b/W, b'/c/d/e/Z) exhausted.** Per the boot-log cheat sheet's terminal verdict: escalation is **decoupled re-evaluation, NOT another diagnostic letter**. The pre-written Decoupling decision below activates as written.
+
+**Decision applied**: **Pivot to non-iron work** per § Decoupling decision (Row 2 branch). xhci hardware-investigation moves to a parallel-track with its own cadence; Phase 4/5 development proceeds against AGNOS Phase 1-3 infrastructure; iron burns batched, not per-substep.
 
 ---
 
