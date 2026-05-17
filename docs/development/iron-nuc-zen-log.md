@@ -5073,7 +5073,94 @@ _Pre-burn block preserved as-is; the Attempt 45 actual outcome below hit prep-ma
 
 **Build deltas (V'' landed 2026-05-16)**: agnos kernel `344,792 → 345,192 B` (+400; multiboot2 ELF64 OK, entry `0x1000a8` unchanged, 32 unreachable fns / 7,460 B DCE-recoverable); read-boot-log `52,976 → 55,312 B` (+2,336 for 3 slot reads + 3 print_cmos_line entries + 7-row cheat-sheet decoder; pre-existing vec_get warning unchanged — cyrius-side surface). Cyrius pin 5.11.55 (both manifests) untouched. gnoboot 0.2.0 untouched.
 
-_Pre-burn block; the actual Attempt 46 entry will replace this footer once the burn completes._
+_Pre-burn block preserved as-is; the Attempt 46 actual outcome below hit prep-matrix Row 1 exactly (V'' walk matches X' shortcut; UC is the only mapping for the BAR; hypothesis (a) aliased mapping falsified)._
+
+### Attempt 46 — 2026-05-16 → ROW 1 HIT (V'' walk agrees with X'; hypothesis (a) FALSIFIED; controller-side gate / FCH-timing remain)
+
+**Build under test**: agnos 345,192 B (V'' landed = post-V'' Attempt 46 binary, multiboot2 ELF64 OK, entry `0x1000a8` unchanged). Read-boot-log decoder 55,312 B. Cyrius pin 5.11.55. No flash-time hardware changes from Attempt 45 (USB keyboard + USB-A BT dongle still attached to ports 1 and 3).
+
+**CMOS post-mortem (Attempt 46)**:
+
+| Slot | Field | Value | Δ vs Attempt 45 | Interpretation |
+|---|---|---|---|---|
+| `[0x50]` | kcp | `0x15` | unchanged | kybernet reached; boot-to-shell spine intact; V'' caused no regression. |
+| `[0x53]` | gnoboot magic | `0xcd` | unchanged | handoff clean. |
+| `[0x54]/[0x55]` | CR4 byte 2 | `0x30 / 0x30` | unchanged | SMEP+SMAP set. |
+| `[0x56]..[0x61]` | PMM AS1+AS2 | `0x7a..0x7b / 0x5a..0x5a` | unchanged | All ≥ `0x20`; PMM clean. |
+| `[0x62]` | USBLEGSUP | `0x01` | unchanged | already-OS. |
+| `[0x63]` | CCS | `0x05` | unchanged | ports 1 + 3 connected. |
+| `[0x64]` | reset-OK | `0x00` | unchanged | both connected ports still failed reset. |
+| `[0x68]/[0x69]/[0x6A]` | xECP walk | `0x05 / 0x03 / 0x24` | unchanged | 5 caps, USBLEGSUP+SupProto classified, 1st SupProto rev=2 count=4 — 3 unclassified caps remain. |
+| `[0x6B]` | PP | `0x3F` | unchanged | all 6 ports powered. |
+| `[0x6C]/[0x6D]` | PSCchg / PLS pre-PR | `0x00 / 0x07` | unchanged | silent absorb + Polling precondition met. |
+| `[0x6E]/[0x6F]` | HCCP1/HCCP2 | `0xE5 / 0x3F` | unchanged | AC64+CSZ+LHRC+LTC+NSS (no PPC); U3C+CMC+FSC+CTC+LEC+CIC. |
+| `[0x70]` | PR retry | `0x03` | unchanged | 3× silent-absorb on both ports. |
+| `[0x71]/[0x72]` | MTRR / PA0 | `0x00 / 0x06` | unchanged | MTRRs disabled, PAT entry 0 = WB. |
+| `[0x73]` | BAR PDE (X' shortcut) | `0x9B` | unchanged | PCD\|PWT\|PS = PA3 = UC. |
+| **`[0x74]`** | **PML4E (V'' walk)** | **`0x07`** | **NEW** | P\|R/W\|U/S (A-bit clear) — standard L4 entry, NOT large-page sentinel. |
+| **`[0x75]`** | **PDPTE (V'' walk)** | **`0x03`** | **NEW** | P\|R/W (PS=0, A-bit clear) — NOT 1GB huge page; PD level exists. |
+| **`[0x76]`** | **PDE (V'' four-level walk)** | **`0x9B`** | **NEW** | PCD\|PWT\|PS = PA3 = UC; **matches `[0x73]` exactly**. |
+
+**Framebuffer**: identical to Attempts 41–45 (`xhci: found at ...` / `port N connected` / `port N reset failed (proto=2)` for both connected ports).
+
+**Decision matrix hit**: **Row 1 — hypothesis (a) FALSIFIED.** PML4E [0x74]=0x07 + PDPTE [0x75]=0x03 (P|R/W, PS=0) + PDE [0x76]=0x9B = full four-level walk through normal-page translation, terminating at the same UC PDE that the X' shortcut surfaced. There is no second mapping aliasing the BAR through a different page-table path; no upstream WB residual; no 1GB huge-page hiding a non-UC translation. **UC is genuinely the only mapping for `xhci_mmio_base`**, and the MMU is reading the rewritten PDE — yet the silent-absorb survives.
+
+**Hypotheses surviving Attempt 46:**
+
+- **F5 (MMIO cache-attribute)** — **fully falsified**. Repair X did exactly what it was designed to do; the gate is downstream.
+- **(a) Aliased mapping** — **falsified** by Row 1.
+- **(b) Controller-side gate** — *active and elevated*. xECP walked 5 caps, only 2 classified (USBLEGSUP + first SupProto); HCCPARAMS2 had all 6 known bits set; USBSTS / USBCMD never read post-init. CNR (USBSTS bit 11) = 1 would be a spec-defined silent-absorb gate. Vendor-defined cap or second SupProto with USB3 sibling-port table is likely on AMD FCH.
+- **(c) AMD-FCH PR-write timing window** — *active*. PSC change byte `0x00` across 3 PR-retry attempts means the write never moves the state machine; SeaBIOS empirical ~10 ms delay between CSC pre-clear and PR write on AMD FCH that AGNOS doesn't replicate.
+
+**Decision applied**: Stage **Repair (W) — controller-side gate diagnostic** for Attempt 47. Pure read-only diagnostic; controller behavior unchanged. Reads USBSTS byte 0 (HCH/HSE/EINT/PCD) + byte 1 (SSS/RSS/SRE/**CNR**/**HCE**) + USBCMD byte 0 (R/S/HCRST/INTE/HSEE/LHCRST) at reset-fail-time; captures the first two unclassified xECP cap IDs during the cap walk (packed nibble-each). Surfaces whether the controller is signalling a known silent-absorb gate (CNR/HCE/HCRST-in-progress) AND whether the driver is missing a second SupProto cap (USB3 sibling table) or vendor-defined cap.
+
+**Code sites**: `xhci_port.cyr` — new captures at the cap-walk body in `xhci_xecp_classify_ports` (lines ~145-170, around the existing SupProto branch) and at the reset-fail-time tail in `xhci_port_reset` (lines ~394-407, after the existing PORTPMSC stamp).
+
+**CMOS slots (virgin)**:
+- `[0x77]` USBSTS byte 0 — HCH (bit 0) / HSE (bit 2) / EINT (bit 3) / PCD (bit 4). `0x00` expected if R/S=1 and no errors.
+- `[0x78]` USBSTS byte 1 — bits 8-15: SSS / RSS / SRE / **CNR** (= 0x08 within byte) / **HCE** (= 0x10 within byte). **THE key slot for silent-absorb gate diagnosis.**
+- `[0x79]` USBCMD byte 0 — R/S (bit 0) / HCRST (bit 1) / INTE (bit 2) / HSEE (bit 3) / LHCRST (bit 7). `0x01` (R/S only) or `0x05` (R/S+INTE) expected.
+- `[0x7A]` Unclassified xECP cap IDs packed (high nibble = first unclassified, low nibble = second). Spec cap IDs ≤ 0x0A fit cleanly. `0x20` = second SupProto only; `0x2A` = second SupProto + Debug Cap; `0x30` = xPM; `0xA0` = Debug Cap only.
+
+**Pre-bound outcome matrix for Attempt 47**:
+
+| `kcp` | `[0x77]` USBSTS lo | `[0x78]` USBSTS hi | `[0x79]` USBCMD lo | `[0x7A]` xECP unclass | `[0x64]` reset-OK | Reads as | Next |
+|---|---|---|---|---|---|---|---|
+| `0x15` | `0x00` | `0x00` | `0x01` or `0x05` | (any) | `0x00` | **Row 1**: Controller signals clean (no CNR/HCE/SRE/HCRST); silent-absorb gate is NOT USBSTS-visible. Hypothesis (b) **falsified at the spec-visible layer**. Cap inventory may still surface a 2nd SupProto routing issue. | If `[0x7A]` shows 2nd SupProto (high nibble `0x2`), stage Repair (b') — multi-SupProto port classification. Else stage Burn C (Repair Z — AMD-FCH PR-write timing). |
+| `0x15` | `0x00` | **`0x08`** (CNR=1) | `0x01` or `0x05` | (any) | `0x00` | **Row 2**: **GATE FOUND.** Controller-Not-Ready bit set at reset-fail-time — spec forbids accepting operational-register writes while CNR=1. Silent-absorb fully explained. | Stage Repair (W2) — poll CNR=0 in `xhci_portsc_write` (or once before each PR write batch). ~15 LOC, behavioral. |
+| `0x15` | `0x00` | **`0x10`** (HCE=1) | (any) | (any) | `0x00` | **Row 3**: Host Controller Error — fatal. Controller has internally errored and is silently absorbing writes per spec. Investigate USBCMD HSEE or a pre-handoff controller-reset in gnoboot. | Stage Repair (W3) — pre-handoff controller-reset in gnoboot, or HSEE=1 in xhci_start to surface the error. |
+| `0x15` | `0x01` (HCH=1) | (any) | `0x00` (R/S=0) | (any) | `0x00` | **Row 4**: Controller halted itself. xhci_start regressed, or controller halted post-init. Compare `[0x79]` against expected `0x01`/`0x05`. | Audit xhci_start asserts; re-burn with `xhci_start` precondition checks. |
+| `0x15` | (any) | (any) | `0x02` (HCRST=1) | (any) | `0x00` | **Row 5**: Host Controller Reset still in progress at reset-fail-time — HCRST self-clear hasn't happened. Spec requires waiting for HCRST=0 before any operational write. | Stage Repair (W4) — block in xhci_init until HCRST clears (PORTSC writes are operational-class). ~8 LOC. |
+| `0x15` | `0x00` | `0x04` (SRE=1 only) | normal | (any) | `0x00` | **Row 6**: Save/Restore Error set; informational (we don't use CSS/CRS). Not the gate. | Treat as Row 1 — escalate to Burn C (Z timing) or Repair (b') based on `[0x7A]`. |
+| `0x15` | (any) | (any) | (any) | **`0x20`** | `0x00` | **Row 7**: First unclassified cap is second SupProto. Driver is missing the USB3 sibling-port table — ports 5+6 (USB3) may be classified by `xhci_port_proto[]` but their controller-side routing isn't honored. | Stage Repair (b') — walk additional SupProto caps in `xhci_xecp_classify_ports`; ~10 LOC. Pair with whatever USBSTS-row Repair (W) Row 1-6 indicated. |
+| `0x15` | `0x00` | `0x00` | `0x00` | `0x00` | (any) | **Row 8**: All W stamps zero — site never executed. Either pre-W binary on iron or `xhci_port_reset` faulted between PORTPMSC stamp and W stamps. | Compare flashed binary to Attempt 47 floor (345,736 B); re-burn after confirming size match. |
+| `kcp != 0x15` | (any) | (any) | (any) | (any) | (any) | **Row 9**: W caused a regression. Reads are read-only; most likely build/flash issue. | Revert to post-V'' binary (345,192 B); re-verify size match. |
+
+**Queued fallback repairs (Attempt 48+ candidates)**:
+
+| Repair | Trigger | What it does | LOC |
+|---|---|---|---|
+| **(Z) AMD-FCH PR-write timing** | Burn B row 1 (USBSTS clean, no 2nd SupProto) | Adds ~10 ms delay between CSC pre-clear and PR write per SeaBIOS `xhci_hub_reset` pattern. Sentinel stamp `[0x7B]=0xAA` confirms delay site executed. Behavioral — goes LAST to keep success attribution clean. | ~10 LOC kernel + ~15 LOC decoder |
+| **(W2) CNR poll** | Burn B row 2 (CNR=1 at reset-fail-time) | Polls USBSTS.CNR=0 before each PORTSC write (or once before the per-port reset batch). Spec-mandated for any operational-register write; current driver only polled it once at xhci_init. | ~15 LOC, behavioral |
+| **(W3) gnoboot pre-reset** | Burn B row 3 (HCE=1) | Adds a USBCMD.HCRST=1 + poll-clear in gnoboot before EBS, ensuring the controller hands off to the kernel in a known-clean state. Pairs with HSEE=1 in xhci_start to capture future HCE events. | ~25 LOC gnoboot + ~5 LOC kernel |
+| **(W4) HCRST wait** | Burn B row 5 (HCRST=1) | Blocks in xhci_init until USBSTS.CNR=0 AND USBCMD.HCRST=0. Likely a regression in xhci_start's reset-completion polling. | ~8 LOC |
+| **(b') multi-SupProto walk** | Burn B row 7 (2nd SupProto unclassified) | Removes the `first_supproto == 0` gate on `first_rev` / `first_pcount` capture; tracks per-cap `port_off`/`port_count`/`rev_major` for ALL SupProto caps so the port-classification array reflects USB2 AND USB3 ranges. | ~10 LOC |
+
+**Decision gate after Attempt 47**:
+- **B row 1 + `[0x7A]` shows 2nd SupProto**: bundle Repair (b') for Attempt 48.
+- **B row 1 + `[0x7A]` clean**: bundle Repair (Z) for Attempt 48 (last behavioral hypothesis in the trio).
+- **B row 2 (CNR=1)**: bundle Repair (W2) for Attempt 48 — **silent-absorb root-caused**.
+- **B row 3 (HCE=1)**: bundle Repair (W3) — controller in fatal state.
+- **B row 4 (HCH=1)**: audit xhci_start; re-burn with start preconditions checked.
+- **B row 5 (HCRST=1)**: bundle Repair (W4).
+- **B row 6 (SRE only)**: treat as row 1 — escalate per `[0x7A]`.
+- **B rows 7–9 (cap diagnostic alone / non-execution / regression)**: triage per row notes.
+
+**Floor**: post-V'' binary (345,192 B from Attempt 46) is the regression-revert target for any W-introduced regression. W is read-only diagnostic — risk concentrated in the `xhci_op_read32` reads themselves (already standard kernel idioms used throughout xhci_port.cyr at the existing USBCMD/USBSTS sites in xhci_init).
+
+**Build deltas (W landed 2026-05-16)**: agnos kernel `345,192 → 345,736 B` (+544; multiboot2 ELF64 OK, entry `0x1000a8` unchanged, 32 unreachable fns / 7,460 B DCE-recoverable); read-boot-log `55,312 → 60,576 B` (+5,264 for 4 slot reads + 4 print_cmos_line entries + 14-row cheat-sheet decoder for USBSTS bits / USBCMD bits / xECP packed-cap-ID interpretation; pre-existing vec_get warning unchanged — cyrius-side surface, tracked separately). Cyrius pin 5.11.55 (kernel manifest) / 5.11.54 (scripts manifest, shadow note pre-existing) untouched. gnoboot 0.2.0 untouched.
+
+_Pre-burn block; the actual Attempt 47 entry will replace this footer once the burn completes._
 
 ---
 
