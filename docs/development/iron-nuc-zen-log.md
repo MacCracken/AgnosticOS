@@ -4471,6 +4471,106 @@ CMOS[0x60] PORTPMSC of failed port (R8) = ?      ← only matters if reset=0
 
 _This pre-burn block is informational; the actual Attempt 39 entry will replace the prep block once the burn completes._
 
+### Attempt 39 — 2026-05-16 → PARTIAL (R10 gate ran clean, PR still absorbed)
+
+**Outcome**: matched row 3 of the Attempt 39 prep matrix (`xhci: port N reset failed (proto=2)` + `PLS=Polling (good)` + `CMOS[0x6C]=0x00`). The R10 PLS gate landed cleanly — `CMOS[0x6D]=0x07` is exactly the spec-compliant precondition xHCI 1.2 §4.19.1.1 + SeaBIOS `xhci_hub_reset` require for USB2 `PR=1`. The PR write is now happening against the correct port state. And it's still being absorbed silently.
+
+**CMOS dump (post-Attempt-39)**:
+
+| Slot | Value | Decoded |
+|---|---|---|
+| `0x50` (kcp) | `0x15` | kybernet reached (shell alive) |
+| `0x51` (kmag) | `0xAB` | kernel entry magic OK |
+| `0x52` (gcp) | `0x05` | gnoboot handoff complete |
+| `0x53` (gmag) | `0xCD` | gnoboot entry magic OK |
+| `0x54`/`0x55` (CR4) | `0x30`/`0x30` | SMEP+SMAP both on |
+| `0x56`-`0x61` (PMM) | all `0x23+` | every alloc safe (above 2 MB) |
+| `0x62` (USBLEGSUP) | `0x01` | already OS-owned (BIOS bit 16 was clear) |
+| `0x63` (CCS) | `0x04` | **port 3 connected** (USB2 per proto map) |
+| `0x64` (reset-OK) | `0x00` | **reset failed** |
+| `0x65`-`0x67` (proto) | `0x22 0x22 0x33` | p1–p4=USB2, p5–p6=USB3 |
+| `0x68` (xECP cnt) | `0x05` | 5 caps walked |
+| `0x69` (cap bits) | `0x03` | USBLEGSUP + SupProto both present |
+| `0x6A` (1st SupProto) | `0x24` | rev_major=2, port_count=4 (USB2 cap) |
+| `0x6B` (PP) | `0x3F` | **all 6 ports PP=1** (Repair Q good — or PPC=0 hardwired, see 0x6E) |
+| `0x6C` (PSCchg) | `0x00` | **no PSC change bits** — PR absorbed silently |
+| `0x6D` (PLS) | `0x07` | **Polling (R10 precondition met)** |
+| `0x6E` (HCCP1) | `0xE5` | **AC64 CSZ LHRC LTC NSS — note PPC bit NOT set (0xE5 & 0x08 = 0)** |
+| `0x6F` (HCCP2) | `0x3F` | U3C CMC FSC CTC LEC CIC (informational) |
+| `0x60` (PORTPMSC) | `0x00` | clean — no USB2 PM quirk surface |
+
+**Framebuffer**: full kernel init log rendered cleanly. xHCI lines visible: `found at 4237295616, ver=272, 64 slots, 6 ports` → `HCC=…, HCC2=…` → `xECP at … + 0x500` → `USBLEGSUP already OS-owned` → `halted, reset clean` → `Controller running, HCH=0, ERDP=2310144` → `PP=1 asserted, bitmap=63` → `port 3 reset failed (proto=2)` → `VFS initialized` → … → `AGNOS shell v1.30.1 (type 'help')` → `agnos>`. Photo: not captured (verbal report + CMOS dump load-bearing).
+
+**Hypotheses surviving Attempt 38 — what survived Attempt 39**:
+- F1 (HCCPARAMS1 quirk gating reset on AMD FCH beyond PPC): **partially surviving** — HCCP1=`0xE5` shows PPC=0 (so PP-assert Repair Q is a no-op on this silicon, and the prior cheat-sheet assumption "PPC=1 always on archaemenid AMD FCH" was wrong; corrected post-burn). Other HCCP1 bits {AC64, CSZ, LHRC, LTC, NSS} are all expected/informational — none gate reset directly per spec. Surviving sub-hypothesis: spec-compliant code path with a silicon-side requirement Linux satisfies via convention that we don't.
+- F2 (PLS precondition not satisfied): **falsified** — R10 stamped `0x07` Polling, exactly the precondition SeaBIOS/Linux gate on.
+- F3 (PR-hold-time race / W1C semantics absorption): **partially surviving** — R2 CSC pre-clear addresses CSC. But there's a broader W1C-adjacent class: PORTSC RW1C/RW1S/LWS/RsvdZ bit handling on RMW.
+- F4 (Linux-style PR retry, R5): **still queued** as Attempt 41 fallback.
+
+**Live audit triggered by F1 + F3 (post-Attempt-39, same session)**: Linux `drivers/usb/host/xhci-hub.c` USB2 reset path is structurally `portsc |= PORT_RESET; xhci_portsc_writel(port, portsc)`, but the **canonical RMW pattern** used everywhere else in the file (`xhci_disable_port`, `xhci_set_link_state`, `xhci_set_remote_wake_mask`, `xhci_set_port_power`) is `writel(xhci_port_state_to_neutral(read()) | newbit)`. `xhci_port_state_to_neutral(p) = (p & XHCI_PORT_RO) | (p & XHCI_PORT_RWS)` with `XHCI_PORT_RO=0x4000_3C09` and `XHCI_PORT_RWS=0x0E00_C1E0`. AGNOS's `0xFF01FFFF` mask preserves nine bits Linux explicitly zeroes; the load-bearing one is **bit 16 (LWS, Port Link State Write Strobe)** per xHCI 1.2 §5.4.8.3 — silicon may interpret a PORTSC write with LWS=1 + PR=1 as a simultaneous strobed PLS update and port reset request (undefined behavior). PR-absorbed-silently is a plausible AMD FCH manifestation. Diff also flags AGNOS preserving RsvdZ bits 2 / 28 / 29 (spec violation if non-zero), PED bit 1 (RW1C — would clear PED accidentally if PED=1 at write time), and WPR bit 31 (W1S USB3, could re-trigger warm reset).
+
+### Repair (S) — landed 2026-05-16, post-Attempt-39, pre-Attempt-40
+
+| Repair | File | Behavior |
+|---|---|---|
+| **S** (Linux-canonical PORTSC RMW, real fix) | `agnos/kernel/arch/x86_64/usb/xhci_regs.cyr` + `xhci_port.cyr` (helper + 3 call sites) | New `XhciPortscMask` enum holds `XHCI_PORTSC_RO=0x40003C09` (CCS\|OCA\|Speed\|DR), `XHCI_PORTSC_RWS=0x0E00C1E0` (PLS\|PP\|PIC\|WCE/WDE/WOE), `XHCI_PORTSC_NEUTRAL=0x4E00FDE9` (RO\|RWS — the preserve mask), and `XHCI_PORTSC_W1C=0x00FE0002` (PED + change bits 17-23, mirroring Linux `XHCI_PORT_RW1CS`). `xhci_portsc_write` helper now masks `value & XHCI_PORTSC_NEUTRAL`; PP-assert in `xhci_ports_power_on` uses `(psc & XHCI_PORTSC_NEUTRAL) \| 0x200`; CSC pre-clear in `xhci_port_reset` uses `psc0 & XHCI_PORTSC_NEUTRAL`; PR write in `xhci_port_reset` uses `(psc1 & XHCI_PORTSC_NEUTRAL) \| 0x10` (drops the defensive `\| 0x200` Repair (R1) added — PP is preserved through neutralization since bit 9 lives in RWS, matching Linux's `USB_PORT_FEAT_RESET` case exactly). |
+
+**agnosticos-side decoder pair (`scripts/src/read-boot-log.cyr`):**
+- `kcp=0x15` verdict extended: mentions Repair (S) under test as of Attempt 40, references the `CMOS[0x62-0x6F + 0x60]` xhci post-mortem range, points at Repair (T)/(V) queued fallbacks.
+- PSCchg=`<none>` cheat-sheet row rewritten: cross-references PLS + HCCP1 PPC bit; notes Attempt 39 hit the spec-compliant-but-still-absorbed combination and Repair (S) is the response.
+- PLS=Polling cheat-sheet row rewritten: post-S meaning is "Linux canonical pattern also wasn't enough; stage Repair (T) PR retry or Repair (V) MMIO cache-attribute diag".
+- HCCP1 PPC cheat-sheet row rewritten: corrects the prior "PPC=1 always on archaemenid" assumption — observed PPC=0 at Attempt 39; Repair (Q) is a structural no-op on this silicon.
+- New row documents the LWS-preservation hypothesis (Repair (S) motivation).
+
+**Build under test** (rebuild verified 2026-05-16):
+
+| Artifact | Pre (post-R10) | Post (post-S) | Δ |
+|---|---|---|---|
+| `agnos/build/agnos` | 343,320 B | **343,384 B** | +64 (mask-constant swap; constant width unchanged at IR level — small text growth) |
+| `agnosticos/scripts/build/read-boot-log` | 48,808 B | **50,088 B** | +1,280 (verdict + cheat-sheet refresh) |
+| Multiboot2 ELF64 | OK | OK | unchanged |
+| Entry | `0x1000a8` | `0x1000a8` | unchanged |
+| DCE-recoverable | 7,460 B (32 fns) | 7,460 B (32 fns) | unchanged |
+| Cyrius pin (both manifests) | `5.11.55` | `5.11.55` | unchanged |
+| `gnoboot` | `0.2.0` | `0.2.0` | unchanged |
+
+### Attempt 40 prep — Repair (S) Linux-canonical PORTSC RMW
+
+**Iron protocol** (burn pending after rebuild):
+1. Flash rebuilt USB.
+2. Attach keyboard to any USB-A port (port choice still doesn't matter per Attempts 36/38 universal-failure carry-forward).
+3. Boot archaemenid, photograph the framebuffer block between `xhci: PP=1 asserted, bitmap=63` and `VFS initialized`.
+4. After boot to `agnos>`, run `sudo ./scripts/read-boot-log.sh`.
+
+**Pre-bound outcome matrix**
+
+| FB line | CMOS[0x6D] | CMOS[0x64] | CMOS[0x6C] | Interpretation | Next step |
+|---|---|---|---|---|---|
+| `xhci: port N connected, …` | `Polling (good)` | non-zero | (irrelevant) | ✅ **Repair (S) cleared the blocker.** LWS-preservation (or one of the other 8 over-preserved bits) was the silent-absorb cause; Linux-canonical RMW honored. | Phase 4 staging (Configure Endpoint + Set Protocol=boot). 1.30.1 closeout in sight. |
+| `xhci: port N connected, …` | `U0 [arrived at U0 mid-settle]` | (irrelevant) | (irrelevant) | ✅ R10's U0 fast-path fired post-S. | Phase 4 staging. |
+| `xhci: port N reset failed (proto=2)` | `Polling (good)` | `0x00` | `0x00` | Spec-compliant precondition + Linux-canonical RMW + still silent absorb. **Repair (S) was necessary but not sufficient.** | Stage **Repair (T) — Linux-style PR retry** (Attempt 41). xhci-hub.c doesn't have this but USB-core `hub.c:hub_port_reset` retries up to 5 times. ~10 LOC on top of S. |
+| `xhci: port N reset failed (proto=2)` | `Polling (good)` | `0x00` | non-zero (any change bit) | Repair (S) moved the controller out of silent-absorb into a partial-transition state. **Diagnostic information increase** — read the new change-byte to see which sub-state it stuck in. | If `PRC` (`0x20`) — reset completed but PED never followed; silicon link-train issue. If `CSC` (`0x02`) only — attach observed but no reset progress (uncommon post-S). |
+| `xhci: port N reset failed (proto=2)` | `[post-settle, never reached Polling]` | `0x00` | (any) | PLS regression post-S (unlikely — S doesn't modify the PLS-read path). | Bisect S vs R10 by reverting S only. |
+| `xhci: port N reset failed (proto=2)` | `Polling (good)` | `0x00` | `0x00` AND **CMOS[0x6E]** unchanged at `0xE5` | Confirms PPC=0 on this silicon; PP fix was always a no-op here. Repair (S) didn't change the surface either. Surviving variable: **MMIO cache attribute** (PORTSC writes coalescing in WB-cached BAR). | Stage **Repair (V) — MTRR/PAT diagnostic** (Attempt 42 if T fails too). Stamp MTRR_DEF_TYPE MSR low byte + PAT MSR bits for the BAR's page to a free CMOS slot. Pure diag, no controller-side risk. |
+| `xhci: port N connected, …` but `kcp != 0x15` (boot regressed) | (any) | (any) | (any) | **Repair (S) caused a downstream regression** (very unlikely; mask change is byte-equivalent at controller-write level). | Revert to Attempt 39 binary (343,320 B). |
+
+**Queued fallback repairs (not landing this burn — Attempt 41 / 42 candidates):**
+
+| Repair | When to stage | Behavior | Size |
+|---|---|---|---|
+| **(T) Linux-style PR retry** | If Attempt 40 hits row 3 above (S necessary-but-insufficient) | Wrap the PR write + PRC poll block in `xhci_port_reset` USB2 path in a `retry < 3` loop. After PR write, if PR=0 AND PRC=0 AND PED=0, write PR=1 again. xhci-hub.c doesn't do this but USB-core hub.c does up to 5×. | ~10 LOC |
+| **(V) MTRR/PAT MMIO cache-attribute diagnostic** | If Attempt 41 also hits row 3 | Stamp MTRR_DEF_TYPE MSR (0x2FF) low byte + PAT MSR (0x277) bits for the xHCI BAR page → CMOS (pick a free slot from `project_archaemenid_cmos_map` 0x50–0x7F virgin range; 0x54-0x6F already populated). Confirms whether `vmm_map(..., 0x83)` actually made the BAR uncacheable or it's silently WB-cached. If WB-cached, PORTSC writes would coalesce in the L1/L2 cache and never reach the controller — matches "absorbed silently" symptom. | ~30 LOC + CMOS slot |
+
+**Decision gate after Attempt 40**:
+- **S success** (row 1 or 2): Phase 3 closes — 4-attempt arc R10→S resolves the USB2 reset deadlock. Move to Phase 4 (~200–400 LOC: Configure Endpoint + Set Protocol=boot) + Phase 5 (~200–400 LOC: HID translation + `kb_buf` feed). Phase 5 closes typeable-shell gate → 1.30.1 ships → **closed-beta MVP**.
+- **S fail row 3 (necessary-but-insufficient)**: bundle Repair (T) into Attempt 41. Cumulative cost: one iron iteration.
+- **S fail row 4 (partial-transition unlocked)**: dig into the new change-byte; may unlock a more surgical fix than T.
+- **S fail row 6 (MMIO-cache hypothesis)**: stage Repair (V) for Attempt 42 — diagnostic-only, answers a structural question we've been carrying as an unstated assumption.
+
+**Floor**: pre-S binary (343,320 B) is the regression-revert target — known-boots-to-shell from Attempt 39.
+
+_This pre-burn block is informational; the actual Attempt 40 entry will replace the prep block once the burn completes._
+
 ---
 
 ## Carry-forward items (not blocking Attempt 28)
