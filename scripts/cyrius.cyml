@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "AGNOS genesis build scripts — sovereign boot pipeline in Cyrius"
 license = "GPL-3.0-only"
 repository = "https://github.com/MacCracken/agnosticos"
-cyrius = "5.11.55"
+cyrius = "5.11.59"
 
 [build]
 src = "src/boot.cyr"

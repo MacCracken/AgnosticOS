@@ -1,98 +1,76 @@
-# AGNOS Pre-1.0 Development — Libraries, Tools & Applications
+# AGNOS Planning Folder — Categorized Index
 
-> Crates, binaries, and applications that have **not yet** reached v1.0 stable release.
+> Master index for `docs/development/planning/`. Splits planning docs by **scope** so it's clear what's a kernel-level driver plan vs. an overall project gate vs. an application design.
 >
-> **For v1.0+ stable libraries**: see [docs/applications/libs/](../../applications/libs/README.md) — that's the canonical location for any released library.
-> **For consumer apps shipped to v1.0+**: see [docs/applications/](../../applications/README.md).
-> **For the full registry with current versions and lifecycle status**: see [shared-crates.md](shared-crates.md) — single source of truth, refreshed as crates ship.
+> Volatile state stays in [`../state.md`](../state.md). Crate registries: [`shared-crates.md`](shared-crates.md) (full, incl. pre-1.0) and [`../../applications/libs/README.md`](../../applications/libs/README.md) (v1.0+ stable).
 >
-> This README is a stage-based index for *pre-1.0 only*. Versions are intentionally omitted — they drift fast; consult `shared-crates.md`.
->
-> **Last Updated**: 2026-05-09
+> **Last Updated**: 2026-05-17 — categorized restructure (was: pre-1.0 library index only)
 
 ---
 
-## Lifecycle Stages
+## Kernel-scope plans
 
-Crates are bucketed by where they sit in the path to v1.0. Once a crate reaches v1.0+, it leaves this index and gets a doc page under [`docs/applications/libs/`](../../applications/libs/README.md) (libraries) or [`docs/applications/`](../../applications/README.md) (consumer apps).
+Plans for kernel subsystems, drivers, and bring-up gates. These are MVP-blocking or near-blocking — closing them is what makes AGNOS bootable on iron at all.
 
-### Near-Stable Libraries (v0.5.0+)
+| Doc | Status | Note |
+|---|---|---|
+| [usb-hid-keyboard-driver.md](usb-hid-keyboard-driver.md) | 🟠 Code complete; iron-side silent-absorb arc parallel-track | All 5 phases landed in agnos 1.30.0–1.30.5. Iron blocker on 1022:1639 — see § *Silent-Absorb Resolution Plan* in the doc + [`../iron-nuc-zen-log.md`](../iron-nuc-zen-log.md). |
 
-Approaching v1.0 — surface largely settled, hardening and consumer adoption underway.
-
-- **aethersafta** — media compositing (scene graph, capture, HW encoding)
-- **jnana** — unified knowledge system (offline-accessible corpus)
-
-### In-Progress Libraries (v0.1.0–v0.49.x)
-
-Active development; surface still moving.
-
-- **selah** — screenshot capture, annotation, PII redaction
-- **cyrius-doom** — DOOM engine in Cyrius (hardened reference port)
-- **muharrir** — editor primitives (text buffer, undo/redo, command pattern)
-- **samvada** — DBus client (Cyrius-native, minimal logind subset)
-- **vani** — audio device I/O (direct ALSA/OSS syscalls; vendored into Cyrius stdlib at v5.8.0)
-- **sit** — sovereign version control (Cyrius-native git replacement, smriti)
-
-### Scaffolded Libraries (v0.1.0)
-
-Repo created, structure in place, implementation pending.
-
-- **yantra** — sovereign UI automation (browser + mobile, as a Cyrius library)
-- **mudra** — token/value primitives (asset identity, ownership, type)
-- **vinimaya** — transaction layer (atomic transfers, escrow, settlement)
-- **taal** — music theory (scales, intervals, chords, rhythm)
-- **natya** — theater/drama/narrative (dramatic structure, archetypes)
-- **kshetra** — temporal geography (spatiotemporal database)
-- **leela** — sport (rules, athletes, tournaments, records)
-- **nyaya** — structured legal knowledge (statutes, precedents, IP)
-
-### Planned Libraries (not yet scaffolded)
-
-- **krishi** — agriculture (crop science, soil, irrigation, yield modeling)
-- **prakriti** — ecology (ecosystem modeling, food webs, biodiversity)
+*Future kernel plans land here: VFS, network stack (when scoped), USB mass-storage class driver (post-keyboard), GPU bring-up.*
 
 ---
 
-## System Tools & Binaries (pre-1.0)
+## Project-level (overall AGNOS organization, governance, conventions)
 
-- **ark** — package manager (Cyrius)
-- **takumi** — build system (Cyrius port in progress; rust-old/ authoritative until parity)
-- **shakti** — privilege escalation (sudo replacement)
-- **aegis** — security daemon
-- **aethersafha** — Wayland compositor
-- **agnova** — OS installer (Cyrius port from 3,656 Rust lines)
-- **mela** — agent marketplace
-- **seema** — edge fleet management
-- **samay** — task scheduler
-- **chakshu** — AI-augmented system monitor (binary `shu`; replaces htop/btop at v1.0)
+| Doc | Scope |
+|---|---|
+| [roadmap.md](roadmap.md) | Application & phase roadmap (Phases 1–24, MVP gates, ship cadence) |
+| [shared-crates.md](shared-crates.md) | Full crate registry (incl. pre-1.0 — live versions per `state.md`) |
+| [foundation-structure.md](foundation-structure.md) | Phase 23 governance layer (mission-locked, contributor-protecting structure) |
+| [first-party-standards.md](first-party-standards.md) | Code conventions (Cyrius-first; Rust-era archive separate) |
+| [first-party-documentation.md](first-party-documentation.md) | Doc conventions (CLAUDE.md / doc-health pattern / README shape) |
+| [example_claude.md](example_claude.md) | Template — CLAUDE.md scaffold for new repos |
 
 ---
 
-## Applications (pre-1.0)
+## Application designs (per-app planning docs, pre-1.0)
 
-Design docs in this folder where present:
+Forward-looking design specs for applications shipping later. Once an app reaches v1.0+, its doc moves to [`../../applications/`](../../applications/README.md) and the planning doc here becomes a fossil reference (per [hadara.md](hadara.md) precedent).
 
-- **murti** — core model runtime (Ollama replacement) — [murti.md](murti.md)
-- **tanur** — desktop LLM studio (LM Studio replacement) — [tanur.md](tanur.md)
-- **joshua** — game manager & AI simulation — [joshua.md](joshua.md)
-- **salai** — game editor (egui visual editor for kiran)
+| Doc | Status | Priority |
+|---|---|---|
+| [murti.md](murti.md) | Scaffolded (0.1.0) | P1 — Ollama replacement, hoosh + Ifran foundation |
+| [tanur.md](tanur.md) | Scaffolded (0.1.0) | P2 — LM Studio replacement (desktop) |
+| [joshua.md](joshua.md) | Scaffolded (0.1.0) | P4 — AI-native game manager / sim runtime |
+| [pdf-suite.md](pdf-suite.md) (Sahifa + Scriba) | P0 — Design phase | Adobe Acrobat Pro replacement |
+| [bullshift-split.md](bullshift-split.md) | ⏸️ Deferred until desktop ships | Engine/GUI split roadmap |
+| [agnostic-integration.md](agnostic-integration.md) | ⏸️ Deferred until desktop ships | Running Agnostic QA on AGNOS via hoosh |
 
 ---
 
-## Non-Library Projects (pre-1.0)
+## Subsystem designs (cross-cutting; not application-bounded)
 
-Game catalog: see the **Non-Library Projects** section of [shared-crates.md](shared-crates.md) for the full list (cyrius-nba-jam, cyrius-brynns-tale, cyrius-grapevine, cyrius-super-plumber-twins, cyrius-stellar-swarm, cyrius-sunset-drive, cyrius-bb, cyrius-chellys-beach-adventure, cyrius-chelly-beach-dash, cyrius-mine-cart, etc.).
+System-level capabilities that touch multiple repos / aren't owned by any single app. Mostly map to roadmap Phase 20–24 territory (empire-defense layers + Cyrius-native infrastructure).
+
+| Doc | Roadmap | Note |
+|---|---|---|
+| [agent-injection-defense.md](agent-injection-defense.md) | Phase 15A | Six-layer encoded-prompt-injection defense (phylax / hoosh / t-ron / kavach / libro / agnostik) |
+| [cross-platform-compat-subsystem.md](cross-platform-compat-subsystem.md) | Phase 20 | Kavach-sandboxed Linux personality (foreign workloads transparent; kernel grows native, compat stays separate) |
+| [dpi-resistance.md](dpi-resistance.md) | Phase 21 | Network stack normalizes to mainstream-browser fingerprint by default |
+| [parallel-pki.md](parallel-pki.md) | Phase 22 | Trust root in physical artifacts (sticker / SD / paper QR); CAs as opportunistic bridges only |
+| [identity-and-authorization-model.md](identity-and-authorization-model.md) | Phase 24 | Recognition over interrogation; authorization > authentication; four-layer model |
+| [hadara.md](hadara.md) | — (shipped v1.0) | Fossil reference — culture-as-entity design that drove hadara v1.0; for shipped capabilities, see hadara repo |
 
 ---
 
 ## See Also
 
-- [shared-crates.md](shared-crates.md) — complete registry across all stages with current versions
-- [roadmap.md](roadmap.md) — application roadmap and priorities
-- [first-party-standards.md](first-party-standards.md) — code conventions
-- [first-party-documentation.md](first-party-documentation.md) — doc conventions
+- [`../state.md`](../state.md) — live ecosystem state (Cyrius cycle, pin-lag, sweeps, carry-forward debt)
+- [`../iron-nuc-zen-log.md`](../iron-nuc-zen-log.md) — live iron bring-up log (Attempt-by-attempt narrative)
+- [`../roadmap.md`](../roadmap.md) — top-level project roadmap (Phases 1–24, MVP gates)
+- [`../../applications/libs/README.md`](../../applications/libs/README.md) — v1.0+ stable library registry
+- [`../../doc-health.md`](../../doc-health.md) — doc-freshness ledger (every file in this folder tracked)
 
 ---
 
-*Last Updated: 2026-05-09*
+*Categorization established 2026-05-17. Prior framing (pre-1.0 library/tool/app index only) didn't fit kernel-driver plans like `usb-hid-keyboard-driver.md`; new sections accommodate kernel-scope + cross-cutting subsystems.*

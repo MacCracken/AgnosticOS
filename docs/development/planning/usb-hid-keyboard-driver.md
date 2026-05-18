@@ -1,10 +1,139 @@
 # USB-HID Keyboard Driver — Scoping & Roadmap
 
-> **Status**: Code complete across all 5 phases (last landing 2026-05-17 in agnos 1.30.5). Iron-side gate remains: archaemenid USB2 silent-absorb arc (Attempts 32-52, 12 hypotheses falsified — closed as "non-spec gate, parallel-track only"). Phase 4/5 dormant on archaemenid pending unblock; QEMU xhci-pci is the active validation surface. | **Drafted**: 2026-05-15 | **Last status touch**: 2026-05-17 | **Target**: agnos kernel-side, in-tree
+> **Status**: Code complete across all 5 phases (last landing 2026-05-17 in agnos 1.30.5). **2026-05-17: silent-absorb root cause identified — double-mask bug in `xhci_portsc_write` stripping PR bit. See § *Silent-Absorb Resolution Plan* below.** Phase 4/5 will activate as soon as the one-line fix lands; QEMU xhci-pci remains the parallel validation surface. | **Drafted**: 2026-05-15 | **Last status touch**: 2026-05-17 | **Target**: agnos kernel-side, in-tree
 >
 > Drives MVP gap #3 closeout. Real-answer fallback for Attempt 29's USB-keyboard blocker — BIOS legacy-USB knobs and every USB-A port swap have been exhausted on archaemenid; firmware genuinely does not emulate PS/2 post-`ExitBootServices`. The fix is a native XHCI + USB-HID-boot-protocol driver in the kernel.
 >
-> **Phase landing ledger** (architecture-stable; status-only): Phase 1 ✅ agnos 1.30.1 / Phase 2 ✅ 1.30.1 / Phase 2.5 (USBLEGSUP) ✅ 1.30.x mid-cycle / Phase 3 ✅ 1.30.3 (iron-blocked on archaemenid by silent-absorb arc) / 1.30.4 closeout ✅ xHCI Linux-diff hardening (H1-H4) / Phase 4 ✅ 1.30.5 (Configure Endpoint + SET_PROTOCOL=boot + transfer ring) / Phase 5 ✅ 1.30.5 (HID→PS/2 translation + report differ + event-drain + `kb_buf` writer). The phase prose below is the architectural-decision record; live iron progress lives in [`../iron-nuc-zen-log.md`](../iron-nuc-zen-log.md).
+> **Phase landing ledger** (architecture-stable; status-only): Phase 1 ✅ agnos 1.30.1 / Phase 2 ✅ 1.30.1 / Phase 2.5 (USBLEGSUP) ✅ 1.30.x mid-cycle / Phase 3 ✅ 1.30.3 (iron-blocked on archaemenid by silent-absorb arc — **root cause identified 2026-05-17, fix pending**) / 1.30.4 closeout ✅ xHCI Linux-diff hardening (H1-H4) / Phase 4 ✅ 1.30.5 (Configure Endpoint + SET_PROTOCOL=boot + transfer ring) / Phase 5 ✅ 1.30.5 (HID→PS/2 translation + report differ + event-drain + `kb_buf` writer). The phase prose below is the architectural-decision record; live iron progress lives in [`../iron-nuc-zen-log.md`](../iron-nuc-zen-log.md).
+
+---
+
+## Silent-Absorb Resolution Plan (2026-05-17)
+
+> **Bottom line**: After 13 falsified hypotheses chasing AMD silicon ghosts across 5 days and 19 iron attempts, the silent-absorb root cause is a one-line bug in AGNOS's own PORTSC write helper, not 1022:1639 silicon. Cross-source prior-art research (EDK2 XhciDxe + Linux xhci-hub.c + coreboot Cezanne + openSIL) converged on the same `(NEUTRAL preserve) | (PR set)` write pattern; tracing AGNOS's helper revealed the helper re-applies the NEUTRAL mask after the caller's OR, silently stripping PR back out.
+
+### Root cause
+
+**File**: `agnos/kernel/arch/x86_64/usb/xhci_port.cyr:460`
+
+```cyrius
+fn xhci_portsc_write(port_num, value, w1c_clear) {
+    var addr = xhci_portsc_addr(port_num);
+    store32(addr, (value & XHCI_PORTSC_NEUTRAL) | (w1c_clear & XHCI_PORTSC_W1C));
+    return 0;
+}
+```
+
+**Mask values** (`xhci_regs.cyr:235-238`):
+
+```cyrius
+XHCI_PORTSC_RO        = 0x40003C09;   # CCS|OCA|Speed|DR
+XHCI_PORTSC_RWS       = 0x0E00C3E0;   # PLS|PP|PIC|WCE/WDE/WOE
+XHCI_PORTSC_NEUTRAL   = 0x4E00FFE9;   # RO | RWS (preserve mask for RMW)
+XHCI_PORTSC_W1C       = 0x00FE0002;   # PED + change bits (RW1C)
+```
+
+**Bit 4 (PR, RW1S) is correctly excluded from `XHCI_PORTSC_NEUTRAL`** — PR is the bit we're toggling, not preserving. **But the helper re-applies `& XHCI_PORTSC_NEUTRAL` to `value`**, which strips PR right back out.
+
+**The call site** (`xhci_port.cyr:581`):
+
+```cyrius
+xhci_portsc_write(port_num, (psc1 & XHCI_PORTSC_NEUTRAL) | 0x10, 0);
+```
+
+OR-ing PR (`0x10`) into `value`. Inside the helper:
+
+```
+(value & XHCI_PORTSC_NEUTRAL) | (w1c_clear & XHCI_PORTSC_W1C)
+= ((psc1 & NEUTRAL) | 0x10) & 0x4E00FFE9 | (0 & ...)
+= (psc1 & NEUTRAL) | (0x10 & 0x4E00FFE9)
+= (psc1 & NEUTRAL) | 0x00         ← PR stripped!
+```
+
+**Every PORTSC.PR write across Attempts 32–54 wrote PR=0**. The controller correctly absorbed the write (it's a valid neutral PORTSC update with no change requested), updated nothing, and never transitioned to Reset state. CCS/PED/PRC stayed 0. PR-retry loop saw the same outcome 3× per port and stamped `[0x70]=0x03`.
+
+### Why this matches every observation
+
+| Observation | Explanation |
+|---|---|
+| USBSTS = `0x00/0x00` (no CNR/HCH/HSE/HCE) | Controller accepted the write — it's a valid PORTSC update, just wrote PR=0 |
+| PSCchg = `0x00` (no change bits asserted) | No reset transition triggered → no PRC/PEC fired |
+| PLS unchanged (Polling, `0x07`) | Port state machine never moved out of Polling |
+| PR retry = `0x03` (3 silent absorbs) | Same bug each retry; deterministic |
+| `[0x6D]` PLS pre-PR = `0x07` (Polling) | Correct precondition was met — bug is in the write itself, not the precondition |
+| CCS bitmap `0x04` (port 3 connected) | Connection detection works; reset path is what's broken |
+| All 13 hypotheses falsified (F5 / X / V'' / b / W / b' / c / Z / AA / BB / CC / DD / H1-H4) | None touched `xhci_portsc_write`; every "fix" was downstream of the write that never actually happened |
+
+### Why prior-art convergence surfaced it
+
+EDK2 (`MdeModulePkg/Bus/Pci/XhciDxe/Xhci.c`) and Linux (`drivers/usb/host/xhci-hub.c`) both compute the PORTSC write as:
+
+```
+neutralized = (read & RO_MASK) | (read & RWS_MASK)
+write       = neutralized | (NEW_RW1S_BITS)
+```
+
+**Neither re-applies the neutral mask after OR-ing in PR.** The neutralization is a one-shot operation; the OR-in of RW1S bits is final. AGNOS's helper is structurally different — it accepts a "value" that's expected to be already-neutralized-and-OR'd, then re-applies neutralization, which is correct *for callers writing only RWS bits* (the `xhci_ports_power_on` path, OR-ing in `0x200` = PP, which IS in NEUTRAL) but **breaks every caller writing RW1S bits** (PR `0x10`, WPR `0x80000000`).
+
+Per the [`reference_xhci_prior_art`](../../../../.claude/projects/-home-macro-Repos-agnosticos/memory/reference_xhci_prior_art.md) memory: "consult prior art BEFORE generating diagnostic letters from first principles." The 5-day arc never traced AGNOS's own write helper byte-by-byte; the prior-art diff did, immediately.
+
+### Proposed fix
+
+**One-line change to `xhci_portsc_write`**:
+
+```cyrius
+fn xhci_portsc_write(port_num, value, w1c_clear) {
+    var addr = xhci_portsc_addr(port_num);
+    # Caller is responsible for masking `value` to (NEUTRAL | wanted RW1S bits).
+    # Re-applying & NEUTRAL here strips RW1S bits the caller deliberately set
+    # (PR=0x10, WPR=0x80000000) — silent-absorb root cause 2026-05-13 → 2026-05-17,
+    # 13 hypotheses falsified before prior-art diff (EDK2 / Linux) surfaced this.
+    store32(addr, value | (w1c_clear & XHCI_PORTSC_W1C));
+    return 0;
+}
+```
+
+All current callers (`xhci_ports_power_on`, `xhci_port_reset` × 2 sites, post-PRC clear) already pre-mask via `(psc & XHCI_PORTSC_NEUTRAL) | <new bits>` — they're correct; the helper was wrong. **No call-site changes needed.**
+
+### Validation gate (next iron burn — Attempt 55)
+
+**Pre-conditions**:
+- Apply the one-line fix to `xhci_port.cyr:460` (await user consent per [`feedback_per_action_consent`](../../../../.claude/projects/-home-macro-Repos-agnosticos/memory/feedback_per_action_consent.md))
+- No version bump (per [`feedback_no_unprompted_version_bumps`](../../../../.claude/projects/-home-macro-Repos-agnosticos/memory/feedback_no_unprompted_version_bumps.md) — let the user decide whether to roll 1.30.5 → 1.30.6 or land under existing tag)
+- Build: `cd agnos && cyrius build kernel/agnos.cyr build/agnos`
+- Flash USB, plug Keychron K2 in port 3 (canonical failing port)
+
+**Pre-bound outcome matrix**:
+
+| FB line / CMOS | Reads as | Next |
+|---|---|---|
+| `port 3 reset OK` + Phase 4 line `hid: keyboard configured` + `[0x64]` (reset-OK bitmap) non-zero + `[0x70]=0x00` (no retries needed) | **Row 1 — fix landed clean**. Phase 3 enumeration runs. Phase 4 SET_PROTOCOL=boot runs. Phase 5 sees first key event. Type test: `agnos> a` echoes. **MVP gap #3 closed.** | Celebrate. Update roadmap. Close iron arc. Move to MVP gap #4 (mouse / additional input). |
+| `port 3 reset OK` + Phase 4 line missing + `[0x64]` non-zero | **Row 2 — reset works, Phase 4 regression**. Silent-absorb closed; Phase 4 has its own bug surfaced by reset finally succeeding. Triage per `hid:` FB lines. | Phase 4 debug — pure data path, QEMU-reproducible. |
+| `port 3 reset failed` + `[0x70]=0x01-2` + `[0x64]` non-zero on retry | **Row 3 — silent-absorb non-deterministic now**. Fix landed; chipset has a separate retry-tolerable quirk. Linux's port-reset retry loop covers this. | Inspect PSCchg / PLS for the retry-success case; add Linux-style hub_port_reset retry layer if needed. |
+| `port 3 reset failed` + `[0x70]=0x03` + `[0x64]=0x00` (UNCHANGED from Attempt 54) | **Row 4 — fix didn't take**. Either: (a) build didn't include the fix (size check vs 1.30.5 floor), (b) Cyrius compiled the change incorrectly (surface to cyrius via the [`cyrius-hands-off`](../../../../.claude/projects/-home-macro-Repos-agnosticos/memory/feedback_cyrius_hands_off.md) escalation path), or (c) double-mask wasn't actually the gate (highly unlikely given the trace). | Verify binary size delta; re-grep compiled output; if compile is correct and bug persists, the prior-art diff is incomplete — escalate to vendor PCI cap dump (already on the roadmap as a read-only audit burn). |
+
+**Floor binary**: agnos 1.30.5 = 364,736 B (Attempt 54 baseline). Fix should leave size near-identical (one-line change inside an existing function — possibly ±4 B from instruction encoding).
+
+### What this means for the kernel roadmap
+
+- **MVP gap #3 (USB keyboard on iron)** — unblocked pending fix application. The 5-day silent-absorb arc was a self-inflicted bug, not a hardware ghost. No silicon workarounds needed.
+- **MVP gap #4 (mouse)** — same xhci stack handles HID-mouse via the same port-reset path. Fix unblocks mouse for free; only the HID translation layer needs a USAGE_PAGE=GenericDesktop, USAGE=Mouse pathway addition.
+- **MVP gap #5 (USB mass storage)** — same xhci stack handles bulk-only transport. Storage class driver becomes scopeable once enumeration is reliable.
+- **xhci hardening burns (Z / AA / BB / CC / DD / H1-H4)** — all spec-correct improvements that ship regardless. Hardening landed; preserve in the codebase. The carry-forward stamps remain valid diagnostic surface for any future xhci regression.
+- **`reference_xhci_prior_art` memory** — confirmed load-bearing. The prior-art diff was the unblock; the memory's "consult before letter-laddering" guidance is validated. Adding the EDK2 + coreboot + openSIL sources from this session (already in the memory file as of 2026-05-17) further hardens the lookup surface.
+
+### Out-of-band findings worth keeping
+
+The prior-art research surfaced four AMD-specific patterns that are NOT the current gate but worth documenting for future xhci issues:
+
+1. **AMD SMU `UsbInit` message** — Cezanne FCH USB init is gated behind an SMU mailbox call (`FchXhciUsbInitSmuService` in openSIL `phoenix_poc`). If a BIOS skips this (3mdeb B850-P 2026-04 incident pattern), MMIO returns 0xFF and the controller is structurally dead. Our reads work cleanly → not our gate, but a fingerprint to remember.
+2. **USB PHY init (`FCH_XHCI_USB_20LANEPARACTL{0,1}`)** — SMN-addressed lane-parameter registers. Gateable via `SkipUsbPhyInit` flag. Our PLS reaches Polling → PHY is alive → not our gate.
+3. **`PM_ACPI_RST_USB_S5` (`PM_ACPI_CONF` bit 23)** — Cezanne power-management reset gate across S-states. Could leave xHCI half-initialized across warm boots. Not relevant cold-boot, but possible future suspend/resume gotcha.
+4. **Cezanne D3hot→D0 20ms quirk** (Linux PCI commit Alex Deucher 2021) — BIOS bug papered over; not our path since we never D3 the controller. Future suspend/resume work will need this.
+
+These get archived in the [`reference_xhci_prior_art`](../../../../.claude/projects/-home-macro-Repos-agnosticos/memory/reference_xhci_prior_art.md) memory and surface again whenever AGNOS touches USB power management.
+
+---
 
 ## TL;DR
 
