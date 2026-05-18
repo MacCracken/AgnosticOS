@@ -322,8 +322,8 @@ fn main(): i64 {
     if (verbose_mode == 0) {
         println("");
         println("=== AGNOS xHCI current-sweep boot log ===");
-        println("Repair (NN) — ERDP-before-ERSTBA + CRCR-after-IMOD");
-        println("Reference: docs/development/xhci-prior-art-audit.md");
+        println("Repair (OO) — Tier 2 bundle: USBSTS-clear + IMAN.IE-post-R/S + mfence + TRB-readback");
+        println("Reference: docs/development/xhci-prior-art-audit.md + iron-nuc-zen-log.md §6601");
         println("");
         println("Boot reached:");
         print_str("  kernel  checkpoint = "); print_hexb(kcp);
