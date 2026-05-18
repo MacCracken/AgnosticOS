@@ -5847,6 +5847,90 @@ The two external gates that held Attempt 54 (`kriya 0.3.0` ship + Cyrius agent c
 
 ---
 
+### Attempt 55 — 2026-05-17 → REPAIR (EE) IS THE UNBLOCK; PHASE 3 CLEARED; PHASE 4 ENABLE SLOT IS THE NEW GATE
+
+The silent-absorb arc closed as a homegrown bug. Root cause: `xhci_portsc_write` (`kernel/arch/x86_64/usb/xhci_port.cyr:464`) was re-masking the caller's `value` with `XHCI_PORTSC_NEUTRAL` *inside the helper* before OR-ing in W1C bits. PR (Port Reset, bit 4) is RW1S — it lives *outside* NEUTRAL — so the inner `& NEUTRAL` silently stripped PR before every `store32`. Across Attempts 32-54 (13 falsified hypotheses, 5 days), every PORTSC.PR write was a no-op at the wire because PR never reached the register. "Silent-absorb" was real, but the absorber was AGNOS's own helper, not silicon.
+
+Surfaced by prior-art diff against EDK2 `XhciDxe` (`XhciPortReset` writes `Portsc.AsUint32 | XHC_PORTSC_PR`, no inner re-mask) and Linux `xhci-hub.c` (`xhci_set_port_reset` writes `portsc | PR`, no inner re-mask). Neither implementation has the equivalent of our `& NEUTRAL` step — the contract is that the caller is responsible for the OR-in mask, and the helper is a thin RMW shim.
+
+**Repair (EE)** — one-line fix in `agnos@41ee6dc`:
+
+```cyrius
+# Before
+store32(addr, (value & XHCI_PORTSC_NEUTRAL) | (w1c_clear & XHCI_PORTSC_W1C));
+# After
+store32(addr, value | (w1c_clear & XHCI_PORTSC_W1C));
+```
+
+Cyrius pin bumped 5.11.55 → 5.11.59 in the same commit (kriya's parallel M5 pin bump caught up; agnos rebuilt cleanly against .59).
+
+**Build under test**:
+
+| Component | Version | Size | Source |
+|---|---|---|---|
+| agnos kernel | 1.30.5 + EE | `./scripts/build.sh` clean against cyrius 5.11.59 | agnos@41ee6dc |
+| gnoboot | 0.2.0 | (stable) | no changes |
+| cyrius toolchain | 5.11.59 | — | agnos `cyrius.cyml` |
+| agnosticos boot pipeline | 2026.5.13+ | — | `install-usb.sh --update` provisioned |
+| kriya | 0.6.0 (parallel M5 ship — `grep`/`find`/`xargs`; also on 5.11.59) | — | external gate cleared 3 milestones ago |
+
+**FB outcome (primary truth channel)**: image at [`iron-nuc-zen-photos/attempt-55-xhci-reset-unblock-enable-slot-ccode-0.jpg`](iron-nuc-zen-photos/attempt-55-xhci-reset-unblock-enable-slot-ccode-0.jpg). New / changed lines vs Attempt 54:
+
+- `xhci: scratchpad ready, array=2848728` ← AA carry-forward
+- `xhci: controller running, HCH=0, ERDP=4542464`
+- `xhci: drained N events` ← DD carry-forward (event-ring drain firing pre-PR)
+- **`xhci: Reset events bitmap=63`** ← NEW. All 6 ports produced PSC events during the reset loop (consistent with PR now actually reaching PORTSC). Bitmap is PSC events seen, not reset-successful — sibling metric to `[0x64]`.
+- **No `xhci: port 3 reset failed (proto=2)` line** — silent-absorb broken; reset on port 3 (Keychron's bank) completed.
+- **`kbd: Enable Slot failed, ccode=0`** ← NEW Phase 4 gate
+- **`xhci: enumeration timeout`** ← per-port enumerate loop bails after Enable Slot failure
+- `hid: keyboard layer initialized` (Phase 5 init line — code surface healthy)
+- VFS / syscall / scheduler / kybernet init normal
+- `AGNOS shell v1.30.5 (type 'help')` → `agnos>`
+
+**CMOS post-mortem (Attempt 55)**:
+
+| Slot | Meaning | Value | Reading |
+|---|---|---|---|
+| `[0x50]` | kcp | `0x15` | Shell reached. |
+| `[0x63]` | CCS bitmap | `0x04` | Port 3 connected (Keychron). |
+| `[0x64]` | reset-OK bitmap | **`0x04`** | **Port 3 reset succeeded — first non-zero `[0x64]` in 13 attempts.** Silent-absorb confirmed broken at the iron-evidence level. |
+| `[0x6B]` | PP=1 bitmap | `0x3F` | All 6 ports powered (unchanged). |
+| `[0x6C]` | PSC change-byte (R4) | `0x00` | Latest stamp; PR-write-time precondition slot. |
+| `[0x6D]` | PLS pre-PR (R10) | `0x07` (Polling) | Spec-compliant precondition held. |
+| `[0x77]/[0x78]` | USBSTS bytes 0+1 at reset-fail-time | `0x00` / `0x00` | (Stamp now load-bears on Enable Slot fail, not reset fail — controller still clean at the new gate.) |
+| `[0x79]` | USBCMD byte 0 | `0x0D` | R/S + INTE + HSEE (H4 widened mask landed). |
+| `[0x7F]` | Z timing-delay sentinel | `0xAA` | Z site still executes per loop iteration (last-write-wins). |
+| `[0x80]` | MaxScratchpadBufs (CC-routed) | `0x02` | Real value (post-CC routing). |
+| `[0x84]` | BB sentinel | `0xBB` | DNCTRL write executed. |
+| `[0x86]` | CC sentinel (expected `0xCC`) | `0x5A` | FCH 1022:1639 extended-CMOS alias quirk reproduced from Attempts 52/54 — not a sentinel failure; firmware-managed scratch in offsets ≥ 6 of the extended bank. |
+| `[0x87]` | DD sentinel (expected `0xDD`) | `0xA5` | Same alias quirk. FB `drained N events` line is the load-bearing proof DD ran. |
+
+**Verdict**: **Repair (EE) is the silent-absorb unblock**. Port reset on port 3 succeeded for the first time across the entire 13-hypothesis arc. The H1-H4 hardening, AA scratchpad install, BB DNCTRL write, CC extended-CMOS routing, DD event-ring drain, and Z timing-delay were all *correct* in isolation — they just couldn't help because PR was never reaching the register. Falsified-hypothesis count for the silent-absorb arc: 13 (F5 / X / V'' / W / Z / AA / BB / CC / DD / W2 / b' / b'' / EE-by-elimination-prior-to-fix). EE finally landed by walking outward from the controller's view (prior-art diff against two known-good implementations) instead of inward (per-bit spec audit).
+
+**New gate — Enable Slot ccode=0 (Phase 4)**:
+
+FB prints `xhci: Enable Slot failed, ccode=` (from `xhci.cyr:604`), which only fires when `xhci_cmd_issue` returned 0 — meaning `xhci_cmd_wait` timed out before finding a matching Command Completion Event on the event ring. The printed `ccode=0` is `xhci_last_cmd_ccode`'s init value (the variable is never assigned on a timeout path). xHCI spec ccode=0 is "Invalid" (reserved); the controller cannot legally produce it. This is a wait-timeout, not a controller-side error code.
+
+**Triage classes** (read-only; pre-bound before any code change):
+
+1. **Cmd ring + CRCR plumbing** — `xhci_op_write64(XHCI_OP_CRCR, xhci_cmd_ring_phys | 0x1)` at `xhci.cyr:529` runs *before* R/S is asserted. Spec-compliant order. Need to confirm: (a) `xhci_cmd_ring_phys` is the same value the controller actually reads (UC mapping + iommu register both ran), (b) RCS=1 in our CRCR write matches the controller's CRR=0 initial state (writing RCS=0 against CRR=0 is a no-op; we write RCS=1 which is the canonical first-cycle).
+2. **Cmd TRB cycle bit on first issue** — `xhci_cmd_submit` OR-s `xhci_cmd_ring_cycle` (init=1 in `xhci_rings_init`) into dword 3 of the TRB before `store32`. First Enable Slot TRB lands at offset 0 with cycle=1. Matches HW PCS=1 default.
+3. **Event-ring polling vs PSC events from PR-engaged reset** — `xhci_cmd_wait`'s "non-CMD_COMPLETION event consume + advance idx" path runs in a loop; if reset now produces 6 PSC events (one per port per `Reset events bitmap=63`), those need to be drained before the CCE shows. The loop *does* consume them, but each consume re-advances `xhci_evt_ring_idx` + may need to flip `xhci_evt_ring_cycle` at the wrap. With 256-slot ring + 6 PSC + 1 expected CCE = 7 events, no wrap; cycle-flip shouldn't fire. **Most likely real cause if 1 + 2 are clean.**
+4. **64-bit cmd TRB phys vs low-32 match in `xhci_cmd_wait`** — comparison is `evt_p_lo == (cmd_trb_phys & 0xFFFFFFFF)`. Sound on archaemenid (kernel + xHCI allocations < 4 GB), but worth confirming the cmd TRB phys actually stored in the event matches.
+5. **CSS / RCS race** — if CRCR was written with RCS=1 *after* a prior R/S=1 (i.e., re-init order regression), Command Ring State could be in an unexpected mode. xhci.cyr:526 calls CRCR write before xhci_start; visually clean.
+
+Triage 3 is the load-bearing one absent further evidence. The first action is read-only — add a kprint of `xhci_evt_ring_idx` + `xhci_evt_ring_cycle` immediately before xhci_enable_slot returns, plus a per-iteration event-type kprint in `xhci_cmd_wait`'s wait loop (gated on first cmd only, to keep FB noise bounded). That tells us deterministically how many PSC events were consumed and whether a CCE was ever seen.
+
+**Decisions applied**:
+
+- The 13-hypothesis silent-absorb arc is closed by **direct iron evidence** (port 3 reset-OK), not by elimination. Memory `feedback_known_knowledge_first` validated — prior-art diff against EDK2 + Linux was the unblock; the per-bit spec walk had been spinning for 5 days against the wrong layer.
+- xHCI hardening backlog (HCCPARAMS3 read, vendor PCI cap dump) stays parallel-track. Not load-bearing for MVP.
+- Phase 4 Enable Slot is the active gate. Phase 4 + 5 code surface (Phase 4 = `hid_kbd_configure` walk + Configure Endpoint + SET_PROTOCOL=boot + transfer ring; Phase 5 = HID→PS/2 + `kb_buf` writer) is downstream of Enable Slot returning a valid slot ID, so all of it is dormant until ccode=0 clears.
+- Next iron exposure (Attempt 56) gated on the read-only event-ring-state instrumentation landing in agnos and getting size-confirmed against the EE-fix floor (~349 KB neighborhood; exact value pending build).
+- Memory entries to update: `feedback_iron_burns_block_other_work` carry-forward is current — Attempt 55 was a *behavioral* burn (real code change), not pure-instrumentation. Future "next enabler" diagnostic must come with the line-by-line audit per the standing rule.
+
+---
+
 ## Carry-forward items (not blocking Attempt 28)
 
 - **aarch64 native boot test**: blocked on Pi SSH access. Cyrius
