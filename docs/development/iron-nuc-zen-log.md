@@ -6696,6 +6696,220 @@ var trb_flush = load32(trb + 12);
 
 ---
 
+### Attempt 62 — 2026-05-18 → REPAIRS (NN + OO) BUNDLED, ALL FALSIFIED; `events_seen=0` SURVIVES TIER 1 + TIER 2 PRIOR-ART CONVERGENCE
+
+Per the user 2026-05-18 directive ("I really don't care what fixes it I want it fixed... hardening and cleanup can always be done later"), Tier 1 (NN: ERDP-before-ERSTBA + CRCR-after-IMOD) and Tier 2 (OO: USBSTS-clear + IMAN.IE-post-R/S + mfence + TRB-readback) were bundled into a single iron burn rather than two sequential ones. Build banner declared `Repair (OO) — Tier 2 bundle` (NN's reorder edits silently included; OO sits on top of NN).
+
+Boot log (`sudo ./scripts/read-boot-log.sh`):
+
+| Slot / register | Read | Expected | Verdict |
+|---|---|---|---|
+| Kernel checkpoint | 0x15 | 0x15 | ✓ |
+| gnoboot checkpoint | 0x05 | 0x05 | ✓ |
+| HCCPARAMS1 / HCCPARAMS2 | 0xe5 / 0x3f | (HW) | confirmed |
+| MaxScratchpadBufs | 0x02 | 0x02 | ✓ |
+| sp_array phys byte 2 | 0x7a | (RAM-side) | ✓ |
+| USBLEGSUP | 0x01 (OS-owned) | 0x01 | ✓ |
+| CCS bitmap | 0x04 (port 6) | 0x04 | ✓ |
+| Reset OK bitmap | 0x04 | 0x04 | ✓ |
+| PORTSC.PP bitmap | 0x3f | 0x3f | ✓ |
+| PSC change byte (post-R4) | 0x00 | 0x00 | ✓ |
+| PLS pre-PR | 0x07 (Polling) | (mid-reset shape) | ✓ |
+| USBSTS [HCH \| HSE \| EINT \| PCD] | 0x00 | 0x00 | ✓ — no event flagged |
+| USBSTS [CNR \| HCE \| SRE] | 0x00 | 0x00 | ✓ — controller not broken |
+| USBCMD | 0x0d (R/S \| HCRST \| INTE \| HSEE) | 0x0d | ✓ — controller running |
+| Prior-runlog sentinel AA (0x81) | 0xaa | 0xaa | ✓ |
+| Prior-runlog sentinel BB (0x84) | 0xbb | 0xbb | ✓ |
+| Prior-runlog sentinel CC (0x86) | 0x5a | 0xcc | ⚠ corruption |
+| Prior-runlog sentinel DD (0x87) | 0xa5 | 0xdd | ⚠ corruption |
+
+**Reading**:
+
+- USBSTS clear in both halves — no EINT, no PCD, no HCE/SRE/CNR. Controller is *healthy*, running, and silent.
+- `events_seen=0` survives both NN reorderings AND all four OO sub-repairs. The Tier 1 + Tier 2 convergent-prior-art audit is exhausted with no unblock.
+- CMOS bytes 0x86/0x87 read 0x5a/0xa5 (not the expected 0xcc/0xdd) — those slots sit above the `project_archaemenid_cmos_map` virgin-scratch range (0x50-0x7F), so are not reliable for sentinels on this BIOS. Not load-bearing for the gate; flagging for the CMOS-map memory update.
+- AA (0x81) and BB (0x84) intact, confirming the 0x80-0x84 band of upper CMOS *is* reliable scratch on archaemenid.
+
+**Verdict**: 9-letter ladder (FF → GG → HH → JJ → KK → LL → MM → NN → OO) on the same `events_seen=0` symptom is exhausted. Per `feedback_stop_letter_laddering` the escape plan is now the load-bearing artifact, not the next letter. Three crystallized paths surfaced for user decision:
+
+| Path | Description | Iron-burn cost | Risk vs. prior letters | When it makes sense |
+|---|---|---|---|---|
+| **PP (heavy hammer)** | UC-remap of event ring + cmd ring + DCBAA + scratchpad array (changes memtype on several DMA regions). Eliminates CPU↔DMA cache coherence as a variable entirely. Pre-staged in §6601 prep-block; needs per-action burn approval (changes timing characteristics, so not auto-staged). | 1 iron burn | Higher — first edit in this arc that materially changes DMA memtypes. Bisect-back is per-region (4 regions). | If you want to definitively eliminate cache-coherence-class causes before pivoting away from cmd-path. |
+| **Decouple — pivot to Phase 4/5 in QEMU** | Accept cmd-path silent-absorb as a known-open AMD FCH 1022:1639 gate. Code-complete HID + kb_buf + Phase 5 in QEMU (where the cmd path works on QEMU's xHCI model). Iron retries deferred to either a different bare-metal target where AMD FCH isn't in the path, or to vendor-cap research. | 0 iron burns near-term | Zero on iron; the trade is "MVP closed-beta gate (boot-to-shell on iron) slips on archaemenid until cmd-path resolves." | If iron burns are blocking other work disproportionately (per `feedback_iron_burns_block_other_work`) and the rest of the kernel can be code-complete in parallel. |
+| **Vendor-cap deeper dive (code-read, no burn)** | Read Linux git history for AMD FCH 1022:1639 specifically — `drivers/usb/host/xhci-pci.c` `quirks` field, `xhci_handshake` AMD-paths, any errata workarounds gated on `pdev->vendor == 0x1022 && pdev->device == 0x1639` or sibling AMD FCH IDs. The four-source convergent audit covered the *spec-prescribed* paths; we haven't looked at the *vendor-quirk* paths. | 0 iron burns near-term | Zero (read-only). Output is either a new behavioral repair to stage (Repair QQ), or a confirmation that no Linux quirk exists for this chipset (in which case PP or decouple is the move). | If you want the highest-information next move before committing another iron burn. |
+
+**Honest read (Claude's recommendation, not a decision)**:
+
+- The empirical signal is loud: controller is healthy (USBSTS clear, CNR clear, R/S=1, INTE=1), the event ring posts *some* events (the pre-PR drain saw 1 event in prior burns), but Enable Slot specifically posts zero CCEs. That shape is unlikely to be cache-coherence (PSC events post through the same ring with the same memtype). PP is the highest-cost path with arguably the weakest fit to the symptom shape.
+- The vendor-cap path is cheap and may reveal a Linux-known AMD FCH quirk that the convergent-prior-art audit didn't surface (because the audit looked at the *spec path*, not the *quirk patches*).
+- Decoupling unblocks the user's other work while still giving the cmd-path a second life when better data lands.
+- My honest weighting: **vendor-cap research first** (cheap, high-info), then either PP or decouple based on what surfaces. Not staging anything without user re-approval per `feedback_per_action_consent`.
+
+**Build under test**: same `build/agnos` cut as Attempt 62 staging (368,472 B if NN-only; OO adds ~20 B per the prep-block estimate, so likely ~368,492 B). Exact size not captured in the boot log; iron is back at the gate either way.
+
+**Pending**: user decision on PP vs. decouple vs. vendor-cap. No iron burn proposed.
+
+#### Vendor-cap research result (2026-05-18, post-Attempt 62) — DRY WELL
+
+Per user decision, ran a vendor-cap code-read audit of Linux v6.13 (`drivers/usb/host/xhci-pci.c`, `xhci.h`, `xhci-ring.c`, `pci-quirks.c`) plus FreeBSD HEAD `xhci_pci.c` for any AMD FCH `1022:1639`-specific quirks gating event-ring / command-ring init or doorbell-fire behavior. Zero iron burns.
+
+**Headline**: Linux applies exactly one device-ID-gated quirk on `0x1639` Renoir: `XHCI_BROKEN_D3COLD_S2I` (BIT 41). Its sole use site is inside `#ifdef CONFIG_SUSPEND` and fires only when `pm_suspend_target_state == PM_SUSPEND_TO_IDLE`. **Irrelevant** to cold-boot Enable Slot CCE posting.
+
+Other AMD-vendor-gated quirks reviewed and disqualified:
+
+| Flag | Gating | Fires on `1022:1639`? | Disqualifying reason |
+|---|---|---|---|
+| `XHCI_AMD_0x96_HOST` | `vendor==AMD && hci_version==0x96` | No | Renoir is xHCI ≥1.10; `hci_version != 0x96` |
+| `XHCI_AMD_PLL_FIX` | `vendor==AMD && usb_amd_quirk_pll_check()` | No | Chipset-info table in `pci-quirks.c` enumerates Hudson/SB7xx IDs (0x9601/0x1510/0x9600); 0x1639 absent. Even if it set, its sole use site is `xhci_giveback_urb_in_irq` for isochronous URB completion — far past Enable Slot. |
+| `XHCI_SUSPEND_DELAY` / `XHCI_SNPS_BROKEN_SUSPEND` / `XHCI_DISABLE_SPARSE` / `XHCI_RESET_ON_RESUME` / `XHCI_DEFAULT_PM_RUNTIME_ALLOW` / `XHCI_U2_DISABLE_WAKE` / `XHCI_NO_SOFT_RETRY` | Various non-1639 device IDs (Promontory A 0x43b9-bc, Raven 0x15e0-1, etc.) | No | Wrong device ID, and all are suspend/resume/U-state quirks unrelated to cold-boot init |
+
+**Confirmed beyond the quirks table**:
+- `xhci-ring.c` `handle_cmd_completion`, `queue_command`, `xhci_ring_cmd_db` contain **no AMD-gated branches at all**. The command-ring → CCE pipeline is identical for AMD and Intel.
+- FreeBSD `xhci_pci_attach` applies **zero AMD-specific errata** for `0x1639`.
+- `drivers/pci/quirks.c` has `quirk_ryzen_xhci_d3hot` for 0x1639 — D0→D3hot transition delay only, fires at resume, not cold boot.
+
+**Verdict**: No Linux-precedent behavioral repair to write. **There is no Repair (QQ) candidate.**
+
+**Agent's load-bearing pointer for next direction**: "Linux has no fix for this symptom on this silicon, because Linux doesn't see this symptom on this silicon. That points the investigation away from 'missing quirk' and toward 'AGNOS is doing something Linux does implicitly that we're not' — most likely in the MMIO attribute / interrupt-routing / MSI-vector-table region, not in the spec-prescribed register dance you've already audited eleven ways."
+
+Three crystallized paths (revised, post-vendor-cap):
+
+| Path | Cost | Why it might fit | Why it might not |
+|---|---|---|---|
+| **MSI-X table audit** (read-only, 0 burns) | 0 iron burns | The MSI-X function-mask was cleared at Repair MM, but the per-vector entries (table address, message-address, message-data, per-vector mask) weren't audited against Linux's `pci_alloc_irq_vectors` / `xhci_setup_msix` programming. If our vector table is malformed, the controller posts to a void. This is the highest-fit zone per agent's pointer. | If AGNOS's MSI-X programming is fine, we burn time without unblocking. |
+| **MMIO BAR memtype verify** (read-only, 0 burns) | 0 iron burns | Linux's `ioremap` produces strict-UC on PCI BARs by default. If AGNOS's xHCI BAR mapping uses WC or WB, all our doorbell/readback discipline is on the wrong foundation. Cheap to verify in `xhci.cyr` / `mm.cyr`. | If BAR is already strict-UC (likely — Repair X bundle), this is a quick falsification and we're back to PP or decouple. |
+| **PP (UC-remap heavy hammer)** | 1 iron burn | Even if BAR is strict-UC, DMA regions (event ring, cmd ring, DCBAA, scratchpad) are mapped WB-cached on the CPU side. UC-remapping those regions removes cache coherence as a variable entirely. The strongest-confidence single-burn next step if zero-burn audits dry out. | Symptom shape (PSC posts, CCE doesn't) fits cache-coherence weakly — both events traverse the same ring with the same memtype. |
+| **Decouple to QEMU** | 0 iron burns near-term | Unblocks Phase 4/5 in software while iron stays at the gate. Code-complete kernel for MVP code-readiness gate (not boot-on-iron gate). | MVP gate (boot-to-shell on iron) slips on archaemenid until cmd-path resolves. |
+
+**Claude recommendation**: MSI-X table audit + BAR memtype verify in parallel — both are read-only code-reads. Highest information per cost. If both come back clean (Linux-equivalent), PP is the strongest remaining iron move; if either surfaces a divergence, that's the Repair (QQ) candidate.
+
+**Pending**: user decision. No iron burn proposed.
+
+#### MSI-X table audit + BAR memtype verify (2026-05-18) — DIVERGENCE FOUND IN MSI-X; BAR MEMTYPE CLEAN
+
+Per user decision, ran two read-only code-read audits in parallel (one general-purpose agent doing both). Zero iron burns.
+
+**Audit 1 (MSI-X table) — DIVERGENCE FOUND**
+
+`pci_enable_msix_unmasked` at `pci.cyr:216-241` sets MSI-X Enable (bit 31) and clears Function Mask (bit 30) in the PCI cap's control word — and stops there. It **never reads the MSI-X Table Offset/BIR from cap+0x04**, and **never writes Message Address / Message Data / Vector Control** to any table entry. Confirmed by direct read of pci.cyr:216 + xhci.cyr:122 — the entire MSI-X setup is the three lines:
+
+```cyrius
+var hdr = pci_read32(bus, slot, func, msix_off);
+var newhdr = (hdr & 0x3FFFFFFF) | 0x80000000;
+pci_write32(bus, slot, func, msix_off, newhdr);
+```
+
+The comment at pci.cyr:191-198 explicitly acknowledges the per-vector masks default to 1 (PCI 3.0 §6.8.2.5.3) and treats that as the spurious-IDT-suppression posture. The intent was "no ISR registered, polling on timer, mask=1 keeps IDT quiet." **The unintended consequence**: every vector's Message Address = 0x00000000, Message Data = 0x00000000, Vector Control = 1 (masked) — i.e., the table is *literally all zeros*.
+
+Linux's equivalent path (`drivers/pci/msi/msi.c:msix_capability_init`):
+1. Enable + MaskAll set atomically (`pci_msix_clear_and_set_ctrl(dev, 0, MASKALL | ENABLE)`)
+2. For each vector, write three dwords: Message Address Lo, Address Hi, Data (`pci_write_msg_msix` via `__pci_write_msi_msg`)
+3. Set every Vector Control bit explicitly (`msix_mask_all`)
+4. Clear MaskAll (`pci_msix_clear_and_set_ctrl(dev, MASKALL, 0)`)
+
+So Linux's end state is: Enable=1, FuncMask=0, every vector's Address/Data programmed to a real LAPIC target, Vector Control=1 (masked until ISR registration unmasks per-vector).
+
+**Mechanism hypothesis for `events_seen=0`** (agent's framing): the controller's interrupter state machine may do a speculative read of its own MSI-X table to confirm "interrupter is configured" — sees all zeros (Address=0, Data=0), and either (a) silently absorbs the corresponding event-ring DMA post because the message-destination would be physical address 0 (defensive behavior under IOMMU), or (b) treats per-vector mask=1 + Address=0 as "interrupter not yet configured" and gates event posting. PSCE arrived earlier in boot — possibly because port-status interrupter routes through a different code path or different vector index than the command-completion interrupter, and the all-zero table didn't gate that specific posting.
+
+**Audit 2 (BAR memtype) — CLEAN**
+
+`vmm_remap_uc_2mb` at `vmm.cyr:59-82` writes a 2 MB PDE with flags `0x9B = Present | RW | PWT | PCD | PS`. On 2 MB pages, PAT-selector bits are `{PWT=bit3, PCD=bit4, PAT=bit12}`. PWT=1, PCD=1, PAT=0 → PAT index `0b011` = entry 3 = **strict UC** under archaemenid's firmware PAT MSR `0x0007040600070406` (verified via CMOS[0x72]=0x06).
+
+Linux's `arch/x86/mm/ioremap.c:ioremap()` defaults to `_PAGE_CACHE_MODE_UC_MINUS` (PCD=1, PWT=0 → PAT entry 2 = UC-). AGNOS uses strict UC (PAT entry 3), which is **stronger** than Linux's xHCI driver default. No divergence; AGNOS matches `ioremap_uc()` semantics or stricter. The 2 MB UC remap covers BAR0 fully on AMD FCH 1639 (BAR0 ≤ 256 KB typical for AMD FCH xHCI; 2 MB chunk has slack).
+
+**Verdict**: Audit 1 surfaced a high-confidence Repair (QQ) candidate. Audit 2 confirmed BAR mapping is not the gate.
+
+---
+
+### Attempt 63 prep — Repair (QQ) — MSI-X Table programming for vector 0 (UNAPPROVED)
+
+**Hypothesis**: AGNOS leaving the MSI-X Table all-zero (Message Address=0, Data=0, Vector Control=1 by reset) is what gates Enable Slot CCE posting on AMD FCH 1022:1639. Programming vector 0 with a real (LAPIC, fixed-delivery, edge-trigger) Address/Data pair — while keeping Vector Control=1 to preserve AGNOS's polling posture — should unblock event posting if hypothesis holds.
+
+**Confidence**: Medium-high. This is the first repair in the arc with a *direct, named, Linux-implicit divergence* — every prior repair was a spec-path reorder or a defensive flush. The mechanism story (controller speculatively reads its own table to gate posting) is consistent with the symptom shape (PSCE posts, CCE doesn't — possibly different interrupter paths). The vendor-cap audit's load-bearing pointer ("most likely in the MSI-vector-table region") landed here.
+
+**Risk**: Low-to-medium. New writes to physical addresses derived from the MSI-X BIR field, computed at runtime. Vector Control stays = 1, so no real IDT interrupt is delivered (no spurious-fault risk from missing ISR). The single failure mode is a malformed Address/Data combination that the controller's PCI-write engine rejects — but with Vector Control=1, no message transmits regardless, so the worst case is "same `events_seen=0` symptom plus a possibly-spurious PCI error log entry" (which the read-boot-log would catch).
+
+**Edit shape** — extend `pci_enable_msix_unmasked` in `pci.cyr` to do the full Linux-equivalent sequence between the existing Enable write and the existing return:
+
+```cyrius
+fn pci_enable_msix_unmasked(idx) {
+    # ... existing cap-walk + Enable write ...
+
+    # QQ — program vector 0 with a real LAPIC-targeted message so the
+    # controller's interrupter state machine sees a non-zero table.
+    # Linux's pci_alloc_irq_vectors → msix_capability_init writes
+    # Address/Data for every vector before clearing FuncMask. AGNOS
+    # polls the event ring on timer tick (no ISR registered), so we
+    # keep Vector Control = 1 (per-vector mask set) — but we populate
+    # Address/Data so the controller sees a configured table.
+    #
+    # 1. Read MSI-X Table Offset/BIR from cap+0x04.
+    var table_off_bir = pci_read32(bus, slot, func, msix_off + 4);
+    var table_bir     = table_off_bir & 0x07;
+    var table_off     = table_off_bir & 0xFFFFFFF8;
+    #
+    # 2. Read BAR(BIR) from PCI config space.
+    var bar_addr      = pci_read32(bus, slot, func, 0x10 + table_bir * 4) & 0xFFFFFFF0;
+    var table_phys    = bar_addr + table_off;
+    #
+    # 3. Program vector 0:
+    #    - Message Address Lo = 0xFEE00000 (BSP LAPIC base, dest mode
+    #      physical, dest CPU 0, no redirection hint).
+    #    - Message Address Hi = 0 (32-bit MSI on x86_64; high dword
+    #      reserved 0 per Intel SDM Vol 3A §10.11.1).
+    #    - Message Data = 0x00000040 (vector 0x40, delivery mode 000
+    #      = Fixed, level 0, trigger 0 = Edge).
+    #    - Vector Control = 1 (mask bit set; no IDT delivery, AGNOS
+    #      polls the event ring on timer tick).
+    store32(table_phys + 0, 0xFEE00000);
+    store32(table_phys + 4, 0);
+    store32(table_phys + 8, 0x40);
+    store32(table_phys + 12, 1);
+    #
+    # 4. Readback flush (Linux-prior-art convention; Repair JJ pattern
+    #    applied to MSI-X table writes).
+    var flush = load32(table_phys + 12);
+    #
+    return 1;
+}
+```
+
+**Sub-repair audit**:
+
+| Sub-step | Risk | LOC | Justification |
+|---|---|---|---|
+| QQ.1 Read Table Offset/BIR | Zero | +1 | Standard PCI cap-walk continuation |
+| QQ.2 Compute table_phys | Zero | +3 | Standard MSI-X table address derivation per PCI 3.0 §6.8.2.4 |
+| QQ.3a Write Message Address Lo (0xFEE00000) | Low | +1 | Intel/AMD x86 LAPIC base — universal MSI message addr (Intel SDM Vol 3A §10.11.1 / AMD APM Vol 2 §16.3) |
+| QQ.3b Write Message Address Hi (0) | Zero | +1 | x86_64 MSI is 32-bit; high dword reserved 0 |
+| QQ.3c Write Message Data (0x40) | Low | +1 | Vector 0x40 chosen: above PIC remap (0x20-0x2F), above legacy IRQs (0x30-0x3F), well below NMI/MCE/spurious (0xFC-0xFF). Fixed delivery + edge trigger = standard MSI-X default per PCI 3.0 §6.8.2.5.2. |
+| QQ.3d Write Vector Control (1) | Zero | +1 | Mask bit stays set; preserves AGNOS polling posture; no ISR plumbing required |
+| QQ.4 Readback flush | Zero | +1 | Linux-convention MMIO flush; Repair JJ pattern extended to MSI-X table region |
+
+**Total LOC delta**: ~9 lines added to `pci_enable_msix_unmasked`. No other files touched. Build expected to add ~50-80 B.
+
+**Pre-bound outcome grid**:
+
+| FB delta | Reading |
+|---|---|
+| Enable Slot succeeds (cmd_completion event posts) | **QQ IS THE UNBLOCK.** Boot proceeds past the cmd-path gate; Phase 4/5 (HID + kb_buf) becomes the typeable-shell gate. Bisect not needed — QQ is a single mechanism. |
+| `events_seen=0` survives | **QQ FALSIFIED.** Two follow-on hypotheses: (QQ') unmask Vector Control (write 0 instead of 1) — but requires ISR or accepts spurious-IDT fault; (QQ'') Linux's MaskAll-then-table-then-clear-MaskAll ordering matters — currently we do Enable + FuncMask-clear → table-write, which differs from Linux's Enable + MaskAll → table-write → clear-MaskAll. Try QQ'' first (zero-risk reorder, no ISR). If both falsify, escalate to PP (UC-remap DMA regions). |
+| Visible regression | Most likely culprit: malformed table_phys derivation (BIR misread or BAR-base misread). Triage: print table_phys via existing CMOS slot (e.g., reuse 0x81/0x84 — virgin scratch confirmed on archaemenid) and verify against `lspci -vv` reference. |
+
+**Pre-burn checklist** (when staged):
+
+1. ✅ User approval for staging the QQ + QQ'' bundle (2026-05-18 AskUserQuestion).
+2. ✅ Edits landed:
+   - `kernel/arch/x86_64/usb/xhci.cyr`: moved `pci_enable_msix_unmasked` call from BEFORE the BAR range check (pre-edit line 122) to AFTER `vmm_remap_uc_2mb` (pre-edit line 154). Mandatory ordering — table writes must hit the UC-remapped chunk, otherwise we replay the pre-Repair-X PORTSC silent-absorb hazard in WB.
+   - `kernel/core/pci.cyr`: extended `pci_enable_msix_unmasked` with three phases (Enable+FuncMask=1 → table-write vector 0 → clear FuncMask). Vector 0 entry: Address Lo = 0xFEE00000, Hi = 0, Data = 0x40, Vector Control = 1, readback flush.
+3. ✅ Rebuild verified: `build/agnos` = **368,968 B** (multiboot2 (ELF64): OK, entry 0x1000a8). Delta from pre-edit baseline (368,568 B): **+400 B**. Larger than the +60 B estimate but proportionate to the actual LOC delta — Phase 1 write + table-write block + Phase 3 write + reordered comment block + xhci.cyr reorder.
+4. Pending: `install-usb.sh --update`.
+5. Pending: per-action burn approval (`feedback_per_action_consent`).
+
+**Build under test**: `build/agnos` 368,968 B, mtime 2026-05-18 (post-QQ). Source: `kernel/core/pci.cyr` `pci_enable_msix_unmasked` lines updated; `kernel/arch/x86_64/usb/xhci.cyr` MSI-X call moved after `vmm_remap_uc_2mb`.
+
+---
+
 ## Carry-forward items (not blocking Attempt 28)
 
 - **aarch64 native boot test**: blocked on Pi SSH access. Cyrius
