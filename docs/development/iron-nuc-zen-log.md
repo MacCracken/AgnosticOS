@@ -6010,6 +6010,158 @@ Safety: FB confirms `MSI-X enabled (function-mask)` — function-mask suppresses
 - Triage classes 1, 2, 4, 5 stay parallel-track. If FF doesn't unblock, the next cut adds read-only CRCR.CRR readback + cmd TRB phys verify.
 - xHCI hardening backlog (HCCPARAMS3 read, vendor PCI cap dump) remains parallel-track. Not load-bearing for MVP.
 
+### Attempt 57 — 2026-05-17 → REPAIR (FF) FALSIFIED; `events_seen=0` SURVIVES IMAN.IE=1; ATTEMPT-58 INSTRUMENTATION STAGED
+
+Iron burn of the 1.30.6 kernel (FF applied — `xhci_rt_write32(ir0 + XHCI_IR_IMAN, 0x3)` replacing the 1.30.5 `0x1`). Pre-bound expectation per Attempt 56's close: **non-zero `events_seen`** with a CMD_COMPLETION event landing on the ring within the timeout window. Iron result was decisive in the wrong direction.
+
+**Build under test**:
+
+| Component | Version | Source |
+|---|---|---|
+| agnos kernel | 1.30.6 | `agnos@HEAD` (FF cut + Attempt-56 instrumentation retained) |
+| gnoboot | 0.2.0 | no changes |
+| cyrius toolchain | 5.11.59 | agnos `cyrius.cyml` |
+| agnosticos boot pipeline | 2026.5.13+ | `install-usb.sh --update` provisioned |
+
+**FB outcome** (image at [`iron-nuc-zen-photos/attempt-57-xhci-repair-ff-ie-set-events-seen-still-zero.jpg`](iron-nuc-zen-photos/attempt-57-xhci-repair-ff-ie-set-events-seen-still-zero.jpg)):
+
+```
+xhci: MSI-X enabled (function-mask)
+xhci: found at 02:00.0/2c305000
+xhci: HCSPARAMS1 b1=22 b2=ff intr=64 slots, 6 ports
+xhci: scratchpad ready, array=4698112
+xhci: controller running, HCH=0, ERDP=4714496
+xhci: drained 0 events
+xhci: enable_slot entry idx=1 cycle=1
+xhci: cmd completion timeout, final_idx=1 cycle=1 events_seen=0
+xhci: Enable Slot failed, ccode=0
+xhci: enumeration timeout
+…
+AGNOS shell v1.30.6 (type 'help')
+agnos>
+```
+
+`events_seen=0` identical to Attempt 56. IMAN.IE=1 did not unblock event posting.
+
+**CMOS post-mortem (Attempt 57)** — slot-by-slot vs. Attempt 56 (identical except as noted):
+
+| Slot | Value | Reading |
+|---|---|---|
+| `[0x50]` | `0x15` | Shell reached. |
+| `[0x63]` | `0x04` | Port 3 (Keychron) connected. |
+| `[0x64]` | `0x04` | Port 3 reset-OK (EE intact across two minors). |
+| `[0x77]/[0x78]` | `0x00` / `0x00` | USBSTS bytes 0+1 clean — no HCH/HSE/CNR/HCE. |
+| `[0x79]` | `0x0D` | R/S \| INTE \| HSEE — H4 widened mask intact. |
+| `[0x7F]` | `0xAA` | Z timing site executes per loop iteration. |
+| `[0x80]` | `0x02` | MaxScratchpadBufs (AA). |
+| `[0x83]` | `0x47` | sp_array phys byte 2 = 0x47 ↔ FB `sp_array=4698112` (0x47B400 ✓). |
+| `[0x84]` | `0xBB` | DNCTRL write (BB intact). |
+| `[0x86]/[0x87]` | `0x5A` / `0xA5` | FCH 1022:1639 extended-CMOS offset-≥6 alias quirk (firmware-managed, not a regression). |
+
+ERDP shifted 4624384 → 4714496 between Attempts 56 and 57 because the event ring allocation moved when the 1.30.6 cut grew the kernel by ~one block (banner refs alone), not because event-ring behavior changed.
+
+**Triage class outcomes (updated post-FF)**:
+
+| Class | Status after Attempt 57 |
+|---|---|
+| 1. CRCR plumbing | **STILL OPEN.** CRCR write at `xhci.cyr:532` ran (cmd_ring_phys + RCS=1) but HW-side `CRR` bit never read back. Promoted to primary suspect — Attempt 58 stamps it. |
+| 2. Cmd TRB cycle bit on first issue | **STILL OPEN.** xhci_cmd_submit OR-s `xhci_cmd_ring_cycle` (=1) into dword 3 but no readback after the store. Promoted — Attempt 58 stamps it. |
+| 3. Event-ring polling vs PSC events | FALSIFIED at Attempt 56 (events_seen=0 → nothing on the ring at all). Carried forward. |
+| 4. 64-bit cmd TRB phys vs low-32 match | Moot until any event lands. |
+| 5. CSS / RCS race | **STILL OPEN — covered by class 1 readback.** CRCR.CRR=1 would clear it; CRR=0 would implicate it. |
+| 6. Interrupter disabled (IE=0) | **FALSIFIED.** IMAN write took effect (Attempt 58 readback will confirm the register read-back) but events still don't post — IE was *not* the gate. |
+
+**Verdict**: Repair (FF) is the **14th falsified hypothesis** in the silent-absorb / event-posting arc (post-EE closure of the silent-absorb sub-arc, FF was hypothesis 1 of the new event-posting sub-arc and went the same way). The gate sits earlier than the interrupter — most likely at the cmd ring level (HW never accepts the ring → never produces a CMD_COMPLETION) rather than the event-routing level (events generated but routed to wrong ring / dropped pre-IE).
+
+**Decisions applied**:
+
+- Two falsified spec-narrow-reading repairs in a row (EE: PORTSC RW1S re-mask; FF: IMAN.IE=0). Memory `feedback_known_knowledge_first` re-validated — prior-art diff against Linux + EDK2 has unblocked both; per-bit AGNOS-spec audit has not been load-bearing in this arc.
+- The escalation pre-bound at Attempt 56's close (CRCR.CRR + cmd TRB phys readback) is now staged (see "Attempt 58 staged instrumentation" below). Read-only; no behavioral change.
+- Phase 4 + 5 code surface (`hid_kbd_configure`, transfer ring, HID translation, `kb_buf`) is downstream of Enable Slot returning a valid slot ID — still dormant until events post.
+- No agnos VERSION bump in this entry per `feedback_no_unprompted_version_bumps`. Whether the next iron exposure ships as 1.30.7 or stays under the 1.30.6 banner with a build-only diff is the user's call.
+- Memory entries to update: none new — this is more of the same `feedback_known_knowledge_first` + `feedback_iron_burns_block_other_work` discipline.
+
+#### Attempt 58 staged instrumentation — read-only, line-by-line audited
+
+Staged in `agnos@HEAD` (not yet committed; awaiting per-action burn approval per `feedback_iron_burns_block_other_work`).
+
+**Edit A — `kernel/arch/x86_64/usb/xhci.cyr` (CRCR / ERSTSZ / IMAN / ERDP readback)**
+
+Insertion point: after the existing `xhci: controller running, HCH=0, ERDP=...` print + `xhci_running = 1`, BEFORE the CMOS 0x31 stamp. No timing-sensitive sequence disturbed.
+
+```cyrius
+var crcr_lo = xhci_op_read32(XHCI_OP_CRCR);
+var erstsz  = xhci_rt_read32(ir0 + XHCI_IR_ERSTSZ);
+var iman_rb = xhci_rt_read32(ir0 + XHCI_IR_IMAN);
+var erdp_lo = xhci_rt_read32(ir0 + XHCI_IR_ERDP);
+kprint("xhci: CRCR.CRR=", 15);
+kprint_num((crcr_lo >> 3) & 0x1);
+kprint(" ERSTSZ=", 8);
+kprint_num(erstsz);
+kprint(" IMAN=", 6);
+kprint_num(iman_rb);
+kprint(" ERDP_lo=", 9);
+kprint_num(erdp_lo);
+kprintln("", 0);
+```
+
+Pre-bound interpretation grid (one FB line, four numbers — read left-to-right):
+
+| Field | Expected | If different |
+|---|---|---|
+| `CRCR.CRR` | `1` | `0` → controller never accepted the cmd ring; class 1 confirmed. Stage cmd-ring-base + RCS-write sequencing audit (CSS / re-init order, force-stop via CS\|CA before re-write). |
+| `ERSTSZ`   | `1` | `0` → our ERSTSZ write didn't stick; interrupter-write ordering broke. Audit ERSTSZ/ERSTBA/ERDP sequence and any earlier register write that could clobber. |
+| `IMAN`     | `3` | Any other → FF didn't actually stick at the register (caching / RMW shadow / runtime base wrong). Re-confirm `XHCI_RT_IR0_BASE` + `XHCI_IR_IMAN` offsets against the controller's runtime register space. |
+| `ERDP_lo`  | low 32 of `xhci_evt_ring_phys` | Mismatch → ERDP write went to a different physical address than the event-ring allocation. Walk PML4→PDPT→PD on `xhci_rt_base + XHCI_RT_IR0_BASE + XHCI_IR_ERDP` to verify the MMIO mapping. |
+
+**Edit B — `kernel/arch/x86_64/usb/xhci_cmd.cyr` (per-submit TRB phys + dw3 readback)**
+
+Two changes:
+
+1. Add two new globals alongside `xhci_diag_evt_count` / `XHCI_DIAG_EVT_MAX`:
+
+   ```cyrius
+   var xhci_diag_submit_count = 0;
+   var XHCI_DIAG_SUBMIT_MAX   = 2;
+   ```
+
+2. Insert a bounded print in `xhci_cmd_submit`, AFTER the four `store32` dwords + wrap-handling block, BEFORE the doorbell ring `store32(xhci_mmio_base + xhci_db_off, 0)`:
+
+   ```cyrius
+   if (xhci_diag_submit_count < XHCI_DIAG_SUBMIT_MAX) {
+       xhci_diag_submit_count = xhci_diag_submit_count + 1;
+       kprint("xhci: cmd_submit#", 17);
+       kprint_num(xhci_diag_submit_count);
+       kprint(" trb_phys=", 10);
+       kprint_num(trb);
+       kprint(" dw3=", 5);
+       kprint_num(load32(trb + 12));
+       kprintln("", 0);
+   }
+   ```
+
+Pre-bound interpretation grid (two FB lines for a healthy boot — one per submit):
+
+| Field | Expected (Enable Slot, first call) | If different |
+|---|---|---|
+| `trb_phys` | `xhci_cmd_ring_phys + 0` (page-aligned) | Mismatch → cmd ring base computation drifted; audit `xhci_cmd_ring_phys` allocator + `xhci_rings_init`. |
+| `dw3`      | `(XHCI_TRB_ENABLE_SLOT << 10) \| 1` = `0x2401` | Bit 0 (cycle) clear → `xhci_cmd_ring_cycle` not initialized to 1 in `xhci_rings_init`. Bits 10:15 ≠ Enable Slot → caller passed wrong type. |
+
+**Line-by-line risk audit** (mandatory per `feedback_iron_burns_block_other_work`):
+
+| New stmt | Side effect | Fault potential | Timing | Notes |
+|---|---|---|---|---|
+| 4× MMIO reads (CRCR/ERSTSZ/IMAN/ERDP) | None — pure reads of UC-mapped regions earlier write-verified successful | None — same MMIO surface used by other op_read/rt_read calls upstream | ~10–50 ns each on Zen UC, all *after* R/S + HCH=0 wait; no in-sequence intrusion | Reads return real state; CRCR pointer portion is indeterminate-on-read per §5.4.5 but CRR bit (3) is RO-readable, which is the only bit we extract |
+| 1 FB line, 9 kprint calls (CRCR block) | FB write only | None — kprint is the existing primary truth-channel helper, already used 30+ times in this file | Same FB-write timing as all existing diagnostic lines | +1 framebuffer line; fits in existing one-screen footprint with margin |
+| 2 new globals (`xhci_diag_submit_count`, `XHCI_DIAG_SUBMIT_MAX`) | Static-data only | None | None | +8 bytes data segment |
+| `if (xhci_diag_submit_count < XHCI_DIAG_SUBMIT_MAX)` branch + increment | Read + write of a static counter | None | Branch overhead negligible | Cap of 2 prevents FB scroll |
+| `load32(trb + 12)` | Read of WB-cached memory we wrote 4 stmts earlier | None — `trb` is `xhci_cmd_ring_phys + slot_off` from line 60; page-mapped R/W; current core just stored to it | Negligible; coherent DMA on x86_64 means HW sees our store regardless of read order | Verifies our store stuck (sanity for store32 ordering / cycle-bit OR) |
+| 1 FB line, 7 kprint calls (cmd_submit block) | FB write only, gated on counter | None | Inserted BEFORE the doorbell write so any FB-write-induced delay is *before* HW sees the cmd, not after — order-of-operations preserved | +2 framebuffer lines per boot (cap) |
+
+Total build delta: **+1,264 B** kernel (`build/agnos` 364,736 B at 1.30.6 → **366,000 B** with Attempt-58 instrumentation). Build OK, multiboot2 ELF64 entry `0x1000a8` unchanged. cyrius toolchain 5.11.59 unchanged.
+
+No behavioral repair. No version bump. Awaiting per-action burn approval before proposing iron exposure 58.
+
 ---
 
 ## Carry-forward items (not blocking Attempt 28)
