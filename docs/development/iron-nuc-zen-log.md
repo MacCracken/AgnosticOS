@@ -6522,6 +6522,178 @@ xhci: keyboard layer initialized
 2. **Pending**: user runs `install-usb.sh --update` to flash `build/agnos` onto the USB stick.
 3. **Pending**: user-side per-action burn approval (per `feedback_per_action_consent` — last approval was for Attempt 60; Attempt 61 needs a fresh yes).
 
+### Attempt 61 — 2026-05-18 ~08:30 PDT → REPAIR (MM) FALSIFIED; `events_seen=0` SURVIVES MSI-X FUNCTION-MASK CLEAR
+
+**Burn outcome** (FB captures `attempt-60-stack-bundled-still-zero-reshot.jpg` and `attempt-58-…-reshot.jpg` — note: user labels diverged from log convention; `XHCI_MM_Attempt.jpg` reshot taken 2026-05-18 08:37 captures the MM burn FB):
+
+```
+xhci: MSI-X enabled (no function-mask)        ← MM literal proves flash landed
+xhci: found at <BAR>, 64 slots, 6 ports
+xhci: USBLEGSUP already OS-pwned              ← USBLEGSUP carry-forward (Repair S/T)
+xhci: scratchpad ready, array=…               ← AA carry-forward
+xhci: halted, reset clean
+xhci: drained 1 events                        ← DD carry-forward (PSC event posted on connection)
+xhci: controller running, HCH=0, ERDP=…
+xhci: CRCR.CRR=1 ERSTSZ=1 IMAN=2 ERDP_lo=…    ← JJ readbacks all clean
+xhci: enable_slot entry idx=1 cycle=1
+xhci: cmd_submit#1 trb_phys=<X> dw3=9217      ← cmd TRB healthy (cycle bit set, type=Enable Slot)
+xhci: cmd completion timeout, final_idx=1 cycle=1 events_seen=0
+xhci: Enable Slot failed, ccode=0
+[…shell launches, no keys typeable…]
+```
+
+**Verdict**: MSI-X Function Mask is NOT the gate. The "user-validated hypothesis space" from `state.md` 2026-05-17 has now been fully exhausted by MM.
+
+**Triage class outcomes (post-Attempt-61)**:
+
+| Class | Status |
+|---|---|
+| MSI-X Function Mask gating event posting | **FALSIFIED** — function-mask=0 produces identical `events_seen=0` symptom. |
+| All prior classes from Attempt 60 (cycle bit, doorbell flush, CNR, Link TRB cycle) | Stay falsified. |
+| Per-TRB-type CCE gating on AMD Renoir | Still improbable; not staged. |
+| Fundamental DMA path dropping HW→RAM event ring writes | Still requires instrumentation to validate; not staged. |
+
+**Decision applied**: Per user 2026-05-18 mid-day ("I really don't care what fixes it I want it fixed... hardening and cleanup can always be done later"), the "single-behavioral-repair-per-burn" discipline is suspended for the cmd-path silent-absorb arc. Future burns may bundle multiple convergent-prior-art behavioral repairs as long as each carries its own line-by-line audit. Instrumentation discipline (`feedback_no_instrumentation_means_no_instrumentation`) remains in force.
+
+**Pivot to multi-source prior-art audit** (replaces letter-stacking):
+- New artifact: [`docs/development/xhci-prior-art-audit.md`](xhci-prior-art-audit.md) — four-source (Linux + FreeBSD + Haiku + EDK2) convergence diff against AGNOS xhci_start + cmd-submit + CCE-drain.
+- Replaces the symptom-dictionary bootstrap with a baseline-diff bootstrap. Next session reads this BEFORE the CMOS read-boot-log.
+- Sibling: [`scripts/read-boot-log-focused.sh`](../../scripts/read-boot-log-focused.sh) — current-sweep CMOS view, strips falsified-hypothesis chapters.
+
+### Attempt 62 prep — Repair (NN) — ERDP-before-ERSTBA + CRCR-after-IMOD (bundled from prior-art audit Tier 1)
+
+**Hypothesis bundle**:
+
+1. **NN.A — ERDP write must precede ERSTBA write** (xHCI 1.2 §5.5.2.3.3): once ERSTBA enables the ring, ERDP outside the ring is undefined behavior. AGNOS previously wrote ERSTBA before ERDP. Convergent prior art: FreeBSD `xhci_start_controller` (`sys/dev/usb/controller/xhci.c:1505-9`), Haiku `XHCI::Start` (`xhci.cpp:1744-9`), EDK2 `CreateEventRing` (`XhciSched.c:2651-9`) all write ERDP before ERSTBA. Linux is the outlier (works on most silicon; AMD FCH 1022:1639 may be strict-spec).
+2. **NN.B — CRCR write moved to after IMAN/IMOD** (before R/S=1): some controllers internally couple "command ring active" to "event ring armed." AGNOS previously wrote CRCR before interrupter setup. Convergent prior art: FreeBSD (`xhci.c:1517-23`), Haiku (`xhci.cpp:1756-7`) both program interrupter first, CRCR last before R/S=1.
+
+**Audit (line-by-line)**:
+
+| Site | Before | After | Rationale |
+|---|---|---|---|
+| `kernel/arch/x86_64/usb/xhci.cyr:587-589` | `ERSTSZ → ERSTBA → ERDP` | `ERSTSZ → ERDP → ERSTBA` | 3-of-4 prior-art convergence + spec wording §5.5.2.3.3. Zero LOC change in opcodes; reorder of two call lines + comment refresh. |
+| `kernel/arch/x86_64/usb/xhci.cyr:582 → after :607 (IMOD write)` | CRCR written between DCBAAP and ERSTSZ | CRCR written between IMOD and USBCMD R/S=1 | 2-of-4 prior-art convergence (FreeBSD + Haiku). Zero LOC change in opcodes; one call line moved. |
+
+**Honest confidence**: medium-low for `events_seen=0`. Both divergences happen with R/S=0; the controller is halted throughout, so the ordering pre-R/S shouldn't matter on Linux-compliant silicon. If AMD FCH is strict-spec, this is the fix. If not, Repair (OO) is staged below.
+
+**Build under test**:
+
+| Component | Version | Source |
+|---|---|---|
+| agnos kernel | 1.30.6 + NN | `build/agnos` **368,472 B** mtime 2026-05-18 09:01:13 PDT. Size identical to Attempt 61 (reorder-only edit, no instruction-count change). ELF64 multiboot2 entry `0x1000a8`. Build clean (`compile … OK`, multiboot2 (ELF64): OK). |
+| gnoboot | 0.2.0 | no changes |
+| cyrius toolchain | 5.11.59 | agnos `cyrius.cyml` |
+
+**Pre-bound outcome grid**:
+
+| FB delta | Reading |
+|---|---|
+| `Enable Slot` succeeds; Phase 4 lines appear | **NN IS THE UNBLOCK.** AMD FCH 1022:1639 is strict-spec on ERDP-before-ERSTBA and/or CRCR-after-interrupter. Phase 4/5 (HID configure + kb_buf feed) becomes the typeable-shell gate. |
+| `cmd completion timeout … events_seen=0` (familiar) | **NN FALSIFIED.** Both reorderings were zero-risk hygiene that didn't address the gate. **Repair (OO) Tier 2 bundle stages automatically** (next entry); no user re-approval needed for the OO BURN itself (queue-staged per user 2026-05-18), but flash + per-action approval still required per `feedback_per_action_consent`. |
+| Visible regression vs Attempt 61 | Triage: revert NN and bisect A vs B separately. Unlikely on a pure reorder with R/S=0 throughout. |
+
+**Pre-burn checklist**:
+
+1. ✅ Build verified: 368,472 B (identical to Attempt 61 — reorder-only).
+2. **Pending**: user runs `install-usb.sh --update`.
+3. **Pending**: user-side per-action burn approval.
+
+### Attempt 63 prep — Repair (OO) — Tier 2 convergent-prior-art bundle (CONDITIONAL on Attempt 62 falsification)
+
+**Trigger**: Repair (NN) burned and falsified at Attempt 62. If NN unblocks, OO is shelved (not deleted — held as belt-and-suspenders for any future xhci-driver regression on a different AMD chipset).
+
+**Hypothesis bundle** — four convergent-prior-art behavioral repairs, each independently zero-to-low risk, bundled to compress iron burns per user 2026-05-18 directive:
+
+#### OO.A — RW1C-clear USBSTS at start of xhci_start
+
+**Prior art**: FreeBSD `xhci_start_controller` (`sys/dev/usb/controller/xhci.c:1463-66`):
+```c
+temp = XREAD4(sc, oper, XHCI_USBSTS);
+XWRITE4(sc, oper, XHCI_USBSTS, temp);
+```
+
+**Gap**: AGNOS doesn't explicitly clear USBSTS at `xhci_start` entry — relies on HCRST clearing it. But HCRST may leave certain change bits (PCD, EINT, etc.) asserted from pre-HCRST activity, which can confuse the interrupter state machine on the first event post.
+
+**Edit**: Add at `xhci.cyr:548` (before CNR-wait), inside `xhci_start`:
+```cyrius
+# OO.A — RW1C-clear all USBSTS change bits before configuring.
+# FreeBSD xhci.c:1463-66 pattern. HCRST clears most state but PCD/EINT
+# can survive across reset on some controllers.
+var sts_pre = xhci_op_read32(XHCI_OP_USBSTS);
+xhci_op_write32(XHCI_OP_USBSTS, sts_pre);
+```
+
+**Risk**: Zero. RW1C-writeback of a just-read value clears only what was already set; preserves invariants.
+
+#### OO.B — IMAN.IE write moved to AFTER R/S=1
+
+**Prior art**: Linux `xhci_run_finished` (`drivers/usb/host/xhci.c:1145-1147`) — sets `CMD_EIE` (Event Interrupt Enable on USBCMD) AFTER `xhci_start(xhci)` (which sets R/S=1). The interrupter IE write follows in `xhci_enable_interrupter`.
+
+**Gap**: AGNOS sets IMAN.IE at `xhci.cyr:602` BEFORE R/S=1 at line 615. May matter if controller's interrupter state machine latches IE-config at R/S transition and ignores pre-R/S IE writes.
+
+**Edit**: Move `xhci.cyr:602` (`xhci_rt_write32(ir0 + XHCI_IR_IMAN, 0x3)`) to immediately AFTER the R/S=1 write + HCH-clear wait (after line ~626).
+
+**Risk**: Very low. Linux works this way on millions of machines. The "IE before R/S=1" pattern that AGNOS uses was a Repair (FF) addition — may have been the wrong order all along.
+
+#### OO.C — Explicit `mfence` before doorbell write
+
+**Prior art**: None directly (x86 TSO makes mfence redundant in theory), but defensive against any AMD FCH-specific PCIe-write reorder hazard. Linux `xhci_ring_cmd_db` relies on `writel + readl` (which AGNOS replicates as Repair HH).
+
+**Gap**: AGNOS relies on x86 store-ordering rules to make the cmd-ring TRB store (WB) visible before the doorbell store (UC). On AMD this should be automatic via snoopy DMA coherence. But an explicit `mfence` between the TRB write and the doorbell write costs ~10 cycles and isolates the variable.
+
+**Edit**: Add at `xhci_cmd.cyr:129` (between TRB stores and doorbell store):
+```cyrius
+# OO.C — mfence before doorbell. Defensive insurance against any
+# AMD FCH PCIe-write-reorder hazard; x86 TSO should make this a no-op.
+asm { 0x0F; 0xAE; 0xF0; }   # mfence
+```
+
+**Risk**: Zero. mfence is a no-op on a system already satisfying x86 TSO + coherent DMA.
+
+#### OO.D — Cmd-ring TRB readback flush
+
+**Prior art**: Repair JJ pattern — Linux convention is `writel + readl` after every operational/runtime MMIO write. AGNOS extended this to op/rt writes but not to RAM-side cmd-ring TRB writes (because RAM-side writes don't have a posted-write barrier hazard on x86 — they go to cache, not through the host bridge).
+
+**Gap**: But if the controller's DMA-read of the TRB happens via a different path than expected (e.g., uncached read direct to memory bus bypassing snoop), the cmd-ring TRB store might not be visible. A readback of the just-written TRB forces the store buffer to drain to cache.
+
+**Edit**: Add at `xhci_cmd.cyr:74` (after the four `store32` calls in `xhci_cmd_submit`):
+```cyrius
+# OO.D — readback flush the cmd-ring TRB write. Analogous to Repair JJ
+# but for the cmd-ring TRB store. Belt-and-suspenders against any DMA
+# coherence gap on the cmd-ring path.
+var trb_flush = load32(trb + 12);
+```
+
+**Risk**: Zero. One added load instruction per cmd submit; result is discarded.
+
+**Bundled audit summary**:
+
+| Sub-repair | Risk | Confidence (events_seen=0 fix) | LOC delta |
+|---|---|---|---|
+| OO.A (USBSTS clear) | Zero | Medium — addresses interrupter state-machine confusion from pre-reset residue | +2 lines |
+| OO.B (IMAN.IE post-R/S) | Very low | Medium-high — Linux convention; FF may have been wrong order | 1 line moved |
+| OO.C (mfence) | Zero | Low — defensive; x86 TSO already handles this | +1 line |
+| OO.D (TRB readback) | Zero | Low — defensive; cache coherence should already handle this | +1 line |
+
+**Aggregate confidence**: Medium-high that ≥1 of these four addresses `events_seen=0`. OO.B is the strongest candidate (direct Linux convention difference). OO.A is the second-strongest (FreeBSD-confirmed gap).
+
+**Build under test (when staged)**: Will rebuild on user signal post-Attempt-62 burn. Expected size delta: +20 B (four short asm/load additions).
+
+**Pre-bound outcome grid**:
+
+| FB delta | Reading |
+|---|---|
+| `Enable Slot` succeeds | **OO IS THE UNBLOCK.** Bisect to identify which of A/B/C/D was load-bearing via post-burn code-revert sweep (cheap; no further iron needed). Phase 4/5 becomes the typeable-shell gate. |
+| `events_seen=0` survives | **OO FALSIFIED.** Repair (PP) = heavy-hammer event-ring + cmd-ring UC remap (eliminates cache coherence as a variable entirely). Document in this log; do not auto-stage — needs user re-approval per `feedback_per_action_consent` because UC mapping changes timing characteristics. |
+| Visible regression | Bisect A/B/C/D individually. Most likely culprit: OO.B (interrupter latching timing). Revert OO.B specifically, re-burn rest. |
+
+**Pre-burn checklist (when staged)**:
+
+1. Pending: Attempt 62 falsification confirmed (otherwise OO is shelved).
+2. Pending: build kernel with OO bundle, verify size delta + literal presence (TBD).
+3. Pending: `install-usb.sh --update`.
+4. Pending: user-side per-action burn approval (per `feedback_per_action_consent`).
+
 ---
 
 ## Carry-forward items (not blocking Attempt 28)
