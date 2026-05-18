@@ -278,10 +278,6 @@ fn main(): i64 {
     var xh_hcsp2b2 = cmos_read(133);  # 0x85 — Repair (AA audit add-on) HCSPARAMS2 byte 2 (raw bits 23:16)
     var xh_ccsent  = cmos_read(134);  # 0x86 — Repair (CC) extended-CMOS bank sentinel (0xCC = 0x72/0x73 pair live)
     var xh_ddsent  = cmos_read(135);  # 0x87 — Repair (DD) event-ring drain sentinel (0xDD = site executed)
-    var xh_iisent  = cmos_read(136);  # 0x88 — Repair (II) cmd-wait timeout-path sentinel (0xEE = site executed)
-    var xh_iicrcr  = cmos_read(137);  # 0x89 — Repair (II) CRCR low byte at timeout (bit 3 = CRR)
-    var xh_iists0  = cmos_read(138);  # 0x8A — Repair (II) USBSTS byte 0 at timeout (bit 0 HCH, bit 2 HSE, bit 4 PCD)
-    var xh_iists1  = cmos_read(139);  # 0x8B — Repair (II) USBSTS byte 1 at timeout (bit 3 CNR, bit 4 HCE)
 
     print_cmos_line("CMOS[0x53] gnoboot magic    = ", gmagic);
     print_cmos_line("CMOS[0x52] gnoboot checkpt  = ", gcp);
@@ -364,10 +360,6 @@ fn main(): i64 {
     print_cmos_line("CMOS[0x85] xhci HCSPARAMS2 byte 2 raw (AA aud) = ", xh_hcsp2b2);
     print_cmos_line("CMOS[0x86] xhci extended-CMOS sentinel (CC)    = ", xh_ccsent);
     print_cmos_line("CMOS[0x87] xhci event-drain sentinel (DD)      = ", xh_ddsent);
-    print_cmos_line("CMOS[0x88] xhci cmd-wait timeout sentinel (II) = ", xh_iisent);
-    print_cmos_line("CMOS[0x89] xhci CRCR low byte at timeout  (II) = ", xh_iicrcr);
-    print_cmos_line("CMOS[0x8A] xhci USBSTS byte 0 at timeout  (II) = ", xh_iists0);
-    print_cmos_line("CMOS[0x8B] xhci USBSTS byte 1 at timeout  (II) = ", xh_iists1);
 
     # USBLEGSUP outcome decoder.
     if (xh_usbleg == 0) { println("  USBLEGSUP: n/a (no xECP chain) — controller does not advertise extended caps."); }
@@ -637,15 +629,6 @@ fn main(): i64 {
     println("    [0x87]=0xDD + [0x64]!=0x00: **REPAIR (DD) IS THE UNBLOCK** — event-ring drain + PCD clear was the silent-absorb gate. Phase 3 enumeration runs. Phase 4/5 becomes the typeable-shell gate.");
     println("    [0x87]=0xDD + [0x64]=0x00: DD executed cleanly, silent-absorb persists. DD falsified; twelfth hypothesis in the arc. Remaining Linux-diff targets: IMOD-with-INTE write, per-slot doorbell ordering, vendor PCI cap dump. Decoupling decision remains in force — Phase 4/5 continues in parallel.");
     println("    [0x87]=0x00 with kcp >= 0x32: pre-DD binary on iron OR drain site faulted. Verify build size against 1.30.4 DD floor (350,008 B) before interpreting outcome.");
-    println("    Repair (II) — cmd-wait timeout-path readback [0x88..0x8B] (1.30.6 post-Attempt-59). Fires ONLY when xhci_cmd_wait hits its XHCI_CMD_TIMEOUT_SPINS bound — i.e., when events_seen=0 persists for the full window. Captures controller state at the moment of failure: CRCR low byte (bit 3 = CRR = command-ring-running), USBSTS bytes 0+1 (HCH/HSE/PCD/CNR/HCE). Sentinel [0x88]=0xEE proves the timeout site executed.");
-    println("    [0x88]=0x00 with kcp >= 0x32: pre-II binary on iron OR HH unblocked the cmd ring (timeout never reached). Verify build size against 1.30.6 II floor (367,960 B) — if size matches and [0x88]=0x00, II's site simply never ran because Enable Slot succeeded.");
-    println("    [0x88]=0xEE + [0x89] bit 3 = 1 (CRCR.CRR=1 post-doorbell): HW latched the cmd ring AND processed (CRR set in response to doorbell) but didn't post CMD_COMPLETION event. Class 10a falsified. Gate is event-routing for CCE specifically (ERSTBA contents? per-TRB-type quirk?). Investigate ERSTBA + Address Device event flow.");
-    println("    [0x88]=0xEE + [0x89] bit 3 = 0 (CRCR.CRR=0 post-doorbell): HH didn't help OR cmd ring genuinely not latched. Class 10c partial — readback flush wasn't sufficient. Suspect: (i) CRCR write itself absorbed (cache attribute on op-reg region — verify op-reg in same 2MB UC mapping as BAR per Repair X), (ii) HW rejects CRCR while R/S transition pending (timing: pre-R/S=1 write may be too early on AMD FCH).");
-    println("    [0x88]=0xEE + [0x8A] bit 0 (HCH) = 1: controller HALTED itself between R/S=1 and Enable Slot timeout. Major regression — likely USBSTS.HSE (bit 2) also set. Restart xhci_start sequencing audit.");
-    println("    [0x88]=0xEE + [0x8B] bit 3 (CNR) = 1: Controller-Not-Ready re-asserted post-init. Operational-register writes after this point are silently absorbed. Hypothesis: HCRST didn't fully clear before R/S=1, or transient CNR cycle during cmd ring acceptance.");
-    println("    [0x88]=0xEE + [0x8B] bit 4 (HCE) = 1: Host Controller Error — fatal internal HW state. AMD FCH gave up; pre-handoff controller reset in gnoboot may be required.");
-    println("    [0x88]=0xEE + [0x8A]=0x00 + [0x8B]=0x00 + [0x89] bit 3 = 1: cleanest possible failure shape — controller perfectly healthy, accepted cmd ring, doorbell crossed, but no CCE. Surfaces a pure CCE-routing gate (very narrow).");
-    println("    Important: [0x88]=0xEE means the iron burn HIT the failure path. If HH was the unblock, the timeout never executes and slots [0x88..0x8B] retain prior-boot values (or zeros on first cold boot).");
     syscall(1, 1, "\n", 1);
     # End xHCI post-mortem block.
 

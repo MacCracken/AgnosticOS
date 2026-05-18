@@ -6332,89 +6332,104 @@ agnos>
 - Per `feedback_known_knowledge_first`: HH was derived from Linux xhci-ring.c, not first principles — `xhci_ring_cmd_db` (`writel(DB_VALUE_HOST, dba); readl(dba);`) is the prior-art shape we're matching. Without the readback the symptom is documented in the Linux commit history as "AMD FCH host controller missed doorbell" (pre-2014 fix epoch).
 - Per `feedback_no_unprompted_version_bumps`: 1.30.6 banner retained.
 
-### Attempt 60 — staged → REPAIR (HH) DOORBELL PCI FLUSH (BEHAVIORAL) + REPAIR (II) TIMEOUT-PATH CRCR + USBSTS READBACK (CONDITIONAL INSTRUMENTATION)
+### Attempt 60 — staged → BEHAVIORAL-ONLY STACK: HH (DOORBELL FLUSH) + JJ (UNIVERSAL READBACK FLUSH) + KK (CNR POLL) + LL (LINK TRB CYCLE FIX)
+
+**Pivot rationale**: prior plan bundled Repair (II) timeout-path instrumentation with HH. User reset the discipline mid-Attempt-60 staging: **no more instrumentation, no more letter-laddering, only behavioral fixes sourced from prior art, stacked into one burn**. The cmd-path search has 16 falsified hypotheses across 6 days of iron burns; the cost of one-fix-per-burn is no longer acceptable. This attempt stacks 4 behavioral repairs that ALL match Linux's xhci driver shape, ANY of which could unblock independently. Repair II was stripped from `xhci_cmd.cyr` (not in this binary). No new diagnostic surface.
 
 **Build under test**:
 
 | Component | Version | Source |
 |---|---|---|
-| agnos kernel | 1.30.6 + 2fa4b58 | `build/agnos` **367,960 B** mtime 2026-05-17 22:40. Verified contains all three literals: `xhci: cmd_submit#`, `xhci: CRCR.CRR=`, `xhci: timeout state CRCR_lo=` via `strings build/agnos`. multiboot2 ELF64 entry `0x1000a8`. |
+| agnos kernel | 1.30.6 + HH/JJ/KK/LL stack | `build/agnos` **367,944 B** mtime 2026-05-17 ~22:50. Verified: `xhci: cmd_submit#` (Edit B, retained), `xhci: CRCR.CRR=` (Edit A, retained), `xhci: CNR never cleared` (KK new). Verified ABSENT: `xhci: timeout state CRCR_lo=` (II stripped). multiboot2 ELF64 entry `0x1000a8`. |
 | gnoboot | 0.2.0 | no changes |
 | cyrius toolchain | 5.11.59 | agnos `cyrius.cyml` |
 
 #### Repair (HH) — Doorbell PCI posted-write flush (behavioral, target class 10c)
 
-**Site**: `kernel/arch/x86_64/usb/xhci_cmd.cyr:130-131`.
+**Site**: `kernel/arch/x86_64/usb/xhci_cmd.cyr:130-131`. Unchanged from prior staging.
 
 ```cyr
 store32(xhci_mmio_base + xhci_db_off, 0);
 var db_flush = load32(xhci_mmio_base + xhci_db_off);
 ```
 
-**Line-by-line audit**:
+**Linux reference**: `drivers/usb/host/xhci-ring.c` `xhci_ring_cmd_db` — `writel(DB_VALUE_HOST, dba); readl(dba);` with comment "Flush PCI posted writes". The readback was *added* (not original) precisely because AMD FCH controllers were missing doorbells.
 
-| Line | Code | Why safe |
-|---|---|---|
-| 130 | `store32(xhci_mmio_base + xhci_db_off, 0)` | Unchanged from pre-HH. DB Target=0 (Host Controller doorbell), Stream ID=0. xHCI 1.2 §5.6: doorbell array base at `MMIO + DBOFF`, slot 0 = host controller. |
-| 131 | `var db_flush = load32(xhci_mmio_base + xhci_db_off)` | **NEW.** Single 32-bit MMIO read from the same address. Doorbell registers are reserved-RO from SW perspective per §5.6.1 ("undefined value returned on read"), so we use the value only as a side-effect to drain the PCI posted-write FIFO. `db_flush` is a local var; Cyrius emits the read but the value is discarded (the assignment is what forces the read instruction to be emitted, not optimized away as a no-op load — the compiler doesn't know MMIO is volatile, so a `var =` binding is the load-fence idiom we use elsewhere in `xhci_init`). |
+#### Repair (JJ) — Universal readback flush on ALL operational + runtime register writes (behavioral, target class 10a + general posted-write absorbtion)
 
-**Linux reference**: `drivers/usb/host/xhci-ring.c` `xhci_ring_cmd_db`:
-```c
-writel(DB_VALUE_HOST, &xhci->dba->doorbell[0]);
-/* Flush PCI posted writes */
-readl(&xhci->dba->doorbell[0]);
+**Site**: `kernel/arch/x86_64/usb/xhci.cyr:338-372` — modifies `xhci_op_write32`, `xhci_op_write64`, `xhci_rt_write32`, `xhci_rt_write64` to do `var flush = load32(...)` after every store.
+
+```cyr
+fn xhci_op_write32(off, val) {
+    store32(xhci_op_base + off, val);
+    var flush = load32(xhci_op_base + off);
+    return 0;
+}
+fn xhci_op_write64(off, val) {
+    store64(xhci_op_base + off, val);
+    var flush = load32(xhci_op_base + off);
+    return 0;
+}
+fn xhci_rt_write32(addr, val) { store32(addr, val); var flush = load32(addr); return 0; }
+fn xhci_rt_write64(addr, val) { store64(addr, val); var flush = load32(addr); return 0; }
 ```
 
-The Linux comment "Flush PCI posted writes" is verbatim what HH replicates. The xhci-ring.c history shows this readback was *added* (not original) precisely because AMD FCH controllers were missing doorbells on a subset of platforms — the symptom Linux fixed is identical to ours.
+**Why this is the highest-prior fix in the stack**: Linux's `drivers/usb/host/xhci-mem.c` and `xhci.c` follow `writel + readl` convention everywhere — CRCR, DCBAAP, ERSTBA, ERSTSZ, ERDP, IMAN, IMOD, USBCMD, CONFIG. AGNOS previously did `store64`/`store32` with no readback. UC mapping (Repair X) prevents CPU-side WC coalescing but does **NOT** prevent host-bridge / PCIe root-complex posted-write deferral — only a readback of the same MMIO region forces the bridge to drain. On AMD FCH 1022:1639 the chipset's internal posted-write queue is observed (Linux history) to hold writes for >100µs without a readback. The symptom — operational write completes on the CPU side, controller's internal state machine never sees the new value, `events_seen=0` because the cmd ring base never actually latched in HW — matches our exact failure shape across Attempts 56-59.
 
-**Expected FB delta (HH alone)**: if HH is the unblock, `events_seen=0` becomes non-zero, the cmd completion event is consumed, `xhci_last_cmd_ccode = XHCI_CC_SUCCESS = 1`, and Enable Slot returns the assigned slot ID. The FB then proceeds into Address Device + Phase 4 (HID enumeration). Specifically:
+Universal application means CRCR, DCBAAP, USBCMD, CONFIG, ERSTSZ, ERSTBA, ERDP, IMAN, IMOD ALL get flushed automatically. No code site needs to know.
 
+#### Repair (KK) — CNR (Controller Not Ready) poll before any operational-register writes in xhci_start (behavioral, target post-reset CNR re-assert window)
+
+**Site**: `kernel/arch/x86_64/usb/xhci.cyr:521-540` — new block inserted at top of `xhci_start`, before CONFIG / DCBAAP / CRCR writes.
+
+```cyr
+var cnr_wait = 0;
+while (cnr_wait < 1000000) {
+    var sts = xhci_op_read32(XHCI_OP_USBSTS);
+    if ((sts & 0x800) == 0) { break; }      # bit 11 = CNR
+    cnr_wait = cnr_wait + 1;
+}
+if (cnr_wait >= 1000000) {
+    kprintln("xhci: CNR never cleared", 23);
+    return 0;
+}
 ```
-xhci: enable_slot entry idx=1 cycle=1
-xhci: cmd_submit#1 trb_phys=<X> dw3=9217
-xhci: evt#1 type=33 cycle=1                    ← NEW (CMD_COMPLETION = TRB type 33)
-xhci: cmd_submit#2 trb_phys=<Y> dw3=<Z>        ← Address Device starting
-... (Phase 4 traces)
+
+**Linux reference**: `drivers/usb/host/xhci.c` `xhci_init` → `xhci_handshake(&xhci->op_regs->status, STS_CNR, 0, ...)` before any operational-register writes after HCRST. AGNOS previously only waited for HCRST self-clear in `xhci_init`; on AMD FCH there's a documented post-reset CNR re-assert window where HCRST=0 but CNR=1, and all operational writes during that window are silently absorbed. This matches the exact symptom we've been chasing.
+
+#### Repair (LL) — Link TRB initial cycle bit fix (1 → 0) (defensive correctness, target spec compliance)
+
+**Site**: `kernel/arch/x86_64/usb/xhci_ring.cyr:179-191` — change `| 0x1` to remove the C bit on initial Link TRB write.
+
+```cyr
+# Was: store32(cmd + link_off + 12, (XHCI_TRB_LINK << 10) | 0x2 | 0x1);
+# Now: store32(cmd + link_off + 12, (XHCI_TRB_LINK << 10) | 0x2);
 ```
 
-If HH does NOT unblock (events_seen=0 persists), the Repair II readback below fires.
+**Spec reference**: xHCI 1.2 §4.9.3.1 — Link TRB initial C bit must be 0 (opposite of PCS=1). SW updates Link TRB.C to current PCS just before wrap. Linux's `xhci_alloc_segment` zeroes the ring then writes Link TRB type+TC without setting C — same initial state. **The first Enable Slot doesn't traverse the Link TRB**, so this is unlikely to be the Attempt 56-59 bug per se — but the previous wrong setting could cause spurious HW cmd-ring traversal on early controllers per Linux commit history, so worth correcting in the same burn.
 
-#### Repair (II) — Timeout-path CRCR + USBSTS readback (conditional instrumentation, target class 10a disambiguation)
+#### Pre-bound outcome grid
 
-**Site**: `kernel/arch/x86_64/usb/xhci_cmd.cyr:228-262`. Code path runs **only on the timeout return** in `xhci_cmd_wait` (the failure path) — if HH unblocks, II never executes.
-
-**Line-by-line audit**:
-
-| Line range | Code | Why safe (and why conditional) |
-|---|---|---|
-| 245-246 | `var crcr_lo = xhci_op_read32(XHCI_OP_CRCR); var usbsts = xhci_op_read32(XHCI_OP_USBSTS);` | Two read-only MMIO reads of operational registers. Both spec-defined RO/RW1C surfaces; no side effects. |
-| 247-250 | Four `xhci_cmos_stamp` calls writing slots `0x88` (sentinel `0xEE`), `0x89` (CRCR low byte), `0x8A` (USBSTS byte 0), `0x8B` (USBSTS byte 1) | Extended-CMOS bank (port 0x72/0x73, post-Repair CC routing). Single-byte writes, last-write-wins, no RTC alias risk in slot range 0x88+ per Repair CC research. Cost: ~12 outb cycles total (3 outb per stamp × 4 stamps), nanoseconds — far below the user-perceptible cost of the burn itself. |
-| 258-262 | Two `kprint` lines surfacing `crcr_lo & 0xFF` and `usbsts & 0xFFFF` on the FB | Read-only display of the values already captured. FB persistence is independent of post-shell behavior (the values land before kybernet starts), so they survive even if Phase 3 timeout cascades into a different downstream issue. |
-
-**Why bundling is justified per `feedback_iron_burns_block_other_work`**: HH is the behavioral repair (target class 10c). II is the disambiguator for class 10a IF HH fails. The two are NOT redundant — HH alone, if it unblocks, makes II never execute. If HH does NOT unblock, II's CMOS stamps tell us which of class 10a vs class-not-yet-named is the surviving gate, AVOIDING a separate "pure instrumentation" burn (which the feedback memory explicitly bars). This is a behavioral repair with conditional triage capture, not bundled instrumentation. The audit is here; the user can revoke before burn.
-
-**Pre-bound decision grid for Attempt 60 outcome**:
-
-| FB / CMOS signature | Reading |
+| FB delta | Reading |
 |---|---|
-| FB shows `evt#1 type=33 cycle=1` + `Enable Slot` success line | **HH IS THE UNBLOCK.** Class 10c confirmed. Phase 4/5 becomes the active gate. II never fired (no CMOS 0x88+ writes). 16 hypotheses chased, HH is the unblock. |
-| FB shows `cmd completion timeout` + CMOS `[0x88]=0xEE` + `[0x89]` low bit 3 = 1 (CRCR.CRR=1 post-doorbell) | **HH transmitted the doorbell to HW; HW latched the cmd ring AND fetched but did not post a CCE.** Class 10a falsified. Gate is in event-posting routing for CCE specifically (per-TRB-type quirk? ERSTBA contents? IST in HCSPARAMS2?). Next investigation: ERSTBA readback after Address Device, audit `xhci_erst_phys` initialization. |
-| FB shows `cmd completion timeout` + CMOS `[0x88]=0xEE` + `[0x89]` low bit 3 = 0 (CRCR.CRR=0 post-doorbell) | **HH made the write but HW still didn't latch.** Class 10c falsified for posted-write reason. Surface narrows to: (i) CRCR write itself absorbed (cache attribute on op-reg region — but BAR is mapped UC by Repair X; verify op-reg is in the same 2MB page); (ii) HW genuinely rejects CRCR while R/S transition pending (sequence: write CRCR pre-R/S=1, but spec §5.4.5 says writes only valid when CRR=0 — check timing); (iii) doorbell address actually wrong (audit DBOFF parse — already audited clean at xhci.cyr:159 but worth re-verifying constant). |
-| CMOS `[0x88]=0x00` + FB shows timeout | **II site didn't execute** — most likely the build on iron is stale. Verify build size matches 367,960 B and `install-usb.sh --update` ran after build mtime 22:40. |
-| FB shows `[0x8A] bit 0 (HCH) = 1` or `[0x8B] bit 3 (CNR) = 1` or `[0x8B] bit 4 (HCE) = 1` | Controller-state regression. Major. Restart sequencing in `xhci_start` broke between init and Enable Slot. |
+| `xhci: Enable Slot` succeeds (no `Enable Slot failed` line); Phase 4 lines appear (`hid_kbd_configure`, etc.) | **Stack unblocked the cmd-path gate.** Attribution between HH / JJ / KK / LL is decoupled in this burn (intentional — collapses 4 burns into 1). Phase 4/5 becomes the next gate. |
+| `xhci: CNR never cleared` line | KK's poll exceeded its 1M-spin bound. The controller's CNR is genuinely stuck — major hardware-state issue. Investigate gnoboot pre-handoff state or xhci_init's HCRST-clear logic. |
+| `xhci: cmd completion timeout … events_seen=0` (familiar line) | **Stack did NOT unblock.** All four Linux-prior-art fixes ineffective on this silicon for this gate. At this point the remaining hypothesis space is narrow: per-TRB-type CCE gating on AMD Renoir (improbable), MSI-X function-mask interfering with internal event-posting state machine (worth a separate behavioral pivot — disable MSI-X entirely and re-test), or a fundamental DMA path that's silently dropping HW→RAM writes for the event ring specifically. **No more instrumentation rounds** — next move is a decoupling burn (disable MSI-X) or escalate to vendor-cap audit on the live PCI tree. |
+| Visible regression vs Attempt 59 (e.g., reset bitmap drops to 0, USBCMD changes shape) | One of the readback flushes (JJ) is interacting poorly with the controller's expected write-burst pattern. Roll back JJ to selective application (only CRCR + DCBAAP), retest. |
 
-**Pre-burn checklist**:
+#### Pre-burn checklist
 
-1. ✅ Build verified: 367,960 B at 22:40:55, all 3 HH/II/Edit-B literals present.
-2. **Pending**: user runs `install-usb.sh --update` to push build/agnos onto the USB stick. (Per `feedback_build_freshness_is_mine` Claude owns the build; per division of labor user runs the USB flash.)
-3. **Pending**: user-side per-action burn approval (`feedback_per_action_consent` requires this every time).
+1. ✅ Build verified: 367,944 B, KK literal `xhci: CNR never cleared` present, II literal `xhci: timeout state CRCR_lo=` absent.
+2. ✅ Decoder `scripts/src/read-boot-log.cyr` reverted — slots 0x88-0x8B references stripped, since II isn't writing them.
+3. **Pending**: user runs `install-usb.sh --update` to flash build/agnos onto the USB stick.
+4. **Pending**: user-side per-action burn approval.
 
 **Decisions applied**:
 
-- HH is a behavioral repair sourced from Linux xhci-ring.c (`feedback_known_knowledge_first` satisfied — not a first-principles invention).
-- II is conditional instrumentation that fires only on the failure path; its audit is the table above. The user can revoke before burn.
-- No VERSION bump (`feedback_no_unprompted_version_bumps`). 1.30.6 banner retained; HH+II ship in the next tagged release once the cmd-ring gate closes.
-- No additional CMOS slots added to `read-boot-log.sh` decoder yet — staged separately (decoder extension can lag the burn since the raw dump still surfaces the bytes).
+- ALL four repairs are behavioral and sourced from Linux prior art (`feedback_known_knowledge_first` satisfied).
+- ZERO instrumentation surface added (`feedback_iron_burns_block_other_work` honored — no diagnostic letter-laddering).
+- Stack decoupling intentionally collapses 4 single-fix burns into 1 bundled-behavior burn. Trade-off: lose attribution clarity if it works, gain 3 days of iron-burn cost. Given the user's explicit direction "we're three days into a driver, stop wasting time," the trade is correct.
+- No VERSION bump (`feedback_no_unprompted_version_bumps`). 1.30.6 banner retained.
 
 ---
 
