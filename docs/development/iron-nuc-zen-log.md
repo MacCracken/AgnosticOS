@@ -5929,6 +5929,87 @@ Triage 3 is the load-bearing one absent further evidence. The first action is re
 - Next iron exposure (Attempt 56) gated on the read-only event-ring-state instrumentation landing in agnos and getting size-confirmed against the EE-fix floor (~349 KB neighborhood; exact value pending build).
 - Memory entries to update: `feedback_iron_burns_block_other_work` carry-forward is current — Attempt 55 was a *behavioral* burn (real code change), not pure-instrumentation. Future "next enabler" diagnostic must come with the line-by-line audit per the standing rule.
 
+### Attempt 56 — 2026-05-17 → INSTRUMENTATION BURN; `events_seen=0` ROOT-CAUSED AS IMAN.IE=0; REPAIR (FF) STAGED IN 1.30.6
+
+The read-only event-ring-state instrumentation pre-bound at Attempt 55's close landed in agnos@cd36d09 (`xhci: enable_slot entry idx=X cycle=Y` print at `xhci.cyr:604`, per-iteration `xhci: evt# N type=X cycle=Y` prints in `xhci_cmd_wait` capped at 12 events, `xhci: cmd completion timeout, final_idx=X cycle=Y events_seen=N` on the timeout path). Iron burn carried this instrumentation on the 1.30.5 + EE base; the FB result was decisive.
+
+**Build under test**:
+
+| Component | Version | Source |
+|---|---|---|
+| agnos kernel | 1.30.5 + Attempt-56 instrumentation | `agnos@1377a06` (head as of burn) |
+| gnoboot | 0.2.0 | no changes |
+| cyrius toolchain | 5.11.59 | agnos `cyrius.cyml` |
+| agnosticos boot pipeline | 2026.5.13+ | `install-usb.sh --update` provisioned |
+
+**FB outcome** (image at `XHCI_Again_log.jpg`):
+
+```
+xhci: scratchpad ready, array=4608000
+xhci: controller running, HCH=0, ERDP=4624384
+xhci: halted device cleared
+xhci: drained 0 events
+xhci: enable_slot entry idx=1 cycle=1
+xhci: cmd completion timeout, final_idx=1 cycle=1 events_seen=0
+xhci: Enable Slot failed, ccode=0
+xhci: enumeration timeout
+hid: keyboard layer initialized
+…
+AGNOS shell v1.30.5 (type 'help')
+agnos>
+```
+
+**Reading**: `events_seen=0` over the entire `XHCI_CMD_TIMEOUT_SPINS` (~250 ms) window means the wait loop never observed `evt_cycle == xhci_evt_ring_cycle` — i.e., HW never advanced the cycle bit on slot 1 of the event ring, i.e., no event was ever posted. Combined with `xhci: drained 0 events` pre-PR, the controller posts zero events to the ring for the entire boot. Reset PSC events suggested by Repair (EE)'s `Reset events bitmap=63` (a PORTSC-level count, not a ring-deposit count) never materialized on the ring either.
+
+**CMOS post-mortem (Attempt 56)** — slots reproduce Attempt 55:
+
+| Slot | Value | Reading |
+|---|---|---|
+| `[0x50]` | `0x15` | Shell reached (carry-forward). |
+| `[0x63]` | `0x04` | Port 3 (Keychron) connected. |
+| `[0x64]` | `0x04` | Port 3 reset-OK (EE intact). |
+| `[0x73]` | `0x9b` | BAR PDE PCD\|PWT\|PS\|R/W\|P = UC (X intact). |
+| `[0x84]` | `0xBB` | DNCTRL write (BB intact). |
+| `[0x7F]` | `0xAA` | Z timing site executed. |
+| `[0x86]` | `0x5A` | FCH extended-CMOS-offset-≥6 alias quirk (firmware-managed). |
+| `[0x87]` | `0xA5` | Same alias quirk. |
+
+**Triage class outcomes**:
+
+| Class | Status |
+|---|---|
+| 1. CRCR plumbing | Not falsified, not implicated. CRCR + RCS=1 write at `xhci.cyr:529` runs before R/S; spec-compliant. Read-only verify not run; if FF doesn't unblock, this is next. |
+| 2. Cmd TRB cycle bit on first issue | Not falsified, not implicated. xhci_cmd_submit OR-s `xhci_cmd_ring_cycle` (=1) into dword 3 of the TRB at offset 0; matches HW PCS=1 default. |
+| 3. Event-ring polling vs PSC events from PR-engaged reset | **FALSIFIED.** `events_seen=0` means there is nothing on the ring to poll. The hypothesis assumed PSC events would be deposited and would compete with the CCE; both classes of event are absent. |
+| 4. 64-bit cmd TRB phys vs low-32 match | Moot — no events to match against. |
+| 5. CSS / RCS race | Not falsified, not implicated. Would need cmd TRB phys readback after `xhci_cmd_ring_phys` allocation to fully clear. |
+| **NEW. Interrupter disabled** | **Implicated.** `IMAN = 0x1` at `xhci.cyr:541` (IP clear, IE=0) → AMD FCH 1022:1639 treats the interrupter as disabled and silently drops all events. |
+
+**Root cause — `xhci.cyr:541`**:
+
+```cyrius
+# Before (1.30.5)
+xhci_rt_write32(ir0 + XHCI_IR_IMAN, 0x1);   # IP=W1C clear, IE=0
+```
+
+Comment claimed "IMAN.IE (bit 1) stays 0 — poll mode for MVP." Spec §5.5.2.1 reads as if IE only gates interrupt generation, but Linux `xhci-mem.c` sets IE=1 unconditionally, and AMD FCH silicon empirically gates event posting on IE=1. §4.17 "Software shall set the IE flag to '1' for all Interrupters that it intends to use" is the canonical reading.
+
+**Repair (FF)** — landed in 1.30.6 (agnos VERSION 1.30.5 → 1.30.6 + 4 banner refs in `kernel/version.cyr`):
+
+```cyrius
+# After (1.30.6)
+xhci_rt_write32(ir0 + XHCI_IR_IMAN, 0x3);   # IP=W1C clear, IE=set
+```
+
+Safety: FB confirms `MSI-X enabled (function-mask)` — function-mask suppresses actual MSI delivery, so no unwired IDT vector is exposed. When MSI-X bring-up lands later, an ISR + IDT vector pair is added then; IE=1 is already in place.
+
+**Decisions applied**:
+
+- This is structurally the same shape as Repair (EE): a deliberate AGNOS deviation from Linux's convention, defensible in isolation against a narrow spec reading, falsified empirically by AMD FCH silicon. Both surfaced via prior-art diff, not per-spec audit. Memory `feedback_known_knowledge_first` validated a second time.
+- Attempt 57 is the FF iron test. Expected FB delta: `enable_slot entry idx=1 cycle=1` followed by **non-zero `events_seen`** in the wait loop, ideally with `evt# 1 type=33` (CMD_COMPLETION) and a non-zero `ccode` print. If `events_seen>0` but ccode≠1 (Success), Phase 4 has a different downstream gate; if ccode=1, Address Device + descriptor fetch sequence begins.
+- Triage classes 1, 2, 4, 5 stay parallel-track. If FF doesn't unblock, the next cut adds read-only CRCR.CRR readback + cmd TRB phys verify.
+- xHCI hardening backlog (HCCPARAMS3 read, vendor PCI cap dump) remains parallel-track. Not load-bearing for MVP.
+
 ---
 
 ## Carry-forward items (not blocking Attempt 28)
