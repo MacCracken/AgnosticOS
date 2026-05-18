@@ -1,8 +1,8 @@
 # AGNOS System Architecture
 
-> **Last Updated**: 2026-05-06 | **Version**: 2026.5.6
+> **Last Updated**: 2026-05-18 | **Version**: 2026.5.18
 >
-> Live ecosystem state (cycle, per-repo pins, sweeps): [`development/state.md`](development/state.md). Stable narrative values below — verify against state.md before quoting per-repo versions.
+> Live ecosystem state (cycle, per-repo pins, sweeps): [`development/state.md`](development/state.md). Live kernel/cyrius versions + binary sizes: [`development/state.md`](development/state.md). Per-subsystem versions intentionally elided in this doc per the lib-doc precedent — refer to the registry files when quoting numbers.
 
 This document provides the technical architecture of AGNOS (AI-Native General Operating System).
 
@@ -60,7 +60,7 @@ AGNOS is a sovereign operating system written in Cyrius. The architecture consis
 |  +---------------------------------------------------------------+   |
 |  |              AGNOS Kernel (Cyrius-native)                     |   |
 |  |  +---------------------------------------------------+       |   |
-|  |  |        v1.30.5 — ~365KB, 35+ subsystems            |       |   |
+|  |  |         35+ subsystems · live size in state.md      |       |   |
 |  |  |  +-----------+ +-----------+ +----------------+    |       |   |
 |  |  |  |  Memory   | | Process  | |   Network      |    |       |   |
 |  |  |  |  Manager  | | Manager  | |   (TCP/IP)     |    |       |   |
@@ -88,7 +88,7 @@ AGNOS is a sovereign operating system written in Cyrius. The architecture consis
 
 AGNOS runs its own sovereign kernel, written in Cyrius. No Linux dependency at runtime.
 
-**AGNOS kernel v1.30.5** — ~365KB, 35+ subsystems, 26 syscalls. Iron-validated 2026-05-15 on NUC AMD (Boot-to-Shell MVP). Live size in [`development/state.md`](development/state.md):
+**AGNOS kernel** — 35+ subsystems, 26 syscalls. Iron-validated 2026-05-15 on NUC AMD (Boot-to-Shell MVP cleared the kernel-init layer; the xHCI Enable Slot CCE cmd-path arc remains in-flight as of 2026-05-18 — see [`development/iron-nuc-zen-log.md`](development/iron-nuc-zen-log.md)). Live kernel size, version, build trajectory: [`development/state.md`](development/state.md):
 - Memory management, process management, SMP
 - TCP/IP networking, VirtIO-Net/Blk
 - FAT16 filesystem, ELF loader
@@ -104,7 +104,7 @@ The `kernel/` directory in this repo contains Linux kernel configs for **host bo
 
 > Conceptual decomposition. Layers 1–5 shipped. Live per-subsystem status: [agnos repo](https://github.com/MacCracken/agnos). Live size: [`development/state.md`](development/state.md).
 
-The kernel was originally planned as five layers — *boots*, *runs programs*, *storage*, *talks to the world*, *usable*. All five landed inside a ~7-week window (Cyrius scaffold 2026-04-03 → kernel v1.22.0 on 2026-04-14, hardened to v1.26.1 / 248KB by 2026-04-28). Subsequent 1.27.x → 1.30.5 work has been bring-up and hardening: KASLR (data-only) shipped 1.28.x, sovereign-struct kernel ABI shipped 1.30.0 (Path C UEFI handoff), native XHCI + USB-HID-boot driver across 1.30.1 → 1.30.5. The decomposition below reflects where each layer sits today.
+The kernel was originally planned as five layers — *boots*, *runs programs*, *storage*, *talks to the world*, *usable*. All five landed inside a ~7-week window (Cyrius scaffold 2026-04-03 → kernel v1.22.0 on 2026-04-14, hardened to v1.26.1 by 2026-04-28). Subsequent 1.27.x → 1.30.x work has been bring-up and hardening: KASLR data-only shipped at 1.28.0 (closed the security-track gate 13/13), sovereign-struct kernel ABI shipped 1.30.0 (Path-C UEFI handoff via gnoboot v0.2.0), native XHCI + USB-HID-boot driver across 1.30.1 → 1.30.5, xHCI cmd-path repair arc 1.30.6 (Repairs FF through QQ, MSI-X table programming closeout). The decomposition below reflects where each layer sits today; live per-version detail in [`development/state.md`](development/state.md).
 
 ### Layer 1 — Can Boot and Respond
 
@@ -142,7 +142,7 @@ The kernel was originally planned as five layers — *boots*, *runs programs*, *
 ### Layer 5 — Can Be Used
 
 - **Shell** — 19 commands: `help echo ps free cat uptime lspci cpus net send recv tcp pipe blkread ls disk bench test halt`
-- **kybernet PID 1** — v1.0.2, 486KB, 140 tests, 46 benchmarks, 1,583× faster `is_mounted` vs Rust baseline
+- **kybernet PID 1** — service supervision, signal/event-loop, kernel-interface boundary. Per-repo benchmarks + test count in kybernet's own state.md.
 - **Signals** — per-process `proc_signals` / `proc_sigmask`, `kill` / `sigprocmask` / `signalfd`
 - **Epoll** — `epoll_create`, `epoll_ctl`, `epoll_wait`
 - **Timerfd** — `timerfd_create`, `timerfd_settime`
@@ -158,9 +158,9 @@ The kernel was originally planned as five layers — *boots*, *runs programs*, *
 | + Layer 5 (shell) | ~42–45 KB | — |
 | + VFS + signals + pipes | ~50 KB | — |
 | + VirtIO + basic TCP | ~65 KB | — |
-| Full Layer 1–5 | ~70–80 KB | **~365 KB (v1.30.5)** |
+| Full Layer 1–5 + Path-C UEFI ABI + USB-HID + xHCI cmd-path | ~70–80 KB | **see [`development/state.md`](development/state.md) for live size** |
 
-The shipped kernel is ~3× the original estimate because it carries features outside the original 5-layer shortest-path plan: SMP infrastructure (APIC, IPI, trampoline, per-CPU stacks); cross-architecture (x86_64 + aarch64 in one binary); full TCP instead of UDP-only; slab allocator with 8 size classes; FAT16 driver; Ring 3 with proper TSS; Local APIC timer.
+The shipped kernel is several times the original estimate because it carries features outside the original 5-layer shortest-path plan: SMP infrastructure (APIC, IPI, trampoline, per-CPU stacks); cross-architecture (x86_64 + aarch64 in one binary); full TCP instead of UDP-only; slab allocator with 8 size classes; FAT16 driver; Ring 3 with proper TSS; Local APIC timer; v1.30.x's Path-C sovereign UEFI handoff and native XHCI / USB-HID-boot driver added another sizable chunk.
 
 The conceptual 5-layer model still maps. The kernel simply carries more per layer than the MVP "boots into shell" scope intended.
 
@@ -198,59 +198,59 @@ umount(24)      pipe(25)
 
 ## Named Subsystems
 
-Every subsystem is a standalone repo at `/home/macro/Repos/{name}/`. Each has its own CLAUDE.md, CHANGELOG, and version.
+Every subsystem is a standalone repo at `/home/macro/Repos/{name}/`. Each has its own CLAUDE.md, CHANGELOG, and version. **Live versions and per-repo status**: [`development/state.md`](development/state.md) and [`development/planning/shared-crates.md`](development/planning/shared-crates.md). Per-subsystem version numbers intentionally elided below — they drift fast and the registry files are the canonical source.
 
-### ark — Unified Package Manager (v0.8.0, Cyrius)
+### ark — Unified Package Manager
 
-User-facing CLI for all package operations. 4× smaller, 40× faster than the Rust predecessor.
+User-facing CLI for all package operations. Substantial size/speed gains vs the prior Rust predecessor.
 
-### nous — Package Resolver (v1.1.1, Cyrius)
+### nous — Package Resolver
 
 Intelligence layer behind ark. Given a package name, determines which source to use.
 
-### sigil — Trust System (v2.9.4, Cyrius)
+### sigil — Trust System
 
 System-wide trust and verification. Every binary, package, config, and update is verified through sigil. Ed25519 signing, revocation lists, trust levels.
 
-### kavach — Sandbox Execution (v3.0.0, Cyrius)
+### kavach — Sandbox Execution
 
-344KB (was 2.4MB Rust). Landlock + seccomp-bpf sandboxing. 1 dependency (sigil), 9 CWE fixes, sandbox lifecycle 500× faster than Rust version.
+Landlock + seccomp-bpf sandboxing. Single dependency (sigil). Substantial size + lifecycle-speed improvements over the prior Rust implementation.
 
-### aegis — System Security Daemon (v0.1.0, pending Cyrius port)
+### aegis — System Security Daemon
 
-Unified security and threat protection. Coordinates threat detection, quarantine, and scanning.
+Unified security and threat protection. Coordinates threat detection, quarantine, and scanning. Cyrius-native; shipped v1.0+ in May 2026.
 
-### takumi — Package Build System (v0.8.0, Cyrius port in flight)
+### takumi — Package Build System
 
-Compiles packages from source into `.ark` binary packages via TOML recipes. Recipes live in the `zugot` repo. Cyrius port active; `rust-old/` authoritative until parity.
+Compiles packages from source into `.ark` binary packages via TOML recipes. Recipes live in the `zugot` repo. Cyrius port in flight; `rust-old/` authoritative until parity.
 
-### argonaut — Init System (v1.2.0, Cyrius)
+### argonaut — Init System
 
-Init system library. Three boot modes: Server, Desktop, Minimal.
+Init system library. Three boot modes: Server, Desktop, Minimal. The BOOT_MINIMAL mode landed agnoshi as a no-deps console service for the closed-beta MVP path.
 
-### bote — MCP Core (v2.5.1, Cyrius)
+### bote — MCP Core
 
-MCP message pipeline at ~5µs/message. Streamable HTTP via stdlib http_server.
+MCP message pipeline + host registry. Streamable HTTP via stdlib http_server.
 
-### t-ron — MCP Security (v2.0.0, Cyrius)
+### t-ron — MCP Security
 
-MCP security monitor. Out of pre-release as of Apr 2026.
+MCP security monitor.
 
-### daimon — Agent Orchestrator (v1.1.1, Cyrius)
+### daimon — Agent Orchestrator
 
-Agent lifecycle, sandboxing, and inter-agent communication. 144 MCP tools.
+Agent lifecycle, sandboxing, and inter-agent communication. Ships 140+ MCP tools.
 
-### hoosh — LLM Gateway (v2.0.0, Cyrius)
+### hoosh — LLM Gateway
 
-474KB. OpenAI-compatible API proxy with 15 provider backends, caching, rate limiting, hardware acceleration.
+OpenAI-compatible API proxy with 15 provider backends, caching, rate limiting, hardware acceleration.
 
-### agnoshi — AI Shell (v1.0.0, Cyrius)
+### agnoshi — AI Shell
 
 Natural language terminal shell.
 
-### aethersafha — Desktop Compositor (v0.1.0, pending Cyrius port)
+### aethersafha — Desktop Compositor
 
-Wayland compositor with plugin host architecture.
+Wayland compositor with plugin host architecture. Cyrius port pending.
 
 ## Security Architecture
 
@@ -300,8 +300,9 @@ User Request -> agnoshi -> daimon -> Agent Process (kavach-sandboxed)
 ### Boot Flow
 
 ```
-AGNOS kernel (~365KB at v1.30.5, Cyrius-native)
-  -> kybernet PID 1 (486KB)
+gnoboot (sovereign UEFI bootloader, Path-C handoff)
+  -> AGNOS kernel (Cyrius-native, 35+ subsystems, 26 syscalls)
+  -> kybernet PID 1
   -> argonaut init sequence
   -> daimon agent runtime
   -> hoosh LLM gateway
@@ -312,8 +313,9 @@ AGNOS kernel (~365KB at v1.30.5, Cyrius-native)
 
 | Layer | Technology | Notes |
 |-------|-----------|-------|
-| Kernel | Cyrius (AGNOS-native) | ~365KB (v1.30.5), 35+ subsystems, 26 syscalls |
-| Compiler | Cyrius 5.11.55 (cc5) | ~809KB, self-hosting from 29KB seed, 42+ stdlib modules |
+| Kernel | Cyrius (AGNOS-native) | 35+ subsystems, 26 syscalls. Live size + version: [`development/state.md`](development/state.md) |
+| Compiler | Cyrius (cc5) | self-hosting from 29KB seed, 42+ stdlib modules. Live version + cc5 size: [`development/state.md`](development/state.md) |
+| Bootloader | gnoboot | sovereign UEFI bootloader (PE32+ EFI Application). Replaces GRUB as of v1.30.0 Path-C. |
 | User space | Cyrius | All ported subsystems compile with `cyrius build` |
 | Host bootstrap | Linux kernel configs | For building cross-compiler on existing host only |
 | Build recipes | TOML (zugot repo) | 421 base + 90 bazaar recipes |
@@ -323,20 +325,21 @@ AGNOS kernel (~365KB at v1.30.5, Cyrius-native)
 
 Per [`development/state.md`](development/state.md), these subsystems are still pending or in-flight (Rust authoritative):
 
-| Subsystem | Version | Notes |
-|-----------|---------|-------|
-| bhava | 2.0.0 (Rust) | Emotion/sentiment — port can start; gating on v5.9.x stdlib + math additions |
-| aegis | 0.1.0 (scaffold) | Security daemon — real implementation pending |
-| aethersafha | 0.1.0 (scaffold) | Wayland compositor — real implementation pending |
-| takumi | 0.8.0 | Build system — Cyrius port active, `rust-old/` authoritative until parity |
+| Subsystem | Notes |
+|-----------|-------|
+| bhava | Rust 2.0.0 — emotion/sentiment port can start; gating on v5.9.x stdlib + math additions |
+| aethersafha | Scaffold — Wayland compositor real implementation pending |
+| takumi | Cyrius port active, `rust-old/` authoritative until parity |
+| goonj | Acoustics — Rust authoritative, port pending |
+| naad | Audio synthesis — Rust authoritative, port pending |
 
-Recently shipped (no longer pending): phylax 1.0.0, shakti 0.2.2, hisab 2.2.0 (all Cyrius-native). See [shared-crates registry](development/planning/shared-crates.md) for full status.
+Recently shipped (no longer pending): phylax, shakti, hisab, **aegis** (1.0+, Cyrius-native, May 2026), **gnoboot** (sovereign UEFI bootloader, v0.2.0), **kriya** (coreutils-equivalent multi-tool, M5 grep+find+xargs closeout). See [shared-crates registry](development/planning/shared-crates.md) for full status.
 
 ## Design Decisions
 
 ### 1. Sovereign Kernel
 
-AGNOS has its own kernel written in Cyrius (~365KB at v1.30.5, iron-validated on NUC AMD). No Linux dependency at runtime. Linux kernel configs in this repo are for host bootstrap only.
+AGNOS has its own kernel written in Cyrius — iron-validated on NUC AMD 2026-05-15. No Linux dependency at runtime. Linux kernel configs in this repo are for host bootstrap only. Live kernel size + version: [`development/state.md`](development/state.md).
 
 ### 2. Cyrius for Everything
 
@@ -344,15 +347,15 @@ Cyrius is the sovereign systems language — 29KB seed, zero external dependenci
 
 ### 3. Landlock + seccomp-bpf
 
-Combine unprivileged filesystem sandboxing (Landlock) with syscall filtering (seccomp-bpf). Implemented in kavach (3.0.0, Cyrius-native).
+Combine unprivileged filesystem sandboxing (Landlock) with syscall filtering (seccomp-bpf). Implemented in kavach (Cyrius-native).
 
 ### 4. Local-First AI
 
-Prioritize local LLM execution with cloud fallback. Privacy, offline capability, reduced latency. Implemented in hoosh (2.0.0).
+Prioritize local LLM execution with cloud fallback. Privacy, offline capability, reduced latency. Implemented in hoosh.
 
 ### 5. Cryptographic Audit Chain
 
-Immutable, hash-chained, signed audit logs via libro (2.0.5). sigil (2.9.4) owns all cryptographic operations.
+Immutable, hash-chained, signed audit logs via libro. sigil owns all cryptographic operations.
 
 ### 6. Named Subsystems
 

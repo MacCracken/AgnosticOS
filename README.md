@@ -3,11 +3,11 @@
 > **A**rtificial **G**eneral **N**etwork **O**perating **S**ystem
 
 [![License](https://img.shields.io/badge/license-GPLv3-blue)](LICENSE)
-[![Kernel](https://img.shields.io/badge/kernel-AGNOS%201.30.5-orange)](https://github.com/MacCracken/agnos)
-[![Language](https://img.shields.io/badge/Cyrius-5.11.55-red)](https://github.com/MacCracken/cyrius)
+[![Kernel](https://img.shields.io/badge/kernel-AGNOS%201.30.7-orange)](https://github.com/MacCracken/agnos)
+[![Language](https://img.shields.io/badge/Cyrius-5.11.59-red)](https://github.com/MacCracken/cyrius)
 [![Status](https://img.shields.io/badge/status-pre--beta-yellow)](docs/development/roadmap.md)
 
-**AGNOS** is a sovereign operating system written in **Cyrius** — a systems language with a 29KB seed, zero external dependencies, and a self-hosting compiler. The kernel is ~365KB and iron-validated on NUC AMD (Boot-to-Shell MVP, 2026-05-15). The compiler is ~809KB. 30+ subsystems ported from Rust to Cyrius. No Linux dependency at runtime.
+**AGNOS** is a sovereign operating system written in **Cyrius** — a systems language with a 29KB seed, zero external dependencies, and a self-hosting compiler. The kernel is iron-validated on NUC AMD (Boot-to-Shell MVP, 2026-05-15). 30+ subsystems ported from Rust to Cyrius. No Linux dependency at runtime. Live binary sizes, per-repo versions, and cycle state: [`docs/development/state.md`](docs/development/state.md).
 
 > *AGI doesn't run on infrastructure built for web apps. It runs on infrastructure built for AGI.*
 >
@@ -21,39 +21,39 @@
 +------------------------------------------------------------------+
 |  Desktop                |  Agent Runtime          |  Kernel       |
 |  +--------------------+ |  +--------------------+ |  +----------+ |
-|  | aethersafha        | |  | daimon (1.1.4)     | |  | AGNOS    | |
-|  | Wayland compositor | |  | 144 MCP tools      | |  | 1.30.5   | |
-|  |                    | |  | Agent orchestrator | |  | ~365KB   | |
-|  +--------------------+ |  +--------------------+ |  | 35+ sub- | |
-|  | agnoshi (1.0.0)    | |  | hoosh (2.0.0)      | |  | systems  | |
-|  | AI shell           | |  | LLM gateway        | |  | 26 sys-  | |
-|  |                    | |  | 15 providers       | |  | calls    | |
-|  +--------------------+ |  +--------------------+ |  | Cyrius-  | |
-|  | 23 consumer apps   | |  | aegis + sigil      | |  | native   | |
-|  | marketplace (mela) | |  | kavach (3.0.0)     | |  +----------+ |
-|  +--------------------+ |  +--------------------+ |              |
+|  | aethersafha        | |  | daimon             | |  | AGNOS    | |
+|  | Wayland compositor | |  | 144+ MCP tools     | |  | kernel   | |
+|  |                    | |  | Agent orchestrator | |  | 35+ sub- | |
+|  +--------------------+ |  +--------------------+ |  | systems  | |
+|  | agnoshi            | |  | hoosh              | |  | 26 sys-  | |
+|  | AI shell           | |  | LLM gateway        | |  | calls    | |
+|  |                    | |  | 15 providers       | |  | Cyrius-  | |
+|  +--------------------+ |  +--------------------+ |  | native   | |
+|  | 23+ consumer apps  | |  | aegis + sigil      | |  | iron-    | |
+|  | marketplace (mela) | |  | kavach (sandbox)   | |  | validated| |
+|  +--------------------+ |  +--------------------+ |  +----------+ |
 +------------------------------------------------------------------+
 ```
 
 ## The Stack
 
-| Layer | Component | Version | Notes |
-|-------|-----------|---------|-------|
-| **Kernel** | AGNOS | 1.30.5 | ~365KB, 35+ subsystems, Cyrius-native, iron-validated NUC AMD |
-| **Compiler** | Cyrius | 5.11.55 | ~809KB, self-hosting from 29KB seed |
-| **PID 1** | kybernet | 1.0.2 | 486KB, 140 tests |
-| **Init** | argonaut | 1.5.0 | 3 boot modes |
-| **Sandbox** | kavach | 3.0.0 | 344KB, Landlock + seccomp-bpf |
-| **Crypto** | sigil | 3.1.0 | Ed25519, trust verification |
-| **Audit** | libro | 2.0.5 | Hash-chained event log |
-| **MCP** | bote | 2.5.1 | ~5us/message pipeline |
-| **LLM** | hoosh | 2.0.0 | 474KB, 15 providers |
-| **Agents** | daimon | 1.1.4 | 144 MCP tools |
-| **Shell** | agnoshi | 1.0.0 | Natural language terminal |
-| **Packages** | ark + nous | 0.8.0 / 1.1.2 | Package manager + resolver |
-| **Recipes** | zugot | — | 421 base + 90 bazaar |
+| Layer | Component | Notes |
+|-------|-----------|-------|
+| **Kernel** | AGNOS | Cyrius-native, 35+ subsystems, iron-validated NUC AMD 2026-05-15 |
+| **Compiler** | Cyrius | self-hosting from 29KB seed |
+| **PID 1** | kybernet | service supervision, signal/event-loop |
+| **Init** | argonaut | 3 boot modes (Server / Desktop / Minimal) |
+| **Sandbox** | kavach | Landlock + seccomp-bpf |
+| **Crypto** | sigil | Ed25519, trust verification |
+| **Audit** | libro | Hash-chained event log |
+| **MCP** | bote | message pipeline + host registry |
+| **LLM** | hoosh | OpenAI-compatible proxy, 15 providers, hardware accel |
+| **Agents** | daimon | agent orchestrator, MCP tool host |
+| **Shell** | agnoshi | natural-language terminal |
+| **Packages** | ark + nous | package manager + resolver |
+| **Recipes** | zugot | 421 base + 90 bazaar |
 
-> Live versions for the full ecosystem: [`docs/development/state.md`](docs/development/state.md) — refreshed each cycle close.
+> Live versions, binary sizes, per-repo state: [`docs/development/state.md`](docs/development/state.md). Full crate registry: [`docs/development/planning/shared-crates.md`](docs/development/planning/shared-crates.md) (incl. pre-1.0); v1.0+ stable subset: [`docs/applications/libs/README.md`](docs/applications/libs/README.md).
 
 ## Port Receipts (Rust to Cyrius)
 
@@ -92,12 +92,12 @@ All ship as `.agnos-agent` marketplace bundles:
 
 | Milestone | Status |
 |-----------|--------|
-| Sovereign kernel (~365KB, 35+ subsystems, iron-validated 2026-05-15) | Done |
+| Sovereign kernel (35+ subsystems, iron-validated NUC AMD 2026-05-15) | Done |
 | Cyrius compiler (self-hosting, 42+ stdlib modules) | Done |
 | 30+ subsystem ports (Rust to Cyrius) | Done |
-| Sovereign boot pipeline (Cyrius) | Done |
+| Sovereign boot pipeline (Cyrius) — Path-C UEFI handoff via gnoboot | Done |
 | LFS base recipes (421 base + 90 bazaar) | Done |
-| Security (kavach 3.0.0, sigil 3.1.0, libro 2.0.5) | Done |
+| Security stack (kavach, sigil, libro, aegis at v1.0+) | Done |
 | 19+ consumer apps with MCP integration | Done |
 | **Self-hosting (AGNOS builds AGNOS)** | **Primary closed-beta blocker — gated on Cyrius v5.12.x bare-metal target (slipped from v5.10.x → v5.11.x → v5.12.x)** |
 | Closed-beta tester cohort (5–15 trusted testers) | Pending closed-beta cut |
@@ -137,12 +137,13 @@ make boot-test
 
 ## Security
 
-- **kavach 3.0.0** — Landlock + seccomp-bpf sandboxing (344KB, 9 CWE fixes)
-- **sigil 3.1.0** — Ed25519 trust verification, revocation
-- **libro 2.0.5** — Cryptographic audit chain, hash-linked event log
-- **AGNOS kernel** — 3 hardening passes, 14 buffer overflows found and fixed; structurally immune to CVE-2026-31431 (no socket/splice/AF_ALG surface in 26-syscall table)
+- **kavach** — Landlock + seccomp-bpf sandboxing
+- **sigil** — Ed25519 trust verification, revocation
+- **libro** — Cryptographic audit chain, hash-linked event log
+- **aegis** — System security daemon (threat detection, quarantine, scanning)
+- **AGNOS kernel** — Security hardening 13/13 closed (S1-S13 incl. KASLR data-only, KPTI-light, IBRS Spectre v2 mitigations, VT-d IOMMU, stack canaries); structurally immune to CVE-2026-31431 (no socket/splice/AF_ALG surface in 26-syscall table)
 
-See [SECURITY.md](SECURITY.md) for vulnerability reporting.
+Versions + per-subsystem detail in [`docs/development/state.md`](docs/development/state.md). See [SECURITY.md](SECURITY.md) for vulnerability reporting.
 
 ## Documentation
 
