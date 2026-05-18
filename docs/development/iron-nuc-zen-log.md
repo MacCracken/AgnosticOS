@@ -6431,6 +6431,97 @@ if (cnr_wait >= 1000000) {
 - Stack decoupling intentionally collapses 4 single-fix burns into 1 bundled-behavior burn. Trade-off: lose attribution clarity if it works, gain 3 days of iron-burn cost. Given the user's explicit direction "we're three days into a driver, stop wasting time," the trade is correct.
 - No VERSION bump (`feedback_no_unprompted_version_bumps`). 1.30.6 banner retained.
 
+### Attempt 60 — 2026-05-17 → BUNDLED STACK FALSIFIED; HH/JJ/KK/LL ALL INEFFECTIVE; `events_seen=0` SURVIVES; MM (MSI-X FUNCTION-MASK CLEAR) STAGED
+
+**Burn outcome** (image [`attempt-60-stack-bundled-still-zero.jpg`](iron-nuc-zen-photos/attempt-60-stack-bundled-still-zero.jpg)):
+
+```
+xhci: MSI-X enabled (function-mask)
+xhci: found at PCI 5:0:0
+xhci: ... 64 slots, 6 ports
+xhci: scratchpad ready
+xhci: dev_notifications enabled
+xhci: halted, reset clean
+xhci: scratchpad ready
+xhci: controller running, HCH=0, ERDP=5316608
+xhci: CRCR.CRR=0 ERSTSZ=1 IMAN=2 ERDP_lo=5316616
+xhci: PP asserted, bitmap=05
+xhci: drained 1 events
+xhci: enable_slot entry idx=1 cycle=1
+xhci: cmd_submit#1 trb_phys=<X> dw3=9217
+xhci: cmd completion timeout, final_idx=1 cycle=1 events_seen=0
+xhci: Enable Slot failed, ccode=0
+xhci: keyboard layer initialized
+[…userland boot continues to AGNOS shell, no keys typeable…]
+```
+
+**Verdict**: bundled stack HH (doorbell flush) + JJ (universal readback flush on op/rt writes) + KK (CNR poll in xhci_start) + LL (Link TRB initial cycle bit fix) is fully **FALSIFIED**. Every readback present (no `xhci: CNR never cleared` line means KK passed; CRCR.CRR=0/IMAN=2/ERDP_lo=5316616 readback line confirms JJ writes succeeded; `cmd_submit#1 trb_phys=<X> dw3=9217` confirms HH ran). Identical failure shape to Attempts 56-59: cmd TRB is healthy, doorbell write is flushed, IMAN.IE is asserted (=2 = IE-only), CNR is clear, post-write readbacks on every op/rt write are in place — **and the controller still posts zero events to the ring after the Enable Slot doorbell**.
+
+**Pre-bound outcome grid decode** (from Attempt 60 prep table):
+- Row 1 (`cmd completion timeout … events_seen=0`): **STACK DID NOT UNBLOCK**, hit exactly. Per the row's guidance: "remaining hypothesis space is narrow: per-TRB-type CCE gating on AMD Renoir (improbable), MSI-X function-mask interfering with internal event-posting state machine (worth a separate behavioral pivot — disable MSI-X entirely and re-test), or a fundamental DMA path that's silently dropping HW→RAM writes for the event ring specifically. **No more instrumentation rounds** — next move is a decoupling burn (disable MSI-X) or escalate to vendor-cap audit on the live PCI tree."
+
+**Triage class outcomes (post-Attempt-60)**:
+
+| Class | Status after Attempt 60 |
+|---|---|
+| 2. Cmd TRB cycle bit on first issue | FALSIFIED (Attempt 59) |
+| 4. 64-bit cmd TRB phys vs low-32 match | FALSIFIED (Attempt 59) |
+| 10a. CRCR write absorbed → cmd ring base never latched | **FALSIFIED.** JJ's universal readback flushes every op_write32/64 + rt_write32/64; the CRCR write (line 572) is `xhci_op_write64(XHCI_OP_CRCR, ...)` followed immediately by a `load32` flush. If the host bridge were holding the write, the readback would force drain. The flushes landed (verified ABI-side: `xhci: CRCR.CRR=0` readback line printed after `controller running`). CRCR-absorbed hypothesis is closed. |
+| 10c. Doorbell write absorbed by PCI posted-write barrier | **FALSIFIED.** HH adds `store32(db_addr, 0); load32(db_addr);` — direct copy of Linux's `xhci_ring_cmd_db` `writel + readl` pattern. With HH applied + the same `events_seen=0` symptom, the doorbell flush is not the gate. |
+| 10b. Cmd ring latched but first TRB cycle bit wrong | FALSIFIED (Attempt 59 — `dw3=9217` proves cycle bit = 1). |
+| 11. CNR re-asserts post-reset, silently absorbing operational writes | **FALSIFIED.** KK polls CNR=0 before any operational writes in `xhci_start`. No `xhci: CNR never cleared` line means CNR cleared on the first iteration of the poll (USBSTS bit 11 = 0 from the moment we entered the poll). CNR re-assert window hypothesis is closed. |
+| 12. Link TRB initial cycle bit confuses HW pre-wrap | **FALSIFIED by stack.** LL removed the `| 0x1` on Link TRB init at `xhci_ring.cyr:192`. Defensive correctness fix (xHCI 1.2 §4.9.3.1 + Linux `xhci_alloc_segment`). First Enable Slot doesn't traverse Link TRB anyway, so LL was always a longshot in this context — and the bundle still failed. LL stays in the binary as the spec-correct initial state. |
+
+**The cmd-path + event-ring DMA hypothesis space has now collapsed to four candidates** (in order of staging priority + Linux prior art):
+
+1. **MSI-X Function Mask interferes with internal event-posting state machine on AMD FCH 1022:1639** — Linux's `pci_alloc_irq_vectors` always leaves Function Mask = 0 post-init; AGNOS currently sets it. PCI 3.0 §6.8.2 says Function Mask suppresses message TRANSMISSION, but AMD silicon may interpret it as a stronger gate that also suppresses interrupter state-machine progress, including DMA writes to the event ring. **Staged as Repair (MM) — this Attempt-61 burn.**
+2. Per-TRB-type CCE gating on AMD Renoir — improbable; no Linux quirk for this on 1022:1639. Not staged.
+3. Fundamental DMA path dropping HW→RAM event ring writes — would require IOMMU instrumentation (forbidden — `feedback_no_instrumentation_means_no_instrumentation`) OR live PCI cap dump (instrumentation). Not staged.
+4. Vendor PCI cap audit — informational only, no behavioral repair. Not staged.
+
+**Decisions applied** (post-Attempt-60):
+
+- Per `feedback_known_knowledge_first`: MM is the last candidate in the user-validated hypothesis space (verbatim from `state.md` 2026-05-17 refresh). Not a first-principles letter.
+- Per `feedback_redesign_dont_reinvent`: MSI-X Function Mask posture matches Linux (`pci_alloc_irq_vectors` clears it post-init).
+- Per `feedback_iron_burns_block_other_work`: Attempt 61 is single-repair behavioral (MM only — no instrumentation, no bundle, line-by-line audit below).
+- Per `feedback_stop_letter_laddering`: this is the LAST behavioral hypothesis. If MM fails, the next move is decoupled — Phase 4/5 (HID + kb_buf) continues in parallel; cmd-path silent-absorb gets escalated as a controller-firmware issue or pivoted to a different bare-metal target. No "Repair (NN)" / "Repair (OO)" letter ladder.
+- Per `feedback_no_unprompted_version_bumps`: 1.30.6 banner retained. CHANGELOG drafted separately under `[Unreleased]`.
+
+### Attempt 61 — staged → REPAIR (MM): MSI-X FUNCTION-MASK CLEAR, LEAVE ENABLE=1
+
+**Hypothesis**: AMD FCH 1022:1639 interprets PCI MSI-X Function Mask as a stronger gate than the PCI 3.0 §6.8.2 reading — i.e., gates internal interrupter state-machine progress (including the DMA writes that post events to the event ring), not just MSI-X message transmission.
+
+**Audit (line-by-line)**:
+
+| Site | Before | After | Rationale |
+|---|---|---|---|
+| `kernel/core/pci.cyr:191-238` (new fn `pci_enable_msix_unmasked`) | n/a (new function) | Same as `pci_enable_msix_masked` but writes `(hdr & 0x3FFFFFFF) \| 0x80000000` (Enable=1, Function Mask=0) instead of `hdr \| 0xC0000000` (both set). Mask-then-OR pattern handles the case where firmware left Function Mask=1 — the bare `\| 0x80000000` would have preserved it. | Per PCI 3.0 §6.8.2.5.3 the per-vector Mask bit in each MSI-X Table entry defaults to 1 at PCI reset and re-initializes to 1 each time MSI-X Enable transitions 0→1. Therefore Function Mask=0 + per-vector mask=1 = no MSI-X message TX (per-vector mask alone suffices to suppress messages). Safe to drop Function Mask. |
+| `kernel/arch/x86_64/usb/xhci.cyr:103-115` (xhci_probe MSI-X call) | `pci_enable_msix_masked(idx)` + literal `xhci: MSI-X enabled (function-mask)` | `pci_enable_msix_unmasked(idx)` + literal `xhci: MSI-X enabled (no function-mask)` | Switch the call site. FB literal change is the proof-of-flash for read-boot-log / iron-burn cross-check. |
+
+**No other code path touched**. `pci_enable_msix_masked` left in place — no consumer change, no signature change, no regression to other devices. Pure-additive new function + one call-site swap in xhci_probe.
+
+**Build under test**:
+
+| Component | Version | Source |
+|---|---|---|
+| agnos kernel | 1.30.6 + MM | `build/agnos` **368,472 B** mtime 2026-05-17 ~23:41. ELF64 multiboot2 entry `0x1000a8`. Verified literals: `xhci: MSI-X enabled (no function-mask)` PRESENT, `xhci: MSI-X enabled (function-mask)` ABSENT. Build clean (`compile … OK`, multiboot2 (ELF64): OK). |
+| gnoboot | 0.2.0 | no changes |
+| cyrius toolchain | 5.11.59 | agnos `cyrius.cyml` |
+
+**Pre-bound outcome grid (single behavioral pivot — no instrumentation surface added)**:
+
+| FB delta | Reading |
+|---|---|
+| `xhci: Enable Slot` succeeds (no `Enable Slot failed` line); Phase 4 lines appear (`hid_kbd_configure`, etc.) | **MM IS THE UNBLOCK.** AMD FCH 1022:1639 gates event posting on Function Mask=0; this is now the third documented AMD-FCH-specific xHCI quirk we've surfaced (after EE — PORTSC inner re-mask, and FF — IMAN.IE=1 required for event posting). Phase 4/5 (HID configure + kb_buf feed) becomes the next gate. Pull `attempt-61-xhci-mm-success.jpg` into iron-nuc-zen-photos and proceed to typeable-shell verification. |
+| `xhci: cmd completion timeout … events_seen=0` (familiar line) | **MM FALSIFIED.** All user-validated behavioral hypotheses in the cmd-path silent-absorb arc are now exhausted. **Decoupling decision activates** — cmd-path gate gets escalated as either (a) a controller-firmware issue requiring a different bare-metal target, or (b) a fundamental DMA path probe that needs instrumentation (which contradicts `feedback_no_instrumentation_means_no_instrumentation` — would require explicit per-instrumentation user approval). Phase 4/5 continues in parallel; MVP path narrows to "code-complete kernel + verify everything past the xHCI gate in QEMU." No `Repair (NN)` staged automatically. |
+| Visible regression vs Attempt 60 (e.g., MSI message floods, IDT vector exception, spurious INT delivery, controller hangs harder) | Per-vector mask default-=1 assumption was wrong on this silicon. Roll back MM (restore `pci_enable_msix_masked` call); investigate per-vector mask init via PCI MSI-X table read (read-only, no behavioral change). |
+
+**Pre-burn checklist**:
+
+1. ✅ Build verified: 368,472 B (+528 B over Attempt 60's 367,944 B), MM literal `xhci: MSI-X enabled (no function-mask)` present, prior `xhci: MSI-X enabled (function-mask)` literal ABSENT.
+2. **Pending**: user runs `install-usb.sh --update` to flash `build/agnos` onto the USB stick.
+3. **Pending**: user-side per-action burn approval (per `feedback_per_action_consent` — last approval was for Attempt 60; Attempt 61 needs a fresh yes).
+
 ---
 
 ## Carry-forward items (not blocking Attempt 28)
