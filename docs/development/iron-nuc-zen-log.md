@@ -6160,7 +6160,171 @@ Pre-bound interpretation grid (two FB lines for a healthy boot — one per submi
 
 Total build delta: **+1,264 B** kernel (`build/agnos` 364,736 B at 1.30.6 → **366,000 B** with Attempt-58 instrumentation). Build OK, multiboot2 ELF64 entry `0x1000a8` unchanged. cyrius toolchain 5.11.59 unchanged.
 
-No behavioral repair. No version bump. Awaiting per-action burn approval before proposing iron exposure 58.
+No behavioral repair. No version bump. **Landed in commit `0e3d01a` ("fixing pci for xhci") bundled with Repair (GG) AMD-Vi disable; iron exposure 58 below.**
+
+### Attempt 58 — 2026-05-17 → REPAIR (GG) FALSIFIED; AMD-Vi DISABLE DID NOT UNBLOCK EVENT POSTING; CRCR/IMAN/CMD-SUBMIT READBACKS LANDED IN SAME BURN
+
+Iron burn of `agnos@0e3d01a` ("fixing pci for xhci"), which **bundled** three changes against the 1.30.6 floor:
+
+1. **Repair (GG)** — AMD-Vi global disable at `kernel/arch/x86_64/iommu.cyr:269-317` (`amd_iommu_disable()`), called from `kernel/core/main.cyr:155` after `pci_scan()` and before `xhci_probe()`. Walks PCI 0:0.2 cap list for ID 0x0F (Secure Device) with type bits [18:16]=0x3 (IOMMU), extracts MMIO base, maps it UC, writes Control Register at MMIO+0x18 = 0 (passthrough). Targets the "AMD Renoir firmware-enabled IOMMU blocks all device DMA pre-OS-setup" hypothesis bound at the Attempt 57 close.
+2. **Edit A** — read-only CRCR/ERSTSZ/IMAN/ERDP readback at `xhci.cyr:583-603` (after `controller running, HCH=0, ERDP=…` print, before CMOS 0x31 stamp).
+3. **Edit B** — read-only per-submit `trb_phys` + `dw3` readback in `xhci_cmd_submit` at `xhci_cmd.cyr:53-54, 99-109` (capped at 2 prints via `XHCI_DIAG_SUBMIT_MAX`).
+
+Pre-bound expectation per the staged section above: if GG was the gate, `events_seen` should become non-zero; if not, the Edit A/B FB lines answer whether the cmd ring + interrupter state is healthy (CRCR.CRR=1, ERSTSZ=1, IMAN=3, ERDP_lo matching `xhci_evt_ring_phys`) and whether the first submitted TRB has cycle bit set + correct type.
+
+**Build under test**:
+
+| Component | Version | Source |
+|---|---|---|
+| agnos kernel | 1.30.6 + 0e3d01a | `build/agnos` **367,608 B** (1.30.6 floor 364,736 B; +2,872 B for GG + Edits A + B combined — above the +1,264 B prediction for A+B alone because GG added ~1.6 KB of capability-walk + MMIO-disable code) |
+| gnoboot | 0.2.0 | no changes |
+| cyrius toolchain | 5.11.59 | agnos `cyrius.cyml` |
+| agnosticos boot pipeline | 2026.5.13+ | `install-usb.sh --update` provisioned |
+
+**FB outcome** (image at [`iron-nuc-zen-photos/attempt-58-xhci-repair-gg-amdvi-disabled-events-seen-still-zero.jpg`](iron-nuc-zen-photos/attempt-58-xhci-repair-gg-amdvi-disabled-events-seen-still-zero.jpg) — photo resolution does not allow extracting the Edit A + B numeric readbacks; user-read values inline below):
+
+```
+PCI: 32 devices
+amdvi: cap@64 mmio=4247781376 en=1               # 4247781376 = 0xFD300000
+amdvi: disabled, ctrl_rb=0                       # GG wrote IOMMU CR=0 successfully
+xhci: MSI-X enabled (function-mask)
+xhci: found at 4237295616, ver=272, 64 slots, 6 ports
+xhci: caplen=32 csz=1 ac64=1 intrs=8
+xhci: dboff=1440 rtsoff=1152 xecp=616
+xhci: scratchpad bufs=2
+xhci: USBLEGSUP already OS-owned
+xhci: dev notifications enabled
+xhci: halted, reset clean
+xhci: scratchpad ready, array=5656576
+xhci: controller running, HCH=0, ERDP=5672960    # kprint(xhci_evt_ring_phys) = 0x569000 (page-aligned ✓)
+xhci: CRCR.CRR=0 ERSTSZ=1 IMAN=2 ERDP_lo=5672968 # Edit A readback; ERDP_lo = 0x569008 (= 0x569000 + EHB bit 3)
+xhci: PP=1 asserted, bitmap=63                   # all 6 ports powered
+xhci: drained 1 events                           # pre-PR drain consumed 1 event — likely PSC from Phase 2 reset
+xhci: enable_slot entry idx=1 cycle=1
+                                                 # !!! Edit B's `cmd_submit#1 trb_phys=… dw3=…` MISSING !!!
+xhci: cmd completion timeout, final_idx=1 cycle=1 events_seen=0
+xhci: Enable Slot failed, ccode=0
+hid: keyboard layer initialized
+VFS initialized
+…
+AGNOS shell v1.30.6 (type 'help')
+agnos>
+```
+
+**Edit A readback decode** (verified against clean photo `bigger.jpg`):
+
+| Field | Value | Reading |
+|---|---|---|
+| `CRCR.CRR` | `0` | **Suspicious but not definitive at this readback position.** Spec language across xHCI 1.2 revisions is ambiguous — one reading says "CRR=1 whenever R/S=1," another says "CRR=1 only when xHC is executing commands." This readback fires **before** the Enable Slot doorbell, so CRR=0 could mean (a) cmd ring base never latched (CRCR write absorbed) OR (b) idle pending first command. Disambiguator: a second CRCR.CRR readback after the Enable Slot timeout (post-doorbell) — proposed for Attempt 59 instrumentation. **Promoted to primary suspect** given the cmd-side event-posting failure (see breakthrough findings). |
+| `ERSTSZ` | `1` | ✓ Healthy. Single ERST segment as written at `xhci.cyr:537`. |
+| `IMAN` | `2` | ✓ Healthy. IE=1 (bit 1 set), IP=0 (bit 0 cleared because RW1C — writing 1 to IP clears it; there was no pending interrupt to acknowledge, so it stays 0). My pre-bound "expected=3" was wrong; **IMAN=2 confirms FF stuck at the register.** |
+| `ERDP_lo` | `5672968` | `0x569008` = page-aligned `0x569000` + EHB (bit 3) set. **Matches FB-printed `ERDP=5672960` = `0x569000` exactly modulo the EHB overlay.** Allocator is clean (`pmm_alloc` returned page-aligned). EHB=1 is the smoking gun for "HW asserted the interrupter at least once" — proves event-posting infrastructure is live (corroborated by `drained 1 events` line). Hypothesis 8 (ERDP write target sanity) **FALSIFIED.** |
+
+**Breakthrough findings from clean FB read (`bigger.jpg`, 2026-05-17)**:
+
+- **HW IS posting events.** `xhci: drained 1 events` (pre-PR drain consumed 1 event, likely a Port Status Change from the Phase 2 reset on port 3). In Attempts 56 + 57 this was `drained 0 events`. Combined with EHB=1 in ERDP readback, the "no events land on the ring at all" sub-hypothesis is **falsified by direct observation** — event-posting infrastructure works. Either FF (IMAN.IE=1) or GG (AMD-Vi disable) was the unblock for general event posting; the two were bundled in the same burn so we can't attribute cleanly without a third burn.
+- **The gate is now narrow: Enable Slot specifically produces no CMD_COMPLETION.** Events post in general (1 drained pre-PR), but `events_seen=0` over the full `XHCI_CMD_TIMEOUT_SPINS` window after the Enable Slot doorbell. This collapses the search to cmd-ring-side: (a) cmd ring base never latched, (b) cmd ring latched but first TRB cycle bit wrong → HW skips slot, (c) doorbell write absorbed.
+
+**Anomaly: `cmd_submit#1` print missing from FB.** Edit B's print at `xhci_cmd.cyr:100-109` did not appear between `enable_slot entry` (xhci.cyr:636) and `cmd completion timeout` (xhci_cmd.cyr:209). The timeout print firing proves `xhci_cmd_wait` ran, which proves `xhci_cmd_submit` returned non-zero (else `xhci_cmd_issue` early-returns at xhci_cmd.cyr:223). So the print site was *reached* but didn't *emit*. Three candidate causes, ordered by likelihood:
+
+1. **USB stick has an older build than `build/agnos`.** `build/agnos` is timestamped 2026-05-17 20:20; commit `0e3d01a` (which contains Edit B) landed at 20:21. If the USB was flashed before the rebuild, Edit B is not on iron. Verify with `cmp build/agnos $(mountpoint)/boot/agnos` or note last `install-usb.sh --update` time vs. commit time.
+2. Cyrius DCE'd the print. Unlikely — `xhci_diag_submit_count` is mutable global state and Edit A in the same compilation unit emitted fine.
+3. A fault between line 75 (idx increment) and line 100 (print) that resumed mid-function. Implausible — no x86_64 fault handler we ship would resume cleanly mid-function.
+
+Cause (1) is by far the most likely. **Cannot finalize cmd-path triage until verified.**
+
+**Headline findings (from photo + CMOS, pre Edit-A/B readback)**:
+
+- AMD-Vi was firmware-enabled (`en=1` in the FB print). GG had real work to do — this was **not** a no-op on archaemenid; the hypothesis was well-founded.
+- `events_seen=0` survives GG. AMD-Vi was not the gate.
+- Phase 3 reset on port 3 still succeeds (CMOS `[0x64]=0x04`, EE intact across two minors + Attempts 55-58).
+
+**CMOS post-mortem (Attempt 58)** — slot-by-slot vs. Attempt 57 (identical except as noted):
+
+| Slot | Value | Reading |
+|---|---|---|
+| `[0x50]` | `0x15` | Shell reached. |
+| `[0x63]` | `0x04` | Port 3 connected. |
+| `[0x64]` | `0x04` | Port 3 reset-OK (EE intact). |
+| `[0x77]/[0x78]` | `0x00` / `0x00` | USBSTS bytes 0+1 clean — no HCH/HSE/CNR/HCE. |
+| `[0x79]` | `0x0D` | R/S \| INTE \| HSEE intact. |
+| `[0x7F]` | `0xAA` | Z timing site executes. |
+| `[0x80]` | `0x02` | MaxScratchpadBufs (AA). |
+| `[0x83]` | `0x56` | sp_array phys byte 2 = 0x56 (was 0x47 at Attempt 57). Allocation shifted because GG grew the kernel by ~1.6 KB pre-xhci_init — expected, not a regression. |
+| `[0x84]` | `0xBB` | DNCTRL write (BB intact). |
+| `[0x86]/[0x87]` | `0x5A` / `0xA5` | FCH 1022:1639 extended-CMOS offset-≥6 alias quirk (firmware-managed). |
+
+**Triage class outcomes (updated post-Edit-A readback)**:
+
+| Class | Status after Attempt 58 |
+|---|---|
+| 1. CRCR plumbing | **STILL OPEN.** CRCR.CRR=0 at pre-doorbell readback is suspicious but spec-ambiguous (see Edit-A decode above). Needs a post-doorbell CRCR.CRR readback to disambiguate "ring never latched" vs "ring idle pending first cmd." Staged for Attempt 59. |
+| 2. Cmd TRB cycle bit on first issue | **PENDING.** Edit-B line `dw3` value not yet read off the FB. `dw3 & 0x1` = cycle bit; bits 15:10 = TRB type (Enable Slot = 9 → expect `(9 << 10) \| 1 = 0x2401`). |
+| 3. Event-ring polling vs PSC events | FALSIFIED at Attempt 56. Carried forward. |
+| 4. 64-bit cmd TRB phys vs low-32 match | **PENDING.** Edit-B line `trb_phys` value not yet read; cross-check against `xhci_cmd_ring_phys`. |
+| 5. CSS / RCS race | Covered by class 1's post-doorbell readback. |
+| 6. Interrupter disabled (IE=0) | **FORMALLY CONFIRMED FALSIFIED.** IMAN readback = 2 = IE=1 + IP=0 (W1C cleared correctly). FF stuck at the register. |
+| 7. **AMD-Vi firmware-enabled DMA gate** | **FALSIFIED.** `en=1` proved AMD-Vi was on; disable wrote successfully; events still didn't post. AMD-Vi is not the gate. |
+| 8. ERDP write target sanity | **FALSIFIED.** Clean photo read shows `ERDP=5672960 = 0x569000` (page-aligned ✓); `ERDP_lo=0x569008` = pointer + EHB. Allocator clean; HW has touched the event handler (EHB=1). |
+| 9. **NEW — Event posting in general** | **FALSIFIED by direct observation.** `drained 1 events` proves HW *is* posting events to the ring (likely a PSC event from Phase 2 reset). Either FF or GG (or both, bundled) was the unblock for general event posting between Attempts 57 and 58. |
+| 10. **NEW — Enable Slot CMD_COMPLETION specifically** | **PRIMARY OPEN HYPOTHESIS.** General event posting works, but Enable Slot doorbell produces no CMD_COMPLETION. Sub-classes: (a) CRCR write absorbed → cmd ring base never latched → doorbell does nothing; (b) cmd ring latched, first TRB cycle bit wrong → HW skips slot; (c) doorbell address wrong → HW never sees the kick. Triage gated on confirming Edit B's `cmd_submit#` line lands on iron (current USB build suspected stale). |
+
+**Verdict**: Repair (GG) is the **15th falsified hypothesis** in the silent-absorb / event-posting arc (2nd post-EE closure of the silent-absorb sub-arc). The strongest "DMA-side gating" hypothesis is now eliminated. The remaining open classes (1, 2, 4) collapse onto **cmd ring vs. event ring controller-state**, which the bundled Edit A + B readbacks should answer in a single FB read.
+
+**Decisions applied**:
+
+- GG was the highest-prior "platform-side" hypothesis (every device DMA blocked at the IOMMU). Its falsification narrows the search dramatically — the gate is controller-state-level (CRCR / cmd ring cycle / event ring base), not platform-level. This is the right kind of falsification: removes a whole class of root causes.
+- Per `feedback_known_knowledge_first` — GG was sourced from AMD I/O Virt §3.1.1 + EDK2 IommuDxe + Linux `amd_iommu_init.c` convention. The hypothesis was well-anchored; its falsification is a real data point, not a sign the discipline was off.
+- Per `feedback_iron_burns_block_other_work` — instrumentation bundled with GG to avoid a follow-up burn purely for diagnostics. Three pieces in one burn. A+B audit landed in the Attempt-57 staged-instrumentation section above; GG had its own per-line audit inline at `iommu.cyr:225-249`.
+- No agnos VERSION bump per `feedback_no_unprompted_version_bumps`. 1.30.6 banner retained; commit `0e3d01a` is a build-only diff atop the same source-of-truth.
+- Memory entries to update: **none new** — same `feedback_known_knowledge_first` and `feedback_iron_burns_block_other_work` patterns in effect.
+- Next step (Attempt 59): re-burn the *same* `agnos@0e3d01a` binary on a freshly-flashed USB stick (root cause for missing Edit B output identified as stale USB build — `build/agnos` rebuilt at 20:53 verified to contain both `xhci: cmd_submit#` and `xhci: CRCR.CRR=` literals). No code change. The single remaining diagnostic line will disambiguate cmd-path triage in one read.
+
+### Attempt 59 — pending burn → SAME BINARY ON FRESH USB; EDIT B `cmd_submit#1 trb_phys=… dw3=…` IS THE GATING SIGNAL
+
+Build under test:
+
+| Component | Version | Source |
+|---|---|---|
+| agnos kernel | 1.30.6 + 0e3d01a | `build/agnos` **367,608 B** mtime 2026-05-17 20:53 (post-commit-0e3d01a at 20:21). Verified contains both Edit A literal `xhci: CRCR.CRR=` and Edit B literal `xhci: cmd_submit#` via `strings build/agnos`. multiboot2 ELF64 entry `0x1000a8`. |
+| gnoboot | 0.2.0 | no changes |
+| cyrius toolchain | 5.11.59 | agnos `cyrius.cyml` |
+| agnosticos boot pipeline | 2026.5.13+ | `install-usb.sh --update` to be re-run before burn |
+
+**Why we re-burn the same binary**: Attempt 58 FB rendered every other GG + Edit A line correctly but omitted Edit B's `cmd_submit#1` print. Build-vs-commit-vs-flash timing reconciliation showed `build/agnos` was timestamped 2026-05-17 20:20, commit `0e3d01a` (which contained Edit B) landed at 20:21, and the most recent `install-usb.sh --update` predated the commit. The USB therefore had a build with GG + Edit A but without Edit B. The rebuild (this round) was triggered after the Attempt 58 burn under the explicit ownership-clarification that **kernel build freshness is Claude's responsibility during iron-boot bring-up** (memory `feedback_build_freshness_is_mine` saved 2026-05-17). Same source, same compiler, same flags — just a build that actually contains Edit B.
+
+**Expected FB delta vs Attempt 58** — one new line between existing `enable_slot entry idx=1 cycle=1` and `cmd completion timeout, final_idx=1 cycle=1 events_seen=0`:
+
+```
+xhci: enable_slot entry idx=1 cycle=1
+xhci: cmd_submit#1 trb_phys=<NEW> dw3=<NEW>     ← THIS LINE — Edit B print site at xhci_cmd.cyr:100-109
+xhci: cmd completion timeout, final_idx=1 cycle=1 events_seen=0
+xhci: Enable Slot failed, ccode=0
+```
+
+All other lines unchanged. CMOS post-mortem expected identical to Attempt 58 (`[0x50]=0x15`, `[0x64]=0x04`, `[0x84]=0xBB`, `[0x86]=0x5A`, `[0x87]=0xA5`, etc).
+
+**Pre-bound decision grid for `cmd_submit#1` readback**:
+
+| Field | Healthy value | If different → next action |
+|---|---|---|
+| `trb_phys` | `xhci_cmd_ring_phys + 0` — page-aligned (low 12 bits = 0). For correlation against the controller's reported addr: this is what we expect HW to fetch the first TRB from. | Mismatch → cmd ring base allocator drifted; audit `xhci_cmd_ring_phys` allocator path in `xhci_rings_init` (`xhci_ring.cyr:169-186`). Cross-check against any post-doorbell HW readback that surfaces the actual fetch address. |
+| `dw3` | **`0x2401` (decimal 9217)** = Enable Slot TRB (type 9 << 10) `\|` cycle bit 1 | **Bit 0 clear (even `dw3`)** → class 2 confirmed: `xhci_cmd_ring_cycle` not init'd to 1 in `xhci_rings_init`. Linux-equivalent fix: re-verify `xhci_ring.cyr:185` (`xhci_cmd_ring_cycle = 1;`) actually emits as a `mov` to the cycle global, not DCE'd. One-line repair. |
+| `dw3` type bits 15:10 | `9` (Enable Slot) | Different type → caller (`xhci_enable_slot`) passed wrong `ctrl_partial`. Audit `xhci.cyr:641` (currently `XHCI_TRB_ENABLE_SLOT << 10`) — verify `XHCI_TRB_ENABLE_SLOT` constant resolves to `9` in built binary. |
+
+**Triage flowchart after Attempt 59 (assuming events_seen=0 persists)**:
+
+- **dw3 = 0x2401 + trb_phys = page-aligned**: TRB content + storage are healthy. The doorbell either didn't reach HW (class 10c — doorbell address bug) OR did reach HW but the cmd ring base was never latched (class 10a — CRCR write absorbed). Distinguishing test: Attempt 60 staged read-only inside `xhci_cmd_wait`'s timeout path — post-doorbell CRCR.CRR readback + post-doorbell `load32(xhci_mmio_base + xhci_db_off)` (db register low byte, indicates DB Target accepted). If CRCR.CRR=1 post-doorbell → HW *did* latch the ring AND start fetching, gate is event-ring-routing (audit ERSTBA contents). If CRCR.CRR=0 post-doorbell → cmd ring genuinely not latched, gate is the CRCR write itself (AMD-FCH quirk on CRCR write while R/S=0? cache attribute? UC mapping of op-reg region?).
+- **dw3 bit 0 = 0**: cycle bit not initialized. One-line fix in `xhci_rings_init` (or whatever path is failing to write 1 into `xhci_cmd_ring_cycle`). No further iron burn until fix in.
+- **trb_phys not page-aligned**: cmd ring allocator broken. Audit `pmm_alloc` semantics for cmd ring path. No further iron burn until allocator audited.
+- **trb_phys page-aligned + dw3 type bits ≠ 9**: caller passed wrong TRB type. One-line audit of `XHCI_TRB_ENABLE_SLOT` constant. No further iron burn until constant verified.
+
+**Decisions applied**:
+
+- Per `feedback_iron_burns_block_other_work`: this is a NULL-CODE-CHANGE re-burn — same binary, just on fresh USB. No diagnostic surface added; sole purpose is to retrieve the print that should have appeared in Attempt 58.
+- Per `feedback_build_freshness_is_mine` (saved this session): build artifact verification (size + literal-search) done BEFORE declaring Attempt 59 ready. The chain that broke at Attempt 58 (stale `build/agnos` propagating through stale USB into iron) is closed.
+- Per `feedback_no_unprompted_version_bumps`: no VERSION bump. Same `0e3d01a` binary atop the 1.30.6 banner.
+- Per `feedback_per_action_consent`: this re-burn is approved by the user's "thanks will burn in a second" — that's per-action consent for this one burn, not a session-long license for subsequent burns.
 
 ---
 
