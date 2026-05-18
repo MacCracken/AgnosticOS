@@ -2,10 +2,10 @@
 
 > Reusable library crates that form the AGNOS stack. Consumer [applications](../README.md) depend on these — they should never depend on external libraries when an AGNOS crate covers the domain.
 >
-> **78 libraries at v1.0+** (76 standalone + 2 stdlib-folded: sandhi v5.7.0, niyama v5.9.0; aegis 1.0.0 graduated from pre-1.0 during v5.10.x) — pre-1.0 libs tracked in [development/planning/](../../development/planning/README.md). Binary tools at v1.0+ (agnos, agnoshi, argonaut, cyim, cyim-lsp, kybernet, nous, owl) are listed separately in the [full registry](../../development/planning/shared-crates.md#binaries--tools-8-crates).
+> **78 libraries at v1.0+** (76 standalone + 2 stdlib-folded: sandhi v5.7.0, niyama v5.9.0; aegis 1.0.0 graduated from pre-1.0 during v5.10.x) — pre-1.0 libs tracked in [development/planning/](../../development/planning/README.md). Binary tools at v1.0+ (agnos, agnoshi, argonaut, cyim, cyim-lsp, **kriya**, kybernet, nous, owl) are listed separately in the [full registry](../../development/planning/shared-crates.md#binaries--tools-9-crates). **kriya 1.0.0 graduated 2026-05-18** (M5 closeout — `grep` / `find` / `xargs` shipped, dispatcher + sovereign-boundary surface stabilized).
 > Full registry: [Shared Crates Registry](../../development/planning/shared-crates.md) — that doc is the authoritative source; refresh from there.
 >
-> **Last Updated**: 2026-05-15
+> **Last Updated**: 2026-05-18
 
 See also: [First-Party Standards — Own the Stack](../../development/planning/first-party-standards.md#own-the-stack) | [Science Crate Specs](../../development/guides/science-crate-specs.md)
 

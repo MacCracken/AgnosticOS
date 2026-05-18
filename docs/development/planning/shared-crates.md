@@ -2,14 +2,14 @@
 
 > **Status**: Active | **Last Updated**: 2026-05-15
 >
-> **114 entries** — 85 at v1.0+ stable (75 libs + 8 binaries + **2 stdlib-folded**; aegis 1.0.0 graduated from pre-1.0 in v5.10.x window; cyim-lsp 1.5.0), 21 pre-1.0 libs, 12 pre-1.0 binaries/tools (commandress 0.1.0 + kriya 0.1.0 + gnoboot 0.2.0 added 2026-05-15), 9 non-library, 3 planned, plus the Audio I/O / Video Codec / GitHub-only sub-sections (overlap with the v1.0+/pre-1.0 counts above where applicable).
+> **114 entries** — 86 at v1.0+ stable (75 libs + 9 binaries + **2 stdlib-folded**; aegis 1.0.0 graduated v5.10.x; **kriya 1.0.0 graduated 2026-05-18** — M5 grep+find+xargs closeout shipped 2026-05-17 at 0.6.0, then 1.0.0 cut once dispatcher + sovereign-boundary surface stabilized), 21 pre-1.0 libs, 11 pre-1.0 binaries/tools (commandress 0.1.0 + gnoboot 0.2.0 — kriya moved to v1.0+), 9 non-library, 3 planned, plus the Audio I/O / Video Codec / GitHub-only sub-sections (overlap with the v1.0+/pre-1.0 counts above where applicable).
 >
 > **Classification rule**: pre-v1.0 crates are tracked in [`docs/development/planning/`](README.md). v1.0+ stable crates have their docs in [`docs/applications/libs/`](../../applications/libs/) (libraries) or [`docs/applications/`](../../applications/) (consumer apps).
 > See [First-Party Standards](first-party-standards.md) for versioning and publishing conventions.
 
 ---
 
-## v1.0+ Stable Index (85 entries)
+## v1.0+ Stable Index (86 entries)
 
 Full documentation for each library: [docs/applications/libs/](../../applications/libs/README.md). Consumer apps live one level up at [docs/applications/](../../applications/README.md).
 
@@ -119,16 +119,17 @@ Full documentation for each library: [docs/applications/libs/](../../application
 | tanmatra | 1.2.1 | Atomic physics |
 | ushma | 1.3.0 | Thermodynamics |
 
-### Binaries & Tools (8 crates)
+### Binaries & Tools (9 crates)
 
 | Crate | Version | Domain |
 |-------|---------|--------|
-| [agnos](https://github.com/MacCracken/agnos) | 1.30.5 | AGNOS kernel (Cyrius-native, ELF64 + sovereign UEFI handoff). Iron-validated 2026-05-15 on NUC AMD (Boot-to-Shell MVP). 1.30.4 closed 2026-05-17 with xHCI Linux-diff hardening (H1-H4); 1.30.5 staging absorbed native XHCI + USB-HID-boot driver Phases 4-5 (all 5 phases now landed, MVP gap #3 code-complete). Iron-side gate: archaemenid silent-absorb arc (parallel-track investigation; not blocking other work). |
+| [agnos](https://github.com/MacCracken/agnos) | 1.30.7 | AGNOS kernel (Cyrius-native, ELF64 + sovereign UEFI handoff via gnoboot v0.2.0). Iron-validated 2026-05-15 on NUC AMD (Boot-to-Shell MVP). 1.30.5 closed Phase 3 silent-absorb (Repair EE) + landed Phase 4/5 USB-HID kbd. 1.30.6 bundled the xHCI cmd-path arc Repairs FF→QQ (9-letter ladder + MSI-X table audit closeout). 1.30.7 = next-cycle bump. Iron-side gate: archaemenid Enable Slot CCE silent-absorb (QQ MSI-X Table vector-0 programming staged, not yet burned). Built with cyrius 5.11.59. |
 | [agnoshi](https://github.com/MacCracken/agnoshi) | 1.3.2 | AI shell (Cyrius) — depends on hoosh, daimon |
 | [argonaut](https://github.com/MacCracken/argonaut) | 1.7.0 | Init system library (Cyrius) — depends on agnosys. v1.7.0 adds BOOT_MINIMAL agnoshi-as-no-deps-console-service (unblocks closed-beta MVP without aethersafha). |
-| [cyim](https://github.com/MacCracken/cyim) | 1.7.0 | Sovereign modal text editor (Cyrius-native, VIM-inspired, zero attack surface, no embedded scripting). Consumes vyakarana + niyama (regex via stdlib fold v5.9.0); consumers: agnoshi, aethersafha, daimon-orchestrated agents (the AI-agent edit loop closes through cyim). |
+| [cyim](https://github.com/MacCracken/cyim) | 1.7.0 | Sovereign modal text editor (Cyrius-native, VIM-inspired, zero attack surface, no embedded scripting). Consumes vyakarana + niyama (regex via stdlib fold v5.9.0); consumers: agnoshi, aethersafha, daimon-orchestrated agents. |
 | [cyim-lsp](https://github.com/MacCracken/cyim-lsp) | 1.5.0 | Language Server Protocol companion to cyim (Cyrius-native). Editor-agnostic LSP backend serving cyim's grammar/regex/symbol surfaces over LSP. |
-| [kybernet](https://github.com/MacCracken/kybernet) | 1.2.1 | PID 1 init binary (486KB, Cyrius, 140 tests) — depends on argonaut. v1.2.1 consumer pin bump for argonaut 1.7.0 BOOT_MINIMAL. |
+| [kriya](https://github.com/MacCracken/kriya) | 1.0.0 | Coreutils-equivalent for AGNOS (Sanskrit क्रिया — *action, operation, verb*). One repo, many small static utilities (`cp`, `mv`, `rm`, `mkdir`, `echo`, `wc`, `find`, `grep`, `xargs`, …) sharing infrastructure. BusyBox-style dispatcher + symlinks per utility. **Graduated to v1.0+ 2026-05-18** after M5 closeout (grep + find + xargs); dispatcher + sovereign-boundary surface stabilized. Sovereign-replacement boundaries: owl owns `cat`, cyim owns `vim`, sit owns `git`, chakshu owns `htop`, agnoshi owns shell builtins; kriya fills the gaps. Cyrius pin 5.11.61. Consumers: agnoshi (PATH lookup), zugot (install-time symlinks). |
+| [kybernet](https://github.com/MacCracken/kybernet) | 1.2.1 | PID 1 init binary (Cyrius, 140 tests) — depends on argonaut. v1.2.1 consumer pin bump for argonaut 1.7.0 BOOT_MINIMAL. |
 | [nous](https://github.com/MacCracken/nous) | 1.1.2 | Package resolver (Cyrius) |
 | [owl](https://github.com/MacCracken/owl) | 1.3.6 | Watchful file viewer — `cat`/`bat` replacement (Cyrius-native, **O**bservant **W**atcher of **L**ines). `-p` byte-identical cat drop-in; decorated mode adds token highlighting + VCS gutter + paging. Consumes vyakarana for tokenization. |
 
@@ -176,7 +177,7 @@ Full documentation for each library: [docs/applications/libs/](../../application
 
 ---
 
-## Binaries & Tools (pre-1.0, 12 entries)
+## Binaries & Tools (pre-1.0, 11 entries)
 
 | Binary | Version | Description | Depends On |
 |--------|---------|-------------|------------|
@@ -191,7 +192,6 @@ Full documentation for each library: [docs/applications/libs/](../../application
 | [chakshu](https://github.com/MacCracken/chakshu) | 0.3.0 | AI-augmented system monitor (Sanskrit चक्षु — *the eye*; binary `shu` — **S**ystem **H**ealth **U**tility, per ADR 0001). Cyrius-native, reads `/proc` directly. Replaces htop/btop Bazaar packages at v1.0; adds AI explanations via daimon/hoosh at M3+. | sandhi (M3), niyama (M3), daimon (M3) |
 | [gnoboot](https://github.com/MacCracken/gnoboot) | 0.2.0 | Sovereign UEFI bootloader (Cyrius-native PE32+ EFI Application, ~35 KB) — replaces GRUB on the AGNOS boot path. Locates kernel at `\boot\agnos`, parses ELF64 program headers, allocates pages as `EfiLoaderCode`, zeroes BSS gap, captures GOP framebuffer, builds 80-byte sovereign boot-info struct (magic `'AGNO'`), calls `ExitBootServices`, jumps with `RDI = &boot_info`. 0.2.0 cleanup: CMOS port-I/O blocks stripped, 13 per-stage failure strings collapsed to shared template + code table, `efi_clear` pre-banner. Pairs with agnos 1.30.x. | agnos (kernel handoff consumer) |
 | [commandress](https://github.com/MacCracken/commandress) | 0.1.0 | Structured shell prompt renderer for agnoshi (eventually bash/zsh). Sovereign-stack equivalent of starship, in Cyrius. Binary name `cmdrs` (short for *commandress*). Stateless, segment-based, config-driven, zero non-stdlib deps. Scaffolded 2026-05-15. | agnoshi (planned prompt-hook consumer) |
-| [kriya](https://github.com/MacCracken/kriya) | 0.1.0 | Coreutils-equivalent for AGNOS (Sanskrit क्रिया — *action, operation, verb*). One repo, many small static utilities (`cp`, `mv`, `rm`, `mkdir`, `echo`, `wc`, `find`, `grep` …) sharing infrastructure. BusyBox-style dispatcher + symlinks per utility. Sovereign-replacement boundaries: owl owns `cat`, cyim owns `vim`, sit owns `git`, chakshu owns `htop`, agnoshi owns shell builtins; kriya fills the gaps. Scaffolded 2026-05-15. | agnoshi (PATH lookup), zugot (install-time symlinks) |
 
 ---
 
