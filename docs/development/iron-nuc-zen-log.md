@@ -6821,7 +6821,7 @@ Linux's `arch/x86/mm/ioremap.c:ioremap()` defaults to `_PAGE_CACHE_MODE_UC_MINUS
 
 ---
 
-### Attempt 63 prep — Repair (QQ) — MSI-X Table programming for vector 0 (UNAPPROVED)
+### Attempt 63 prep — Repair (QQ) — MSI-X Table programming for vector 0 (BURNED — see Attempt 63 below)
 
 **Hypothesis**: AGNOS leaving the MSI-X Table all-zero (Message Address=0, Data=0, Vector Control=1 by reset) is what gates Enable Slot CCE posting on AMD FCH 1022:1639. Programming vector 0 with a real (LAPIC, fixed-delivery, edge-trigger) Address/Data pair — while keeping Vector Control=1 to preserve AGNOS's polling posture — should unblock event posting if hypothesis holds.
 
@@ -6907,6 +6907,68 @@ fn pci_enable_msix_unmasked(idx) {
 5. Pending: per-action burn approval (`feedback_per_action_consent`).
 
 **Build under test**: `build/agnos` 368,968 B, mtime 2026-05-18 (post-QQ). Source: `kernel/core/pci.cyr` `pci_enable_msix_unmasked` lines updated; `kernel/arch/x86_64/usb/xhci.cyr` MSI-X call moved after `vmm_remap_uc_2mb`.
+
+---
+
+### Attempt 63 — 2026-05-18 → REPAIRS (QQ + QQ2) FALSIFIED; `events_seen=0` SURVIVES MSI-X TABLE VECTOR-0 PROGRAMMING; **VISUAL BOOT-TO-SHELL ON IRON ACHIEVED**
+
+**Status**: QQ + QQ2 falsified for the cmd-path silent-absorb. The MSI-X table vector-0 programming hypothesis (controller speculatively reads its own table; sees Address=0/Data=0/mask=1 and gates Enable Slot CCE posting) does not hold on AMD FCH 1022:1639. Burn ran on `build/agnos` 368,968 B (post-QQ + QQ2; agnos@`677ff2a`) plus version bump to 1.30.7 (agnos@`3da2c28`).
+
+**Headline milestone — visual MVP gate reached.** The framebuffer shows the full kernel-init sequence completing past the xhci failure into scheduler test (timer ticks: 153) → `init: hello AGNOS!` → userland test (HELLO) → userland complete → launching kybernet → kybernet starting init → launching shell → **`agnoshi shell v1.30.7 (type 'help')`** rendered on the screen. The kernel no longer fatal-blocks on `events_seen=0` after xhci init failure; it proceeds past the cmd-path gate into the rest of boot. The closed-beta MVP's visual half is hit. The remaining MVP gate is functional keyboard input through xhci (still gated on the cmd-path silent-absorb — no HID enumeration without an Enable Slot CCE).
+
+**Symptom (unchanged through QQ + QQ2)**:
+
+```
+xhci: cmd ring entry: idx=1 cycle=1
+xhci: cmd_completion timeout. final_idx=1 dw3=0017
+xhci: cmd_completion timeout. final_idx=1 cycle=1 events_seen=0
+xhci: ABORT failed
+```
+
+**Boot-log read (post-burn)** — interpretation in [`scripts/src/read-boot-log.cyr`](../../scripts/src/read-boot-log.cyr) header is stale at "Repair (OO) — Tier 2 bundle"; the runtime data below is the QQ + QQ2 burn:
+
+| Field | Value | Reading |
+|---|---|---|
+| Kernel checkpoint | 0x15, magic 0xab ✓ | Kernel reached late-init phase (matches FB — boot completed) |
+| gnoboot checkpoint | 0x05, magic 0xcd ✓ | Bootloader handoff clean |
+| HCCPARAMS1 / HCCPARAMS2 | 0xe5 / 0x3f | Controller capability snapshot (consistent across burns) |
+| MaxScratchpadBufs | 0x02 | Two scratchpad pages installed (Repair AA confirmed) |
+| USBLEGSUP | 0x01 = OS-owned | BIOS handoff clean |
+| CCS bitmap | 0x04 | Port 2 has CCS (single device attached — keyboard) |
+| Reset OK bitmap | 0x04 | Port 2 reset succeeded |
+| PORTSC.PP bitmap | 0x3f | All 6 ports powered |
+| PSC change byte | 0x00 | No PSC change pending — already drained |
+| PLS pre-PR | 0x07 = Polling | Port was Polling pre-PR (USB2 device detection) |
+| USBSTS byte 0 | 0x00 | HCH=0, HSE=0, EINT=0, PCD=0 — controller healthy, no event raised |
+| USBSTS byte 1 | 0x00 | CNR=0, HCE=0, SRE=0 — controller ready, no host error |
+| USBCMD byte 0 | 0x0d = R/S \| INTE \| HSEE | Controller running, interrupts enabled, system-error reporting on |
+| AA scratchpad (0x81) | 0xaa ✓ | Scratchpad install ran (Repair AA intact in 0x80-0x84 reliable band) |
+| BB DNCTRL (0x84) | 0xbb ✓ | DNCTRL write ran (Repair BB intact) |
+| CC bank (0x86) | 0x5a (expected 0xcc) | **Above virgin-scratch zone (0x50-0x7F) per archaemenid CMOS map memory** — BIOS scribble, not a CC regression |
+| DD drain (0x87) | 0xa5 (expected 0xdd) | Same — BIOS-owned slot above the reliable band |
+
+USBSTS = 0x00 with EINT=0 is the load-bearing observation: the controller's interrupter is silent. The host did everything correctly per Linux/FreeBSD/Haiku/EDK2 convergent-prior-art (FF→OO Tier 1+2 audit) plus the MSI-X table programming divergence (QQ + QQ2), and the controller still does not post the Enable Slot CCE.
+
+**Falsified hypothesis (QQ + QQ2)**: The interrupter state machine does *not* gate event posting on the MSI-X table's per-vector Address/Data programming. Either (a) the controller does not speculatively read its own MSI-X table to confirm "interrupter is configured" — the speculative-read mechanism was a guess from the all-zero-table audit divergence and is now disproven; (b) it does read but the gate is elsewhere (different vector index than 0, different field within the entry, or a different mask layer entirely); (c) the divergence between AGNOS and Linux MSI-X setup is real but orthogonal to the cmd-path symptom.
+
+**Letter-ladder depth**: 10 falsified hypotheses now (FF → GG → HH → JJ → KK → LL → MM → NN → OO → QQ+QQ2). Per `feedback_stop_letter_laddering`, the escape plan is load-bearing — boot-to-shell is now visually proven so the iron-blocker has shifted from "can we display anything" to "can we type into what's displayed."
+
+**Strategic pivot — visual gate reached changes the calculus.**
+
+The previous decoupling rationale ("decouple to QEMU because we can't see iron progress") no longer applies. We CAN see iron progress — the screen renders the full boot, including the agnoshi prompt. What we can't do is *type into it*. This reframes the next move:
+
+| Option | Cost | Why it might fit | Why it might not |
+|---|---|---|---|
+| **PP — UC-remap DMA regions** (event ring + cmd ring + DCBAA + scratchpad) | 1 iron burn | Bottoming-out path pre-staged in 1.30.6 announcement. Strongest single-burn remaining if the cmd-path gate is cache-coherence rather than interrupter-table. Symptom shape (PSCE posts via different path, CCE doesn't) is still weakly fit by cache coherence but no longer ruled out — PSCE may post via a memory region not subject to the same coherence hazard as the cmd-ring CCE. | Coherence hypothesis fits weakly; if PP falsifies, no obvious next-burn candidate without research. |
+| **Linux MSI-X ordering replay (QQ3)** | 0-burn audit + 1 burn | Linux's `msix_capability_init` programs *every* vector's Address/Data, not just vector 0. AMD FCH may gate on a different vector index (e.g., vector matching the cmd interrupter index in DCBAA[0] or HCSPARAMS1.MaxIntrs). | If gating is on vector 0 specifically (or all vectors equally), the per-vector-N variant adds nothing. |
+| **HID polling path via Phase 4/5 software** | 0 iron burns | Visual gate reached → typing gate may be addressable in Phase 4/5 code without unblocking the cmd-path. If Enable Slot is the only blocked command but device enumeration can proceed via different means (Port Status events → manual address assignment → control transfers via a different ring path?), there may be a software-only route to keyboard input. Speculative; requires xHCI 1.2 §4.6 deep-read for the "no-Enable-Slot" enumeration path (which may not exist — Enable Slot is normatively required). | xHCI is normatively gated on Enable Slot for any device enumeration; software-only workaround likely doesn't exist. Worth a 30-min spec audit to confirm. |
+| **Decouple to QEMU (still on the table)** | 0 iron near-term | Phase 4/5 code-completion in software lets the kernel reach typeable-shell on virtualized hardware regardless of iron cmd-path status. MVP code-readiness gate reachable. | MVP iron gate (typeable shell on archaemenid) still slips. With visual gate already on iron, the gap to "fully on iron" is now smaller and worth pushing on. |
+
+**Claude recommendation (for user decision, no burn proposed)**: 30-min xHCI 1.2 §4.6 spec audit on whether the cmd-path is truly the only blocker — i.e., whether keyboard input requires a successful Enable Slot at all, or whether there's a USB2-via-OHCI/UHCI legacy path or a port-status-event-driven enumeration variant. If the audit confirms Enable Slot is normatively required (likely), PP becomes the strongest next iron move. If the audit surfaces a software route, that's the next direction.
+
+**Per-action consent**: No iron burn proposed. No instrumentation proposed. No edits to `agnos/` or `gnoboot/` made post-burn. Doc-only updates landed in this entry plus `state.md` plus the agnos CHANGELOG 1.30.7 stub.
+
+**Build under test**: `build/agnos` 368,968 B (QQ + QQ2 + version bump composite). Source: `agnos@10f0fb9` (HEAD after doc cleanup).
 
 ---
 
