@@ -99,6 +99,35 @@ fn print_cmos_line(label, b) {
     return 0;
 }
 
+# Print string without trailing newline. Used by the focused summary
+# block where lines are composed from multiple fragments.
+fn print_str(s): i64 {
+    syscall(1, 1, s, strlen(s));
+    return 0;
+}
+
+# Print a single byte as "0xab" (lowercase, 2-digit, no newline).
+fn print_hexb(b: i64): i64 {
+    syscall(1, 1, "0x", 2);
+    fmt_byte(b);
+    return 0;
+}
+
+# Sentinel-check glyph. Prints "✓" if actual matches expected; otherwise
+# "⚠ expected 0xXX got 0xYY". Used by the focused summary to flag prior-
+# repair sentinel mismatches at a glance.
+fn print_check(actual: i64, expected: i64): i64 {
+    if (actual == expected) {
+        print_str("✓");
+    } else {
+        print_str("⚠ expected ");
+        print_hexb(expected);
+        print_str(" got ");
+        print_hexb(actual);
+    }
+    return 0;
+}
+
 # Dump CMOS bytes 0x0E-0x7F in a hex-grid layout. RTC bytes 0x00-0x0D
 # are deliberately skipped: reading them while the RTC is updating
 # returns garbage, and they're not where any checkpoint signal lives.
@@ -152,20 +181,24 @@ fn cmos_dump() {
 fn main(): i64 {
     args_init();
     var dump_mode = 0;
+    var verbose_mode = 0;
     var i = 1;
     while (i < argc()) {
         var arg = argv(i);
         if (streq(arg, "--dump") == 1) { dump_mode = 1; }
+        elif (streq(arg, "--verbose") == 1) { verbose_mode = 1; }
         elif (streq(arg, "-h") == 1) {
-            println("Usage: read-boot-log [--dump]");
-            println("  default  print 4 checkpoint bytes + verdict");
-            println("  --dump   print full CMOS 0x0E-0x7F hex grid");
+            println("Usage: read-boot-log [--dump | --verbose]");
+            println("  default    focused current-sweep summary (decoded, no chapters)");
+            println("  --verbose  full CMOS slot listing + interpretation chapters + verdict layers");
+            println("  --dump     raw CMOS 0x0E-0x7F hex grid");
             return 0;
         }
         elif (streq(arg, "--help") == 1) {
-            println("Usage: read-boot-log [--dump]");
-            println("  default  print 4 checkpoint bytes + verdict");
-            println("  --dump   print full CMOS 0x0E-0x7F hex grid");
+            println("Usage: read-boot-log [--dump | --verbose]");
+            println("  default    focused current-sweep summary (decoded, no chapters)");
+            println("  --verbose  full CMOS slot listing + interpretation chapters + verdict layers");
+            println("  --dump     raw CMOS 0x0E-0x7F hex grid");
             return 0;
         }
         i = i + 1;
@@ -279,6 +312,70 @@ fn main(): i64 {
     var xh_ccsent  = cmos_read(134);  # 0x86 — Repair (CC) extended-CMOS bank sentinel (0xCC = 0x72/0x73 pair live)
     var xh_ddsent  = cmos_read(135);  # 0x87 — Repair (DD) event-ring drain sentinel (0xDD = site executed)
 
+    # --- Default: focused current-sweep summary ----------------------------
+    # Strips the verbose chapters / interpretation prose / verdict layers
+    # from the output and prints only the slots relevant to the active
+    # sweep. The sweep tag ("Repair (NN) …") must be updated as repairs
+    # land — same convention as docs/development/iron-nuc-zen-log.md.
+    # Use `--verbose` for the full forensic dump (chapters preserved for
+    # falsified-hypothesis triage).
+    if (verbose_mode == 0) {
+        println("");
+        println("=== AGNOS xHCI current-sweep boot log ===");
+        println("Repair (NN) — ERDP-before-ERSTBA + CRCR-after-IMOD");
+        println("Reference: docs/development/xhci-prior-art-audit.md");
+        println("");
+        println("Boot reached:");
+        print_str("  kernel  checkpoint = "); print_hexb(kcp);
+        print_str("     magic = "); print_hexb(kmagic); print_str(" "); print_check(kmagic, 0xAB);
+        print_str("\n");
+        print_str("  gnoboot checkpoint = "); print_hexb(gcp);
+        print_str("     magic = "); print_hexb(gmagic); print_str(" "); print_check(gmagic, 0xCD);
+        print_str("\n");
+        println("");
+        println("Controller capability:");
+        print_str("  HCCPARAMS1 = "); print_hexb(xh_hccp1);
+        print_str("        HCCPARAMS2 = "); print_hexb(xh_hccp2);
+        print_str("\n");
+        print_str("  MaxScratchpadBufs = "); print_hexb(xh_spcount);
+        print_str("    sp_array phys byte 2 = "); print_hexb(xh_spdcba);
+        print_str("\n");
+        println("");
+        println("Enumeration (Phase 3) — last completed port state:");
+        print_str("  USBLEGSUP outcome      = "); print_hexb(xh_usbleg);
+        println("        (0x01 = OS-owned)");
+        print_str("  CCS bitmap             = "); print_hexb(xh_ccs); print_str("\n");
+        print_str("  Reset OK bitmap        = "); print_hexb(xh_reset); print_str("\n");
+        print_str("  PORTSC.PP bitmap       = "); print_hexb(xh_pp); print_str("\n");
+        print_str("  PSC change byte (R4)   = "); print_hexb(xh_pscchg); print_str("\n");
+        print_str("  PLS pre-PR     (R10)   = "); print_hexb(xh_pls);
+        println("         (0x07 = Polling)");
+        println("");
+        println("Run-time @ silent-absorb fail:");
+        print_str("  USBSTS byte 0 [0x77]   = "); print_hexb(xh_sts_lo);
+        println("   (HCH | HSE | EINT | PCD)");
+        print_str("  USBSTS byte 1 [0x78]   = "); print_hexb(xh_sts_hi);
+        println("   (CNR | HCE | SRE)");
+        print_str("  USBCMD byte 0 [0x79]   = "); print_hexb(xh_cmd_lo);
+        println("   (R/S | HCRST | INTE | HSEE)");
+        println("");
+        println("Prior repairs — sentinels only (runlog; all falsified for events_seen=0):");
+        print_str("  AA scratchpad install  [0x81]  = "); print_hexb(xh_spsent);
+        print_str("  "); print_check(xh_spsent, 0xAA); print_str("\n");
+        print_str("  BB DNCTRL write        [0x84]  = "); print_hexb(xh_bbsent);
+        print_str("  "); print_check(xh_bbsent, 0xBB); print_str("\n");
+        print_str("  CC extended-CMOS bank  [0x86]  = "); print_hexb(xh_ccsent);
+        print_str("  "); print_check(xh_ccsent, 0xCC); print_str("\n");
+        print_str("  DD event-drain + PCD   [0x87]  = "); print_hexb(xh_ddsent);
+        print_str("  "); print_check(xh_ddsent, 0xDD); print_str("\n");
+        println("");
+        println("Sweep symptom: events_seen=0 after Enable Slot doorbell.");
+        println("Audit doc:     docs/development/xhci-prior-art-audit.md");
+        println("Verbose log:   ./scripts/read-boot-log.sh --verbose    (full interpretation chapters)");
+        return 0;
+    }
+
+    # --- Verbose: full forensic dump (--verbose) ---------------------------
     print_cmos_line("CMOS[0x53] gnoboot magic    = ", gmagic);
     print_cmos_line("CMOS[0x52] gnoboot checkpt  = ", gcp);
     print_cmos_line("CMOS[0x51] kernel  magic    = ", kmagic);

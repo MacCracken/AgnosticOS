@@ -6558,7 +6558,7 @@ xhci: Enable Slot failed, ccode=0
 **Pivot to multi-source prior-art audit** (replaces letter-stacking):
 - New artifact: [`docs/development/xhci-prior-art-audit.md`](xhci-prior-art-audit.md) — four-source (Linux + FreeBSD + Haiku + EDK2) convergence diff against AGNOS xhci_start + cmd-submit + CCE-drain.
 - Replaces the symptom-dictionary bootstrap with a baseline-diff bootstrap. Next session reads this BEFORE the CMOS read-boot-log.
-- Sibling: [`scripts/read-boot-log-focused.sh`](../../scripts/read-boot-log-focused.sh) — current-sweep CMOS view, strips falsified-hypothesis chapters.
+- Reader: [`scripts/read-boot-log.sh`](../../scripts/read-boot-log.sh) default prints the focused current-sweep CMOS view (decoded sentinels + ✓/⚠ marks); `--verbose` recovers the full slot listing + interpretation chapters + verdict layers for falsified-hypothesis triage.
 
 ### Attempt 62 prep — Repair (NN) — ERDP-before-ERSTBA + CRCR-after-IMOD (bundled from prior-art audit Tier 1)
 
