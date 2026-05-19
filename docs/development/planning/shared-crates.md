@@ -1,8 +1,8 @@
 # Shared Crates — Registry & Status
 
-> **Status**: Active | **Last Updated**: 2026-05-15
+> **Status**: Active | **Last Updated**: 2026-05-18
 >
-> **114 entries** — 86 at v1.0+ stable (75 libs + 9 binaries + **2 stdlib-folded**; aegis 1.0.0 graduated v5.10.x; **kriya 1.0.0 graduated 2026-05-18** — M5 grep+find+xargs closeout shipped 2026-05-17 at 0.6.0, then 1.0.0 cut once dispatcher + sovereign-boundary surface stabilized), 21 pre-1.0 libs, 11 pre-1.0 binaries/tools (commandress 0.1.0 + gnoboot 0.2.0 — kriya moved to v1.0+), 9 non-library, 3 planned, plus the Audio I/O / Video Codec / GitHub-only sub-sections (overlap with the v1.0+/pre-1.0 counts above where applicable).
+> **119 entries** — 86 at v1.0+ stable (75 libs + 9 binaries + **2 stdlib-folded**; aegis 1.0.0 graduated v5.10.x; **kriya 1.0.0 graduated 2026-05-18** — M5 grep+find+xargs closeout shipped 2026-05-17 at 0.6.0, then 1.0.0 cut once dispatcher + sovereign-boundary surface stabilized), 21 pre-1.0 libs, 11 pre-1.0 binaries/tools (commandress 0.1.0 + gnoboot 0.2.0 — kriya moved to v1.0+), 9 non-library, **8 planned** (krishi + prakriti + 2026-05-18 terminal-aesthetics: darshini, hapi, BannerManor, iam, mihi), plus the Audio I/O / Video Codec / GitHub-only sub-sections (overlap with the v1.0+/pre-1.0 counts above where applicable).
 >
 > **Classification rule**: pre-v1.0 crates are tracked in [`docs/development/planning/`](README.md). v1.0+ stable crates have their docs in [`docs/applications/libs/`](../../applications/libs/) (libraries) or [`docs/applications/`](../../applications/) (consumer apps).
 > See [First-Party Standards](first-party-standards.md) for versioning and publishing conventions.
@@ -245,6 +245,18 @@ Sovereign video codecs — no C, no FFI, no libav*. Each codec is a standalone c
 |-------|-------------|---------------|
 | **krishi** | Agriculture — crop science, soil, irrigation, yield modeling (Sanskrit: कृषि) | vanaspati, badal, kimiya, kshetra |
 | **prakriti** | Ecology — ecosystem modeling, food webs, biodiversity (Sanskrit: प्रकृति) | jantu, vanaspati, badal, jivanu |
+
+### Terminal-aesthetics quintet (proposed 2026-05-18; brainstorm captured in `~/.claude/projects/-home-macro-Repos-agnosticos/memory/project_tools_stable_ideas.md`)
+
+Five Cyrius-native tools covering the daily-driver shell experience — prompt, file listing, dotfile placement, banner output, system identity. Together with `commandress` (already at 0.1.0 in `Binaries & Tools`), they form a coherent personal-computing aesthetics layer for AGNOS. Each lives as a standalone repo when scaffolded.
+
+| Crate | Description | Key Consumers |
+|-------|-------------|---------------|
+| **darshini** | `eza`-equivalent — pretty file listing with colors, icons, git-status column, tree view, mime-type recognition. Sanskrit: दर्शिनी (*she who shows/displays*). Sibling-not-competitor to `kriya`'s minimal `ls` — different aesthetic goals, both ship. Consumes `darshana` (TTY/ANSI primitives) as rendering substrate. | end-user shells; chakshu (potentially, for monitor-style file panes) |
+| **hapi** | GNU `stow`-equivalent — dotfile / symlink farm manager. **Dual-read name**: Hawaiian हपी (*happy*) + backronym **H**ome **A**sset **P**rovisioning **I**nterface. First Pacific Islands word in the AGNOS naming surface. CYML manifest format per package, capability-bounded execution (touches `$HOME` only by default), lightweight audit trail for rollback. | end-user shells; possibly agnova (OS installer) for dotfile bootstrap |
+| **BannerManor** (binary `bnrmr`) | `figlet`-equivalent — ASCII-art banner generator for login MOTDs, script intros, splash text. English wordplay (cmdrs/BannerManor naming lane). Binary `bnrmr` is vowel-dropped per the `commandress`→`cmdrs` compression pattern. Font format probably CYML or .figlet-compatible. Ships with a few opinionated default fonts. | end-user shells; agnoshi MOTD; iam (logo rendering) |
+| **iam** | `fastfetch` / `neofetch`-equivalent — system info display for login MOTD and screenshot flex. Pure inverse of `whoami` (`whoami` says who *the user* is; `iam` says what *the system* is). **Design principle (user-set)**: keep it `whoami`-simple. No theming engine, no plugin system, no configurable output. Thin presentation over the shared probe lib. | end-user shells; agnoshi MOTD |
+| **mihi** | Shared system-info probe library — CPU / RAM / GPU / kernel / uptime / distro / hostname. Maori (ميهي): the formal self-introduction ceremony in te reo — stating mountain, river, ancestors, name. A system performing `mihi` is exactly what this lib enables: the box telling whoever asks who it is. Extracted to keep `iam` lightweight (no AI-augmented monitor dep for MOTD invocations) and to give `chakshu` a stable bedrock. Pairs linguistically with `hapi` (both Polynesian-family — hapi as Hawaiian-experiential, mihi as Maori-substrate). | iam, chakshu, BannerManor (hostname), hapi (target-box info) |
 
 ---
 

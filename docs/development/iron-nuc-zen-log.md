@@ -6972,6 +6972,195 @@ The previous decoupling rationale ("decouple to QEMU because we can't see iron p
 
 ---
 
+### Attempt 64 — 2026-05-18 → QEMU REPRO — `events_seen=0` REPRODUCES ON qemu-xhci; CMD-PATH SILENT-ABSORB IS NOT SILICON-SPECIFIC
+
+**Not an iron burn.** This entry documents a QEMU-side reproduction run made the same day as Attempt 63, exercising the same Enable Slot CCE path on a completely different controller. It reframes the entire FF→QQ+QQ2 letter ladder.
+
+**Trigger**: User decision point post-Attempt 63 selected Option D (Decouple to QEMU — Phase 4/5 in software). The intent was to make Phase 4/5 progress in QEMU while iron remained at the cmd-path gate. The actual outcome went deeper: the iron cmd-path gate reproduced on QEMU too.
+
+**Setup**:
+- Machine: `qemu-system-x86_64 -machine q35 -m 256M -cpu max` + OVMF (edk2-ovmf x64) + gnoboot v0.2.0 + agnos@10f0fb9 (HEAD) + qemu-xhci + usb-kbd.
+- Disk: 64 MB GPT/ESP image (`parted` + `mtools`) following `gnoboot/tests/ovmf_smoke.sh` convention; BOOTX64.EFI at `/EFI/BOOT/`, agnos kernel at `/boot/agnos`. Path-C handoff (gnoboot.efi → magic 0x41474E4F → RDI=&boot_info → jmp rax @ 0x1000a8).
+- Capture: `-serial stdio` (kprint mirrors to serial via `kernel/core/kprint.cyr:13-17`; every line iron CMOS-stamps + FB-paints lands on serial here for free).
+
+**Initial blocker — BAR above 4 GB**: First QEMU smoke produced
+
+```
+xhci: BAR above 4GB (not yet supported) @ 824633720832
+```
+
+824633720832 = 0xC000000000 = 768 GB. OVMF places 64-bit-capable BARs in the high MMIO window regardless of machine type (`-machine q35` and `-machine pc` produce identical placement). The early-out gate at `kernel/arch/x86_64/usb/xhci.cyr:109-115` was a "deferred until iron evidence" placeholder; QEMU surfaced exactly that evidence.
+
+**Code change**: `vmm_remap_uc_2mb` in `kernel/core/vmm.cyr` extended to handle `phys ≥ 512 GB` (PML4[N>0]). Allocates a fresh PDPT under the target PML4 entry if absent, then shatters the 1 GB region into 2 MB entries with the target chunk marked UC. The early-out gate in xhci.cyr was removed entirely — generic mapping handles all BAR locations. Build delta: +280 B (411,120 B post-fix). See agnos@HEAD `kernel/core/vmm.cyr:59-105` + `kernel/arch/x86_64/usb/xhci.cyr:103-115`.
+
+**The decisive run — same agnos build, QEMU + qemu-xhci attached**:
+
+```
+xhci: MSI-X enabled (no function-mask)
+xhci: found at 824633720832, ver=0, 64 slots, 8 ports
+xhci: caplen=64 csz=0 ac64=1 intrs=16
+xhci: dboff=8192 rtsoff=4096 xecp=8
+xhci: scratchpad bufs=0
+xhci: USBLEGSUP n/a (cap not present)
+xhci: dev_notifications enabled
+xhci: halted, reset clean
+xhci: controller running, HCH=0, ERDP=12005376
+xhci: CRCR.CRR=0 ERSTSZ=1 IMAN=2 ERDP_lo=12005376
+xhci: PP=1 asserted, bitmap=255
+xhci: drained 0 events
+xhci: enable_slot entry idx=0 cycle=1
+xhci: cmd_submit#1 trb_phys=12001280 dw3=9217
+xhci: cmd completion timeout, final_idx=0 cycle=1 events_seen=0
+xhci: Enable Slot failed, ccode=0
+```
+
+Identical symptom to iron Attempt 63's `events_seen=0` after the Enable Slot doorbell. Boot proceeded past the xhci gate into scheduler test, kybernet, and the agnoshi shell prompt on serial console — the QEMU-side equivalent of iron's visual MVP gate.
+
+**Cross-platform comparison**:
+
+| Aspect | Iron (AMD FCH 1022:1639) | QEMU (qemu-xhci, q35/OVMF) |
+|---|---|---|
+| HCCPARAMS1 | 0xE5 (AC64 + CSZ + LHRC + LTC + NSS) | csz=0, ac64=1 |
+| MaxScratchpadBufs | 2 (Repair AA installed) | **0** (none needed) |
+| Slots / Ports | 64 / 6 | 64 / 8 |
+| USBLEGSUP | 0x01 (OS-owned) | n/a (cap not present) |
+| BAR | sub-4GB | 0xC000000000 (768 GB) |
+| PORTSC.PP bitmap | 0x3F | 0xFF |
+| USBSTS | 0x00 (HCH=HSE=EINT=PCD=CNR=HCE=SRE=0) | not yet snapshotted (Phase 3 ran clean) |
+| USBCMD | 0x0D (R/S \| INTE \| HSEE) | R/S=1 set, controller running |
+| **Enable Slot doorbell** | submitted | **submitted** |
+| **events_seen** | **0** | **0** |
+
+**Falsification cascade — the FF→QQ+QQ2 ladder was looking at the wrong layer.** Every behavioral repair in the 10-letter ladder targeted hypotheses that depend on AMD FCH 1022:1639 silicon characteristics:
+
+| Letter | Hypothesis | Status after Attempt 64 |
+|---|---|---|
+| FF | IMAN.IE not set pre-R/S | Falsified — QEMU's interrupter posts no events with or without |
+| GG | AMD-Vi gating cmd-ring DMA | Falsified — QEMU has no AMD-Vi |
+| HH | Doorbell readback flush missing | Falsified — QEMU has identical doorbell behavior |
+| JJ | Universal readback flush missing | Falsified — QEMU coherence is host-CPU coherent |
+| KK | CNR not polled after R/S | Falsified — QEMU's CNR clears immediately |
+| LL | Link TRB cycle bit init wrong | Falsified — QEMU is spec-strict on cycle bit |
+| MM | MSI-X Function Mask = 1 stalling | Falsified — QEMU honors FuncMask=0 |
+| NN | ERDP-after-ERSTBA order wrong | Falsified — order is spec-permissive on both |
+| OO | USBSTS-clear + IMAN.IE-post-R/S | Falsified — QEMU's USBSTS is already clear |
+| QQ+QQ2 | MSI-X table speculative-read gate | **Doubly falsified** — QEMU has no AMD speculative-read; same symptom anyway |
+
+None of the ladder hypotheses *could* be the cause if QEMU exhibits the same symptom: QEMU's xhci is a clean spec-compliant model with none of the AMD-Vi / FCH-quirk surface the hypotheses targeted.
+
+**The new hypothesis space** — the bug is in agnos's own cmd-ring submission or event-ring observation logic. Candidate surfaces (no testing implied; brainstorm only):
+
+1. **Cmd-ring TRB encoding** — `xhci_cmd_submit` (`kernel/arch/x86_64/usb/xhci_cmd.cyr`) writes TRB dw0/dw1/dw2/dw3 for Enable Slot (TRB type 9). dw3 = 0x9217 = (slot_type=0 << 16) | (cycle=1 << 0) | ... The bit packing for Enable Slot is `(slot_type << 16) | (TRB_TYPE_ENABLE_SLOT << 10) | (C << 0)`; verify dw3 components match. (TRB_TYPE 9 << 10 = 0x2400; cycle=1 → 0x2401; 0x9217 ≠ 0x2401 → encoding suspicion.)
+2. **Event-ring drain logic** — `xhci_evt_poll` or equivalent reads ERDP, walks the event ring looking for cycle-bit-matched entries. If the cycle-bit comparison is inverted, or if the dequeue pointer is being advanced before the read, drained=0 results even when the controller has posted events.
+3. **Doorbell value** — `xhci_doorbell_ring(0, 0, 0)` for the cmd-ring host doorbell. Spec: cmd doorbell value 0 means "ring the cmd ring." Confirm the doorbell offset register and value match xHCI 1.2 §5.6.
+4. **Cycle-bit producer/consumer split** — the cmd-ring producer cycle is maintained by host; consumer cycle is the controller's. If host writes TRB with cycle = ring_pcs (producer cycle state) but the controller expects cycle = ring_ccs, the controller sees an "unowned" TRB and refuses to consume.
+
+Iron Attempt 63's `cmd_submit#1 trb_phys=12001280 dw3=0017` vs QEMU's `dw3=9217` — the dw3 byte values differ between runs because of different ERST/cmd-ring physical placement, but both are wrong-shaped for Enable Slot (TRB type 9). Iron's `dw3=0x0017` is even more suspicious — 0x17 = 0b10111 isn't a valid Enable Slot encoding.
+
+**QEMU is now the active debug surface.** Full kprint observability via serial; QEMU's `-d trace:xhci_*` flag set provides controller-side ground truth; `info qtree` / `info usb` / `info irq` via QEMU monitor expose internal state. Zero iron burns required for cmd-path iteration.
+
+**Per-action consent**: doc-only updates this round. No further code edits proposed without per-action approval. Code changes that landed: agnos `kernel/core/vmm.cyr` + `kernel/arch/x86_64/usb/xhci.cyr` (BAR-above-4GB fix, approved as part of Option E1 selection).
+
+**Build under test**: `build/agnos` 411,120 B (post-BAR-fix). Source: agnos@HEAD on `monolith-extraction` after BAR fix.
+
+### Attempt 64 closure (same day, post-QEMU-repro) — ROOT CAUSE FOUND + TYPEABLE SHELL ON QEMU
+
+**The reframe held through the next iteration cycle: same-day discovery of the actual root cause + Phase 4/5 unblock on QEMU.**
+
+**Step 1 — IMAN ordering test (FALSIFIED).** Hypothesis: AGNOS's post-R/S=1 IMAN.IE write (Repair OO.B) is the gate; 3-of-4 prior art writes pre-R/S=1. Reverted OO.B → IMAN write back at xhci.cyr ~line 600 (after ERSTBA, before CRCR + R/S=1). QEMU trace confirmed pre-R/S placement landed. **`events_seen=0` survived.** Hypothesis falsified. Reasoning correction: the OVMF trace earlier in the QEMU run shows OVMF posts CCEs successfully with the same controller — so the path is reachable; IMAN ordering wasn't the differentiator.
+
+**Step 2 — T1 USBCMD test (FALSIFIED).** Hypothesis: USBCMD=0x01 (R/S only, matching OVMF) vs AGNOS's 0x0D (R/S | INTE | HSEE) might be the gate. Changed; rebuilt; ran. **`events_seen=0` survived.** Falsified. Restored 0x0D (H4 hardening preserved).
+
+**Step 3 — OBS dump of ERST phys via QEMU monitor.** Pivot away from behavioral tests to direct memory inspection. With monitor `xp /4wx <erstba_phys>` after AGNOS times out:
+
+```
+0026a000: 0x00269000 0x00000000 0x00000000 0x00000000
+          [seg base]  [seg base hi] [SEG SIZE]   [rsvd]
+```
+
+**Ring Segment Size = 0.** AGNOS code at `xhci_ring.cyr:219` does `store32(erst + 8, XHCI_EVT_RING_SEGMENT_SIZE);` — but the gvar reads as **0** at runtime, not the declared `256`. With size=0, the controller has nowhere to write events. **Root cause found.**
+
+**Step 4 — gvar-init-order bug pattern confirmed.** xhci_cmd.cyr:107-115 had carried a comment since Attempt 58: *"Suspected gvar-init-order: `XHCI_DIAG_SUBMIT_MAX` reading 0 at first-call time."* The suspicion was correct but the consumer-side workaround (drop the gvar gate) masked the broader class. The empirical evidence — ERST entry byte 8 reads as `0x00000000` instead of `0x00000100` via QEMU memory dump — was the first definitive proof. Two load-bearing agnos gvars in this exact pattern:
+
+1. `XHCI_EVT_RING_SEGMENT_SIZE = 256` at `xhci_ring.cyr:51` → ERST entry size word planted as 0 → no event ring slot.
+2. `XHCI_CMD_TIMEOUT_SPINS = 10000000` at `xhci_cmd.cyr:60` → `while (wait < 0)` exits immediately → spin loop never executes → `events_seen=0` always.
+
+**Step 5 — Converted both gvars to `enum X { NAME = value; }` constants in agnos.** Cyrius enum members compile to literals; no module-load ordering to get wrong. First conversion (segment size) made events post correctly in QEMU trace (`usb_xhci_queue_event ER_COMMAND_COMPLETE`) but AGNOS still reported events_seen=0 (because the timeout-spins gvar still read as 0, loop never ran). Second conversion (timeout spins) unblocked everything:
+
+```
+xhci: enable_slot entry idx=0 cycle=1
+xhci: cmd_submit#1 trb_phys=... dw3=9217
+xhci: cmd_submit#2 trb_phys=... dw3=16788481        ← Address Device dispatched (Phase 4 entry)
+xhci: Address Device failed, ccode=5                ← New Phase 4 blocker
+```
+
+**Step 6 — Filed cyrius issue [`2026-05-18-gvar-init-order-zero-reads.md`](../../../cyrius/docs/development/issues/2026-05-18-gvar-init-order-zero-reads.md)**. Documented the pattern, the two confirmed instances, and proposed three resolution paths. Closed at cyrius v5.11.64 (same day, hours later) with **Option B — image-static init for literal-RHS top-level gvars at file scope** across every backend. Regression test `tests/tcyr/gvar_static_init.tcyr` gates the behavior.
+
+**Step 7 — Pin bump agnos cyrius.cyml: 5.11.59 → 5.11.64.** Rebuilt. With both the cyrius language fix AND agnos's enum conversions in place, the language fix makes the enum workarounds unnecessary (`var X = N;` would now also work) but the enum form is strictly correct shape and stays.
+
+**Step 8 — Phase 4 Address Device ccode=5 investigation (CSZ bug).** AGNOS `xhci_alloc_input_ctx` hardcoded 64-byte CSZ=1 context offsets (`Slot @ ictx+0x40`, `EP0 @ ictx+0x80`, comment at xhci_ctx.cyr:11 explicitly states "On archaemenid CSZ=1, so each context is 64 bytes"). QEMU's qemu-xhci reports **CSZ=0** (32-byte contexts) — controller reads Slot Context at offset `0x20`, sees all zeros, rejects Address Device with TRB Error. Fix: added `xhci_ctx_size()` / `xhci_slot_ctx_off()` / `xhci_ep0_ctx_off()` / `xhci_ep_ctx_off(dci)` helpers honoring `xhci_csz` at runtime; substituted every hardcoded offset across `xhci_alloc_input_ctx`, `xhci_input_ctx_add_interrupt_in`, and one EP0-readback site in `xhci.cyr:1036`. Iron has CSZ=1 → helpers compute the same 64-byte offsets that were previously hardcoded → no regression.
+
+**Step 9 — Address Device passed.** New blocker: Configure Endpoint also ccode=5.
+
+```
+xhci: cmd_submit#2 trb_phys=... dw3=16788481        ← Address Device ✓
+xhci: evt#1 type=33 cycle=1
+xhci: port 5 connected, HS, slot=1, VID=1575 PID=1, class=0   ← Get Device Descriptor ✓
+hid: keyboard layer initialized
+xhci: evt#1 type=33 cycle=1                          ← Configure Endpoint CCE
+xhci: Configure Endpoint failed, ccode=5             ← Phase 4 next blocker
+```
+
+**Step 10 — QEMU monitor dump of Input Context for Configure Endpoint.** Decoded all dwords vs spec; everything structurally valid EXCEPT Add Flags = `0x0000000B` = A0 | A1 | A3. **A1 (EP0) still set** from `xhci_alloc_input_ctx`'s initial `store32(ictx + 4, 0x3);` (A0 | A1 for Address Device). When `xhci_input_ctx_add_interrupt_in` OR'd in A_dci, A1 stayed lit. Configure Endpoint with A1=1 tells HW to reload EP0 from the Input Context — but Input EP0's TR Dequeue Pointer is stale (HW has been advancing the Device Context's EP0 dequeue through Get Device Descriptor traffic). Linux convention (xhci-mem.c `xhci_init_input_control_ctx`): Add Flags for a Configure Endpoint EP-add pass = A0 | A_new only.
+
+**Step 11 — Fix Add Flags computation.** Changed `xhci_input_ctx_add_interrupt_in` from:
+
+```cyrius
+var add_flags = load32(ictx_phys + 4);
+add_flags = add_flags | (1 << dci) | 0x1;
+store32(ictx_phys + 4, add_flags);
+```
+
+to:
+
+```cyrius
+store32(ictx_phys + 4, (1 << dci) | 0x1);
+```
+
+— discard the stale A1.
+
+**Step 12 — Configure Endpoint passed on QEMU.**
+
+```
+hid: keyboard configured, boot protocol on, EP=129, polling 8-byte reports
+```
+
+EP=129 (0x81) = bEndpointAddress with IN bit. Keyboard armed for 8-byte HID-boot reports.
+
+**Step 13 — Phase 5 end-to-end test via QEMU monitor `sendkey`.** Injected `h-e-l-p-ret`, then `u-p-t-i-m-e-ret`. The interrupt-IN transfers fire, the HID translation produces scancodes, kb_buf receives them, agnoshi reads and echoes:
+
+```
+AGNOS shell v1.30.7 (type 'help')
+agnos> help
+AGNOS Shell commands:
+  help    - this message
+  echo    - print text
+  ps      - process list
+  ...
+  halt    - shutdown
+agnos> uptime
+2216 ticks
+agnos>
+```
+
+**TYPEABLE SHELL VIA xHCI ON QEMU REACHED.** Closed-beta MVP gate hit on virtual hardware. The same agnos binary should now reach typeable shell on iron archaemenid (untested as of this entry; Iron Attempt 65 is the validation step).
+
+**Final build under test**: `build/agnos` 411,280 B post-CSZ + Add Flags fix. Source: agnos@HEAD on `monolith-extraction`. cyrius pin 5.11.64.
+
+**Letter-ladder retrospective**: ten falsified silicon-quirk hypotheses (FF→GG→HH→JJ→KK→LL→MM→NN→OO→QQ+QQ2) across Attempts 57-63 were ALL red herrings — the bug was compile-time, not silicon. The QEMU lane was the unlock: same `events_seen=0` on a completely different controller proved silicon couldn't be the cause; memory dump via QEMU monitor surfaced the planted-zero in ERST. Two earlier signposts were missed: the suspicion comment at xhci_cmd.cyr:107-115 (Attempt 58 era) and the 2026-04-28 cyrius `global-init-order-forward-ref` ticket. Per `feedback_known_knowledge_first` and `feedback_stop_letter_laddering`, compiler-class bugs need to be on the suspect list when symptom + spec + multi-source-prior-art-diff all conflict.
+
+---
+
 ## Carry-forward items (not blocking Attempt 28)
 
 - **aarch64 native boot test**: blocked on Pi SSH access. Cyrius
