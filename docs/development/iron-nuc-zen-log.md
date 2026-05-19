@@ -38,6 +38,8 @@ later entry pointing back. Status is one of `FAIL` / `PASS` /
 | Install path | `agnosticos/scripts/install-usb.sh --update` writes a fresh kernel to USB |
 | Diagnostic readback | `agnosticos/scripts/read-boot-log.sh` decodes CMOS slot 0x50–0x7F |
 | Visual canary | framebuffer paint (cell grid retired post-1.30.1; text console authoritative) |
+| **Display context** | **Arcade cabinet (Chewlex)** — bezel crops some edge pixels on photo captures. Right/left/top/bottom strips of the framebuffer are not visible in photos; "lower FB region noise" descriptions refer to the cabinet-visible lower band, not necessarily the literal `fb_height-1` rows. Edge-localized hypotheses (pitch padding C2, height-overshoot) cannot be ruled out from photos alone — fixes must be evaluated on whole-screen behavior. |
+| **QEMU verification** | `scripts/qemu-fb-visual.sh` boots the full Path-C chain (gnoboot → kernel) in a visible window — bypasses cabinet cropping for whole-screen verification. Requires `qemu-ui-gtk` package or `DISPLAY_BACKEND=vnc` (VNC fallback, no package install needed). Same kernel binary as iron install — A/B before burning. |
 
 ---
 
@@ -96,7 +98,82 @@ next user-binary touch.
 
 ## Attempts
 
-_(No attempts yet — log opens 2026-05-19, post-MVP scope. First entry will be Attempt 69 once a 1.30.10 burn is proposed.)_
+### Attempt 69 prep — 2026-05-19 → PENDING IRON BURN
+
+First post-MVP burn. Bundles three behavioral changes targeting the
+1.30.10 framebuffer-refresh scope. Audit-then-burn shape per
+`feedback_redesign_dont_reinvent`; no instrumentation.
+
+**Build under test**
+
+| Item | Value |
+|---|---|
+| `agnos VERSION` | **1.30.10** (bumped 2026-05-19 per explicit user approval — kernel banner reflects current work) |
+| `build/agnos` size | **414,544 B** (was 413,216 B at Attempt 68; +1,328 B) |
+| `build/agnos` sha256 | `958944305f29832fab4a6aca33ab507b2ca493471a28f887ac5eca472e64b674` |
+| `build/agnos` mtime | 2026-05-19 13:45 |
+| Cyrius pin | 5.11.64 (unchanged) |
+| gnoboot | 0.2.0 — **unchanged**, no rebuild needed. Path-C handoff ABI stable. |
+| Multiboot2 entry | `0x1000a8` (preserved) |
+| Visual banner | `AGNOS kernel v1.30.10` / `AGNOS shell v1.30.10 (type 'help')` |
+
+**Behavioral diffs (three changes, all in one burn)**
+
+1. **WC framebuffer mapping** — kernel maps the entire GOP framebuffer region as Write-Combining instead of the default WB-cached.
+   - `kernel/core/vmm.cyr` — new `vmm_remap_wc_2mb(phys)` (mirrors `vmm_remap_uc_2mb` structurally; flag `0x8B` = PWT=1, PCD=0, PAT=0 → PAT entry 1 = WC under firmware-default PAT MSR) + `vmm_remap_wc_range(phys, size)` loop helper
+   - `kernel/core/main.cyr:8` — `vmm_remap_wc_range(fb_fb_phys(), fb_pitch() * fb_height())` runs immediately before `fb_console_init()`
+   - **Why**: WB on framebuffer means CPU pixel writes batch through L1/L2 and reach the display controller on cache evictions — visible as the Attempt 68 pixel-pattern noise in the lower bench-output region. WC coalesces writes into burst transactions, eliminating cache-eviction timing artifacts. Canonical Linux/EDK2 framebuffer mapping.
+   - **Prior art**: Linux `vesafb` / `efifb` request `ioremap_wc()` for the framebuffer BAR; same pattern.
+   - **Falsifies**: if Attempt 69 still shows lower-region pixel-pattern noise after this remap, the artifact is **not** a WB-cache effect — re-audit toward C3 (VGA-vs-HDMI handoff) or unexpected MMIO timing.
+
+2. **Pitch-aware init clear** — full-screen clear in `fb_console_init` walks `pitch / 4` u32s per row, not `width`.
+   - `kernel/arch/x86_64/fb_console.cyr` (~line 70-90) — inner loop bound changed from `width_clr` to `stride_u32 = pitch_clr / 4`
+   - **Why**: When firmware's `PixelsPerScanLine > HorizontalResolution`, padding columns between `width*4` and `pitch` carry stale UEFI/firmware paint forever. Cabinet bezel may hide this on archaemenid; QEMU at 1920×1080 verified the loop runs clean at iron extent.
+   - **Falsifies**: if a right-edge stripe is visible in the next post-burn photo (and not hidden by cabinet), then ppl > hres on archaemenid AND this fix isn't covering it — investigate gnoboot's GOP capture (`fb_pitch = ppl * 4` assumption).
+
+3. **Pitch-aware scroll clear** — `fb_scroll_up` body copy + bottom-row clear walk `pitch / 4`.
+   - `kernel/arch/x86_64/fb_console.cyr` (~line 250-275) — both inner loops bound to `stride_u32`
+   - **Why**: Same as #2 but in the scroll path. Padding columns stay coherent with the rest of the FB after every scroll.
+   - **Combined-falsifies with #2**: if right-edge stripe is visible after init but disappears after first scroll, the init clear isn't hitting padding — investigate stride math.
+
+**Pre-burn verification (done)**
+
+| Gate | Status |
+|---|---|
+| Cyrius build clean | ✅ OK, no errors, 32 unreachable fns (DCE potential) |
+| Build size sane (+1.3 KB for the diff) | ✅ 413,216 → 414,544 B |
+| Multiboot2 ELF64 entry preserved | ✅ `0x1000a8` |
+| QEMU Path-C smoke (serial verifies kernel reaches shell) | ✅ PASS — `EXPECT="AGNOS shell"` matched on ConOut |
+| QEMU visual at 1920×1080 (std VGA + virtio-vga path) | ✅ Boots clean, scrolls clean, no regression vs default-res baseline |
+| gnoboot rebuild needed? | ❌ No — Path-C ABI unchanged, gnoboot 0.2.0 OK |
+
+**Pre-bound outcomes on iron**
+
+| Outcome | Interpretation |
+|---|---|
+| Boot reaches shell, **no lower-region noise during bench scroll** | **WC remap was the fix.** WB-cache eviction timing was the root cause of Attempt 68's pixel-pattern noise. 1.30.10 ships, move to 1.30.11 hardening. |
+| Boot reaches shell, **noise still visible during bench scroll** | WC mapping didn't fix it. Either: (a) the FB isn't actually getting WC on archaemenid (PAT MSR audit needed — verify the firmware PAT entries match expectations); (b) the noise is C3 (handoff race), not a cache effect; or (c) iron-only artifact we haven't modeled. Open re-audit; do NOT iterate by stacking letter-style repairs. |
+| Boot reaches shell, **right-edge stripe visible** | ppl > hres on archaemenid; pitch-aware fix didn't fully take. Verify with photo + gnoboot GOP capture readback via CMOS or serial. (Cabinet bezel may hide; pull the bezel for the photo if so.) |
+| Boot fails to reach shell (regression vs Attempt 68) | WC remap or pitch loop broke something. Specifics from FB paint state + CMOS post-mortem. Revert candidate: WC remap most likely (broader surface than pitch loops). |
+| Boot succeeds, scrolls succeed, **type-test fails** | xHCI HID regression unrelated to fb changes. Diff vs Attempt 68 build — likely unrelated to this burn. |
+
+**Burn protocol**
+
+1. `cd ~/Repos/agnosticos && sudo ./scripts/install-usb.sh --update /dev/sdX` (where sdX is your USB device)
+2. Reboot archaemenid, F-key boot menu, select USB
+3. Watch boot log → shell prompt
+4. Run a multi-line scroll to stress refresh: `help`, then `bench` if 3-tier bench is callable from shell
+5. Type some characters; verify typeable shell still works
+6. Photo the FB at scroll-pause + at shell-idle for the catalog
+7. If clean: queue 1.30.10 version bump (only on your explicit go) + CHANGELOG entry; if noisy: do not iterate, file findings instead
+
+**Photos for the catalog (post-burn)**
+
+Per the catalog README, add entries under "Post-MVP era (Attempts 69+)":
+- `attempt-69-wc-pitch-aware-fb-baseline.jpg` — first post-burn FB state at shell-idle
+- `attempt-69-wc-pitch-aware-bench-scroll.jpg` — mid-scroll capture during bench output
+
+
 
 ---
 
