@@ -322,7 +322,49 @@ explicit "roll the docs" instruction.
 - `attempt-70-u64-block-copy-bench-scroll.jpg` — mid-bench scroll
 - A/B diff vs `attempt-69-*.jpg` is the visual gate
 
+### Attempt 70 — 2026-05-19 → PASS
 
+Burned 1.30.10 with u64 block-copy on archaemenid. Iron refresh
+**perceptibly doubled** vs Attempt 69 — user-reported as
+**"old-school CRT 80's-ish speeds, smoother, not perfect."** The
+Attempt-69 tearing line is no longer a typical-user concern; the
+refresh sweep is still detectable if you look for it, but it sits
+below the closed-beta MVP refresh-quality bar.
+
+Maps to the pre-bound outcome matrix row 1 — *visible refresh line
+gone (or perceptually below threshold)* — with a 1.5-line read:
+copy time fell from ~4.13M u32 pairs/scroll to ~2.07M u64
+pairs/scroll, fitting just inside the display's inter-refresh
+window for most-of-the-screen-most-of-the-time. Transaction count
+was indeed the dominant residual bottleneck after WC.
+
+Status: **PASS** at the closed-beta MVP refresh-quality bar.
+Ship 1.30.10 as-is. The mathematically-certain path to pristine
+refresh (RAM-side shadow buffer streamed to FB in a single WC
+burst) remains the right long-term answer but is **not blocking** —
+gated on PMM contiguous-page allocation (Multiboot2 memory map
+parse + `pmm_alloc_contig`) and carried to 1.31.x triage as
+"if-and-when-we-want-pristine," not "must-fix."
+
+Move to **1.30.11 hardening** (VGA-vs-HDMI handoff audit + obsolete
+gvar-init workaround cleanup + FB BAR memtype check), then **1.30.12
+glyph-to-font extraction**.
+
+Multi-device USB carry-forward (BT mouse + keyboard regressing
+input) still unaddressed — captured under "Open carry-forward from
+MVP era" above; triage after 1.30.11 closes.
+
+**First-user-input-on-iron canary** —
+[`iron-nuc-zen-photos/attempt-70-help-me-build-an-entity-chart.jpg`](iron-nuc-zen-photos/attempt-70-help-me-build-an-entity-chart.jpg)
+captures Alicia's first try at the iron shell: `agnos> Help me build
+an entity chart` → `unknown: Help` → retry as `help` → 18-verb
+command list rendered. Same frame shows the 3-tier bench output
+immediately above (`syscall_write1: 31 c/op`,
+`vfs_open_read_close: 256 c/op`, `=== done ===`) so the bench
+numbers and the typeable-shell-with-real-user moment are anchored
+together. AI-native user intent meeting a pre-userland kernel verb
+table is exactly the post-MVP roadmap framing — daimon / hadara /
+agnoshi LLM wiring is what closes the gap.
 
 ---
 

@@ -109,9 +109,11 @@ Post-cyrius-v5.11.64 fix burns. Each Phase-4/5 milestone landed in a single audi
 
 ## Post-MVP era (Attempts 69+)
 
-_(No photos yet — log opens 2026-05-19. First attempt will be Attempt 69 once a 1.30.10 framebuffer-refresh burn is proposed.)_
+| Photo | Date | What it shows |
+|-------|------|---------------|
+| `attempt-70-help-me-build-an-entity-chart.jpg` | 2026-05-19 | **First natural-language user input on iron.** 3-tier bench output visible above (`syscall_write1: 31 c/op`, `vfs_open_read_close: 256 c/op`, `=== done ===`). Then `agnos> Help me build an entity chart` typed by a new user (Alicia), `unknown: Help` from the shell (bareword parser hit "Help" before the LLM lane exists), retry as `agnos> help` produces the 18-verb command list. Captures the gap between AI-native user intent and pre-userland kernel verbs — exactly what later phases (daimon/hadara/agnoshi LLM wiring) close. WB→WC residual pixel-pattern band visible in upper-middle FB region; lower half (shell list render) clean — 1.30.10 framebuffer-refresh signature post-Attempt-70 u64 block-copy. |
 
-Anticipated photo themes for 1.30.10 / 1.30.11:
+Anticipated photo themes for 1.30.11 / 1.30.12:
 
 - **Framebuffer refresh — before/after scroll perf fix** — bench output capturing visible refresh quality before and after the chunked block-copy rewrite of `fb_scroll_up`.
 - **Pitch-padding right-edge check** — full-screen view to disambiguate whether `ppl > hres` is leaking stale firmware paint into the right column band.
