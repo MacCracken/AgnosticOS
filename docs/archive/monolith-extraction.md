@@ -1,6 +1,6 @@
 # Monolith Extraction Roadmap (archived)
 
-> **🗄 ARCHIVED 2026-05-12** — historical milestone preserved for narrative continuity. The monolith extraction completed 2026-04-01; the ISO reassembly arc this doc tracked has since been superseded by live work in [`../development/state.md`](../development/state.md), [`../development/iso-pipeline.md`](../development/iso-pipeline.md), and the iron-boot test log in [`../development/iron-nuc-zen-log.md`](../development/iron-nuc-zen-log.md). Don't update this file — it's a point-in-time receipt.
+> **🗄 ARCHIVED 2026-05-12** — historical milestone preserved for narrative continuity. The monolith extraction completed 2026-04-01; the ISO reassembly arc this doc tracked has since been superseded by live work in [`../development/state.md`](../development/state.md), [`../development/iso-pipeline.md`](../development/iso-pipeline.md), and the iron-boot test logs ([`../development/iron-nuc-zen-log.md`](../development/iron-nuc-zen-log.md) active + [`../development/iron-nuc-zen-log-mvp.md`](../development/iron-nuc-zen-log-mvp.md) MVP-era). Don't update this file — it's a point-in-time receipt.
 >
 > **Original Status (frozen)**: Code extraction complete, ISO reassembly in progress | **Last Updated**: 2026-04-15
 >

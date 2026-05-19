@@ -67,7 +67,7 @@ The cycle cadence below uses git-verified dates from `cyrius` tag refs. Patch co
 
 **What evolved**: the byte-identity scope split codified in v5.5.x → v5.6.x became a *generic* pattern. By v5.8.x, the stdlib-fold-in framework explicitly captured the same kind of dual-invariant: "narrow-scope = does the fold compile and self-host" vs "broad-scope = does every consumer still build after the fold." Different domain, same lesson.
 
-**Where the pattern showed its limits**: the iron-boot arc (Attempts 17–27, agnosticos `iron-nuc-zen-log.md`) burned 11 attempts on a single bug that turned out to be in a code path the prior research had already flagged as "post-MVP." The discipline that catches *bundled* patches doesn't catch *misplaced* patches. The premise-audit gate (codified in `feedback_known_knowledge_first` and `iron-bring-up-process.md`) is the third lesson in this lineage, extending the v5.5.x pattern into territory it didn't previously cover: not just "is this patch one thought" but "should this patch exist at all."
+**Where the pattern showed its limits**: the iron-boot arc (Attempts 17–27, agnosticos `iron-nuc-zen-log-mvp.md`) burned 11 attempts on a single bug that turned out to be in a code path the prior research had already flagged as "post-MVP." The discipline that catches *bundled* patches doesn't catch *misplaced* patches. The premise-audit gate (codified in `feedback_known_knowledge_first` and `iron-bring-up-process.md`) is the third lesson in this lineage, extending the v5.5.x pattern into territory it didn't previously cover: not just "is this patch one thought" but "should this patch exist at all."
 
 ## Related
 

@@ -43,7 +43,7 @@ its own `.text` (the `grub_relocator64_efi_start` stub's embedded immediates
 at .text 0x8AA-0x8F7), and under OVMF 2024+ / modern strict-W^X UEFI those
 writes fault. Linux distros don't trip this because they boot via
 `linuxefi`, not multiboot2 — making the multiboot2 + GRUB-EFI path
-genuinely under-tested. Full chain in `iron-nuc-zen-log.md`
+genuinely under-tested. Full chain in `iron-nuc-zen-log-mvp.md`
 § *Diagnosis 2 — 2026-05-13 GRUB relocator W^X*.
 
 Three workarounds were considered before this commit (see iron-nuc-zen log
@@ -265,7 +265,7 @@ at the time of the shim swap, same as Path A had planned.
      `/EFI/BOOT/`. The `grub-file --is-x86-multiboot2` pre-check goes
      away (we no longer ship via GRUB). The OVMF + qemu invocation stays
      the same — that's what's correct.
-3. **`docs/development/iron-nuc-zen-log.md`** — Attempt 5 entry
+3. **`docs/development/iron-nuc-zen-log-mvp.md`** — Attempt 5 entry
    when gnoboot is ready and the re-provisioned USB exists.
 4. **CHANGELOG.md** + **`docs/development/state.md`** — update once
    gnoboot has a first boot-on-iron pass.
@@ -358,7 +358,7 @@ Possible outcomes:
 
 - Path A history + GRUB diagnosis (the *why* for Path C):
   - `docs/development/path-a-elf64-multiboot2.md` § *Status update — 2026-05-13*
-  - `docs/development/iron-nuc-zen-log.md` § *Diagnosis 2 — 2026-05-13 GRUB relocator W^X*
+  - `docs/development/iron-nuc-zen-log-mvp.md` § *Diagnosis 2 — 2026-05-13 GRUB relocator W^X*
 - Cyrius dependency: `cyrius/docs/development/issues/2026-05-13-gnoboot-uefi-application-emit.md`
 - Memory pins:
   - [[project-agnos-bootloader-roadmap]] — updated 2026-05-13 to Path C as MVP

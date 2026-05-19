@@ -14,7 +14,7 @@ Plans for kernel subsystems, drivers, and bring-up gates. These are MVP-blocking
 
 | Doc | Status | Note |
 |---|---|---|
-| [usb-hid-keyboard-driver.md](usb-hid-keyboard-driver.md) | 🟠 Code complete; iron-side silent-absorb arc parallel-track | All 5 phases landed in agnos 1.30.0–1.30.5. Iron blocker on 1022:1639 — see § *Silent-Absorb Resolution Plan* in the doc + [`../iron-nuc-zen-log.md`](../iron-nuc-zen-log.md). |
+| [usb-hid-keyboard-driver.md](usb-hid-keyboard-driver.md) | ✅ All phases landed + iron-validated through MVP gate | All 5 phases in agnos 1.30.0–1.30.5; full bring-up arc (incl. the 10-letter Phase-3 silent-absorb that turned out to be a Cyrius compiler bug, fixed in cyrius 5.11.64) captured in [`../iron-nuc-zen-log-mvp.md`](../iron-nuc-zen-log-mvp.md) Attempts 30–68. MVP gate hit 2026-05-18 (Attempt 68, agnos 1.30.9). |
 
 *Future kernel plans land here: VFS, network stack (when scoped), USB mass-storage class driver (post-keyboard), GPU bring-up.*
 
@@ -66,7 +66,7 @@ System-level capabilities that touch multiple repos / aren't owned by any single
 ## See Also
 
 - [`../state.md`](../state.md) — live ecosystem state (Cyrius cycle, pin-lag, sweeps, carry-forward debt)
-- [`../iron-nuc-zen-log.md`](../iron-nuc-zen-log.md) — live iron bring-up log (Attempt-by-attempt narrative)
+- [`../iron-nuc-zen-log.md`](../iron-nuc-zen-log.md) — live iron bring-up log (post-MVP, 1.30.10+). MVP-era arc (Attempts 1–68) capped at [`../iron-nuc-zen-log-mvp.md`](../iron-nuc-zen-log-mvp.md).
 - [`../roadmap.md`](../roadmap.md) — top-level project roadmap (Phases 1–24, MVP gates)
 - [`../../applications/libs/README.md`](../../applications/libs/README.md) — v1.0+ stable library registry
 - [`../../doc-health.md`](../../doc-health.md) — doc-freshness ledger (every file in this folder tracked)

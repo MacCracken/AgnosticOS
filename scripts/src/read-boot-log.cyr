@@ -323,7 +323,7 @@ fn main(): i64 {
         println("");
         println("=== AGNOS xHCI current-sweep boot log ===");
         println("EP0 MPS reconciliation (Attempt 67) — HID enumeration clears on iron; Phase-5 interrupt-IN keystroke delivery is the open blocker");
-        println("Reference: docs/development/iron-nuc-zen-log.md § Attempt 67");
+        println("Reference: docs/development/iron-nuc-zen-log-mvp.md § Attempt 67");
         println("");
         println("Boot reached:");
         print_str("  kernel  checkpoint = "); print_hexb(kcp);

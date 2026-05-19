@@ -10,7 +10,7 @@
 | [state.md](state.md) | **Live ecosystem state** — Cyrius cycle, pin-lag, sweeps, carry-forward debt |
 | [doc-health.md](../doc-health.md) | **Living doc-health ledger** (relocated to `docs/doc-health.md` 2026-05-09 — sweeps the whole `docs/` tree, not just `development/`) |
 | [sprint-history.md](sprint-history.md) | Completed phase archive |
-| [monolith-extraction.md](../archive/monolith-extraction.md) | Extraction from monolith to standalone repos — **archived 2026-05-12** (extraction complete; live work tracked in state.md + iron-nuc-zen-log.md) |
+| [monolith-extraction.md](../archive/monolith-extraction.md) | Extraction from monolith to standalone repos — **archived 2026-05-12** (extraction complete; live work tracked in state.md + iron-nuc-zen-log-mvp.md / iron-nuc-zen-log.md) |
 | [summer-2026-arc.md](summer-2026-arc.md) | Summer 2026 narrative arc (DEF CON / Black Hat distribution beats) |
 | [iso-pipeline.md](iso-pipeline.md) | ISO assembly pipeline (Stage 0 done, Stage-4 first cut next) |
 | [iso-stage4-plan.md](iso-stage4-plan.md) | Stage-4-only first cut plan (D1–D4 decisions pending) |

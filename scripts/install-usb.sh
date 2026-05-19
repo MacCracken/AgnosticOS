@@ -161,7 +161,7 @@ if [[ "$MODE" == "update" ]]; then
     echo "    sudo ${SCRIPT_DIR}/build/read-boot-log"
     echo "  Reads CMOS slots 0x50-0x6F + 0x60 (battery-backed, survives reset): kernel + gnoboot"
     echo "  checkpoints, magic bytes, CR4 stamps, PMM allocator scan, and xhci post-mortem. Pairs"
-    echo "  with the framebuffer text to name the exact sub-case. See docs/development/iron-nuc-zen-log.md."
+    echo "  with the framebuffer text to name the exact sub-case. See docs/development/iron-nuc-zen-log.md (active log) or docs/development/iron-nuc-zen-log-mvp.md (Attempts 1–68, MVP era)."
     exit 0
 fi
 
@@ -280,7 +280,7 @@ echo "  Reboot into Linux on the same machine, then:"
 echo "    sudo ${SCRIPT_DIR}/build/read-boot-log"
 echo "  Reads CMOS slots 0x50-0x6F + 0x60 (battery-backed, survives reset): kernel + gnoboot"
 echo "  checkpoints, magic bytes, CR4 stamps, PMM allocator scan, and xhci post-mortem. Pairs"
-echo "  with the framebuffer text to name the exact sub-case. See docs/development/iron-nuc-zen-log.md."
+echo "  with the framebuffer text to name the exact sub-case. See docs/development/iron-nuc-zen-log.md (active log) or docs/development/iron-nuc-zen-log-mvp.md (Attempts 1–68, MVP era)."
 echo ""
 echo "Iteration loop (refresh without re-provisioning):"
 echo "  (cd ../gnoboot && CYRIUS_TARGET_EFI=1 cyrius build src/main.cyr build/BOOTX64.EFI)"

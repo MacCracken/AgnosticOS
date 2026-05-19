@@ -56,7 +56,7 @@ The +15 KB growth across the 1.30.x cycle is iron-validation infrastructure — 
 
 ### The walk
 
-29 iron attempts across 3 weeks. Two GRUB walls (multiboot2 strict-W^X kills the relocator under modern UEFI). One architectural pivot — Path A (GRUB MB2-EFI) abandoned for Path C (sovereign UEFI bootloader, gnoboot). 16 repair letters A–P; 11 of them (F–N + diagnostic-only stamps) deleted by Repair (O) when the premise-audit gate caught a rabbit hole sitting on disk for two weeks. Full arc captured in [`iron-nuc-zen-log.md`](../development/iron-nuc-zen-log.md); generic process pattern distilled in [`iron-bring-up-process.md`](../development/iron-bring-up-process.md). Field-notes for agents: vidya `kernel.cyml` entries `the_road_to_iron` (Attempts 1–8) + `shell_on_iron` (Attempts 9–29).
+29 iron attempts across 3 weeks. Two GRUB walls (multiboot2 strict-W^X kills the relocator under modern UEFI). One architectural pivot — Path A (GRUB MB2-EFI) abandoned for Path C (sovereign UEFI bootloader, gnoboot). 16 repair letters A–P; 11 of them (F–N + diagnostic-only stamps) deleted by Repair (O) when the premise-audit gate caught a rabbit hole sitting on disk for two weeks. Full arc captured in [`iron-nuc-zen-log-mvp.md`](../development/iron-nuc-zen-log-mvp.md); generic process pattern distilled in [`iron-bring-up-process.md`](../development/iron-bring-up-process.md). Field-notes for agents: vidya `kernel.cyml` entries `the_road_to_iron` (Attempts 1–8) + `shell_on_iron` (Attempts 9–29).
 
 The walk's lessons are themselves a receipt — methodology bent without breaking, premise-audit gate codified, repair-letter discipline emerged, CMOS-as-post-mortem-channel solidified. Detailed in *Methodology is the Trap* § *Method Accretes Where Method Fails*.
 
@@ -231,7 +231,7 @@ git checkout 1.30.0
 # build/agnos = 266,312 bytes, multiboot2 (ELF64), entry 0x1000a8
 ```
 
-For the iron-validation receipt specifically, the verification path requires hardware (an x86_64 UEFI machine; the canonical target is the Beelink SER NUC AMD documented as `archaemenid` in agnosticos memory). Photos of the iron boot at Attempts 28 + 29 + cleanup-pass burn are committed at [`iron-nuc-zen-photos/`](../development/iron-nuc-zen-photos/). The arc-of-attempts log is at [`iron-nuc-zen-log.md`](../development/iron-nuc-zen-log.md).
+For the iron-validation receipt specifically, the verification path requires hardware (an x86_64 UEFI machine; the canonical target is the Beelink SER NUC AMD documented as `archaemenid` in agnosticos memory). Photos of the iron boot at Attempts 28 + 29 + cleanup-pass burn are committed at [`iron-nuc-zen-photos/`](../development/iron-nuc-zen-photos/). The arc-of-attempts log is at [`iron-nuc-zen-log-mvp.md`](../development/iron-nuc-zen-log-mvp.md).
 
 For pin-cluster verification, [`shared-crates.md`](../development/planning/shared-crates.md) and per-repo `state.md` files are authoritative — Volume 2 is a synthesis, not a primary source.
 
@@ -247,7 +247,7 @@ The five-volume arc framing exists so this middle volume can be honest about its
 
 ---
 
-*Related: [Port Ledger Volume 1](port-ledger-volume-1.md) | [Sovereign Compiler vs Brute Force](sovereign-compiler-vs-brute-force.md) | [Cyrius vs Rust Benchmarks](cyrius-vs-rust-benchmarks.md) | [iron-nuc-zen-log.md](../development/iron-nuc-zen-log.md) | [iron-bring-up-process.md](../development/iron-bring-up-process.md)*
+*Related: [Port Ledger Volume 1](port-ledger-volume-1.md) | [Sovereign Compiler vs Brute Force](sovereign-compiler-vs-brute-force.md) | [Cyrius vs Rust Benchmarks](cyrius-vs-rust-benchmarks.md) | [iron-nuc-zen-log-mvp.md](../development/iron-nuc-zen-log-mvp.md) | [iron-bring-up-process.md](../development/iron-bring-up-process.md)*
 
 *Robert MacCracken*
 *AGNOS Project — [agnosticos.org](https://agnosticos.org)*

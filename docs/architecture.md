@@ -88,7 +88,7 @@ AGNOS is a sovereign operating system written in Cyrius. The architecture consis
 
 AGNOS runs its own sovereign kernel, written in Cyrius. No Linux dependency at runtime.
 
-**AGNOS kernel** — 35+ subsystems, 26 syscalls. Iron-validated 2026-05-15 on NUC AMD (Boot-to-Shell MVP cleared the kernel-init layer; the xHCI Enable Slot CCE cmd-path arc remains in-flight as of 2026-05-18 — see [`development/iron-nuc-zen-log.md`](development/iron-nuc-zen-log.md)). Live kernel size, version, build trajectory: [`development/state.md`](development/state.md):
+**AGNOS kernel** — 35+ subsystems, 26 syscalls. Iron-validated end-to-end on NUC AMD archaemenid: kernel-init layer cleared 2026-05-15 (Attempt 28, agnos 1.30.0); closed-beta MVP gate (typeable shell via xHCI HID keyboard) hit 2026-05-18 (Attempt 68, agnos 1.30.9). Full arc captured in [`development/iron-nuc-zen-log-mvp.md`](development/iron-nuc-zen-log-mvp.md); post-MVP work continues in [`development/iron-nuc-zen-log.md`](development/iron-nuc-zen-log.md). Live kernel size, version, build trajectory: [`development/state.md`](development/state.md):
 - Memory management, process management, SMP
 - TCP/IP networking, VirtIO-Net/Blk
 - FAT16 filesystem, ELF loader

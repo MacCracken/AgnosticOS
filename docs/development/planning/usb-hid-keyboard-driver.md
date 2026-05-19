@@ -4,7 +4,7 @@
 >
 > Drives MVP gap #3 closeout. Real-answer fallback for Attempt 29's USB-keyboard blocker — BIOS legacy-USB knobs and every USB-A port swap have been exhausted on archaemenid; firmware genuinely does not emulate PS/2 post-`ExitBootServices`. The fix is a native XHCI + USB-HID-boot-protocol driver in the kernel.
 >
-> **Phase landing ledger** (architecture-stable; status-only): Phase 1 ✅ agnos 1.30.1 / Phase 2 ✅ 1.30.1 / Phase 2.5 (USBLEGSUP) ✅ 1.30.x mid-cycle / Phase 3 ✅ 1.30.3 (iron-blocked on archaemenid by silent-absorb arc — **root cause identified 2026-05-17, fix pending**) / 1.30.4 closeout ✅ xHCI Linux-diff hardening (H1-H4) / Phase 4 ✅ 1.30.5 (Configure Endpoint + SET_PROTOCOL=boot + transfer ring) / Phase 5 ✅ 1.30.5 (HID→PS/2 translation + report differ + event-drain + `kb_buf` writer). The phase prose below is the architectural-decision record; live iron progress lives in [`../iron-nuc-zen-log.md`](../iron-nuc-zen-log.md).
+> **Phase landing ledger** (architecture-stable; status-only): Phase 1 ✅ agnos 1.30.1 / Phase 2 ✅ 1.30.1 / Phase 2.5 (USBLEGSUP) ✅ 1.30.x mid-cycle / Phase 3 ✅ 1.30.3 (iron-blocked on archaemenid by silent-absorb arc — **root cause identified 2026-05-17, fix pending**) / 1.30.4 closeout ✅ xHCI Linux-diff hardening (H1-H4) / Phase 4 ✅ 1.30.5 (Configure Endpoint + SET_PROTOCOL=boot + transfer ring) / Phase 5 ✅ 1.30.5 (HID→PS/2 translation + report differ + event-drain + `kb_buf` writer). The phase prose below is the architectural-decision record; live iron progress lives in [`../iron-nuc-zen-log-mvp.md`](../iron-nuc-zen-log-mvp.md).
 
 ---
 
@@ -358,7 +358,7 @@ Stretch: Backspace + line-editing work in agnoshi (depends on shell's input loop
 
 ## Related
 
-- [`iron-nuc-zen-log.md`](../iron-nuc-zen-log.md) § *USB-keyboard blocker triage* — origin of the problem
+- [`iron-nuc-zen-log-mvp.md`](../iron-nuc-zen-log-mvp.md) § *USB-keyboard blocker triage* — origin of the problem
 - `agnos/kernel/arch/x86_64/keyboard.cyr` — existing scancode → ASCII path the new producer feeds
 - `agnos/kernel/core/pci.cyr` — PCI enumeration surface to extend
 - USB-HID spec §7 (boot protocol report format) — primary reference

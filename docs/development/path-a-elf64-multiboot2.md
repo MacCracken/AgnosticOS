@@ -1,7 +1,7 @@
 # Path A — ELF64 Multiboot2 Boot Kernel
 
 > **Status**: Drafted 2026-05-13 | Approach: ELF64 kernel + multiboot2 + EFI64 entry tag | Scope: NUC AMD (x86_64 UEFI) iron-boot MVP
-> **Diagnosis source**: `docs/development/iron-nuc-zen-log.md` § *Diagnosis — 2026-05-13 GRUB source review*
+> **Diagnosis source**: `docs/development/iron-nuc-zen-log-mvp.md` § *Diagnosis — 2026-05-13 GRUB source review*
 > **Roadmap pin**: [[project-agnos-bootloader-roadmap]] memory — Path A is the MVP bridge; Path C (sovereign UEFI bootloader, no GRUB) is the long-term destination
 > **NEXT AGENT — START HERE.** Steps 1-5a (cyrius + agnos) and Step 7 (install-usb.sh) landed; Step 5b (QEMU OVMF) **FAILED inside GRUB's relocator under strict-W^X UEFI** (see § *Status update — 2026-05-13* at the bottom and iron-nuc-zen log § *Diagnosis 2*). Iron Attempt 5 (Step 8) is on **HOLD** until the resolution path is chosen by the project leader (options 1-4 in the status update). **Do NOT** push iron Attempt 5 against the current build — it will reproduce Attempts 3/4 exactly. **Do NOT** edit cyrius — the language is hands-off per session feedback; cyrius work in this plan is correct and complete. Cross-repo changes (agnos, cyrius) require explicit per-edit approval.
 
@@ -377,7 +377,7 @@ These should be resolved with Robert before cyrius work begins:
 
 ## Doc trail
 
-- Diagnosis: `iron-nuc-zen-log.md` § *Diagnosis — 2026-05-13 GRUB
+- Diagnosis: `iron-nuc-zen-log-mvp.md` § *Diagnosis — 2026-05-13 GRUB
   source review* — files examined, root cause, hypotheses mapping
 - Decision: this doc + [[project-agnos-bootloader-roadmap]] memory
 - Execution: log each step's verification in the iron-nuc-zen log;

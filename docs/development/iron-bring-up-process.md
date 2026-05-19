@@ -1,8 +1,8 @@
 # Iron Bring-Up — Process
 
-> **Status**: Distilled 2026-05-15 from the NUC AMD Zen arc (Attempts 1–29). | **Scope**: generic process for bringing AGNOS up on a new hardware target. | **Companion**: [`iron-nuc-zen-log.md`](iron-nuc-zen-log.md) is the canonical example arc; the lessons here are extracted from it.
+> **Status**: Distilled 2026-05-15 from the NUC AMD Zen arc (Attempts 1–29). | **Scope**: generic process for bringing AGNOS up on a new hardware target. | **Companion**: [`iron-nuc-zen-log-mvp.md`](iron-nuc-zen-log-mvp.md) is the canonical example arc; the lessons here are extracted from it.
 
-This doc is what you'd hand to a new agent (or a future-you) starting a bring-up on **different hardware**. It captures the *patterns* — diagnostic-channel ladder, decision gates, walls common to any UEFI x86_64 target — without re-litigating the specific bugs the nuc-zen walk found. For the chronological play-by-play of *one* target's bring-up, see [`iron-nuc-zen-log.md`](iron-nuc-zen-log.md) (Attempts 1–29, ~6500 lines).
+This doc is what you'd hand to a new agent (or a future-you) starting a bring-up on **different hardware**. It captures the *patterns* — diagnostic-channel ladder, decision gates, walls common to any UEFI x86_64 target — without re-litigating the specific bugs the nuc-zen walk found. For the chronological play-by-play of *one* target's bring-up, see [`iron-nuc-zen-log-mvp.md`](iron-nuc-zen-log-mvp.md) (Attempts 1–29, ~6500 lines).
 
 ---
 
@@ -61,7 +61,7 @@ Pick the highest-bandwidth channel your hardware supports, then layer down. Chan
 4. **CMOS persistent boot-log**. 8-byte raw-asm writes per checkpoint, survive triple-fault reset. Two slot pairs: one each for the bootloader (gnoboot) and the kernel. Each pair = (checkpoint counter, magic byte). Magic byte distinguishes "stage ran this boot" from "stale CMOS from earlier boot." Read post-mortem via `read-boot-log` Cyrius binary on the live Linux.
 5. **MSI-X / interrupt-driven log to fb** (post-MVP). Phase-5 of the USB-HID arc, late xhci work. Lets in-kernel drivers log without polling.
 
-**Rule**: the dev environment dictates the ladder. Don't recommend a channel that requires a second host on a single-machine setup. Three iron attempts were burned on this misread before the rule was internalized (see [`iron-nuc-zen-log.md`](iron-nuc-zen-log.md) Attempts 4–7 *Diagnosis 1*).
+**Rule**: the dev environment dictates the ladder. Don't recommend a channel that requires a second host on a single-machine setup. Three iron attempts were burned on this misread before the rule was internalized (see [`iron-nuc-zen-log-mvp.md`](iron-nuc-zen-log-mvp.md) Attempts 4–7 *Diagnosis 1*).
 
 ---
 
@@ -191,7 +191,7 @@ The cycle's CHANGELOG should fold all in-flight repair letters back into release
 - [`uefi-boot-prior-art.md`](uefi-boot-prior-art.md) — how Linux, FreeBSD, OpenBSD, Windows, Limine boot under UEFI. AGNOS converged on the same architectural shape via Path C. Read first.
 - [`path-c-sovereign-uefi.md`](path-c-sovereign-uefi.md) — the AGNOS sovereign UEFI handoff design (gnoboot → kernel via 80-byte boot-info struct in RDI). This is the current production path.
 - [`path-a-elf64-multiboot2.md`](path-a-elf64-multiboot2.md) — the abandoned approach (GRUB + multiboot2 + ELF64 + EFI64 entry tag). Useful as prior-art reference for *why* Path C exists; do not start a new bring-up here.
-- [`iron-nuc-zen-log.md`](iron-nuc-zen-log.md) — the canonical example arc, Attempts 1–29. Read § *Diagnosis 1*, § *Diagnosis 2*, and § *Attempt 28 / MVP BOOT SPINE ALIVE ON IRON* for the highest-density lessons.
+- [`iron-nuc-zen-log-mvp.md`](iron-nuc-zen-log-mvp.md) — the canonical example arc, Attempts 1–29. Read § *Diagnosis 1*, § *Diagnosis 2*, and § *Attempt 28 / MVP BOOT SPINE ALIVE ON IRON* for the highest-density lessons.
 
 ---
 

@@ -545,7 +545,7 @@ The xz-utils backdoor of 2024 produced a wave of supply-chain-focused writing ac
 
 ## 8. Shell on Iron — *the iron-boot bring-up story as a public receipt*
 
-**Status**: outline | **Trigger**: keyboard input lands on iron (xHCI Phases 2–5 of [`planning/usb-hid-keyboard-driver.md`](../development/planning/usb-hid-keyboard-driver.md) — at that point the shell is *typeable*, not just visible, and the receipt is complete enough to publish). Anchored 2026-05-15 against the iron-validation milestone of agnos 1.30.0 + the 29-attempt arc captured in [`iron-nuc-zen-log.md`](../development/iron-nuc-zen-log.md) and [`iron-bring-up-process.md`](../development/iron-bring-up-process.md).
+**Status**: outline | **Trigger**: keyboard input lands on iron (xHCI Phases 2–5 of [`planning/usb-hid-keyboard-driver.md`](../development/planning/usb-hid-keyboard-driver.md) — at that point the shell is *typeable*, not just visible, and the receipt is complete enough to publish). Anchored 2026-05-15 against the iron-validation milestone of agnos 1.30.0 + the 29-attempt arc captured in [`iron-nuc-zen-log-mvp.md`](../development/iron-nuc-zen-log-mvp.md) and [`iron-bring-up-process.md`](../development/iron-bring-up-process.md).
 
 ### Headline thesis (locked)
 
