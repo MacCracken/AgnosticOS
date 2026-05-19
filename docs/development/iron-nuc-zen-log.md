@@ -7161,6 +7161,153 @@ agnos>
 
 ---
 
+### Attempt 65 — 2026-05-18 ~19:07 PDT → PHASE-3 SILENT-ABSORB CLEARED ON IRON; HID GCD-9 NEW BLOCKER
+
+**Status**: first iron burn of the post-Attempt-64-closure binary (cyrius 5.11.64 gvar fix + agnos CSZ helpers + Add-Flags A0|A_new). Build: `build/agnos` 411,280 B.
+
+The 10-letter Phase-3 cmd-path silent-absorb arc (FF→QQ+QQ2) cleared cleanly on archaemenid. Enable Slot CCE posted, slot 1 assigned, Address Device passed, GDD-8 + GDD-18 returned the keyboard descriptors (`VID=1452 PID=591 class=0` — real iron keyboard). The next EP0 control transfer — `xhci_get_config_descriptor(slot_id, 0, 9)`, the first request inside `hid_kbd_configure` — timed out:
+
+```
+xhci: transfer event timeout
+hid: get config descriptor (9) failed
+```
+
+**Iron-only divergence vs QEMU**: same binary runs end-to-end to typeable shell on qemu-xhci. AMD FCH 1022:1639 stricter than QEMU on EP0 ring conventions.
+
+**Photo**: [`attempt-65-xhci-silent-absorb-hurdled-hid-config-9-timeout.jpg`](iron-nuc-zen-photos/attempt-65-xhci-silent-absorb-hurdled-hid-config-9-timeout.jpg)
+
+---
+
+### Attempt 66 — 2026-05-18 ~20:08 PDT → REPAIR (RR) FALSIFIED; HID GCD-9 STILL TIMES OUT
+
+**Status**: Repair (RR) — Linux-canonical EP0 control-transfer hardening (`xhci_queue_ctrl_tx` in drivers/usb/host/xhci-ring.c v6.13) bundled three deltas:
+
+- **RR.A** — `ISP` (Interrupt on Short Packet) on Data Stage TRB.
+- **RR.B** — Deferred-cycle Setup TRB write per `giveback_first_trb` (Setup written with inverted cycle, fixed atomically after Data+Status build).
+- **RR.C** — Full 64-bit `buf_phys` via `p_hi`.
+
+Applied to both `xhci_control_in` and `xhci_control_no_data`. New helper `xhci_ep0_enqueue_raw`. Build: 412,080 B. VERSION 1.30.7 → 1.30.8 (banner only).
+
+**Result**: GCD-9 still times out. EP0 ring-conventions hypothesis falsified — controller isn't being tripped up by ISP / cycle-deferral / phys-hi reasons.
+
+**Photo**: [`attempt-66-ep0-control-transfer-hardening-hid-config-9-still-timeout.jpg`](iron-nuc-zen-photos/attempt-66-ep0-control-transfer-hardening-hid-config-9-still-timeout.jpg)
+
+---
+
+### Attempt 67 — 2026-05-18 ~20:58 PDT → EP0 MPS RECONCILIATION CLEARS HID ENUMERATION; KEYBOARD CONFIGURED BUT KEYSTROKES SILENT
+
+**Status**: HID enumeration completes end-to-end on iron for the first time. Shell renders `agnoshi shell v1.30.8 (type 'help')` on archaemenid with `Keyboard configured — boot protocol on, EP=129, polling 8-byte reports` in the boot log. **Typing at the `agnos>` prompt produces nothing** — Phase-5 interrupt-IN data path silent. Build: `build/agnos` 412,832 B. Source: `agnos@d671db3` on `monolith-extraction`.
+
+**Diagnosis between 66 and 67 — EP0 MPS post-GDD-8**. xHCI 1.2 §4.6.7: Input Context's EP0 Max Packet Size is programmed pre-Address-Device at the speed-safe minimum (`xhci_ep0_mps_for_speed(speed)` — 8 for FS). Real `bMaxPacketSize0` returned from GDD-8 can be 8/16/32/64 for FS. If it differs from the stale Input-Context EP0 MPS, the spec requires an Evaluate Context (TRB type 13) to update EP0 MPS *before* any wLength > MPS request. GCD-9 with stale MPS=8 multi-packets under the wrong burst size → controller drops the second packet and the transfer event never posts. Linux reference: `xhci_check_maxpacket()` in `drivers/usb/host/xhci.c`.
+
+**Repair (EP0 MPS reconciliation)** — agnos@`d671db3`, +48 LOC in `kernel/arch/x86_64/usb/xhci.cyr`:
+
+- New `xhci_evaluate_context(slot_id, input_ctx_phys)` issuing TRB type 13 (`XHCI_TRB_EVAL_CONTEXT`) and waiting for CCE.
+- New reconciliation block in `xhci_enumerate_port` after GDD-8: compare `load8(xhci_desc_buf_phys + 7)` vs slot's recorded `xhci_slot_max_packet`. On mismatch, build an Input Context with Drop=0, Add=A0|A1 (Slot + EP0 — spec requires Slot context present even if unchanged), patch EP0 dw1 bits [31:16] with the real MPS preserving CErr/EPType/MaxBurst in [15:0], issue Evaluate Context, update slot's tracked MPS.
+
+**Result — Phase 4 fully cleared, Phase 5 open**:
+
+```
+xhci: cmd_submit#1 trb_phys=... dw3=9217           (Enable Slot)
+xhci: cmd_submit#2 trb_phys=... dw3=16788481       (Address Device)
+hid: probing iface kbd, slot=1, VID=1452 PID=591, class=0
+hid: keyboard configured, boot protocol on, EP=129, polling 8-byte reports
+...
+AGNOS shell v1.30.8 (type 'help')
+agnos>                                              ← no echo on keystroke
+```
+
+The doorbell rings for the interrupt-IN endpoint; the framebuffer shows `polling 8-byte reports` confirming `hid_kbd_configure` armed its periodic transfer. But pressing keys on the keyboard produces no characters at the shell prompt. Either (a) the controller isn't posting Transfer Events for the interrupt-IN ring (analogous to but distinct from Phase-3 CCE silent-absorb — different ring, different doorbell index), (b) Events post but `xhci_handle_transfer_event` isn't decoding them into HID reports, (c) HID translation runs but `kb_buf` enqueue isn't reaching agnoshi's `kb_read`.
+
+**Boot evidence consistent with healthy controller**: USBSTS stays clean across boot (no HSE / HCE / SRE), USBCMD = R/S|INTE|HSEE, no `xhci: transfer event timeout` printed (controller isn't reporting a timeout — it's just not generating any keystroke event).
+
+**Iron implications**:
+- This is the FIRST iron burn where every xhci-side command completes (Enable Slot ✓ Address Device ✓ Evaluate Context ✓ Configure Endpoint ✓ + all EP0 control transfers up through Get HID Report Descriptor ✓).
+- The closed-beta MVP visual half is at v1.30.8 on iron. The functional half (typeable shell) is one step from done — gated on Phase 5 (interrupt-IN transfer-event delivery), not Phase 4 (configuration).
+- QEMU is symmetric end-to-end here: same binary, sendkey produces typed echo. So Phase 5 has at least one path that works in software; iron-specific divergence is in the interrupt-IN event-posting layer.
+
+**Per-action consent**: No iron burn proposed. No instrumentation proposed. No edits to `agnos/` made post-burn. Doc-only updates landed in this entry plus `state.md`.
+
+**Open next-move space — Phase-5 audit plan (read-only first per `feedback_redesign_dont_reinvent` + `feedback_known_knowledge_first` + `feedback_stop_letter_laddering`; no first-principles letter ladder)**:
+
+1. **Audit `xhci_handle_transfer_event` vs Linux `handle_tx_event`** (`drivers/usb/host/xhci-ring.c`, v6.13). The Transfer Event (TRB type 32) and Command Completion Event (TRB type 33) share the event ring but follow different decode paths. A missing case in the event-type dispatch, or a mis-decoded slot/endpoint-DCI in the Transfer Event handler, would produce exactly the observed silent symptom — no error report, no event surfacing, just nothing reaching the HID layer. Document divergences in `xhci-prior-art-audit.md`.
+2. **Audit HID interrupt-IN doorbell-ringing** in `hid_kbd_configure` and the transfer-submit path. Confirm AGNOS rings doorbell index `slot_id` with target `(endpoint_dci & 0xFF)` after queueing the first periodic Normal TRB on the interrupt-IN ring (xHCI 1.2 §4.7). Compare against Linux `xhci_ring_ep_doorbell`. A doorbell never rung = controller has no work-arrival signal for the endpoint and will never poll.
+3. **Audit interrupt-IN ring lifecycle**. Is the ring page-allocated? Is the TR Dequeue Pointer programmed into the Endpoint Context dw2/dw3 BEFORE Configure Endpoint? Is the cycle bit consistent between the queued Normal TRBs and the producer/consumer state? Compare against Linux `xhci_alloc_endpoint_ring` + `xhci_endpoint_init`. A stale or unprogrammed TR-DP = controller reads garbage TRBs or skips the endpoint entirely.
+4. **Bisect at the `kb_buf` boundary**. Split "controller delivers nothing" from "controller delivers but `kb_buf` is broken." Read `kb_buf_head` vs `kb_buf_tail` after a known keypress. Not an instrumentation burn — surface via an existing kernel debug print, a one-shot test entry already wired, or by extending `read-boot-log` to dump kb_buf state through a virgin-band CMOS slot.
+5. **Decode `polling 8-byte reports` semantics**. Does the HID layer submit periodic Normal TRBs at the polling interval, or does it submit once and rely on the controller auto-refiring per Endpoint Context interval field? Compare against Linux `usb_submit_urb` for interrupt URBs. A misset bInterval / "submit once and forget" bug would mean the controller has nothing to deliver after the first transfer drains.
+6. **QEMU vs iron divergence-search**. QEMU monitor's `info usbhost` and xhci tracing can show whether the controller is queueing endpoint transfers and whether Transfer Events get posted. The point of divergence between QEMU and iron tells whether the iron silicon is silent at TD-completion or whether the kernel never armed the transfer. Same convergent-prior-art pattern that unblocked Phase 3 + Phase 4 — the QEMU lane is the lever.
+
+**Repair class TBD pending audit**. Open Linux's interrupt-IN path on the bug surface and stack every behavioral diff into one iron burn when ready.
+
+### Phase-5 audit — 2026-05-18 (read-only, 0 burns)
+
+Walked the iron AGNOS Phase-4/5 surface end-to-end against USB 2.0 / xHCI 1.2 / Linux convention. Files: `kernel/arch/x86_64/usb/{hid.cyr,xhci.cyr,xhci_ctx.cyr,xhci_ring.cyr}`, `kernel/arch/x86_64/keyboard.cyr`, `kernel/user/shell.cyr`.
+
+**Call-chain verification (NOT the bug)**:
+- `agnoshi → kb_has_key() → hid_poll() → drain event ring` (shell.cyr:349 → keyboard.cyr:64 → hid.cyr:323). Cooperative poll wired, NOT gated on PS/2 ISR. Runs every shell iteration.
+- `hid_poll`'s decode of Transfer Event TRBs (type=32, slot_id, ep_dci) matches xHCI 1.2 §6.4.2.1. ERDP update + cycle/index wrap intact.
+- DCI computation (`xhci_dci_for_ep`) correct: `(ep_num*2) + is_in`; for ep_addr 0x81 → DCI=3.
+- Endpoint Context programming (`xhci_input_ctx_add_interrupt_in`) clean: EP Type=7 (Interrupt-IN), MPS at dw1[31:16], **TR-DP with DCS=1 at dw2/dw3 matches initial producer cycle=1**, no DCS↔producer mismatch.
+- Doorbell index + target correct: `db_base + slot_id*4` written with `dci & 0xFF` (DB Target=DCI, Stream ID=0). Both initial kick (hid.cyr:252) and post-event re-ring (hid.cyr:347) use the right address.
+- Load-bearing gvars (`XHCI_EVT_RING_SEGMENT_SIZE`, `XHCI_CMD_TIMEOUT_SPINS`) are enum constants per the cyrius-.64 retrofit — not subject to the gvar-init-order bug.
+
+**Smoking gun — SET_CONFIGURATION (USB 2.0 §9.4.7) is never sent**:
+
+The only standard control requests AGNOS issues during enumeration:
+- `GET_DESCRIPTOR(device, 8)` and `GET_DESCRIPTOR(device, 18)` at `xhci.cyr:997` (bmRequestType=0x80, bRequest=0x06)
+- `GET_DESCRIPTOR(config, N)` at `xhci.cyr:1007+`
+- `SET_PROTOCOL=boot` at `hid.cyr:142` — class request (bmRequestType=0x21, bRequest=0x0B)
+
+There is no `SET_CONFIGURATION` (`bmRequestType=0x00, bRequest=0x09`) call anywhere in the kernel. Verified by grep across `kernel/`.
+
+Per USB 2.0 §9.1.1 device states: **Default → Address → Configured**. SET_CONFIGURATION is what moves Address → Configured. Per §9.1.1.5: "In the Configured state, a device functions normally. Endpoints other than endpoint 0 are operational." Without SET_CONFIGURATION, the device's interrupt-IN endpoint is technically not operational — the device sits in Address state, accepts EP0 traffic (descriptor reads + even some class requests that some firmware allows in Address state), but never initiates IN data on interrupt EPs because, from its own state machine, no configuration is active.
+
+Linux's USB core enforces this strictly (`drivers/usb/core/hub.c` → `usb_new_device()` → `usb_choose_configuration()` → `usb_set_configuration()` BEFORE class drivers attach). HID class driver (`usbhid/hid-core.c`) only fires SET_PROTOCOL after the device is Configured.
+
+**Why iron diverges from QEMU**: QEMU's `usb-kbd` device model is forgiving — it ships interrupt-IN reports as soon as the host arms a TRB on the interrupt-IN ring and rings the doorbell, regardless of device-side state. Real iron HID firmware tends to be strict — the keyboard's USB stack honors USB 2.0's "endpoints not operational until Configured" rule and NAKs every interrupt-IN poll. Controller polls forever, never has data to post a Transfer Event, AGNOS sees `events_seen=0` on the interrupt-IN ring even though the doorbell is rung and the ring is correctly programmed. Matches the iron symptom exactly: USBSTS clean, no `transfer event timeout`, controller silent.
+
+**Confidence: high**. This is the canonical USB enumeration-order bug — easy to miss when QEMU paves over it. Same iron-vs-QEMU divergence shape as the Attempt-64 root-cause search where iron was strict and QEMU was permissive.
+
+**Secondary findings (defensive, lower confidence)**:
+
+- **Interval=3 hardcoded for FS keyboards** at `xhci_ctx.cyr:268`. Linux computes Interval per xHCI 1.2 §6.2.3.6 as `fls(8 * bInterval) - 1`. For a typical FS keyboard with bInterval=10ms, Linux uses Interval=6 (64 microframes = 8 ms). AGNOS uses Interval=3 (8 microframes = 1 ms) — 8× faster than the device declared. Over-polling shouldn't cause silence on a sane controller, but AMD FCH's USB scheduler may treat the EP as misconfigured if Interval is faster than the device's stated minimum. Defensive: match Linux's `fls(8*bInterval)-1`.
+- **ISP not set on the interrupt-IN Normal TRB** at `hid.cyr:225` and `hid.cyr:295`. For fixed-8-byte HID-boot reports no short packet is expected, but Linux always sets ISP for IN data in case the device sends fewer bytes than the TRB length. Defensive: set ISP (bit 2) on the Normal TRB ctrl.
+
+**Proposed repair bundle (1 iron burn when staged)**:
+
+1. **Send SET_CONFIGURATION before SET_PROTOCOL** in `hid_kbd_configure`. After config-descriptor walk (step 2), before `hid_set_protocol_boot` (step 3): read `bConfigurationValue` from config descriptor byte 5 (`load8(xhci_desc_buf_phys + 5)`), then `xhci_control_no_data(slot_id, 0x00, 0x09, config_value, 0)`. On failure, return 0 with `kprintln("hid: SET_CONFIGURATION failed", ...)`.
+2. **Linux-canonical FS interval** in `xhci_interrupt_interval`. Replace the FS/LS `return 3` line with `fls(8 * b_interval) - 1` clamped to [3, 15] (preserve the 1-ms floor against pathologically-slow bInterval=1 cases that match the speed-safe minimum).
+3. **Set ISP on Normal TRB** in both `hid_kbd_configure` (line 225) and `hid_arm_xfer_trb` (line 295). Change `(1 << 5) | (XHCI_TRB_NORMAL << 10) | <cycle>` → `(1 << 5) | (1 << 2) | (XHCI_TRB_NORMAL << 10) | <cycle>` (ISP=bit 2 added to existing IOC=bit 5 + type + cycle).
+
+All three are behavioral diffs vs Linux on the bug surface; no first-principles guesses; matches `feedback_redesign_dont_reinvent`. Per `feedback_no_letter_codes_for_repairs`, naming the repair "SET_CONFIGURATION + canonical FS interval + ISP bundle" not "Repair (SS)".
+
+**Per-action consent**: no edits to `agnos/` made. Audit-only. Iron burn proposed but not staged — user decides.
+
+### Phase-5 repair bundle — 2026-05-18 (staged + built, iron burn pending)
+
+User greenlit the three-diff bundle. All edits in `agnos@HEAD` on `monolith-extraction`:
+
+| # | Site | Change |
+|---|---|---|
+| 1 | `kernel/arch/x86_64/usb/hid.cyr` (in `hid_kbd_configure`, between config walk + SET_PROTOCOL) | New `xhci_control_no_data(slot_id, 0x00, 0x09, config_value, 0)` — SET_CONFIGURATION (USB 2.0 §9.4.7). `config_value` from `load8(xhci_desc_buf_phys + 5)`. Failure path prints `hid: SET_CONFIGURATION failed` and returns 0. |
+| 2 | `kernel/arch/x86_64/usb/xhci_ctx.cyr` `xhci_interrupt_interval` | FS/LS branch replaced: was `return 3` (hardcoded 1 ms over-poll), now Linux-canonical `fls(8 * bInterval) - 1` clamped to ≤15. Inline fls (kernel has no bsr intrinsic). Comment updated explaining the audit rationale + 8 ms typical case vs former 1 ms claim. |
+| 3 | `kernel/arch/x86_64/usb/hid.cyr` two sites (line 225 initial TRB, line 295 `hid_arm_xfer_trb`) | Normal TRB ctrl word adds ISP bit (`(1 << 2)`) alongside existing IOC + type + cycle. Linux convention for IN-data TRBs. |
+
+**Build verification**:
+- `build/agnos` 412,832 B → **413,216 B** (+384 B). Multiboot2 ELF64 entry preserved at `0x1000a8`. Cyrius pin 5.11.64 unchanged.
+- Source: `agnos@HEAD` on `monolith-extraction` (post-d671db3 with the bundle layered on top).
+- LSP false-positive diagnostics on cross-file globals (`kb_buf` from keyboard.cyr, `xhci_csz` from xhci.cyr) — pre-existing, build succeeded.
+
+**Pre-bound iron outcomes**:
+- Boot log shows `agnos>` and keystrokes echo → typeable-shell-on-iron MVP gate hit. SET_CONFIGURATION was the missing step.
+- Boot log shows `agnos>` and typing still silent → SET_CONFIGURATION wasn't the gate (or wasn't the *only* gate). Next move: read-only audit of any other USB enumeration step Linux does that AGNOS skips, plus QEMU divergence-search per audit-plan item 6.
+- Boot log shows `hid: SET_CONFIGURATION failed` → device rejected the config request. Investigate `config_value` (might be 0 if descriptor read corrupted), or the device may require GET_DESCRIPTOR(config) at a specific length before accepting SET_CONFIGURATION.
+- Visible regression elsewhere → revert the FS-interval change first (most invasive of the three; the SET_CONFIGURATION + ISP additions are pure additions on top of the working enumeration path).
+
+**Photo**: [`attempt-67-ep0-mps-reconciliation-hid-configured-typing-silent.jpg`](iron-nuc-zen-photos/attempt-67-ep0-mps-reconciliation-hid-configured-typing-silent.jpg)
+
+---
+
 ## Carry-forward items (not blocking Attempt 28)
 
 - **aarch64 native boot test**: blocked on Pi SSH access. Cyrius

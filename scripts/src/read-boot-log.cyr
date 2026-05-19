@@ -322,8 +322,8 @@ fn main(): i64 {
     if (verbose_mode == 0) {
         println("");
         println("=== AGNOS xHCI current-sweep boot log ===");
-        println("Repair (OO) — Tier 2 bundle: USBSTS-clear + IMAN.IE-post-R/S + mfence + TRB-readback");
-        println("Reference: docs/development/xhci-prior-art-audit.md + iron-nuc-zen-log.md §6601");
+        println("EP0 MPS reconciliation (Attempt 67) — HID enumeration clears on iron; Phase-5 interrupt-IN keystroke delivery is the open blocker");
+        println("Reference: docs/development/iron-nuc-zen-log.md § Attempt 67");
         println("");
         println("Boot reached:");
         print_str("  kernel  checkpoint = "); print_hexb(kcp);
