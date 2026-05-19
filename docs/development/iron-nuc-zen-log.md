@@ -354,6 +354,94 @@ Multi-device USB carry-forward (BT mouse + keyboard regressing
 input) still unaddressed — captured under "Open carry-forward from
 MVP era" above; triage after 1.30.11 closes.
 
+### Attempt 71 prep — 2026-05-19 → PENDING IRON BURN
+
+First **1.30.11 hardening** burn. Bundles four behavioral changes
+targeting the VGA-vs-HDMI handoff bug (quiet-boot ON garbled glyphs)
+plus the carry-forward hardening items + a pre-existing
+multi-chunk WC-remap leak that the new FB BAR memtype check surfaced.
+Audit-then-burn shape per `feedback_redesign_dont_reinvent`; no
+diagnostic-letter ladder, no instrumentation. QEMU PASS observed
+before bumping VERSION.
+
+**Build under test**
+
+| Item | Value |
+|---|---|
+| `agnos VERSION` | **1.30.11** (bumped 2026-05-19 per explicit user approval — "lets open 1.30.11 and get the hardening done and bug fix for vga/hdmi") |
+| `build/agnos` size | **416,496 B** (was 414,544 B at 1.30.10; +1,952 B for the bundle) |
+| Cyrius pin | 5.11.64 (unchanged) |
+| gnoboot | 0.2.0 — **unchanged**. No boot_info ABI change; gnoboot already captured `pf` at `+0x5C`, kernel just started reading it. |
+| Multiboot2 entry | `0x1000a8` (preserved) |
+| Visual banner | `AGNOS kernel v1.30.11` / `AGNOS shell v1.30.11 (type 'help')` |
+
+**Behavioral diffs (four changes, all one burn)**
+
+1. **PixelFormat-aware FB render + serial diagnostic** — `fb_console_init` now reads `boot_info+0x5C` (`fb_pf()` getter), logs `fb: phys=0x... pf=N w=W h=H pitch=P` to serial before any paint, and branches on `pf`: `0` (RGBX) or `1` (BGRX) → paint normally; `≥ 2` (PixelBitMask / PixelBltOnly) → log warning, set `fb_console_ready = 0`, fall to serial-only console. Linux ref: `drivers/video/fbdev/efifb.c`.
+2. **Obsolete gvar-init defensive workaround DELETED** — the 2026-05-15 cyrius-5.7.19 workaround in `fb_console_init` is dead code post-cyrius-5.11.64 fix; removed.
+3. **FB BAR memtype runtime check** — new `fb_verify_wc()` reads back the controlling cache-mapping leaf entry (2 MB PDE or 1 GB PDPT entry) via new `vmm_get_pde_2mb(phys)` accessor (covers `<1 GB`, `1 GB-512 GB`, `≥512 GB` paths). Decodes PAT-index, emits `fb: WC verified (PAT entry 1)` (green) or `fb: WARN expected PAT entry 1 (WC), got entry N PDE=0x...` (silent regression). Called from `kernel/core/main.cyr` AFTER `pmm_init` + post-pmm WC remap retry.
+4. **`vmm_remap_wc_2mb` idempotency fix** — pre-existing multi-chunk WC-remap leak (each call re-shattered the PDPT entry → overwrote earlier chunks' WC with WB). Iron archaemenid unaffected (FB in 32-bit hole = inline path = naturally idempotent), but the post-pmm retry in main.cyr exercises the high-BAR path and surfaced the bug under QEMU q35. New idempotency branch: if PDPT entry already shattered, reuse the PD and just edit the target PDE in place.
+
+**Pre-burn verification gates — RESULTS**
+
+| Gate | Status |
+|---|---|
+| Cyrius build clean | ✅ OK, no errors, 31 unreachable fns (DCE potential) |
+| Build size sane (+1.9 KB bundle) | ✅ 414,544 → 416,496 B |
+| Multiboot2 ELF64 entry preserved | ✅ `0x1000a8` |
+| QEMU Path-C **headless smoke** (new `qemu-fb-smoke.sh`) — kernel reaches shell | ✅ PASS — `EXPECT="AGNOS shell"` matched on ConOut at 1920×1080 |
+| Serial diagnostic emitted at fb init | ✅ `fb: phys=0x80000000 pf=1 w=1920 h=1080 pitch=7680` |
+| Post-pmm WC verification | ✅ `fb: WC verified (PAT entry 1)` — the idempotency fix made this go from WARN to verified under q35 |
+| gnoboot rebuild needed? | ❌ No — Path-C ABI unchanged, gnoboot 0.2.0 OK |
+| `build/agnos` freshness (per `feedback_build_freshness_is_mine`) | ✅ Rebuilt 2026-05-19 post-edits, sha advanced |
+
+**Iron-specific note on serial visibility**
+
+archaemenid has no serial cable (per `project_single_machine_dev_setup`),
+so the new `fb: pf=...` and `fb: WC verified` diagnostic lines are
+NOT visible on iron directly. They're QEMU-side gates. On iron the
+user observes the bundle indirectly:
+
+- **Quiet-boot ON, clean shell renders** → `pf` was 0 or 1, original
+  Attempt-33 garbled-glyph hypothesis (non-BGRX format under quiet-boot
+  ON) is **falsified**. Re-audit toward pitch / bytes-per-pixel / mode
+  geometry.
+- **Quiet-boot ON, black screen / no shell visible** → `pf > 1`, kernel
+  guard fired and disabled FB paint. **Hypothesis confirmed.** Compare
+  with a quiet-boot OFF boot from the same image to distinguish
+  "guard fired" from "kernel hung."
+- **Quiet-boot ON, garbled glyphs (Attempt-33 signature recurs)** → `pf`
+  was 0 or 1 but a DIFFERENT root cause produces the corruption.
+  Re-audit; not a pure PixelFormat fix.
+
+**Pre-bound outcomes on iron under quiet-boot ON**
+
+| Outcome | Interpretation |
+|---|---|
+| Boot reaches typeable shell, clean rendering | Quiet-boot ON also reports BGRX/RGBX. Original garbled-glyph signature must have been pitch / mode-geometry / cache-related. Pf-aware guard is correct hardening but didn't address the root cause. Open re-audit (read serial under qemu-fb-visual at 1920×1080 with `-cpu max`, compare pf+pitch values vs iron). |
+| Boot reaches typeable shell **under quiet-boot ON for the first time ever** | pf was the issue but the kernel handled all values 0/1 cleanly. **VGA/HDMI bug effectively closed** by the guard (since current modes paint OK). Quiet-boot OFF workaround can retire. |
+| Black screen / no shell renders, kernel-running otherwise unclear | Likely `pf ≥ 2` and guard fired. Reboot with quiet-boot OFF to confirm kernel works in general. If quiet-boot OFF clean and ON black, **hypothesis confirmed**, queue gnoboot PixelInformation bitmask capture + decoder for next cycle (or fall back to "stay quiet-boot OFF" as supported config). |
+| Garbled glyphs identical to Attempt 33 | pf-aware path took the BGRX branch but produced corruption anyway. Different root cause. Re-audit; check pitch vs ppl, scanline padding, real bytes-per-pixel under quiet-boot ON. |
+| Boot fails to reach shell on quiet-boot OFF (regression) | New bundle broke the previously-working path. Revert candidate: items 1 (FB guard) or 4 (vmm idempotency) most likely. |
+| Type-test fails (keyboard regression) | Bundle is FB-only; should not affect xHCI HID. Likely unrelated. |
+
+**Burn protocol**
+
+1. `cd ~/Repos/agnosticos && sudo ./scripts/install-usb.sh --update /dev/sdX`
+2. Reboot archaemenid into BIOS, **toggle quiet-boot ON**, save & exit
+3. F-key boot menu → USB
+4. Observe FB: clean shell? black screen? garbled?
+5. If clean: try typing — does keyboard still work?
+6. Photo the FB
+7. **Second boot for comparison**: reboot, toggle quiet-boot **OFF**, F-key boot from USB. Photo the FB. Compare.
+8. Report which outcome row matched
+
+**Photos for the catalog (post-burn)**
+
+Under "Post-MVP era (Attempts 69+)":
+- `attempt-71-quiet-boot-on.jpg` — what the FB shows under quiet-boot ON with 1.30.11's pf-aware guard
+- `attempt-71-quiet-boot-off.jpg` — comparison baseline (same image, same kernel, quiet-boot OFF — should match the existing post-Attempt-70 visual baseline if everything else is consistent)
+
 **First-user-input-on-iron canary** —
 [`iron-nuc-zen-photos/attempt-70-help-me-build-an-entity-chart.jpg`](iron-nuc-zen-photos/attempt-70-help-me-build-an-entity-chart.jpg)
 captures Alicia's first try at the iron shell: `agnos> Help me build
