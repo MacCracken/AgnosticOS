@@ -7306,6 +7306,41 @@ User greenlit the three-diff bundle. All edits in `agnos@HEAD` on `monolith-extr
 
 **Photo**: [`attempt-67-ep0-mps-reconciliation-hid-configured-typing-silent.jpg`](iron-nuc-zen-photos/attempt-67-ep0-mps-reconciliation-hid-configured-typing-silent.jpg)
 
+### Attempt 68 — 2026-05-18 ~21:30 PDT → **TYPEABLE SHELL ON IRON, MVP GATE HIT**
+
+**Status**: Closed-beta MVP gate clears end-to-end on archaemenid — visual half (since Attempt 63) + functional half (typeable keyboard via xhci HID) both green. `agnos> echo "Assembly Up!"` echoed back from the iron Logitech (VID=1452 PID=591). Build: `build/agnos` 413,216 B. Source: `agnos@HEAD` on `monolith-extraction` (post-Phase-5 repair bundle).
+
+**Bundle (the three diffs)**: SET_CONFIGURATION before SET_PROTOCOL + Linux-canonical FS interval + ISP on interrupt-IN Normal TRB. Per-site diffs + prior-art rationale in the Attempt 67 "Phase-5 audit" + "Phase-5 repair bundle" subsections above. Audit-then-bundle path, landed in a single burn — per `feedback_redesign_dont_reinvent` + `feedback_no_letter_codes_for_repairs`.
+
+**Boot log signature**:
+
+```
+hid: keyboard layer initialized
+hid: keyboard configured, boot protocol on, EP=129, polling 8-byte reports
+...
+AGNOS shell v1.30.9 (type 'help')
+agnos> echo "Assembly Up!"
+Assembly Up!
+agnos>
+```
+
+**Bench under the typeable shell**: 3-tier ran end-to-end on iron. Numbers visible in [`attempt-68-bench-three-tier-on-iron.jpg`](iron-nuc-zen-photos/attempt-68-bench-three-tier-on-iron.jpg) — fibonacci 133 c/op, syscall_write 31 c/op, open+read+close 256 c/op, serial putc ~11.6 c/op. Pixel-pattern noise visible in the lower FB region — flagged for 1.30.10 framebuffer scope.
+
+**Why iron diverged from QEMU**: QEMU's `usb-kbd` is permissive and ships interrupt-IN reports regardless of device-side state. Iron's Logitech firmware honors USB 2.0 §9.1.1 — NAKed every interrupt-IN poll until SET_CONFIGURATION moved it Address → Configured. Same strict-iron / permissive-QEMU pattern as the Attempt 64 root-cause search; same QEMU lane was the unlock for the audit.
+
+**Audit retrospective — no letter ladder**: Single read-only audit pass found the bug. Per `feedback_known_knowledge_first` and `feedback_stop_letter_laddering` — Linux's `usb_new_device → usb_choose_configuration → usb_set_configuration` ordering was canonical and load-bearing; grepping the kernel for `SET_CONFIGURATION` was the single decisive diagnostic step. Contrast with the Phase-3 cmd-path arc (FF→QQ2, 10 falsified letters across Attempts 57-63 chasing a Cyrius compiler bug).
+
+**MVP gate status**:
+- Visual half (FB renders `agnoshi shell v1.30.X (type 'help')` on iron) — hit at Attempt 63 / 1.30.7.
+- Functional half (typeable keyboard via xhci HID on iron) — **hit at Attempt 68 / 1.30.9**. ← THIS.
+- Closed-beta MVP definition (kernel + kybernet + agnoshi typeable on iron archaemenid) is **COMPLETE**.
+
+**Open carry-forward**: Framebuffer refresh quality + VGA-vs-HDMI handoff audit. Visible refresh is poor; pixel-pattern noise in the lower bench-output region. Becomes the active 1.30.10 branch.
+
+**Photos**:
+- [`attempt-68-typeable-shell-on-iron.jpg`](iron-nuc-zen-photos/attempt-68-typeable-shell-on-iron.jpg)
+- [`attempt-68-bench-three-tier-on-iron.jpg`](iron-nuc-zen-photos/attempt-68-bench-three-tier-on-iron.jpg)
+
 ---
 
 ## Carry-forward items (not blocking Attempt 28)
