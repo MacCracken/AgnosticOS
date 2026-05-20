@@ -905,6 +905,225 @@ Source: UEFI 2.10 §11.9 (full GOP protocol); Limine `PROTOCOL.md` "Framebuffer 
 - `attempt-74-vga-spec-baseline.jpg` — VGA-spec path under Burn-B bundle (should still pass; SetMode should pick a mode that works on both BIOS paths)
 - `attempt-74-quiet-boot-result.jpg` — failing-path FB under SetMode-forced mode
 
+### Attempt 74 — 2026-05-20 → FAIL (both repairs falsified, escape plan written)
+
+**Bundle as burned** (diverged from the original Burn-A / Burn-B orthogonal-burn discipline of Attempts 73 / 74 prep — three changes stacked into one iron run):
+
+| Item | Detail |
+|---|---|
+| `gnoboot` | **0.4.1** — `SetMode(gop, cur_mode)` re-arm pre-EBS. The original Burn-B plan (4d: pick the smallest mode ≥ 800×600) was *replaced* with "re-arm the current mode" sourced from Linux `efifb.c` + EDK2 `GraphicsConsoleDxe` + FreeBSD `efifb.c` — minimal-risk variant, no resolution change |
+| `agnos` | 1.30.11 working tree + **Burn-A audit** (`fb_audit_mtrr`, `fb_audit_pci_bar`, `FrameBufferSize` consumption) **stamped to CMOS 0x88-0x8F** since iron has no serial cable |
+| `agnos` (added on top this session) | **`fb_mtrr_install_wc(fb_phys, fb_size)`** — variable-MTRR WC install for the UMA FB region, called from `fb_console_init` before any FB write. Added without an explicit pre-bound outcome row in either Attempt 73 or 74 prep — closest mapping was Attempt 73's "MTRR=UC pinning is the smoking gun → repair: kernel adds variable-MTRR override" row, but that repair was supposed to be a *follow-up* to a Burn-A audit-only diagnostic, not stacked into the same burn |
+| `agnos` build size | 421,584 B (+752 B vs 420,832 B Burn-A baseline — `wrmsr` + `wbinvd` helpers + `fb_mtrr_install_wc` body) |
+
+**Visual outcome — Quiet Boot ON**: unchanged. Garbled-glyph signature persists (no fresh photo captured this session; user-reported "no change on the machine on boot into quiet mode"). Matches the [Attempt 33 photo](iron-nuc-zen-photos/attempt-33-phase-2-5-corrupted.jpg) signature characterized in detail below.
+
+**CMOS audit readback** (slots 0x88-0x8F under Quiet Boot ON):
+
+| Slot | Value | Expected per audit semantics | Status |
+|---|---|---|---|
+| 0x88 MTRR eff | `0x18` | one of {0=UC, 1=WC, 4=WT, 5=WP, 6=WB, 7=UC-} | **invalid memory-type encoding** |
+| 0x89 MTRR def | `0xF0` | one of the same set | **invalid memory-type encoding** |
+| 0x8A-0x8D BAR base | `0x0400CC44` | matched VGA-class BAR base (LE32) or 0 if no match | non-zero with PCI-match=0 → inconsistent state (audit either ran-and-zeroed-then-stamped, or early-returned leaving prior-boot bytes; can't disambiguate from current stamping) |
+| 0x8E delta low byte | `0x00` | (fb_phys - base) & 0xFF; 0 = clean alignment | clean — but only meaningful if 0x8F=1 |
+| 0x8F PCI match flag | `0x00` | 1 = VGA-class BAR matched fb_phys within 256 MB | no match |
+
+**Geometry channel** (slots 0x90-0x9F, unchanged from Attempt 72): width=2560, height=1440, pitch=10240, pf=1 (BGRX), mode_current=0, mode_max=13, sentinel=0xFB. Geometry stamping confirms `fb_console_init` ran end-to-end. Since the MTRR/PCI audit calls are *after* the geometry stamps in `fb_console_init`, the audits also ran — meaning 0x88-0x8F are real audit outputs, not stale bytes.
+
+#### Visual signature reinterpretation
+
+Comparing the two iron photos in catalog:
+
+| Photo | Path | Characteristic |
+|---|---|---|
+| [`attempt-33-phase-2-5-corrupted.jpg`](iron-nuc-zen-photos/attempt-33-phase-2-5-corrupted.jpg) | Quiet Boot ON (failing) | Horizontal bands of dense dot-patterns separated by dark gaps. Within each band, multiple kernel text rows appear *vertically compressed and interleaved*. No legible text. Structure is regular (not random), with consistent band spacing — characteristic of a periodic mapping mismatch between writer and reader. |
+| [`attempt-71-quickboot-vga-pass.jpg`](iron-nuc-zen-photos/attempt-71-quickboot-vga-pass.jpg) | QuickBoot + VGA-spec (working) | Top half: overlapping text history with scroll artifacts (the "perceptually-doubled refresh, old-school CRT 80's-ish" pattern reported at Attempt 70). Bottom: shell prompt `agnos> v1.30.11 (type 'help')` rendered cleanly. Fresh writes legible; scroll-copy region noisy. |
+
+**The two paths are not "works vs broken" — they are "scroll-noisy but FB-write-clean" vs "FB-write-fundamentally-broken at every timestamp"**, including freshly-painted text the kernel just wrote. Quiet Boot's shell prompt would be unreadable if it ever rendered.
+
+The Quiet Boot signature is **not cache-coherence corruption**:
+
+- Cache corruption (stale WB lines reaching DRAM partially) would produce *random* pixel pop-in, partial glyph holes, and timing-dependent tear lines. Position of text would be correct; pixels would be wrong.
+- What we see is the opposite: *pixels are at structured positions that don't match where the kernel wrote them*. Glyph data exists; it's been **read back at a different stride/layout than it was written**.
+
+Working hypotheses consistent with the structural signature, ranked by likelihood:
+
+1. **Scanout pitch divergence** — kernel writes scanline N at FB offset `N * pitch` (pitch=10240 from GOP). Display engine reads scanline M at FB offset `M * effective_stride` where `effective_stride ≠ pitch`. Each visible band = several kernel rows folded into one scanout row (if effective < pitch) or each kernel row split across scanout rows (if effective > pitch). UEFI 2.10 §11.9 *requires* GOP-reported `PixelsPerScanLine` to equal hardware scanout stride; some AMD-APU firmwares are known to violate this on quiet-boot paths where the iGPU is left in a different scanout configuration than the GOP-reported one.
+2. **Tile-format scanout** — AMD GCN/RDNA display engines support tiled scanout formats (1D-tiled, 2D-tiled, swizzled) in addition to linear. Quiet-Boot's native-HDMI 2560×1440 mode may program the CRTC for tiled while GOP reports linear pixel layout. Writes interpret as linear; reads de-tile — produces the periodic-band signature.
+3. **Address-translation divergence** — the FB BAR's *physical* address as visible to the CPU may not match what the display engine scans. AMD APUs route iGPU display reads through a different fabric path than CPU writes; if quiet-boot leaves an IOMMU/GART mapping that aliases `FrameBufferBase` to a different scanout buffer, writes hit one page, the display reads another.
+
+All three are firmware-state-on-handoff problems, **not** kernel-side cache problems. The MTRR-WC install in this burn was attacking the wrong layer.
+
+#### Falsifications carried forward
+
+| Hypothesis | Status | Burn that falsified it |
+|---|---|---|
+| `pf ≥ 2` (BitMask / BltOnly PixelFormat) is the variable | FALSIFIED (Attempt 71) | guard for `pf > 1` would have produced black screen; got Attempt-33 garble instead |
+| Pitch padding (`ppl > width`) is the variable | FALSIFIED (Attempt 72) | stamped pitch=10240 = width × 4 exactly |
+| MTRR=UC overrides PAT-WC at FB BAR is the variable | FALSIFIED (Attempt 74) | MTRR-WC install made no visual difference; cache-attribute layer is not the root |
+| `SetMode(gop, cur_mode)` re-armed CRTC scanout would re-align display engine to GOP base | FALSIFIED (Attempt 74) | no visual change after the re-arm; iron firmware ignores SetMode-to-same-mode as a no-op, or the divergence is at a layer SetMode doesn't touch |
+
+Four distinct single-variable hypotheses falsified across four attempts on the same symptom. Per `feedback_stop_letter_laddering`, the escape plan section below replaces "stage Attempt 75 letter" as the next move.
+
+#### Audit-value oddity (0x18, 0xF0) — secondary but worth investigating
+
+The audit values are not currently explainable by the install code alone:
+
+- `fb_mtrr_install_wc` writes `base_val = phys_aligned | 1` to a variable PHYSBASE MSR — bits[7:0] = 0x01 (WC type).
+- `fb_audit_mtrr`'s loop captures `base_msr & 0xFF` from the *last* matching variable MTRR. If firmware has a wider variable MTRR overlapping fb_phys later in the iteration, my install's type-1 gets overwritten in `matched_type` by whatever firmware programmed.
+- 0x18 in PHYSBASE bits[7:0] is reserved/invalid per Intel SDM Vol 3A §11.11.3 ("Bits 11:8 are reserved (MBZ)" — and bits 7:0 should hold type 0-7). Either firmware is programming reserved bits, *or* there's a Cyrius asm/lowering interaction we haven't characterized, *or* the audit captures a slot whose MSR truly contains 0x18 in those bits.
+
+Not the immediate blocker (visual signature points elsewhere), but if/when the audit gets re-examined it would help to log the raw MSR values (not just `& 0xFF`) for the matched slot — left for future work.
+
+#### Escape plan — research before any more iron burns
+
+Per `feedback_stop_letter_laddering` + `feedback_redesign_dont_reinvent` + `feedback_iron_burns_block_other_work`. **No iron burn proposed in this entry.** The actionable items below are research and existing-image re-boot diagnostics; new code burns gated on the user's explicit go after reviewing this entry.
+
+**R1 — Capture VGA-spec / QuickBoot CMOS readback** (existing image, no rebuild, no install)
+
+We have Quiet Boot CMOS data (Attempt 72 + Attempt 74). We do **not** have VGA-spec CMOS data — the comparison row in the Attempt 72 / 73 outcome tables was never populated. Without it we can't confirm what the mode/MTRR/PCI difference between the two BIOS paths actually is, and we'll keep guessing.
+
+Plan: reboot archaemenid into BIOS, toggle to VGA-spec + QuickBoot ON (the known-working path), boot from the *same USB image already installed*, wait for shell to render, power off cleanly. Boot Linux on archaemenid. `sudo ./scripts/read-boot-log.sh` captures the VGA-spec geometry + MTRR audit values. Diff against the Quiet Boot capture above.
+
+Cost: one extra boot cycle on archaemenid, no install, no rebuild.
+
+Decisive signal: if VGA-spec stamps `mode=N>0` (firmware-picked non-zero mode) and Quiet Boot stamps `mode=0`, then the BIOS toggle is selecting a different GOP mode — the working path may be running at a smaller / older / linear-scanout mode that quiet-boot replaces with native-HDMI-tiled. That makes the original Burn-B plan (force a small mode in gnoboot regardless of BIOS toggle) the correct attack.
+
+**R2 — Read Linux `drivers/firmware/efi/libstub/screen_info.c` + EDK2 `MdeModulePkg/Universal/Console/GraphicsConsoleDxe`** for the actual mode-selection / scanout-handoff prior art
+
+The Burn-B prep already cited these references but didn't transcribe what they *do*. Specifically:
+
+- Does Linux's `setup_gop` *select* a mode, or does it always honor the firmware-picked one?
+- Does any Linux EFI stub path call `SetMode(gop, N)` where N differs from `Mode->Mode` (the current mode)?
+- Does EDK2 `GraphicsConsoleDxe` have an explicit AMD-APU-aware code path?
+- What does the Linux `screen_info` quirk table (`drivers/firmware/efi/libstub/screen_info.c` quirks region) have for AMD?
+- Is there a documented Linux workaround for the specific signature in [`attempt-33-phase-2-5-corrupted.jpg`](iron-nuc-zen-photos/attempt-33-phase-2-5-corrupted.jpg)?
+
+Web-source via `WebFetch`/`WebSearch` if the source isn't local. Result: a transcribed reference of what the canonical handlers actually do, written up in `docs/development/efifb-prior-art.md` (sibling to `uefi-boot-prior-art.md`).
+
+Cost: research time only, no iron.
+
+**R3 — Revive the original Burn-B plan** (gated on R1 + R2)
+
+The original Attempt 74 prep (still preserved at lines 825-907 above) called for gnoboot to *pick* the smallest mode ≥ 800×600 and `SetMode` to it — not the cur_mode re-arm that 0.4.1 shipped. If R1 confirms the BIOS-toggle changes mode and R2 confirms that's an established attack vector, revert gnoboot's `SetMode(cur_mode)` to `SetMode(selected_smaller_mode)` per the original 4a–4h sequence. This becomes a proposable burn only after R1 and R2 land in writing.
+
+**R4 — Independent check: simpledrm / efifb-equivalent for AMD UMA on archaemenid**
+
+If Linux's own efifb fails on archaemenid Quiet Boot (separate from AGNOS), we have an external reference point that the bug is firmware-side and not specific to our paint code. Boot Linux without `nomodeset` under Quiet Boot ON; observe whether early-boot framebuffer text is also garbled before amdgpu loads. If yes: confirmed firmware bug, workaround scope (BIOS-toggle requirement) becomes ship-acceptable for closed-beta MVP. If no: the bug is something AGNOS does that Linux doesn't, and we have a behavioral diff to study.
+
+Cost: one Linux boot under Quiet Boot, observe early-boot text, no iron burn.
+
+#### What this entry does NOT propose
+
+- Any new code change to agnos or gnoboot
+- Any new iron burn
+- Any new CMOS-stamp instrumentation
+- Any letter-coded follow-up to Attempt 74 (no `FF`/`GG`/etc.)
+
+The user's direction in chat — *"I don't think you're expecting me to do a burn with no chances"* — is the ceiling on the next move. R1-R4 above are the audit work that has to land before another burn is justifiable.
+
+#### New iron observation from chat (post-write-up)
+
+User report after the burn, before the escape plan landed:
+
+> *"not able to see gnoboot references only garbled kernel messages with lockup when using quiet."*
+
+Three distinct facts:
+
+1. **No gnoboot text on screen.** Pre-EBS `efi_print` output (the `gnoboot v0.4.1: handing off to kernel` banner) is not visible under Quiet Boot ON. Consistent with OEM BIOS Quiet-Boot behavior — the splash logo overlays the UEFI text console until OS takes over the FB. Not new evidence about the root cause.
+2. **Garbled kernel messages appear.** Once kernel paint starts (post-EBS, post-`fb_console_init`), the Attempt-33 structural-corruption signature is visible. CMOS readback confirms `fb_console_init` ran end-to-end (sentinel 0xFB at slot 0x9F, geometry stamped through 0x90-0x9E).
+3. **Lockup.** New variable. Pre-Attempt-74 Quiet Boot was "garbled visuals but system runs through to invisible shell" per Attempt 71/72 results — keyboard fix from Attempt 68 was assumed to work on this path even if illegible. Attempt 74's lockup is novel and points at one of the three new code paths added in this burn:
+   - `fb_mtrr_install_wc` — `wrmsr` to MTRR PHYSBASE/PHYSMASK + `wbinvd` bracket
+   - `fb_audit_mtrr` — `rdmsr` reads of 0x2FF / 0xFE / 0x200-0x20F
+   - `fb_audit_pci_bar` — 128 PCI config-space probes via 0xCF8/0xCFC
+
+`wrmsr` is the primary suspect: AMD `SYS_CFG_MSR` (0xC0010010) carries `MtrrLock` (bit 18) on some Zen platforms; when BIOS sets MtrrLock, writes to variable-range MTRR MSRs (0x200-0x20F) trigger `#GP(0)` per Intel SDM Vol 2B / AMD APM Vol 3 §3.3 ("Specifying a reserved or unimplemented MSR address... will also cause a general protection exception"). At the kernel's pre-IDT stage, `#GP` cascades to triple fault → CPU reset; if AMD-APU firmware catches the fault in a SMI handler, the system can appear to lockup rather than reset.
+
+This is independent of the visual corruption (which would persist regardless of whether `wrmsr` ran or not) — but the lockup means the kernel can't get to whatever post-`fb_console_init` work happens, so even the workaround-of-last-resort ("ship Quiet-Boot-as-unsupported") got worse.
+
+#### R2 partial findings (research, no iron)
+
+Web-sourced prior art on the signature class. Full transcription is over-scope for this entry; the directly-relevant findings:
+
+**Linux EFI stub mode-selection** ([`drivers/firmware/efi/libstub/gop.c::set_mode`](https://raw.githubusercontent.com/torvalds/linux/master/drivers/firmware/efi/libstub/gop.c)):
+
+```c
+static void set_mode(efi_graphics_output_protocol_t *gop)
+{
+    // ...
+    switch (cmdline.option) {
+    case EFI_CMDLINE_MODE_NUM:  new_mode = choose_mode_modenum(gop); break;
+    case EFI_CMDLINE_RES:       new_mode = choose_mode_res(gop);     break;
+    case EFI_CMDLINE_AUTO:      new_mode = choose_mode_auto(gop);    break;
+    case EFI_CMDLINE_LIST:      new_mode = choose_mode_list(gop);    break;
+    default:                    return;   // ← honor firmware-picked mode
+    }
+    // ...
+    if (new_mode == cur_mode) return;
+    if (efi_call_proto(gop, set_mode, new_mode) != EFI_SUCCESS) efi_err(...);
+}
+```
+
+**Linux only calls `SetMode` when user passed `video=efifb:mode_N` / `res_WxH` / `auto` on the kernel command line.** Default behavior is to honor whatever mode firmware picked — *no* SetMode call. Linux's `screen_info.lfb_linelength` is computed as `pixels_per_scan_line * depth / 8`, NOT read from `GOP_MODE->FrameBufferSize`. Implication for gnoboot: 0.4.1's `SetMode(cur_mode)` re-arm is not a Linux-canonical pattern; the canonical pattern is "leave the mode alone unless explicitly overridden."
+
+**Ubuntu Bug #1065263 — "wrong stride for efifb on some systems"** ([launchpad](https://bugs.launchpad.net/bugs/1065263)). Visual signature: "diagonal-stripey corruption on the display at boot time" on UEFI systems. Root cause class: "efifb driver was coming up with the wrong idea of the framebuffer dimensions" — i.e., stride/pitch divergence between GOP-reported and hardware-effective scanout stride. Resolution: kernel patches from Matthew Garrett to both efifb and the early-boot EFI stub. **Same signature class as Attempt 33** — periodic structural corruption from writer/reader stride mismatch.
+
+**NetBSD wsfb tutorial** ([netbsd.org](https://wiki.netbsd.org/tutorials/x11/how_to_use_wsfb_uefi_bios_framebuffer/)) — confirms the exact symptom: "on this graphics card (Asus X202E laptop), the framebuffer is linear, but not fully contiguous, and the 10 unusable pixels at the end of each row have to be taken into account, or else, you'll be treated to a characteristic jagged, streaky display." Mode 0 on that laptop had `pitch=1376` for `width=1366` — 10-pixel padding per scanline. Our archaemenid Quiet-Boot stamp shows `pitch=10240` for `width=2560` (exact, no padding visible) — but the *effective hardware stride* on the scanout side could still differ from the GOP-reported `pitch`, which is what UEFI 2.10 §11.9 implicitly forbids but real firmware sometimes violates.
+
+**FreeBSD drm-kmod issue #60** ([github](https://github.com/freebsd/drm-kmod/issues/60)) — confirms AMD-specific behavior at 2560×1440 specifically: "efifb keeps happily writing to VRAM way after amdgpu expects it to stop, and if the framebuffer is large enough (e.g. 2560x1440) it would directly overwrite stuff like the firmware the driver is loading into the card." Different bug than ours (this is FB-vs-amdgpu eviction, ours is initial-paint corruption), but anchors that 2560×1440 + AMD UMA + UEFI FB is a documented problem cluster.
+
+**Aggregate conclusion for our case**: the structural signature is the well-known "GOP pitch ≠ hardware scanout stride" bug class, documented on Linux back to 2012 and again on FreeBSD recently. The Linux fix (Garrett patches) was in `screen_info` setup + efifb, not in the EFI stub's mode handling. Linux *does not* call `SetMode` to work around this — it honors firmware's mode and patches the consumer of the stride field. **This implies R3 (gnoboot `SetMode` to a smaller mode) may not be the right attack either** — the right attack might be a kernel-side stride re-derivation from the actual hardware (PCIe BAR size and scanout regs).
+
+R3 stays in scope but moves down the priority list. R4 is now the next move, per user direction.
+
+---
+
+### Attempt 75 prep — R4 Linux-efifb-under-Quiet-Boot diagnostic 2026-05-20 → PENDING USER OBSERVATION
+
+User direction (chat): *"file R4 as a next attempt review just reset with and choose quiet mode for regular archaemenid boot and then review it after."*
+
+**This is not an AGNOS iron burn.** No USB install, no kernel rebuild, no code change. The diagnostic is: boot archaemenid into its host Linux OS under BIOS Quiet Boot ON and observe whether Linux's own efifb early-boot console shows the same garbled-glyph signature *before* amdgpu loads and the desktop comes up.
+
+#### Why this is decisive (and cheap)
+
+The Attempt-33 signature is either:
+
+- **(a) A firmware bug** that affects any post-EBS framebuffer writer — Linux efifb, FreeBSD, AGNOS, anything. The fix lives in firmware (BIOS update) or downstream (full GPU driver that reprograms scanout). Workaround scope: "ship with VGA-spec/QuickBoot as a closed-beta-acceptable BIOS-config requirement; document under known-issues."
+- **(b) An AGNOS-specific bug** — something AGNOS does that Linux doesn't. The fix lives in our kernel or gnoboot. Workaround scope: keep researching, possibly along R3 lines, possibly elsewhere.
+
+Linux booting Quiet Boot ON resolves the disjunction directly:
+
+| Linux observation under Quiet Boot ON | Diagnosis | Next step |
+|---|---|---|
+| **Linux early-boot text (kernel ring buffer / GRUB / loader splash) is also corrupted** — same diagonal-stripe / structural-mis-alignment signature visible *before* amdgpu loads (typically the first few seconds of boot, before the X / Wayland session starts) | **Firmware bug confirmed.** Linux's efifb hits the same issue. Workaround scope shifts to "ship with VGA-spec required; document; BIOS update later." No more AGNOS-side speculation on FB paint code. | Add known-issue line to AGNOS docs; R3 (gnoboot SetMode-to-smaller) becomes optional hardening rather than required repair; revert the kernel MTRR-install since it didn't help and may be causing the lockup. |
+| **Linux early-boot text renders cleanly under Quiet Boot ON** (typical: GRUB menu / kernel decompression line / systemd messages visible normally) | **AGNOS-specific bug.** Linux's efifb handles whatever firmware leaves; AGNOS doesn't. There's a behavioral diff to study — most likely candidates per R2: stride computation, scanline rendering, MTRR/PAT setup difference, or something gnoboot's handoff sequence does differently from Linux's EFI stub. | R2 deep-dive into actual Linux source diff. R3 implementation re-prioritized against findings. New attempt with single behavioral repair. |
+| **Linux locks up under Quiet Boot ON entirely** (kernel doesn't reach desktop, screen frozen / black / corrupted) | Worse than (a). Firmware bug severe enough to crash Linux too. | Document as un-supportable BIOS path on this hardware; ship "Quiet Boot OFF" as hard requirement, not workaround. |
+
+#### Observation protocol
+
+1. **Reset archaemenid cleanly.** Power-cycle.
+2. **Enter BIOS, set Quiet Boot ON** (the same toggle that produces AGNOS's Attempt-33 signature).
+3. **Save & exit; boot into host Linux normally** (not the AGNOS USB).
+4. **Watch the screen during the first 10-15 seconds**: this is where efifb is the active console. Specifically:
+   - Does the BIOS splash / OEM logo render normally? (probably yes; that's a different rendering path before any OS)
+   - When the OEM logo clears and Linux takes over, does the kernel ring buffer / initrd messages / systemd unit startup text render *cleanly* or with the Attempt-33 stripe/compression signature?
+   - Does Linux reach the login prompt / desktop? Or does it lock up?
+5. **Note what you saw.** Cleanest signal points are "GRUB menu legible / illegible" (if archaemenid uses GRUB), "kernel boot messages legible / illegible," "desktop reachable / locks up."
+6. **Photo optional but useful** — if there's a corrupt frame, capture it for the photo catalog at `iron-nuc-zen-photos/attempt-75-linux-quiet-boot.jpg`. The interesting moment is post-OEM-logo, pre-desktop.
+
+#### What this entry does NOT do
+
+- No code change to agnos or gnoboot
+- No new USB install
+- No new build artifact
+- No kernel/bootloader version bump
+
+Pure observation under a different OS using the existing BIOS toggle.
+
+#### Expected report-back
+
+Brief is fine — "Linux looked clean, reached desktop" or "Linux had the same stripes during boot but reached desktop" or "Linux didn't boot, screen looked like AGNOS." From there I can interpret per the table above and direct R3 (or document the workaround if path (a) confirmed).
+
 ---
 
 ## Conventions for future entries
