@@ -2,7 +2,7 @@
 >
 > **Prior history**: [`iron-nuc-zen-log-mvp.md`](iron-nuc-zen-log-mvp.md) — Attempts 1 – 68, frozen at the closed-beta MVP gate (agnos 1.30.9, 2026-05-18). Consult for any pre-MVP-era root-cause shape recurrence.
 >
-> **Last Updated**: 2026-05-19 (Attempt 71 result + Attempt 72 prep — FB handoff diagnostic extension landed, awaiting iron burn)
+> **Last Updated**: 2026-05-19 (Attempt 72 result — geometry channel works on iron; pitch-padding + pf hypotheses both falsified for quiet-boot path; BAR-placement divergence is the surviving candidate, needs `fb_phys` capture extension)
 
 # Iron Boot Test Log — Post-MVP
 
@@ -554,6 +554,103 @@ Anchored under "Post-MVP era (Attempts 69+)":
 - `attempt-72-vga-spec-baseline.jpg` — VGA-spec working boot (same shape as `13011_QuickBoot_Vga.jpg` but anchored to Attempt 72's bundle)
 - `attempt-72-quiet-boot-fail.jpg` — Attempt-33-signature reproduction under 1.30.11 + 0.3.0 bundle
 - (optional) `attempt-72-read-boot-log-diff.txt` — text capture of the two `read-boot-log.sh` outputs side-by-side; the actual diagnostic record
+
+### Attempt 72 — 2026-05-19 → PARTIAL
+
+1.30.11 + working-tree diagnostic extension + gnoboot 0.3.0 burned on
+archaemenid. VGA-spec QuickBoot ON path PASSES (same shape as Attempt
+71 — `13011_attempt_gnoboot_updated.jpg` captured the clean
+typeable-shell state). Quiet Boot ON path FAILS with the Attempt-33
+garbled-glyph signature, AND the new CMOS geometry channel works:
+post-mortem read-back from the failing path lands at slots 0x90–0x9F
+with sentinel ✓.
+
+**Build under test** — unchanged from Attempt 72 prep table above
+(agnos 1.30.11 + working-tree diag extension, gnoboot 0.3.0, cyrius
+pin 5.11.64 / gnoboot 6.0.1). No code changes between prep and
+burn.
+
+**Path outcomes**
+
+| BIOS path | Outcome | Photo |
+|---|---|---|
+| **QuickBoot ON, VGA-spec display mode** | **PASS** — boot reaches typeable shell, clean BGRX glyphs, same shape as Attempt 71's vga-pass. CMOS read-back from this path was not captured. | [`iron-nuc-zen-photos/attempt-72-vga-spec-baseline.jpg`](iron-nuc-zen-photos/attempt-72-vga-spec-baseline.jpg) (working filename `13011_attempt_gnoboot_updated.jpg`) |
+| **Quiet Boot ON** | **FAIL** — Attempt-33 garbled-glyph signature returns. Same kernel binary, only BIOS toggle changed. CMOS post-mortem captured. | not yet anchored; see geometry capture below |
+
+**Quiet-boot CMOS geometry capture (the failing path)**
+
+```
+Boot reached:
+  kernel  checkpoint = 0x15     magic = 0xab ✓
+  gnoboot checkpoint = 0x05     magic = 0xcd ✓
+
+FB geometry (gnoboot GOP capture, written by fb_console_init):
+  sentinel [0x9F]        = 0xfb  ✓
+  GOP mode#  [0x9D/0x9E] = 0x00 / 0x0d
+  PixelFormat [0x9C]     = 0x01           (BGRX)
+  width  [0x90..0x93]    = 2560
+  height [0x94..0x97]    = 1440
+  pitch  [0x98..0x9B]    = 10240 bytes/scanline
+```
+
+**Hypothesis status — pitch-padding and pf both FALSIFIED for the quiet-boot path**
+
+The diff-interpretation table in the prep block (line 542) above
+mapped each diff signature to a diagnosis. The captured geometry
+falsifies two rows directly:
+
+- **Row 3 — pitch-padding** (`pitch ≠ width × 4`): falsified. Iron
+  reports `pitch = 10240 = 2560 × 4` exactly. No firmware scanline
+  padding under quiet-boot. The classic diagonal-shear signature
+  cannot be the cause.
+- **Row 5 — pf ≥ 2** (PixelBitMask / BltOnly): falsified. `pf = 1`
+  (BGRX) — the supported paint branch took. Already ruled out by
+  Attempt 71 (`garbled ≠ black`); now confirmed by direct readback.
+
+**What survives — BAR-placement divergence is the lead candidate**
+
+| Diff candidate | Status under Attempt 72 data |
+|---|---|
+| Same `mode#` + same `w/h/pitch/pf` across both paths | Cannot conclude — VGA-spec CMOS not captured. If VGA-spec is also `mode=0` `2560×1440 BGRX pitch=10240`, this row is confirmed and the bug is downstream of the handoff (paint code, WC interaction). If VGA-spec is `mode=N≠0` or different `w/h`, this row is ruled out. |
+| Different `mode#`, same `w/h` | Cannot conclude — VGA-spec CMOS not captured. |
+| **Different `fb_phys` between paths** (BAR placement divergence) | **Surviving candidate.** Current CMOS channel does NOT stamp `fb_phys`, so this hypothesis is invisible from the geometry block alone. If quiet-boot's FB BAR lands at a different physical address than VGA-spec's, the WC remap chain (per 1.30.11 vmm idempotency fix) targets the right address for one mode but possibly wrong for the other. |
+
+**The WTF data point**
+
+The failing path reports a *geometrically pristine* FB: pitch = w × 4
+(no padding), pf = BGRX (the supported branch), sentinel ✓ (paint
+setup ran). And glyphs still corrupt. This rules out the two
+geometry-shaped hypotheses cleanly and concentrates the remaining
+explanation surface on:
+
+1. **fb_phys / BAR placement divergence** — invisible from current CMOS bank, needs extension
+2. **WC range / PAT interaction with this specific phys address** — also `fb_phys`-gated to diagnose
+3. **Paint code interaction with 2560×1440 geometry under quiet-boot's specific phys placement** — same gating
+
+All three converge on "we need fb_phys stamped in the CMOS bank to
+distinguish them." No paint-code change proposed; no behavioral
+diff proposed. Next iteration is observability-only, same shape as
+Attempt 72: extend the CMOS bank to stamp `fb_phys` (8 bytes,
+slots 0x88–0x8F are available between the legacy xHCI sentinels at
+0x81/0x84/0x86/0x87 and the FB geometry block at 0x90–0x9F).
+
+**What didn't get captured**
+
+- VGA-spec `read-boot-log` capture (step 4 of the prep protocol).
+  Without it the "same geometry both paths" row stays open. Pickup
+  cost is one VGA-spec boot + power-cycle into Linux + script run.
+- `attempt-72-quiet-boot-fail.jpg` — quiet-boot FB photo not taken
+  (user reported the result in conversation; CMOS capture is the
+  durable record).
+
+**Action items**
+
+| # | Item | Status |
+|---|---|---|
+| 1 | Capture VGA-spec `read-boot-log` to close the geometry-diff row | ❌ Pending — one cheap iron boot from the user side |
+| 2 | Extend gnoboot to stamp `fb_phys` into CMOS slots 0x88–0x8F (8 bytes, little-endian) | ❌ Pending — design in next attempt-prep block |
+| 3 | Extend `read-boot-log` decoder to print `fb_phys` block | ❌ Pending — paired with #2 |
+| 4 | `13011_attempt_gnoboot_updated.jpg` → rename + anchor as `attempt-72-vga-spec-baseline.jpg` | ❌ Pending |
 
 ---
 
