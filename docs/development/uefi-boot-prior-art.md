@@ -244,6 +244,23 @@ References:
 
 OpenBSD's `efi_cleanup()` **retries `ExitBootServices` once on `EFI_INVALID_PARAMETER`** — UEFI spec allows the memory map to change between `GetMemoryMap` and `ExitBootServices`, in which case EBS returns `EFI_INVALID_PARAMETER` and the caller must re-call `GetMemoryMap` with the fresh key. gnoboot's Path C step-7 plan calls "GetMemoryMap×2 (initial + fresh-key)" which suggests this is already handled — but worth a code check that the **retry-on-INVALID-PARAMETER** path actually exists, not just a pre-emptive double-call. Iron firmwares are more likely than OVMF to mutate the memory map between calls.
 
+### Foot-gun ruled out experimentally on archaemenid — OSDev #57150's SetMode workaround does not generalize to AMD Zen UEFI
+
+OSDev forum thread [#57150](https://forum.osdev.org/viewtopic.php?t=57150) ("EFI GOP lying about screen resolution?") names a real mechanism — AMD display engines can leave the scanout buffer tiled or DCC-compressed at GOP handoff while reporting linear pitch via `Mode->Info`, breaking direct CPU framebuffer writes — and proposes a firmware-side workaround: call `gop->SetMode(...)` before trusting `FrameBufferBase`, on the observation that "*switching mode (even setting same mode) switches framebuffer to linear*."
+
+**On archaemenid's AMD Zen iGPU firmware, neither call shape of that workaround works:**
+
+| gnoboot release | Form | Iron result | Falsifying attempt |
+|---|---|---|---|
+| 0.4.1 | `SetMode(gop, cur_mode)` ("same-mode re-arm") | No CRTC work observable; Quiet Boot banded-glyph signature persists | Attempt 74 (2026-05-20) |
+| 0.4.2 | `SetMode(gop, other_mode) → SetMode(gop, cur_mode)` ("different-mode bounce") | No mode-switch flicker on VGA or HDMI; Quiet Boot signature identical to 0.4.1 | Attempt 78 (2026-05-20) |
+
+Both forms produced no visible mode-switch flicker — consistent with the firmware eliding the SetMode work regardless of whether the requested mode differs from the current mode. The mechanism OSDev #57150 names is real (corroborated by Linux's amdgpu DCN reset path and FreeBSD `drm-kmod` issue #60); the firmware-side mitigation it proposes is **not** a portable lever. AMD Zen UEFI optimizes both call shapes away.
+
+**Implication for sovereign loaders on AMD iron**: the GOP-side `SetMode` workaround for tiled/DCC scanout is not a reliable tool. The kernel-side mitigation (direct DCN pipe reprogram via `drivers/gpu/drm/amd/display/` equivalent) is what Linux and FreeBSD actually ship, for exactly this reason. Hobby loaders that need linear scanout on AMD post-EBS should plan for kernel-side reprogram, not for a GOP-side `SetMode` call shape.
+
+Sources: gnoboot 0.4.1 + 0.4.2 release notes (`gnoboot/CHANGELOG.md`), iron Attempts 73/74/77/78 (`iron-nuc-zen-log.md`).
+
 ---
 
 ## 9. Verdict — is AGNOS far off?

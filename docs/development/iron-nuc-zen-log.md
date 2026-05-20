@@ -1267,6 +1267,74 @@ Status partial. The behavioral lever is the SetMode bounce in gnoboot; line-by-l
 
 ---
 
+### Attempt 78 — gnoboot SetMode-bounce 2026-05-20 → FALSIFIED (no flicker on VGA or HDMI = firmware also elided the different-mode bounce)
+
+gnoboot 0.4.2 landed the transient SetMode-bounce that Attempt 77's research pass identified as the next untried lever. Iron burn on archaemenid: no regressions, no flicker on either monitor, same banded-glyph signature on Quiet Boot. The bounce variant is closed on the same evidence shape that closed 0.4.1's same-mode form at Attempt 74 — firmware elision of the SetMode work, this time across a real mode delta.
+
+**Build under test:**
+
+| Component | Detail |
+|---|---|
+| `agnos` | 1.30.12 unchanged from Attempt 77 (`75914e9` self-rolled font, 425,840 B) |
+| `gnoboot` | 0.4.2 — `SetMode(gop, bounce_mode)` → `SetMode(gop, cur_mode)` per `src/main.cyr:374-393`. `bounce_mode = 0`, or `1` when `cur_mode == 0`. `max_mode <= 1` single-mode fallback to 0.4.1's same-mode form. |
+| Pre-bound iron decision tree | Captured in `gnoboot/CHANGELOG.md` § [0.4.2] before burn — five outcome shapes pre-bound, "no flicker" = "firmware also eliding the different-mode bounce." |
+
+#### Iron outcome
+
+| 2560×1440 / archaemenid | Attempt 77 (0.4.1) | Attempt 78 (0.4.2) |
+|---|---|---|
+| VGA path legibility | Legible | Legible (no regression) |
+| Quiet Boot legibility | Banded glyphs | Banded glyphs — same signature |
+| Visible mode-switch flicker | n/a (no bounce) | **None observed on VGA or HDMI** — pre-bound falsification signal triggered |
+| Quiet Boot lockup / keyboard / refresh | Live | Live (no regression) |
+| kernel checkpoint | 0x15 / magic 0xab | 0x15 / magic 0xab ✓ |
+| gnoboot checkpoint | 0x05 / magic 0xcd | 0x05 / magic 0xcd ✓ |
+| GOP `current` / `max` | — | `0x00` / `0x0d` (read-boot-log) — bounce path's `max_mode <= 1` fallback was NOT taken; gnoboot chose `bounce_mode = 1` and issued the bounce SetMode |
+| FB geometry post-bounce | w=2560 h=1440 pitch=10240 BGRX | **Unchanged** — w=2560 h=1440 pitch=10240 BGRX (no BAR relocation, no Mode->Info delta) |
+
+#### Honest caveat on the falsification reading
+
+gnoboot 0.4.2 does not stamp the bounce SetMode's return code (`rc_a` at `main.cyr:383`). CMOS alone can't distinguish:
+
+- **(a)** Bounce ran, firmware returned `EFI_SUCCESS` on both calls, no visible CRTC work (user's claim — firmware elision across mode delta).
+- **(b)** Firmware rejected `bounce_mode = 1` with non-zero `rc_a`, fell back to same-mode (known elided per Attempt 74).
+
+Both routes have the same destination — the GOP SetMode call shape at gnoboot post-FB-read time isn't a viable lever on archaemenid's Zen iGPU firmware — so resolving (a) vs (b) doesn't change the next move. Per `feedback_no_instrumentation_means_no_instrumentation`, adding an `rc_a` stamp slot to learn the difference is off-table; the caveat is logged here as a known unknown.
+
+#### Hypothesis space update
+
+H2 (firmware leaves AMD scanout in tiled/DCC at GOP handoff) **remains the strongest standing hypothesis** — falsifying the SetMode-bounce form does not falsify H2 itself; it falsifies the OSDev #57150 "*SetMode work flips scanout to linear*" recipe as it applies to archaemenid specifically. The mechanism is real (cross-referenced in Linux DCN drivers + FreeBSD drm-kmod#60 + EDK2 GraphicsConsoleDxe's Blt avoidance pattern); the *firmware-side workaround* OSDev describes doesn't work here because Zen UEFI elides both call shapes.
+
+Closed levers (gnoboot-side, GOP):
+- ❌ `SetMode(gop, cur_mode)` (0.4.1, falsified Attempt 74)
+- ❌ `SetMode(gop, other_mode) → SetMode(gop, cur_mode)` (0.4.2, falsified Attempt 78)
+
+Remaining options for H2 specifically — none proposed here, all are research items:
+- Kernel-side direct DCN pipe reprogram (Linux `drivers/gpu/drm/amd/display/` analog). Multi-kiloline; Attempt 77 noted this as the deferred fallback if the bounce was falsified, which it now is.
+- An entirely different framing of the symptom (`uefi-boot-prior-art.md` § *Foot-guns ruled out experimentally* gets the new entry — the OSDev recipe doesn't generalize to Zen).
+
+#### Disposition
+
+| # | Item | Status |
+|---|---|---|
+| 1 | gnoboot 0.4.2 SetMode-bounce hypothesis | **FALSIFIED** by iron burn 2026-05-20 (this entry) |
+| 2 | H2 (FB-layer divergence — tiled/DCC scanout at GOP handoff) | Still standing — the *firmware-side* GOP-call workaround is dead; the *kernel-side* DCN reprogram path is the remaining channel for H2 |
+| 3 | Path forward | **No iron burn proposed.** Per `feedback_iron_burns_block_other_work` + `feedback_stop_letter_laddering` + `feedback_redesign_dont_reinvent`, the next move on the Quiet-Boot legibility residue is *not* another speculative GOP poke — it's reading Linux's DCN reset code in earnest if/when this residue gets re-prioritized. Per `feedback_accept_partial_wins`, the MVP functional gate stays cleared and Quiet-Boot legibility is a planned-next-cut, not a current blocker. |
+| 4 | `uefi-boot-prior-art.md` footnote | **Pending this commit** — OSDev #57150's "SetMode flips buffer to linear" recipe doesn't generalize to AMD Zen UEFI firmware (both same-mode and different-mode forms elided). |
+| 5 | `gnoboot/CHANGELOG.md` 0.4.2 entry | **Pending this commit** — append falsification note to § [0.4.2] and add 0.4.2 to falsifications-carried-forward. |
+
+#### Sources
+
+- gnoboot/CHANGELOG.md § [0.4.2] — pre-bound iron decision tree (the "no flicker" branch).
+- gnoboot/src/main.cyr:330-413 — bounce implementation, post-SetMode geometry re-read.
+- read-boot-log capture this burn — kernel checkpoint 0x15, gnoboot 0x05, GOP current=0x00 max=0x0d, geometry 2560×1440/10240/BGRX unchanged.
+- Attempt 74 (above) — falsification of 0.4.1's same-mode form (matching evidence shape).
+- Attempt 77 (above) — research pass that proposed the bounce variant; H1 + H3 falsified, H2 supported.
+
+No new iron burn proposed. The next entry in this log will be a deliberate one — not a letter-laddered follow-up.
+
+---
+
 ## Conventions for future entries
 
 - One H3 (`### Attempt N — date HH:MM TZ → STATUS`) per attempt.
