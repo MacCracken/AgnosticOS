@@ -2,7 +2,7 @@
 >
 > **Prior history**: [`iron-nuc-zen-log-mvp.md`](iron-nuc-zen-log-mvp.md) — Attempts 1 – 68, frozen at the closed-beta MVP gate (agnos 1.30.9, 2026-05-18). Consult for any pre-MVP-era root-cause shape recurrence.
 >
-> **Last Updated**: 2026-05-19 (Attempt 72 result — geometry channel works on iron; pitch-padding + pf hypotheses both falsified for quiet-boot path; BAR-placement divergence is the surviving candidate, needs `fb_phys` capture extension)
+> **Last Updated**: 2026-05-19 (Attempt 72 result + Attempts 73 / 74 prep + Burn A code landed and QEMU-verified. gnoboot 0.4.0 (33,792 B) + agnos 1.30.11 + Burn A bundle (420,832 B, +3,288 B vs baseline). **Surprise QEMU finding: MTRR audit reports `mtrr_eff=0 (UC), def=6 (WB), covered=1` at FB BAR 0x80000000 — meaning PAT-WC has been silently blocked by an MTRR variable-range override under QEMU OVMF all along, and the existing `fb: WC verified (PAT entry 1)` line was verifying PAT bits, not effective cache type. Kernel still boots under QEMU because emulated display ignores cache; iron will be the real test.** Per `feedback_no_instrumentation_means_no_instrumentation` + `feedback_redesign_dont_reinvent`: behavioral repairs sourced from Linux/EDK2 prior art, stacked into burns, no new diagnostic-only cycles.)
 
 # Iron Boot Test Log — Post-MVP
 
@@ -648,9 +648,262 @@ slots 0x88–0x8F are available between the legacy xHCI sentinels at
 | # | Item | Status |
 |---|---|---|
 | 1 | Capture VGA-spec `read-boot-log` to close the geometry-diff row | ❌ Pending — one cheap iron boot from the user side |
-| 2 | Extend gnoboot to stamp `fb_phys` into CMOS slots 0x88–0x8F (8 bytes, little-endian) | ❌ Pending — design in next attempt-prep block |
-| 3 | Extend `read-boot-log` decoder to print `fb_phys` block | ❌ Pending — paired with #2 |
+| 2 | Extend gnoboot to stamp `fb_phys` into CMOS slots 0x88–0x8F (8 bytes, little-endian) | ❌ **SUPERSEDED by Attempt 73** — stacking behavioral repair instead of instrumentation, per `feedback_no_instrumentation_means_no_instrumentation` |
+| 3 | Extend `read-boot-log` decoder to print `fb_phys` block | ❌ **SUPERSEDED by Attempt 73** — same |
 | 4 | `13011_attempt_gnoboot_updated.jpg` → rename + anchor as `attempt-72-vga-spec-baseline.jpg` | ❌ Pending |
+
+### Attempt 73 prep — 2026-05-19 → PENDING IRON BURN
+
+**Burn A of a two-burn audit-driven repair plan.** Bundles three
+behavioral repairs sourced from Linux/EDK2/UEFI prior art targeting
+the surviving BAR-placement-divergence candidate, stacked into one
+burn per `feedback_no_instrumentation_means_no_instrumentation` +
+`feedback_redesign_dont_reinvent`. Burn B (Attempt 74, gnoboot
+`SetMode` to force a known mode) gates on A's outcome.
+
+**Why these three together** — repair #1 makes the kernel use
+firmware's authoritative FB extent (vs the computed `pitch * height`
+which can over-/under-cover); repair #2 detects the silent-WC-drop
+class where MTRR forces UC regardless of PAT (the most-likely AMD
+Zen failure mode for HDMI-native BARs); repair #3 detects runtime
+BAR reassignment between gnoboot's pre-EBS capture and kernel
+paint. Together they answer "is the BAR where we think, sized as we
+think, and cached as we think?" without adding another iron-burn
+diagnostic cycle.
+
+**Bundle under test**
+
+| Item | Value |
+|---|---|
+| `agnos` source | 1.30.11 + working-tree Attempt 72 diag + Attempt 73 repairs #2 + #3 |
+| `agnos` build | TBD — expect ~+1.5 KB (MTRR walk + PCI enumeration loop) |
+| `gnoboot` | TBD (0.4.0 candidate) — adds FrameBufferSize capture (+0x20 of GOP_MODE), boot_info struct_size 0x70 → 0x78, fb_size at boot_info+0x68, END tag relocates to +0x70. Wire version stays **v2** since no consumer walks the tag stream; the END move is invisible to fixed-offset readers (agnos kernel) |
+| Cyrius pin | unchanged (gnoboot 6.0.1, agnos 5.11.64) |
+| Multiboot2 entry | `0x1000a8` (preserved) |
+| Visual banner | `AGNOS kernel v1.30.11` / `AGNOS shell v1.30.11 (type 'help')` (unchanged; no agnos VERSION bump) |
+
+**Repair #1 — gnoboot captures `FrameBufferSize`; kernel uses it for WC remap**
+
+| Step | Site | Change |
+|---|---|---|
+| 1a | `gnoboot/src/main.cyr` post-`load64(gop_mode + 0x18)` | Add `var fb_size = load64(gop_mode + 0x20);` — UEFI 2.10 §11.9 EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE field at offset 32 |
+| 1b | `gnoboot/src/main.cyr` boot_info field writes | Add `store64(&boot_info + 0x68, fb_size);` between mode_max@0x64 and END tag |
+| 1c | `gnoboot/src/main.cyr` struct header | Bump `struct_size` from 0x70 to 0x78. END tag relocates from 0x68 to 0x70 (still zero by trailing-zero fill, walker semantics preserved for any future consumer) |
+| 1d | `agnos/kernel/arch/x86_64/fb_console.cyr` | Add `fb_fb_size()` accessor reading `load64(boot_info_ptr + 0x68)`. Backward-compat: v2-without-size readers see zero at +0x68 if loaded from an older gnoboot, which falls back to legacy behavior |
+| 1e | `agnos/kernel/core/main.cyr:118` | Change WC remap call from `vmm_remap_wc_range(fb_fb_phys(), fb_pitch() * fb_height())` to `vmm_remap_wc_range(fb_fb_phys(), fb_size_or_fallback())` where `fb_size_or_fallback()` returns `fb_fb_size()` if non-zero else `fb_pitch() * fb_height()` |
+| 1f | `agnos/kernel/arch/x86_64/fb_console.cyr:108` serial line | Extend `fb: mode=…` line to include `size=0x...` — informational only, no behavioral diff at this step |
+
+Source: UEFI 2.10 §11.9.1 (`FrameBufferSize`: "amount of memory required to hold the frame buffer"); Linux `drivers/firmware/efi/libstub/screen_info.c` reads `mode->frame_buffer_size`; FreeBSD `stand/efi/loader/framebuffer.c` honors it. EDK2 reference impl: `MdeModulePkg/Universal/Console/GraphicsConsoleDxe`.
+
+**Repair #2 — MTRR audit at `fb_console_init`**
+
+Adds a function `fb_audit_mtrr()` called immediately before the pf-guard at line 157. Reads MSRs via existing `rdmsr()` (`agnos/kernel/arch/x86_64/io.cyr:79`).
+
+| Step | MSR | Decode |
+|---|---|---|
+| 2a | `0x2FF` MTRR_DEF_TYPE | bits[7:0] = default type (0=UC, 1=WC, 4=WT, 5=WP, 6=WB); bit[10] = FE (fixed enable); bit[11] = E (overall enable). If E=0, MTRRs disabled, only PAT applies → log "MTRR disabled, PAT authoritative" + return |
+| 2b | `0xFE` IA32_MTRRCAP | bits[7:0] = VCNT (number of variable MTRR pairs, typically 8) |
+| 2c | `0x200..0x20F` (VCNT pairs) | Each pair: base MSR (bits[7:0]=type, bits[63:12]=base_phys) + mask MSR (bit[11]=V valid, bits[63:12]=mask). Compute coverage range per AMD APM Vol 2 §7.7.5 |
+| 2d | For `fb_phys` | Walk variable MTRRs; effective type = matched MTRR type if any valid range covers fb_phys, else DEF_TYPE. Per Intel SDM Vol 3A §11.5.2.2: MTRR=UC overrides PAT to UC; MTRR=WB allows PAT-WC override |
+| 2e | Log | One line: `fb_audit: mtrr_eff=<TYPE> def=<TYPE> covered=<Y/N>`. If `mtrr_eff != WB`, log a WARN — PAT-WC cannot take effect, scroll-copy reads will be UC-speed |
+
+Source: AMD APM Vol 2 §7.7.5 (Effective Memory Type); Intel SDM Vol 3A §11.5.2.2 Table 11-7; Linux `arch/x86/kernel/cpu/mtrr/generic.c::mtrr_type_lookup_variable`.
+
+**Repair #3 — PCI BAR readback for VGA-class device**
+
+Adds `fb_audit_pci_bar()` called immediately after MTRR audit. Walks PCI config space via legacy 0xCF8/0xCFC port-I/O.
+
+| Step | Action |
+|---|---|
+| 3a | For bus in 0..255 (capped early at 32 to avoid scanning empty buses on archaemenid — actual NUC topology has bus 0 + a few PCIe segments) |
+| 3b | For dev in 0..31, fn in 0..7 (only fn 0 for non-multifn) |
+| 3c | Read VendorID at config+0x00; skip if 0xFFFF (no device) |
+| 3d | Read Class Code at config+0x08 — bits[31:8] = class/subclass/progIF, mask to bits[31:16] = 0x0300 (Display/VGA-compatible) or 0x0380 (Display/Other) |
+| 3e | For matching device, read BAR0..BAR5 at config+0x10..0x24 |
+| 3f | For each BAR: bits[0]=1 ⇒ I/O space (skip); bits[2:1]=00 ⇒ 32-bit MMIO; bits[2:1]=10 ⇒ 64-bit MMIO (combine with next BAR for high 32 bits); bits[3]=prefetchable hint (FB BAR is usually prefetchable) |
+| 3g | For each MMIO BAR, determine size by writing all-1s, reading back, computing `size = ~(value & ~0xF) + 1`. **Restore original BAR value** after sizing |
+| 3h | Find the BAR whose range contains `fb_phys` |
+| 3i | Log | One line: `fb_audit: pci=<bus>:<dev>.<fn> bar=<N> base=0x... size=0x... matches_fb_phys=<Y/N>` |
+
+Source: PCI Local Bus Spec rev 3.0 §6.2 (Configuration Space) + §6.5 (Configuration Registers); Linux `arch/x86/pci/early.c::read_pci_config_*` and `drivers/pci/probe.c::__pci_read_base`; OSDev wiki "PCI" article (canonical legacy 0xCF8/0xCFC walker).
+
+**Pre-burn verification gates**
+
+| Gate | How |
+|---|---|
+| gnoboot rebuild with `FrameBufferSize` capture | `cd ~/Repos/gnoboot && CYRIUS_TARGET_EFI=1 cyrius build src/main.cyr build/BOOTX64.EFI` clean, zero `ud2` sentinels |
+| gnoboot `tests/ovmf_smoke.sh` | PASS — handoff banner still appears |
+| agnos rebuild with MTRR + PCI audits | `cd ~/Repos/agnos && cyrius build kernel/agnos.cyr build/agnos` clean |
+| Multiboot2 ELF64 entry preserved | `readelf -h build/agnos \| grep Entry` = `0x1000a8` |
+| QEMU Path-C headless smoke | `agnosticos/scripts/qemu-fb-smoke.sh EXPECT="fb_audit: mtrr_eff="` PASS — MTRR audit line lands. Also expect `fb_audit: pci=` line |
+| QEMU Path-C visual smoke at 2560×1440 | `QEMU_RES=2560x1440 ./qemu-fb-visual.sh` — verify boot reaches shell with clean glyphs (QEMU doesn't reproduce the iron bug, but this catches new regressions) |
+| `build/agnos` freshness | per `feedback_build_freshness_is_mine`, rebuild after every kernel-touching commit |
+
+**Pre-bound outcomes on iron under quiet-boot ON**
+
+| Iron outcome | Diagnosis |
+|---|---|
+| Boot reaches typeable shell, clean rendering, `fb_audit: mtrr_eff=WB matches_fb_phys=Y` | One of the three repairs landed the fix. Likely #1 (FB size) if firmware was over-reporting pitch×height; less likely #2 (Zen UEFI usually sets WB for FB BAR). Pick winner from serial line content. **Quiet-boot bug closed.** |
+| Boot reaches shell with glyph corruption AND serial shows `mtrr_eff=UC` for fb_phys | **MTRR-UC pinning confirmed.** PAT-WC cannot take effect. Burn B becomes either "SetMode to a mode whose BAR lands in MTRR-WB range" OR "add variable-MTRR override for FB BAR." Decisive answer. |
+| Boot reaches shell with glyph corruption AND `mtrr_eff=WB matches_fb_phys=Y` AND fb_size matches expectation | All three Burn-A repairs were wrong scope. Next candidate: paint-code interaction with the specific pitch/width tuple, or something post-EBS firmware does to the BAR. Burn B (`SetMode`) becomes the decisive test by forcing a known-working mode. |
+| Boot reaches shell with corruption AND `fb_audit: pci=… matches_fb_phys=N` | **BAR reassignment detected.** Kernel painting the wrong physical address. Repair: re-locate the BAR in kernel post-EBS or in the runtime audit, update `fb_phys`. Burn B becomes a follow-up to this. |
+| Boot fails earlier than fb_console_init | Likely PCI walker triggered a fault on archaemenid's specific PCI topology. Bisect by disabling #3, retry with just #1 + #2. |
+
+**Burn protocol**
+
+1. `cd ~/Repos/agnosticos && sudo ./scripts/install-usb.sh --update /dev/sdX`
+2. Reboot archaemenid; BIOS → **VGA-spec mode + QuickBoot ON** (the known-working baseline). F-key boot menu → USB. Observe boot reaches shell. **Power off cleanly** (preserve CMOS) — this captures the working-path MTRR/PCI audit lines for diff.
+3. Boot Linux on same archaemenid; `sudo ./scripts/read-boot-log.sh` — captures geometry + new fb_size if exposed in extended bank. (Note: MTRR/PCI audit output is serial-only; without serial cable on archaemenid we'll be inferring from CMOS-stamped fb_size + the visual outcome only.)
+4. Reboot archaemenid; BIOS → **Quiet Boot ON** (the failing path). F-key → USB. Observe FB outcome.
+5. Photo the FB whether it works or not. CMOS post-mortem.
+6. Diff the two `read-boot-log` captures.
+
+**Iron-side data we'll get from this burn**
+
+- CMOS geometry block (slots 0x90-0x9F) — same as Attempt 72
+- CMOS fb_size mirror — **NEW**, slot to be allocated (proposing 0x88-0x8F, 8 bytes LE) since the kernel adds the MTRR/PCI audit
+- Visual outcome under VGA-spec (should still pass)
+- Visual outcome under Quiet Boot ON (the decisive signal)
+
+(MTRR + PCI audit output is serial-only by current design — exposing those to CMOS would expand the extended bank further. Holding for now; if Burn A's visual outcome doesn't disambiguate, Burn B can include CMOS stamps for the MTRR effective type byte + PCI BAR low/mid bytes as a CMOS-only addition with no behavioral cost.)
+
+**Photos for the catalog (post-burn)**
+
+- `attempt-73-vga-spec-baseline.jpg` — working-path FB under Burn-A bundle
+- `attempt-73-quiet-boot-result.jpg` — failing-path FB (clean = fix landed; corrupt = continues to Burn B)
+- (optional) `attempt-73-read-boot-log-diff.txt` — text capture of two `read-boot-log.sh` outputs
+
+#### Attempt 73 — code-staging + QEMU baseline complete 2026-05-19 → PENDING IRON BURN
+
+Code landed for all three Burn-A repairs and QEMU smoke PASSES end-to-end on the new bundle. Build artifacts ready for `install-usb.sh --update`.
+
+**Build artifacts**
+
+| Component | Version | Size | Notes |
+|---|---|---|---|
+| gnoboot | **0.4.0** (cut today) | 33,792 B | adds `load64(gop_mode + 0x20)` → `fb_size` → `boot_info+0x68`. struct_size 0x70 → 0x78. END tag relocated to +0x70. Wire stays v2. Banner bumped, OVMF smoke PASS with new `gnoboot v0.4.0: handing off to kernel` literal |
+| agnos | 1.30.11 (working tree) | 420,832 B (+3,288 B vs 417,544 baseline) | new fns: `fb_fb_size()`, `fb_size_or_fallback()`, `fb_audit_mtrr()`, `pci_cfg_addr()`, `pci_cfg_read32()`, `fb_audit_pci_bar()`. WC remap call at `core/main.cyr:17` + `:118` switched to `fb_size_or_fallback()`. `fb: mode=…` diag line extended with `size=` field |
+| Cyrius pin | gnoboot 6.0.1 / agnos 5.11.64 | unchanged | no toolchain bump needed |
+| Multiboot2 entry | 0x1000a8 | preserved | ELF64 readelf check OK |
+
+**QEMU baseline observed (q35, OVMF, 1920×1080)**
+
+```
+gnoboot v0.4.0: handing off to kernel
+fb: mode=0/30 phys=0x80000000 pf=1 w=1920 h=1080 pitch=7680 size=0x7e9000
+fb_audit: mtrr_eff=0 def=6 covered=1
+fb_audit: WARN MTRR=UC pins fb_phys to uncached — PAT-WC block
+fb_audit: pci=0:1.0 class=0x300 bar=0 base=0x80000000 fb_phys=0x80000000 delta=0x0
+AGNOS kernel v1.30.11
+...
+fb: WC verified (PAT entry 1)
+```
+
+| Signal | QEMU value | Interpretation |
+|---|---|---|
+| `size=0x7e9000` (8,294,400 B) | matches `pitch * height` = 7680 × 1080 = 8,294,400 B exactly | Under QEMU OVMF, firmware reports FB extent that equals the geometry product. No padding. Repair #1 wires through cleanly. |
+| `mtrr_eff=0 def=6 covered=1` | **MTRR-UC covers the FB BAR**; `MTRR_DEF_TYPE=WB` (6) | Per Intel SDM Table 11-7 / AMD APM Vol 2 §7.7.5: MTRR=UC + PAT=WC = **effective UC**. The pre-existing `fb: WC verified (PAT entry 1)` line was verifying PAT bits in isolation; the audit reveals the true effective cache type is UC. Repair #2 caught a real condition the kernel previously had no visibility into. |
+| `pci=0:1.0 class=0x300 bar=0 base=0x80000000 fb_phys=0x80000000 delta=0x0` | VGA-class device on bus 0, dev 1, fn 0. BAR0 base matches `fb_phys` with delta=0 | No BAR reassignment under QEMU. Repair #3 returns the expected "clean handoff" baseline; iron Quiet-Boot reporting `delta != 0` or "no VGA BAR matched" would be the smoking gun for runtime BAR mutation. |
+
+**Re-interpretation of pre-Attempt-73 behavior on QEMU**
+
+The kernel was reporting `fb: WC verified (PAT entry 1)` and we believed PAT-WC was active. The MTRR audit shows it never was — effective cache type was UC the entire time on QEMU. Kernel boots cleanly anyway because QEMU's emulated display ignores cache semantics (writes hit the display regardless of cache type, no eviction-timing artifacts since there's no real cache hierarchy backing MMIO). This explains why the `fb_verify_wc` gate has been passing despite MTRR-UC overrides — the gate is true (PAT *is* set to WC) but the gate doesn't capture the effective type.
+
+**Implication for iron interpretation**
+
+On archaemenid (real hardware, real cache hierarchy), the MTRR effective type IS load-bearing. The Burn-A iron run becomes a one-step diagnostic that names the root cause directly:
+
+| Iron under VGA-spec ON (working path) | Iron under Quiet Boot ON (failing path) | Diagnosis |
+|---|---|---|
+| `mtrr_eff=6 (WB)` | `mtrr_eff=6 (WB)` | MTRR not the difference. Iron behaves like QEMU + working display. Look elsewhere (paint code, scroll path, glyph render). Burn B (SetMode) decisive. |
+| `mtrr_eff=6 (WB)` | `mtrr_eff=0 (UC)` | **MTRR=UC pinning under Quiet Boot is the smoking gun.** Different BIOS paths land the FB BAR in different MTRR-covered ranges. Repair: kernel adds variable-MTRR override for the FB BAR (Linux pattern: `mtrr_add`-equivalent). Burn B may not be needed — issue rooted in cache-attribute setup, not mode selection. |
+| `mtrr_eff=0 (UC)` on BOTH paths | (same on both) | Iron is permanently MTRR-UC at the FB BAR. The fact VGA-spec works while Quiet Boot doesn't means another variable distinguishes them (BAR size, alignment, PCI-side cache hint). Re-audit, maybe Burn B. |
+| `pci=...delta != 0` on Quiet Boot | | **Runtime BAR reassignment.** Kernel painting wrong physical address. Repair #3 caught it; either re-locate the BAR post-EBS or use the runtime audit's match as the source of truth. |
+
+**Ready for install + iron burn.** Per `feedback_bootloader_kernel_ownership` Claude owns the kernel + gnoboot build freshness; both artifacts (33,792 B + 420,832 B) are post-edits and built from current HEAD. Per `feedback_iron_burns_block_other_work` the audit is on paper above; no new instrumentation in flight.
+
+### Attempt 74 prep — pending Attempt 73 outcome → PENDING IRON BURN
+
+**Burn B of the two-burn audit-driven repair plan.** Adds gnoboot
+`SetMode` to force a known mode regardless of BIOS path. Gated on
+Attempt 73's outcome — three of the five pre-bound A-outcomes
+make B necessary, two make B redundant (close-on-A); see decision
+table below.
+
+**Why SetMode is held for Burn B, not A** — `SetMode` *changes the
+variable being tested* (the firmware-default mode). Stacking it
+with the A-bundle would conflate "A's repair landed" with "the mode
+just changed underneath us." Keeping B separate lets us attribute
+the fix correctly: A's three repairs answer "is the BAR where /
+sized as / cached as we think?"; B answers "does forcing a known
+mode eliminate the divergence regardless?" — orthogonal questions
+worth orthogonal burns.
+
+**Necessity decision from Attempt 73 result**
+
+| Attempt 73 outcome | Burn B status |
+|---|---|
+| Quiet-boot ON renders cleanly, repair #1 (FB size) credited | **Close on A.** B becomes optional hardening (SetMode forces a small canonical mode to reduce future BIOS-toggle surprises) — defer indefinitely or fold into post-MVP "deterministic boot path" work. |
+| Quiet-boot ON renders cleanly, repair #2 (MTRR) credited | **Close on A.** Same as above — root cause was effective-cache-type, not mode. SetMode wouldn't have helped (would have just landed in a different BAR with the same MTRR issue). |
+| Quiet-boot ON renders cleanly, repair #3 (PCI BAR) credited | **Close on A.** Same — root cause was BAR reassignment. SetMode could have masked it but #3's runtime audit is the durable fix. |
+| Quiet-boot ON still corrupts, MTRR=WB + fb_phys matches PCI BAR + fb_size matches pitch×height | **Burn B is decisive.** Mode-selection itself or paint-code interaction with this specific mode's geometry is the only remaining variable. SetMode to a known small BGRX mode eliminates the divergence at the source. |
+| Boot fails earlier than fb_console_init | **Burn B blocked.** Diagnose the regression introduced by Burn A first (likely #3 PCI walker on archaemenid's topology). |
+
+**Bundle under test**
+
+| Item | Value |
+|---|---|
+| `agnos` source | 1.30.11 + Attempt 73 carry-forward (no kernel-side changes in B) |
+| `agnos` build | Unchanged from Attempt 73 |
+| `gnoboot` | TBD (0.5.0 candidate) — adds mode enumeration + SetMode call; FrameBufferSize capture from 0.4.0 retained |
+| Cyrius pin | unchanged |
+| Multiboot2 entry | `0x1000a8` (preserved) |
+| Visual banner | Unchanged from 1.30.11 |
+
+**Repair #4 — gnoboot `SetMode` to a known mode**
+
+Adds a mode-selection pass between `LocateProtocol(GOP)` and the
+`Mode->*` capture in `gnoboot/src/main.cyr`.
+
+| Step | Action | Source |
+|---|---|---|
+| 4a | After `LocateProtocol(GOP)`, read `Mode->MaxMode` to get count | UEFI 2.10 §11.9 |
+| 4b | For each `N` in `0..MaxMode-1`: call `QueryMode(This, N, &SizeOfInfo, &Info)` to populate mode info without changing state | UEFI 2.10 §11.9.2.1 |
+| 4c | Filter modes: keep only `PixelFormat ∈ {0, 1}` (RGBX or BGRX — supported branches); prefer pf=1 BGRX (kernel's native paint assumption per `fb_console_init`'s guard) | UEFI 2.10 §11.9 + agnos `fb_console.cyr:144-161` |
+| 4d | From filtered set, pick the mode whose `HorizontalResolution * VerticalResolution` is smallest but >= 800*600 (lower bound to keep boot diagnostics legible; smaller BAR is more likely to land in a cleanly-cached region) | Linux `drivers/firmware/efi/libstub/screen_info.c::setup_gop` (mode selection heuristic) |
+| 4e | If `Mode->Mode != selected_N`: call `SetMode(This, selected_N)`. Capture rc | UEFI 2.10 §11.9.2.2 |
+| 4f | If SetMode rc == 0: re-read `Mode->Info` pointer (SetMode may have reallocated it) and re-capture all geometry fields into boot_info | UEFI 2.10 §11.9 ("After this call, the contents of EFI_GRAPHICS_OUTPUT_PROTOCOL.Mode are updated") |
+| 4g | If SetMode rc != 0: log via `efi_print`, keep current mode, proceed with existing capture | Failure-safe per `feedback_no_hardware_purchase_suggestions` (no firmware-specific workarounds; fall through cleanly) |
+| 4h | Add a sentinel to CMOS slot 0x88 marking "SetMode attempted" (one byte: 0x4D = 'M' if rc=0, 0xFA = fail) — minimal stamp so iron post-mortem can tell which branch fired | Pattern matches existing checkpoint discipline |
+
+Source: UEFI 2.10 §11.9 (full GOP protocol); Limine `PROTOCOL.md` "Framebuffer feature" (mode-selection request shape); Linux `drivers/firmware/efi/libstub/screen_info.c::setup_gop` (canonical EFI-stub mode-picker); FreeBSD `stand/efi/loader/framebuffer.c::efi_find_framebuffer`.
+
+**Pre-burn verification gates**
+
+| Gate | How |
+|---|---|
+| gnoboot rebuild with SetMode | `CYRIUS_TARGET_EFI=1 cyrius build src/main.cyr build/BOOTX64.EFI` clean |
+| gnoboot `tests/ovmf_smoke.sh` | PASS — handoff banner still appears; QEMU OVMF has all modes available |
+| QEMU multi-mode validation | Run `qemu-fb-visual.sh` at multiple `QEMU_RES` settings (1024x768, 1920x1080, 2560x1440) — verify gnoboot picks the smallest >= 800x600 in each case, kernel paints cleanly |
+| Failure-safe path | Force a SetMode failure in QEMU (mock by passing invalid mode N = MaxMode + 1 temporarily) — verify gnoboot logs + falls through to current mode |
+| Multiboot2 entry preserved | `readelf` check on agnos binary unchanged (no kernel-side changes expected in B) |
+
+**Pre-bound outcomes on iron under quiet-boot ON**
+
+| Iron outcome | Diagnosis |
+|---|---|
+| Boot reaches typeable shell, clean rendering, CMOS slot 0x88 = 0x4D | **SetMode landed the fix.** Firmware-mode-selection was the divergence source. Close issue; canonicalize mode-selection in gnoboot as standard practice (matches Linux/Limine). |
+| Boot reaches typeable shell, clean rendering, CMOS slot 0x88 = 0xFA | SetMode failed but the corruption is gone — likely an Attempt-73 repair landed late and we missed crediting it. Re-run with Burn-A bundle to confirm. |
+| Boot reaches shell with corruption AND 0x88 = 0x4D | SetMode landed but the bug persists. **Decisive falsification of "mode selection is the variable."** Whatever's wrong is not addressable by firmware-mode choice — points to post-EBS firmware behavior, paint-code edge case, or something in the agnos kernel itself unrelated to BAR/cache. Re-audit needed; this is the "neither A nor B nailed it" branch, expensive but rare. |
+| Boot reaches shell with corruption AND 0x88 = 0xFA | SetMode failed AND corruption present — burn was non-decisive. Firmware doesn't support runtime mode switching on archaemenid. Fall back to "stay on the firmware-default mode and accept the divergence as a BIOS-config requirement (always boot with VGA-spec)" — document and ship that as a closed-beta-acceptable workaround. |
+| Boot fails earlier than gnoboot banner | gnoboot crashed inside SetMode/QueryMode loop. Bisect 4b/4e — likely a fncallN issue with the mode-info pointer ABI. |
+
+**Burn protocol** — same shape as Attempt 73 (VGA-spec baseline, then Quiet Boot ON, photo + CMOS read-back after each).
+
+**Photos for the catalog (post-burn)**
+
+- `attempt-74-vga-spec-baseline.jpg` — VGA-spec path under Burn-B bundle (should still pass; SetMode should pick a mode that works on both BIOS paths)
+- `attempt-74-quiet-boot-result.jpg` — failing-path FB under SetMode-forced mode
 
 ---
 
