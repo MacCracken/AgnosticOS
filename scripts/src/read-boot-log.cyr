@@ -325,21 +325,13 @@ fn main(): i64 {
     var xh_ccsent  = cmos_read(134);  # 0x86 — Repair (CC) extended-CMOS bank sentinel (0xCC = 0x72/0x73 pair live)
     var xh_ddsent  = cmos_read(135);  # 0x87 — Repair (DD) event-ring drain sentinel (0xDD = site executed)
 
-    # MTRR + PCI BAR audit (extended-bank 0x88-0x8F, written by
-    # agnos/kernel/arch/x86_64/fb_console.cyr::fb_audit_mtrr +
-    # fb_audit_pci_bar). Iron has no serial cable so these audit results
-    # ride CMOS. Under VGA-spec they should land mtrr_eff=WB(6), delta=0;
-    # under Quiet Boot ON, divergence here names the scanout-divergence
-    # / MTRR-pinning / BAR-reassignment root cause.
-    var fb_mtrr_eff = cmos_read(0x88);
-    var fb_mtrr_def = cmos_read(0x89);
-    var fb_bar_b0   = cmos_read(0x8A);
-    var fb_bar_b1   = cmos_read(0x8B);
-    var fb_bar_b2   = cmos_read(0x8C);
-    var fb_bar_b3   = cmos_read(0x8D);
-    var fb_bar_dlt  = cmos_read(0x8E);
-    var fb_bar_flag = cmos_read(0x8F);
-    var fb_bar_base = fb_bar_b0 | (fb_bar_b1 << 8) | (fb_bar_b2 << 16) | (fb_bar_b3 << 24);
+    # CMOS extended-bank slots 0x88-0x8F (MTRR effective-type audit +
+    # PCI BAR readback) were removed at agnos 1.30.12 along with the
+    # underlying fb_audit_mtrr / fb_audit_pci_bar / fb_mtrr_install_wc
+    # functions (Attempt 74 falsified the MTRR-pinning hypothesis;
+    # Attempt 76 MVP-gated Quiet Boot via the font-density fix, with
+    # the MTRR-install wrmsr removed as the suspected lockup source).
+    # Decoder coverage retired in step.
 
     # FB geometry post-mortem (extended-bank 0x90-0x9F, written by
     # agnos/kernel/arch/x86_64/fb_console.cyr::fb_console_init). On iron
@@ -372,8 +364,8 @@ fn main(): i64 {
     if (verbose_mode == 0) {
         println("");
         println("=== AGNOS current-sweep boot log ===");
-        println("Scanout re-arm + audit-to-CMOS (Attempt 74) — gnoboot 0.4.1 calls gop->SetMode(gop, cur_mode) pre-EBS so firmware re-establishes the CRTC scanout pipe at FrameBufferBase; kernel MTRR + PCI BAR audits now sink to CMOS [0x88..0x8F] since iron has no serial cable.");
-        println("Reference: docs/development/iron-nuc-zen-log.md § Attempt 74");
+        println("True-font swap (Attempt 77 prep) — agnos 1.30.12 replaces the hand-drawn 8x8 CGA bitmap with the canonical IBM VGA 8x16 ROM font and revises fb_scale() to a 2-tier policy. Quiet Boot MVP gate cleared at Attempt 76 (no lockup, keyboard live, refresh live); the remaining legibility bar is the font-source swap.");
+        println("Reference: docs/development/iron-nuc-zen-log.md § Attempt 76 (closeout) + agnosticos true-font-swap-plan.md");
         println("");
         println("Boot reached:");
         print_str("  kernel  checkpoint = "); print_hexb(kcp);
@@ -432,23 +424,10 @@ fn main(): i64 {
         print_str("  pitch  [0x98..0x9B]    = "); print_num(fbg_pitch);
         println(" bytes/scanline");
         println("");
-        println("MTRR + PCI BAR audit (kernel fb_audit_mtrr + fb_audit_pci_bar, CMOS-stamped):");
-        print_str("  MTRR eff   [0x88]      = "); print_hexb(fb_mtrr_eff);
-        print_str("  ("); print_mtrr_type(fb_mtrr_eff); print_str(")");
-        println("                  WB(6)=PAT-WC active; UC(0)=PAT-WC blocked");
-        print_str("  MTRR def   [0x89]      = "); print_hexb(fb_mtrr_def);
-        print_str("  ("); print_mtrr_type(fb_mtrr_def); print_str(")");
-        println("                  baseline cache type when no variable range covers fb_phys");
-        print_str("  VGA BAR base [0x8A-0x8D] = 0x"); fmt_byte(fb_bar_b3); fmt_byte(fb_bar_b2); fmt_byte(fb_bar_b1); fmt_byte(fb_bar_b0);
-        print_str("        (low 32 bits of matched BAR base)\n");
-        print_str("  delta low byte [0x8E]  = "); print_hexb(fb_bar_dlt);
-        println("                  (fb_phys - bar_base) & 0xFF; 0x00 = clean, non-zero = BAR offset divergence");
-        print_str("  PCI match [0x8F]       = "); print_hexb(fb_bar_flag);
-        println("                  1 = VGA-class BAR matched fb_phys within 256 MB; 0 = no match / reassigned / bus>=4");
         println("");
-        println("Sweep symptom: Quiet Boot ON renders Attempt-33 garbled-glyph signature despite clean GOP geometry (pitch=width*4, pf=BGRX, sentinel ✓).");
-        println("Burn under test: gnoboot 0.4.1 SetMode re-arm + kernel audit-to-CMOS (Attempt 74).");
-        println("Audit doc:     docs/development/iron-nuc-zen-log.md § Attempt 74");
+        println("Sweep symptom: Quiet Boot ON rendered tiny-glyph stripes at native HDMI (8x8 CGA bitmap at 2560x1440 = 0.5% screen height per row — Attempt-33 signature).");
+        println("Burn under test: agnos 1.30.12 — VGA 8x16 font swap (replaces hand-drawn 8x8 source) + fb_scale 2-tier (h <= 1200 -> 1, else 2) + MTRR/audit dead-code removal.");
+        println("Audit doc:     docs/development/iron-nuc-zen-log.md § Attempt 77 (next iron burn)");
         println("Verbose log:   ./scripts/read-boot-log.sh --verbose    (full interpretation chapters, incl. MVP-era xHCI slots above)");
         return 0;
     }
@@ -535,14 +514,8 @@ fn main(): i64 {
     print_cmos_line("CMOS[0x85] xhci HCSPARAMS2 byte 2 raw (AA aud) = ", xh_hcsp2b2);
     print_cmos_line("CMOS[0x86] xhci extended-CMOS sentinel (CC)    = ", xh_ccsent);
     print_cmos_line("CMOS[0x87] xhci event-drain sentinel (DD)      = ", xh_ddsent);
-    print_cmos_line("CMOS[0x88] MTRR eff at fb_phys (Attempt 74)    = ", fb_mtrr_eff);
-    print_cmos_line("CMOS[0x89] MTRR DEF_TYPE     (Attempt 74)      = ", fb_mtrr_def);
-    print_cmos_line("CMOS[0x8A] VGA BAR base byte 0 (Attempt 74)    = ", fb_bar_b0);
-    print_cmos_line("CMOS[0x8B] VGA BAR base byte 1 (Attempt 74)    = ", fb_bar_b1);
-    print_cmos_line("CMOS[0x8C] VGA BAR base byte 2 (Attempt 74)    = ", fb_bar_b2);
-    print_cmos_line("CMOS[0x8D] VGA BAR base byte 3 (Attempt 74)    = ", fb_bar_b3);
-    print_cmos_line("CMOS[0x8E] (fb_phys - bar_base) low (Att 74)   = ", fb_bar_dlt);
-    print_cmos_line("CMOS[0x8F] PCI BAR match flag (Attempt 74)     = ", fb_bar_flag);
+    # CMOS[0x88..0x8F] retired at agnos 1.30.12 (MTRR audit + PCI BAR audit
+    # functions deleted from kernel/arch/x86_64/fb_console.cyr).
 
     # USBLEGSUP outcome decoder.
     if (xh_usbleg == 0) { println("  USBLEGSUP: n/a (no xECP chain) — controller does not advertise extended caps."); }
