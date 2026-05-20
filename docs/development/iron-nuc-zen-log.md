@@ -1335,6 +1335,55 @@ No new iron burn proposed. The next entry in this log will be a deliberate one �
 
 ---
 
+### Attempt 79 — Intel cross-check (z890 USB + archintel SSH) 2026-05-20 → INCONCLUSIVE (closeout)
+
+After Attempt 78 closed the GOP-side `SetMode` lever space, the question of whether the Quiet-Boot residue is **AMD-Zen-specific** or **general-firmware** stayed open. Two Intel cross-check moves were attempted before closeout; both produced structurally inconclusive but shape-informative data.
+
+#### Move 1 — bare-metal boot on ASRock z890 (Intel) → USB-bootability fail
+
+Attempted to USB-boot the existing gnoboot 0.4.2 + agnos 1.30.12 build on an ASRock z890 (Intel) board. z890 firmware did not recognize the AGNOS-built USB drive as bootable. The USB-C wrapper on this board is a contributing factor — modern Intel firmware varies in how it negotiates USB-C boot media, separate problem from the GPT/ESP layout AGNOS uses. **Disposition: separate bootability issue, not an AGNOS defect.** Older Intel test machine parked as future discriminator-when-time-permits; not a closeout blocker.
+
+#### Move 2 — SSH cross-check on archintel (i9 Arch Linux, Arrow Lake-S) → structurally inconclusive
+
+Read-only firmware/GOP/FB state from `archintel` (i9 desktop, Intel Arrow Lake-S iGPU `[8086:7d67]` + NVIDIA RTX 5080 `[10de:2c02]` dGPU, ASRock firmware, Arch Linux 7.0.9, kernel boot 2026-05-20 14:43). Three load-bearing findings:
+
+| Finding | Reading |
+|---|---|
+| **No BGRT table** (`ls /sys/firmware/acpi/tables/BGRT` → ENOENT) | The trigger condition for AMD Zen's BGRT-render-leaves-scanout-dirty hypothesis is **not present on this firmware**. Can't directly test "what happens post-BGRT" comparison. |
+| **Primary FB driver is `simpledrm`, not `efifb`** | Modern Linux path explicitly **assumes the firmware FB may be tiled/DCC-compressed** and routes writes through a CPU-side shadow buffer (per `LWN: SimpleDRM system memory framebuffers`, agent-3 prior-art finding). This is the architectural answer to AGNOS's bug class — but it's the *opposite* of AGNOS's sovereign direct-paint design choice. |
+| **Hybrid GPU; fbcon ends on NVIDIA dGPU primary** (`fbcon: nvidia-drmdrmfb (fb0) is primary device`) | Not a pure Intel-iGPU GOP comparison. The Intel iGPU is present and i915 initializes cleanly (Meteorlake display v14.00 D0, GuC/HuC firmware loaded), but the dGPU takes primary display. |
+
+#### Disposition — closeout
+
+The two Intel attempts together rule out a clean discriminator on currently-available hardware:
+- z890: USB bootability blocked the test from running.
+- archintel: hardware/firmware shape (no BGRT + hybrid GPU + simpledrm) makes it structurally non-comparable to archaemenid's pure-AMD-Zen-iGPU-with-BGRT scenario.
+
+**H2 (AMD-Zen-specific tile/DCC scanout at GOP handoff) remains the strongest read on archaemenid evidence** (Quiet Boot vs VGA-spec asymmetry on the same board), but is not Intel-cross-confirmed. Per `feedback_accept_partial_wins`, the MVP functional gate stays cleared (typeable shell + legible VGA path); Quiet Boot legibility moves out of the active scope as planned-next-cycle work, not a current MVP blocker.
+
+**No further iron burns proposed in this branch.** Next-cycle target is one of:
+- (a) Kernel-side minimal-redesign port of Linux's HUBP `clear_tiling` sequence (3-6 MMIO writes per HUBP per amd-gfx ML; DCN1→DCN3 register offsets inherited; Cezanne is the archaemenid chip family; PCI BAR0 of `1002:1638`). Per `feedback_redesign_dont_reinvent` — learn the shape, redesign in Cyrius, don't lift code.
+- (b) Architectural evaluation of whether AGNOS adopts a shadow-buffer model (simpledrm-style) for the FB console layer, or keeps the sovereign direct-paint model and accepts AMD-Zen-specific quirk-handling.
+
+These are the recorded options for next-cycle resumption, not commitments. Pin: `project_amd_zen_scanout_residue.md`.
+
+#### What this entry does NOT close
+
+- The discriminator question (AMD-specific vs general-firmware) — parked as a known-unknown.
+- The older-Intel cross-check on a single-iGPU box with a BGRT table — parked as future option when cabling/time permits.
+
+#### Sources
+
+- archintel SSH read 2026-05-20 (data quoted above).
+- Attempt 78 (immediately above) — closes both GOP-side SetMode lever variants.
+- Attempt 77 research pass — H2 hypothesis support.
+- `uefi-boot-prior-art.md` § *Foot-gun ruled out experimentally on archaemenid* — extended with Intel-inconclusive footnote this commit.
+- `gnoboot/CHANGELOG.md` § [Unreleased] — next-cycle signpost added this commit.
+
+**Closeout state**: 1.30.x FB hardening sweep closes at agnos 1.30.12 + gnoboot 0.4.2. Active scope leaves the FB layer; resumes when next cycle opens with a fresh identifier window.
+
+---
+
 ## Conventions for future entries
 
 - One H3 (`### Attempt N — date HH:MM TZ → STATUS`) per attempt.

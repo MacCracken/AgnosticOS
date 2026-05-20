@@ -261,6 +261,22 @@ Both forms produced no visible mode-switch flicker — consistent with the firmw
 
 Sources: gnoboot 0.4.1 + 0.4.2 release notes (`gnoboot/CHANGELOG.md`), iron Attempts 73/74/77/78 (`iron-nuc-zen-log.md`).
 
+#### Intel cross-check — structurally inconclusive (Attempt 79, 2026-05-20)
+
+The natural follow-up question — *is this bug AMD-Zen-specific or general-firmware?* — couldn't be cleanly answered on currently-available Intel hardware:
+
+| Surface | Outcome | Reason |
+|---|---|---|
+| ASRock z890 (Intel) — bare-metal USB boot | Did not run | z890 firmware didn't recognize the AGNOS-built USB drive as bootable. USB-C wrapper is a contributing factor. **Separate bootability issue, not an AGNOS defect.** |
+| archintel — i9 desktop Arrow Lake-S `[8086:7d67]` + NVIDIA RTX 5080 `[10de:2c02]`, Arch Linux, SSH read-only | Structurally non-comparable | (a) **No BGRT table** on this firmware (`ls /sys/firmware/acpi/tables/BGRT` → ENOENT) — the trigger condition for archaemenid's bug isn't present. (b) **Hybrid GPU; NVIDIA dGPU ends up `fbcon` primary**, not the Intel iGPU. (c) **Linux uses `simpledrm`, not `efifb`** — the modern Linux path explicitly assumes the firmware FB may be tiled and routes writes through a CPU-side shadow buffer (per [LWN — SimpleDRM system memory framebuffers](https://lwn.net/Articles/910621/)). That's the architectural answer to this bug class, and it's the *opposite* of AGNOS's sovereign direct-paint design. |
+
+Two indirect signals from the archintel cross-check that *are* load-bearing:
+
+1. **Industry has standardized on shadow-buffered FB drivers** (`simpledrm`) precisely because firmware-left FB layout isn't trustable across vendors. AGNOS direct-paint is sovereign-divergent on purpose, but next-cycle work needs to know that the rest of the world has already moved.
+2. **BGRT-table absence on modern Intel firmware** is itself worth flagging — the Quiet-Boot logo path that triggers archaemenid's bug may be AMD-firmware-class-specific (or at least more common on AMD's reference UEFI). Untested on a single-iGPU Intel box with a BGRT-publishing firmware, which is the parked future discriminator.
+
+**Disposition**: H2 (AMD-Zen-specific tile/DCC scanout at GOP handoff) stays the strongest read on archaemenid evidence, but is **not** Intel-cross-confirmed at closeout. The bug carries forward as a known residual; next-cycle target is kernel-side (HUBP `clear_tiling` minimal port per amd-gfx ML, or architectural shadow-buffer adoption). Memory pin: `project_amd_zen_scanout_residue`.
+
 ---
 
 ## 9. Verdict — is AGNOS far off?
