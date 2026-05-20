@@ -80,6 +80,9 @@ The role map below is for orientation. **Versions are intentionally omitted** �
 | **gnoboot** | Sovereign UEFI bootloader (PE32+ EFI Application, replaces GRUB) | **Native** |
 | **commandress** | Structured shell prompt renderer (binary `cmdrs`, starship-equivalent) | **Native** |
 | **kriya** | Coreutils-equivalent multi-tool (`cp`/`mv`/`rm`/`mkdir`/`echo`/`wc`/`find`/`grep`/…, BusyBox-style dispatcher) | **Native** |
+| **mihi** | System-info probe library (CPU / RAM / GPU / kernel / uptime / distro / hostname) — substrate for iam, chakshu | **Native** |
+| **iam** | fastfetch-equivalent system-info display (consumes mihi; inverse of `whoami`) | **Native** |
+| **chakshu** | AI-augmented system monitor (`shu` binary; htop/btop-equivalent with LLM explanation hooks) | **Native** |
 
 > **Live versions, sizes, test counts, and per-repo cycle state**: see [`docs/development/state.md`](docs/development/state.md) and [`docs/development/planning/shared-crates.md`](docs/development/planning/shared-crates.md). This table is intentionally version-free — embedded counts drift, and pointer-to-registry is the cleaner pattern.
 
