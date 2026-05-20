@@ -1157,7 +1157,7 @@ Build 422,048 B (`./scripts/build.sh`), multiboot2 ELF64 entry `0x1000a8`. QEMU 
 
 **Three of four bars cleared in one burn.** Lockup gone (the MTRR-install removal was the correct call — falsifies the WC-MTRR-fix hypothesis that drove Attempt 74). Keyboard + refresh both live on the previously hostile Quiet Boot path. The remaining bar (legible glyphs) is a font-source problem, not a paint/cache/MTRR/scanout problem — scaling a primitive 8×8 bitmap bigger makes each pixel bigger, not each letter readable.
 
-Photo: [`iron-nuc-zen-photos/FB_Quiet_Progress.jpg`](../../FB_Quiet_Progress.jpg) (working-tree capture; move to `iron-nuc-zen-photos/attempt-76-quiet-boot-scaled.jpg` next housekeeping pass).
+Photo: [`iron-nuc-zen-photos/attempt-76-quiet-boot-scaled-glyphs-illegible.jpg`](iron-nuc-zen-photos/attempt-76-quiet-boot-scaled-glyphs-illegible.jpg) — scale=3 24-px-cell render under Quiet Boot ON at 2560×1440; pixels enlarged but the 8×8 source bitmap is too primitive to read as letters. Trigger photo for the true-font swap plan.
 
 #### Closeout
 
