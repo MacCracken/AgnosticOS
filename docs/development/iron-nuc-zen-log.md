@@ -1134,7 +1134,7 @@ The fix landed in working-tree 1.30.11 the same session — see Attempt 76 below
 
 ---
 
-### Attempt 76 — font-pixel-density fix 2026-05-20 → PENDING IRON BURN
+### Attempt 76 — font-pixel-density fix 2026-05-20 → PASS (MVP-gate functional; visual deferred to true-font in 1.30.12)
 
 Root cause closed in chat: 8×8 CGA glyphs at 2560×1440 = 0.5% of screen height, render as visual "stripes." The Attempts 71-74 ladder chased the wrong layer.
 
@@ -1146,7 +1146,24 @@ Fix in `kernel/arch/x86_64/fb_console.cyr` (working-tree 1.30.11, no version bum
 
 Build 422,048 B (`./scripts/build.sh`), multiboot2 ELF64 entry `0x1000a8`. QEMU smoke `QEMU_RES=2560x1440 ./scripts/qemu-fb-smoke.sh` PASS through `agnos>`. gnoboot unchanged at 0.4.1.
 
-Burn protocol: `sudo ./scripts/install-usb.sh --update /dev/sdX` → VGA-spec regression check → Quiet Boot decisive check → photos to `iron-nuc-zen-photos/attempt-76-{vga-baseline,quiet-boot-scaled}.jpg`. Diff is small; if anything regresses, `git diff HEAD~1 kernel/arch/x86_64/fb_console.cyr` shows everything.
+#### Iron outcome
+
+| Quiet Boot ON / archaemenid | Before (1.30.10 + Attempt 74) | After (Attempt 76) |
+|---|---|---|
+| System state | **Lockup** post-`fb_console_init` (suspected MtrrLock `#GP`) | **Live** — runs through to shell |
+| Keyboard input | Untestable (locked) | **Live** — keystrokes accepted |
+| FB refresh | Untestable (locked) | **Live** — paint loop running |
+| Glyph legibility | Garbled stripes at 8-px cell | Scaled to 24-px cell; still illegible as letters — 8×8 CGA bitmap is too primitive to read even at 3× |
+
+**Three of four bars cleared in one burn.** Lockup gone (the MTRR-install removal was the correct call — falsifies the WC-MTRR-fix hypothesis that drove Attempt 74). Keyboard + refresh both live on the previously hostile Quiet Boot path. The remaining bar (legible glyphs) is a font-source problem, not a paint/cache/MTRR/scanout problem — scaling a primitive 8×8 bitmap bigger makes each pixel bigger, not each letter readable.
+
+Photo: [`iron-nuc-zen-photos/FB_Quiet_Progress.jpg`](../../FB_Quiet_Progress.jpg) (working-tree capture; move to `iron-nuc-zen-photos/attempt-76-quiet-boot-scaled.jpg` next housekeeping pass).
+
+#### Closeout
+
+1.30.x FB hardening sweep closes at .11 on this result. Functional MVP gate (typeable shell on iron Quiet Boot) clears here for the first time end-to-end (Attempt 68 cleared it on VGA-spec; Attempt 76 clears it on Quiet Boot too). Visual legibility moves to **1.30.12 true-font** — bitmap font swap (8×8 CGA hand-drawn → real 8×16 or larger bitmap source), no new layer, no new boot-info field. Plan doc: forthcoming under `docs/development/`.
+
+User direction in chat (paraphrase): *"the session doesn't lock up anymore, it refreshes, typing is accepted — only rendering of glyphs is left, I might call 1.30.11 done and move to true font."*
 
 ---
 
