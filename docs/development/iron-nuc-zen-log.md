@@ -1167,6 +1167,106 @@ User direction in chat (paraphrase): *"the session doesn't lock up anymore, it r
 
 ---
 
+### Attempt 77 — 2026-05-20 → PARTIAL (VGA path legible + slightly faster; Quiet Boot still illegible, hypothesis space open)
+
+1.30.12 true-font swap landed in `agnos@75914e9` ("self rolled glyph to font"). The 8×8 CGA inline-table renderer in `kernel/arch/x86_64/fb_console.cyr` was replaced with a self-rolled bitmap font (larger cell — likely 8×16 or comparable; full geometry to be confirmed from the source). `cyrius/programs/qemu-fb-smoke` was used in the cycle to iterate the font without burning iron, per the workflow note in the b0905dd commit message ("updated font for agnos with qemu tool").
+
+**Build under test:**
+
+| Component | Detail |
+|---|---|
+| `agnos` source | 1.30.12 — `git@HEAD: 75914e9 self rolled glyph to font` |
+| `agnos` build | `build/agnos` 425,840 B (mtime 2026-05-20 10:40 PDT) — +3,792 B vs Attempt 76's 422,048 B; growth attributable to the bitmap-font glyph table |
+| `gnoboot` | 0.4.1 (unchanged from Attempt 76) |
+| QEMU smoke | PASS via `qemu-fb-smoke` driver (font iterated to legibility before any iron burn — `feedback_iron_burns_block_other_work` honored) |
+
+#### Iron outcome
+
+| 2560×1440 / archaemenid | After Attempt 76 (3× scaled 8×8 CGA) | After Attempt 77 (1.30.12 true font) |
+|---|---|---|
+| VGA-spec / QuickBoot legibility | Garbled at small cell; scaled cells made pixels bigger but not letters readable | **Legible** (user-confirmed). New font reads as actual letters; reported "slight speed improvements for VGA" alongside the legibility win |
+| Quiet Boot legibility | Scaled but illegible (3× of an 8×8 CGA primitive — still not letter-shaped) | **Still illegible.** Photo: [`attempt-77-quiet-boot-true-font-lines-off.jpg`](iron-nuc-zen-photos/attempt-77-quiet-boot-true-font-lines-off.jpg) — horizontal banding cuts through glyphs; text visible but row-aligned in a way that doesn't read as continuous lines |
+| Quiet Boot lockup | Cleared at Attempt 76 (no regression here) | Cleared (no regression) |
+| Quiet Boot keyboard / refresh | Live (no regression) | Live (no regression) |
+
+**VGA-pass closure** — the true-font swap was the right call for VGA: it converts Attempt 76's "functional MVP but illegible" outcome into a "functional MVP that reads as a terminal." That part of 1.30.12's scope landed. The "slight speed improvement" is consistent with a wider cell amortizing fewer scroll-copy iterations per visible row, though no benchmark was taken this attempt.
+
+**Quiet Boot residual** — the font landing made the VGA path legible without making the Quiet Boot path legible. The signature is *different* from Attempt 76's: glyphs are recognizable as letterforms within each band but the bands themselves don't compose continuous lines of text. Whatever's wrong on Quiet Boot is *not* a font-source primitiveness problem (Attempt 76's hypothesis, now closed by VGA reading correctly with the new font).
+
+#### Hypothesis space — explicitly tentative
+
+User in chat: *"I'm only assuming the math is off but given that we may be still drawing for the previous glyph style or something about the framebuffer is off."* All three branches are open; none has been falsified or confirmed by an iron burn yet.
+
+| Hypothesis | Shape | What would falsify |
+|---|---|---|
+| **H1 — Render math still 8×8** | Font source swapped to 8×16 (or similar) but one or more sites in `fb_console.cyr` still compute row stride / cell pitch / scroll-copy offsets using the old 8×8 cell dimensions. A row written with new-font math reads cleanly on VGA-spec (because VGA path may compute differently or hit a different scanout layout), but the Quiet-Boot scanout exposes the mismatch as inter-row misalignment. Audit target: every literal `8` in cell-geometry context in `fb_console.cyr` — `fb_putc`, `fb_fill_cell`, `fb_scroll_up`, `fb_console_init`'s cell-grid math. | Iron-readable confirmation that all geometry constants match the new font cell size (e.g., CMOS-stamped cell_w / cell_h / font_h alongside the existing geometry channel at 0x90-0x9F). |
+| **H2 — Framebuffer-layer divergence (Attempt 74 carry-forward)** | The Quiet-Boot vs VGA-spec divergence catalogued in Attempt 74's escape plan (scanout-pitch divergence / tile-format scanout / address-translation divergence) was never closed — Attempt 76 made the kernel survive Quiet Boot but did not investigate *why* Quiet Boot reads back differently than VGA-spec. The new font might be exposing the same underlying FB-layer problem at a different layer of detail (legible per-glyph because the font is robust, but inter-row banding because the FB layout is still off). | R1 from Attempt 74's escape plan — VGA-spec CMOS readback (geometry / MTRR / PCI) diffed against Quiet Boot CMOS readback. Was still PENDING at Attempt 75; remains the highest-value research item before another iron code burn. |
+| **H3 — Font-data layout mismatch** | Self-rolled font's glyph data is laid out (row-major vs column-major, MSB-first vs LSB-first, padded vs packed) in a way the renderer assumes is one and the font emits as the other. Would produce per-glyph distortion or shifted glyphs in *both* boot paths, so this is the weakest candidate given VGA reads correctly — but it cannot be fully ruled out without confirming the font format pins down on both paths. | VGA reading cleanly with no per-letter distortion (user-confirmed in chat) makes H3 the least-likely branch, but a side-by-side photo of identical text rendered on both paths would close it explicitly. |
+
+H1 and H2 are not mutually exclusive — both could be in play and the Quiet-Boot signature could be either (or compositional).
+
+#### Closeout
+
+1.30.12's VGA-path goal landed. Quiet-Boot legibility is the remaining 1.30.12 scope, and the right next move is **research, not a burn** — per `feedback_stop_letter_laddering` and `feedback_redesign_dont_reinvent`, an iron burn at this point would be speculative across three open hypotheses and produce ambiguous post-mortem data.
+
+#### Research pass — 2026-05-20 (no iron burn, all read-only)
+
+**H1 — render math still 8×8: FALSIFIED by code audit.**
+
+Every site `true-font-swap-plan.md` §5 named as load-bearing was checked against `agnos:kernel/arch/x86_64/fb_console.cyr@75914e9`:
+
+| Site | Line | Status |
+|---|---|---|
+| `fb_fill_cell` cell-fill loops | `fb_console.cyr:469-485` | Correct — outer loop bounded by `cell_h`, inner by `cell_w`, pitch-aware store32 |
+| `fb_scroll_up` scroll distance | `fb_console.cyr:496-528` | Correct — `cell_h = 16 * fb_scale()`, `rows_to_copy = height - FB_CONSOLE_Y0 - cell_h`, bottom-clear runs `0..cell_h` rows. Pitch-aware u64 block-copy unchanged. |
+| `fb_putc` `max_cols` / `max_rows` | `fb_console.cyr:544-545` | Correct — `max_cols = width / cell_w`, `max_rows = (height - FB_CONSOLE_Y0) / cell_h` |
+| `fb_putc` glyph render outer loop | `fb_console.cyr:592` | Correct — `for (row = 0; row < 16; row = row + 1)`, no residual `8` |
+| `fb_putc` per-glyph Y origin | `fb_console.cyr:591` | Correct — `y_px = FB_CONSOLE_Y0 + fb_cur_y * cell_h` |
+| `fb_putc` per-glyph X origin | `fb_console.cyr:590` | Correct — `x_px = fb_cur_x * cell_w` |
+| `fb_putc` scaled-pixel write | `fb_console.cyr:599` | Correct — `(y_px + row * s + dy) * pitch + (x_px + col * s) * 4` |
+| Newline + backspace `cell_h` use | `fb_console.cyr:550-568` | Correct — both branches use `cell_h` for Y advance |
+
+No site uses `cell_w` for vertical extent or `cell_h` for horizontal extent anywhere in the file. The plan-§5 split was executed cleanly across all 8 sites. **H1 is not the cause.**
+
+**H3 — font data layout: FALSIFIED by cross-reference.**
+
+`fb_console.cyr:70-89` `fset16(ch, hi, lo)` packs `hi` → bytes 0-7 (rows 0-7), `lo` → bytes 8-15 (rows 8-15), MSB-first byte order — explicit and matches the file's header comment block (`fb_console.cyr:19-28`). `fb_putc` at `fb_console.cyr:592-595` reads `bits = load8(glyph + row)` and `on = (bits >> (7 - col)) & 1` — bit 7 = leftmost pixel, consistent with how the font is encoded.
+
+Spot-check of canonical reference: `fb_console.cyr:260` `fset16(0x41, 0x000010386CC6C6FE, 0xC6C6C6C600000000)` ("A") decodes to bytes `00 00 10 38 6C C6 C6 FE C6 C6 C6 C6 00 00 00 00` — **byte-for-byte match** with Linux's `lib/fonts/font_8x16.c` row table for 0x41. **H3 is not the cause.**
+
+**H2 — framebuffer-layer divergence: STRONGLY SUPPORTED by prior art (AMD display engine left in tiled/DCC scanout at GOP handoff).**
+
+Two independent confirmations:
+
+1. **OSDev forum thread #57150** ("EFI GOP lying about screen resolution?") names the exact mechanism: *"the framebuffer isn't actually linear but tiled. The GPU may implement various types of tiling and/or compression for the various buffers it uses including scanout, textures, etc. This may be a reason Gop->Blt and ConsoleOut work, but directly addressing the buffer does not."* — direct match for our symptom shape (Quiet Boot banded, VGA-spec / verbose-POST clean, same GOP-reported geometry on both).
+2. **Linux `drivers/video/fbdev/efifb.c`** trusts GOP `PixelsPerScanLine` with no AMD-specific stride quirks — Linux sidesteps this class of bug instead by reprogramming the DCN ("Display Core Next") pipe via `drivers/gpu/drm/amd/display/` on amdgpu takeover, forcing the scanout buffer to a *displayable* DRM format modifier (linear, no DCC). The `freebsd/drm-kmod#60` history confirms the upstream consensus: on AMD iGPUs the firmware-left state at GOP handoff is *untrustable* for direct CPU writes; the fix is to reprogram the pipe, not to second-guess `PixelsPerScanLine`.
+3. **EDK2's own console driver** (`MdeModulePkg/Universal/Console/GraphicsConsoleDxe`) uses `gop->Blt()` rather than direct framebuffer writes, with the driver-writer's-guide noting `FrameBufferBase` is **optional** per the UEFI spec — tiled/compressed scanout is the canonical reason a GOP implementation may omit it. AGNOS is post-EBS so `Blt()` is unavailable; direct writes are the only path.
+4. **"Quiet Boot" mechanism** is undocumented by AMI/Phoenix/Insyde at this level, but the observed AGNOS pattern (Quiet ON banded / VGA-spec clean) matches the OSDev finding: verbose POST forces a VGA-text mode-set, which *necessarily* reprograms the display pipe to linear; Quiet Boot leaves the pipe in whatever logo-rendering / DCC-compressed layout VBIOS used to draw the BGRT logo.
+
+**Carry-forward correction**: the Attempt 74 / Burn-B `SetMode(gop, cur_mode)` ("re-arm current mode") was the prior-art-canonical fix for this — and it was **falsified** (Attempts 73/74 entry, falsifications-carried-forward table). What this means in light of the OSDev finding: *re-arming to the same mode* is a firmware no-op on archaemenid; the OSDev wording is "*switching mode (even setting same mode)* switches framebuffer to linear" — implying the side effect comes from the `SetMode` work, not from a CRTC-state diff. On archaemenid the same-mode optimization elides the work entirely.
+
+The **untried variant** is `SetMode(gop, <some_other_mode>)` followed by `SetMode(gop, original_mode)` — force a real mode change so the firmware can't elide the pipe reprogram, then come back. This is *not* the same as the original true-font plan's "smallest mode ≥ 800×600" idea (which permanently downshifts geometry); it's a transient bounce that ends at the same final geometry the kernel was already prepared for. No iron burn proposed in this entry — pre-burn audit + gnoboot diff line-by-line first.
+
+#### Disposition
+
+| # | Item | Status |
+|---|---|---|
+| 1 | `fb_console.cyr` cell-geometry audit | **CLOSED** above (H1 falsified by audit) |
+| 2 | Font data layout verification | **CLOSED** above (H3 falsified by Linux `font_8x16.c` byte-for-byte cross-ref) |
+| 3 | Prior-art cross-check on font-render-vs-resolution | **CLOSED** above (renderer is resolution-robust by audit; failure is below the renderer) |
+| 4 | **Behavioral fix — gnoboot `SetMode(other) → SetMode(original)` bounce** | **PROPOSED** as next iron move. Per OSDev #57150, *the work of switching modes* is what flips the scanout buffer to linear; Attempt 74's same-mode SetMode was elided as a firmware no-op (falsified). A transient bounce to a *different* mode and back forces the firmware to actually reprogram the pipe, then return to the geometry the kernel was already prepared for. No kernel change; gnoboot-side only. |
+
+**No further instrumentation proposed.** Per `feedback_no_instrumentation_means_no_instrumentation` + the Attempt 74 precedent (MTRR-install was nominally "diagnostic + repair," locked the box, masked the real failure). VGA-spec CMOS readback and cell_w/cell_h CMOS stamping are both off-table — even passive data-capture is on the rejected list, and neither would tell us anything the H1/H3 falsifications haven't already settled.
+
+#### Sources
+
+- Prior-art audit, this session: OSDev forum thread #57150 "EFI GOP lying about screen resolution?", EDK2 `MdeModulePkg/Universal/Console/GraphicsConsoleDxe`, EDK II UEFI Driver Writer's Guide §23.2.4, Linux `drivers/video/fbdev/efifb.c` master, `freebsd/drm-kmod#60`, Phoronix "Displayable DCC for Raven Ridge", `drm_fourcc.h` `AMD_FMT_MOD_*` modifiers.
+- Local: `docs/development/uefi-boot-prior-art.md`, `docs/development/path-c-sovereign-uefi.md`, `docs/development/true-font-swap-plan.md`.
+
+Status partial. The behavioral lever is the SetMode bounce in gnoboot; line-by-line audit of that change is the gate before any next iron burn proposal.
+
+---
+
 ## Conventions for future entries
 
 - One H3 (`### Attempt N — date HH:MM TZ → STATUS`) per attempt.

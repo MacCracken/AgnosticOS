@@ -113,9 +113,9 @@ CYML format — WARM CLUSTERS:
   v5.9.x:  sit (5.9.37), vidya (5.9.43)
   v5.10.x: vyakarana (5.10.5), owl (5.10.10),
            cyim (5.10.10), cyim-lsp (5.10.10),
-           darshana (5.10.20),
            cyim-lsp (5.10.20),
            aegis (5.10.34)
+           — darshana graduated to v6.0.1 cluster 2026-05-20 (color primitives bump)
 
 CYML format — LIVE 5.10.44 BEDROCK (~15 repos, the boot path minus agnos):
   v5.10.44: agnoshi (1.3.2),
@@ -139,10 +139,15 @@ CYML format — LEADING-EDGE 5.11.x cluster (MVP-gate-hit bedrock):
   v5.11.8:  ai-hwaccel (2.2.2)
 
 CYML format — LEADING-EDGE 6.0.x cluster (post-v5.11.x graduations):
-  v6.0.1:  mihi (1.0.0), iam (1.0.0), chakshu (0.6.0)
-           — first three repos to graduate to v6.0.x via natural-next-touch:
-             mihi + iam cut as NEW 1.0.0 repos straight on v6.0.1; chakshu
-             jumped 0.3.0 → 0.6.0 + 5.10.20 → 6.0.1 in one bump
+  v6.0.1:  mihi (1.0.0), iam (1.0.0), chakshu (0.6.0),
+           bannermanor (0.5.0), darshana (0.3.5), hapi (0.5.0)
+           — six repos on the v6.0.x lane after the 2026-05-20 terminal-
+             aesthetics burst: mihi + iam cut as NEW 1.0.0 repos straight
+             on v6.0.1; chakshu jumped 0.3.0 → 0.6.0 + 5.10.20 → 6.0.1.
+             bannermanor (`bnrmr` figlet-equivalent) + hapi (stow-equivalent)
+             cut at 0.5.0 straight on v6.0.1; darshana graduated from
+             v5.10.20 → v6.0.1 with the 0.3.0 → 0.3.5 color-primitives
+             bump that bannermanor's banner colors needed.
 
 CYRIUS TOOLCHAIN itself: 6.0.1 (v6.0.0 cycle opened 2026-05-19, same-day .1 patch for UEFI fncall ud2 emit regression; v5.11.x closed at 5.11.69)
 
@@ -154,7 +159,7 @@ NOT VERIFIED LOCALLY (remote-only, presumed pre-CYML or scaffolded):
 ```
 
 **Bands of attention (2026-05-20 — post-MVP-gate, post-v6.0.0 cycle-open, first v6.0.x graduations live):**
-- **6.0.1 leading-edge cluster** (NEW, 2026-05-20): mihi (1.0.0), iam (1.0.0), chakshu (0.6.0). First three repos to graduate to the v6.0.x pin via natural-next-touch — mihi cut as a fresh sys-info probe library, iam consumes it as a fastfetch-equivalent, chakshu jumped three patch + one major-cycle bumps in a single re-pin. These aren't post-bedrock-graduations; they're a parallel new lane on top of v6.0.x.
+- **6.0.1 leading-edge cluster** (2026-05-20, grew through the day): mihi (1.0.0), iam (1.0.0), chakshu (0.6.0), bannermanor (0.5.0), darshana (0.3.5), hapi (0.5.0). Six repos on the v6.0.x lane after the terminal-aesthetics burst — sys-info substrate (mihi/iam/chakshu) in the morning, banner + dotfile-manager + TTY-color-primitives (bannermanor / hapi / darshana) in the afternoon. These aren't post-bedrock-graduations; they're a parallel new lane on top of v6.0.x. The darshana 0.3.0 → 0.3.5 bump was demand-driven (bannermanor needed color escape sequences) — same shared-lib-evolves-to-second-consumer pattern as mihi's cyim → chakshu extraction.
 - **5.11.64 leading-edge cut**: agnos (1.30.9). The MVP-gate-hit cut — both visual + functional keyboard halves green on archaemenid; consumers re-pinning to this snapshot get a working closed-beta MVP path. agnosticos/scripts trails one cycle at 5.11.59 (boot pipeline; sweep deferred). Neither will move further during v6.0.x — back-compat symlinks keep both building against cyrius 6.0.0 install snapshots unchanged.
 - **5.11.x post-burst cluster** (~10 repos at .4/.8) — ahead of the bedrock but trailing the leading-edge pair.
 - **5.10.44 live bedrock** (~15 repos: kybernet, argonaut, agnoshi, kavach, daimon, bote, t-ron, libro, etc.) — still where the rest of the closed-beta MVP path runs. Graduates to v6.0.x on natural-next-touch.
@@ -169,7 +174,9 @@ NOT VERIFIED LOCALLY (remote-only, presumed pre-CYML or scaffolded):
 | **aegis** | **1.0.0** | 5.10.34 | **Hit v1.0** (was 0.8.2 in last refresh). Real system-security daemon now shipping. Skipped 0.9.x — straight implementation closeout to 1.0.0. |
 | **chakshu** | **0.6.0** | **6.0.1** | AI-augmented system monitor (`shu` binary). Was 0.3.0 / pin 5.10.20 in last refresh — jumped three patch versions (0.3.0 → 0.6.0) AND graduated pin straight to 6.0.1 (one of the first three v6.0.x graduations). Started consuming mihi for its sys-info probe surface, which let the maturity arc compress. |
 | **cyim-lsp** | 1.5.0 | 5.10.20 | LSP server companion to cyim. Pin moved 5.10.10 → 5.10.20. |
-| **darshana** | 0.3.0 | 5.10.20 | TTY/raw-mode primitives library (दर्शन — viewing/showing). Extracted from cyim's `src/tty.cyr` once chakshu became a second consumer. Not a TUI framework — just termios + ANSI + cursor positioning. +0.0.1 from last refresh's 0.2.0. |
+| **bannermanor** | **0.5.0** | **6.0.1** | **NEW** (binary `bnrmr`). figlet-equivalent ASCII-art banner generator for login MOTDs / script intros / splash text. English wordplay (commandress/bannermanor naming lane); `bnrmr` vowel-dropped per the `commandress`→`cmdrs` compression pattern. Cut at 0.5.0 straight on v6.0.1. Drove the darshana 0.3.0 → 0.3.5 color-primitives bump (banner colors). |
+| **darshana** | **0.3.5** | **6.0.1** | TTY/raw-mode primitives library (दर्शन — viewing/showing). Extracted from cyim's `src/tty.cyr` once chakshu became a second consumer. Not a TUI framework — just termios + ANSI + cursor positioning. Was 0.3.0 / pin 5.10.20 in last refresh; 0.3.5 added ANSI color escape sequences so bannermanor's banners can render colored, AND graduated the pin straight from 5.10.20 → 6.0.1 in the same touch. |
+| **hapi** | **0.5.0** | **6.0.1** | **NEW.** GNU `stow`-equivalent — dotfile / symlink farm manager. Hawaiian हपी (*happy*) + backronym **H**ome **A**sset **P**rovisioning **I**nterface — first Pacific Islands word in the AGNOS naming surface. CYML manifest per package, capability-bounded execution (touches `$HOME` only by default), lightweight audit trail. Cut at 0.5.0 straight on v6.0.1. |
 | **iam** | **1.0.0** | **6.0.1** | **NEW.** fastfetch/neofetch-equivalent system-info display for login MOTD + screenshot flex. Pure inverse of `whoami` — whoami says who the user is, iam says what the system is. Thin presentation layer over the mihi probe library. Cut straight to 1.0.0 on cyrius 6.0.1 — second v6.0.x graduation. Lives in the English-wordplay/trickster naming lane per `feedback_naming_lanes`. |
 | **mihi** | **1.0.0** | **6.0.1** | **NEW.** मिही / mihi — system-info probe library (CPU / RAM / GPU / kernel / uptime / distro / hostname). Substrate for iam, chakshu, and any tool that needs "tell me about this box." Maori: the formal self-introduction ceremony — Sanskrit-Hindi/Polynesian semantic naming lane per `feedback_naming_lanes`. First of the three v6.0.x graduations to be cut. |
 
@@ -271,7 +278,7 @@ Carry-forward from v5.6.x → v5.7.x → v5.8.x → v5.9.x → v5.10.x. None blo
 - **`docs/adrs/` → `docs/adr/` rename**: argonaut last offender.
 - **kiran pin-field population** — kiran shipped 1.0.0 but `cyrius.cyml` still lacks `cyrius = "X.Y.Z"`. Worth populating now that it's stable.
 - **Crate registry refresh** — both registries are stale against current state. Sweep when next touched.
-  - [`planning/shared-crates.md`](planning/shared-crates.md) (full registry, pre-1.0 + v1.0+): bumped 2026-05-09; **now stale again against 2026-05-11 eve snapshot** — needs another sweep. Notable bumps to apply: agnostik 1.2.0→1.2.2, agnosys 1.2.1→1.2.6, sigil 3.1.0→3.1.1, sankoch 2.0.0→2.2.5, libro 2.0.5→2.6.3, sandhi 1.3.0→1.3.4, niyama 1.0.1→1.0.2, aegis 0.8.2→**1.0.0**, cyim 1.6.7→1.7.0, chakshu 0.2.0→0.3.0, darshana 0.2.0→0.3.0. New: argonaut 1.7.0, kybernet 1.2.1 (today's cuts).
+  - [`planning/shared-crates.md`](planning/shared-crates.md) (full registry, pre-1.0 + v1.0+): bumped 2026-05-09; **stale against 2026-05-20 PM snapshot**. Notable bumps to apply: agnostik 1.2.0→1.2.2, agnosys 1.2.1→1.2.6, sigil 3.1.0→3.1.1, sankoch 2.0.0→2.2.5, libro 2.0.5→2.6.3, sandhi 1.3.0→1.3.4, niyama 1.0.1→1.0.2, aegis 0.8.2→**1.0.0**, cyim 1.6.7→1.7.0, chakshu 0.2.0→**0.6.0**, darshana 0.2.0→**0.3.5**. New graduations from planned → shipped: argonaut 1.7.0, kybernet 1.2.1, **bannermanor 0.5.0**, **hapi 0.5.0**, **iam 1.0.0**, **mihi 1.0.0**.
   - [`docs/applications/libs/README.md`](../applications/libs/README.md) (v1.0+ stable subset). Last updated 2026-04-15 — predates three full minors (v5.8 / v5.9 / v5.10).
 
 ### CLAUDE.md table refresh
@@ -291,7 +298,7 @@ Root [`CLAUDE.md`](../../CLAUDE.md) "Standalone Repos" table also drifted (same 
 | **NEW** [`articles/port-ledger-volume-2.md`](../articles/port-ledger-volume-2.md) | ✅ Shipped 2026-05-15 — mid-arc state-of-things snapshot. Kernel iron-validation receipt (the V2 headline); pin-cluster review across 5.10/5.11 ecosystem; four new native subsystems (aegis 1.0.0, gnoboot 0.2.0, commandress 0.1.0, kriya 0.2.0); V1's "Where Rust Still Wins" reviewed for direction-of-motion. Re-measurement comprehensive-cut deferred to V3. |
 | [`articles/doom-in-cyrius.md`](../articles/doom-in-cyrius.md) | v5.11.x rebuild numbers when cyrius-doom ships an unblock release (still on pin 5.7.48) |
 | [`articles/sovereign-compiler-vs-brute-force.md`](../articles/sovereign-compiler-vs-brute-force.md) | cycc self-host **874,240 B** at v6.0.0 (was cc5 741,048 B at v5.9.0; +133 KB across the v5.10.x three-arc cycle + v5.11.x 70-patch closeout; +8 B name-string delta at the rename ceremony). Pull current size from `cyrius/build/cycc` before publishing. |
-| [`planning/shared-crates.md`](planning/shared-crates.md) | 🔄 Stale again as of 2026-05-11 eve. Refresh queue: agnostik 1.2.2, agnosys 1.2.6, sigil 3.1.1, sankoch 2.2.5, libro 2.6.3, sandhi 1.3.4, niyama 1.0.2, aegis **1.0.0**, cyim 1.7.0, chakshu 0.3.0, darshana 0.3.0. New: argonaut 1.7.0, kybernet 1.2.1. |
+| [`planning/shared-crates.md`](planning/shared-crates.md) | 🔄 Stale as of 2026-05-20 PM. Refresh queue: agnostik 1.2.2, agnosys 1.2.6, sigil 3.1.1, sankoch 2.2.5, libro 2.6.3, sandhi 1.3.4, niyama 1.0.2, aegis **1.0.0**, cyim 1.7.0, chakshu **0.6.0**, darshana **0.3.5**. New (graduated from planned → shipped): argonaut 1.7.0, kybernet 1.2.1, bannermanor 0.5.0, hapi 0.5.0, iam 1.0.0, mihi 1.0.0. |
 | [`docs/applications/libs/README.md`](../applications/libs/README.md) | Bump versions for v1.0+ subset; "Last Updated 2026-04-15" predates three minors |
 | [`planning/first-party-documentation.md`](planning/first-party-documentation.md) | Re-read at each v6.0.x patch — meta-irony from *Docs Go Stale Before the Commit* |
 | [`planning/first-party-standards.md`](planning/first-party-standards.md) | ✅ Refreshed 2026-05-09 — full Cyrius-first rewrite; Rust-era archive at `docs/archive/first-party-standards-rust-era.md` |
