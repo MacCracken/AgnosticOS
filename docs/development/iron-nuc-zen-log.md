@@ -1124,6 +1124,30 @@ Pure observation under a different OS using the existing BIOS toggle.
 
 Brief is fine — "Linux looked clean, reached desktop" or "Linux had the same stripes during boot but reached desktop" or "Linux didn't boot, screen looked like AGNOS." From there I can interpret per the table above and direct R3 (or document the workaround if path (a) confirmed).
 
+#### Closed → BYPASSED 2026-05-20
+
+R4 was never executed. In chat, when the user pushed back on the "catch a frame of Linux scroll text" protocol, the visual signature in [`attempt-33-phase-2-5-corrupted.jpg`](iron-nuc-zen-photos/attempt-33-phase-2-5-corrupted.jpg) was re-interpreted: **the horizontal "bands" weren't structural mis-alignment — they were 8-px-tall character cells on a 1440-px display (0.5% of screen height per row)**. At native HDMI the 8x8 CGA glyphs become illegible dot-clusters arranged in rows that read visually as "stripes." VGA-spec mode works because the smaller resolution (1024×768 territory) makes 8-px glyphs proportionally larger. Root cause: font-pixel-density, not scanout / cache / MTRR.
+
+The MTRR / SetMode / scanout-divergence speculation arc that consumed Attempts 71-74 was wrong layer the whole time. R1/R2/R3/R4 all became unnecessary once the photo was read as "tiny font" rather than "structural corruption."
+
+The fix landed in working-tree 1.30.11 the same session — see Attempt 76 below.
+
+---
+
+### Attempt 76 — font-pixel-density fix 2026-05-20 → PENDING IRON BURN
+
+Root cause closed in chat: 8×8 CGA glyphs at 2560×1440 = 0.5% of screen height, render as visual "stripes." The Attempts 71-74 ladder chased the wrong layer.
+
+Fix in `kernel/arch/x86_64/fb_console.cyr` (working-tree 1.30.11, no version bump):
+
+- `fb_scale()` → 1/2/3/4 by `fb_height()` (≤900/≤1200/≤1800/else); archaemenid Quiet Boot 1440 → scale 3.
+- `fb_putc` / `fb_fill_cell` / `fb_scroll_up` render each font bit as an `S×S` block, `cell_w = 8 * scale`.
+- `fb_mtrr_install_wc` + `fb_audit_mtrr` + `fb_audit_pci_bar` calls removed from `fb_console_init` (suspected Quiet Boot lockup source via AMD MtrrLock → `#GP`).
+
+Build 422,048 B (`./scripts/build.sh`), multiboot2 ELF64 entry `0x1000a8`. QEMU smoke `QEMU_RES=2560x1440 ./scripts/qemu-fb-smoke.sh` PASS through `agnos>`. gnoboot unchanged at 0.4.1.
+
+Burn protocol: `sudo ./scripts/install-usb.sh --update /dev/sdX` → VGA-spec regression check → Quiet Boot decisive check → photos to `iron-nuc-zen-photos/attempt-76-{vga-baseline,quiet-boot-scaled}.jpg`. Diff is small; if anything regresses, `git diff HEAD~1 kernel/arch/x86_64/fb_console.cyr` shows everything.
+
 ---
 
 ## Conventions for future entries
