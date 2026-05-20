@@ -2,7 +2,7 @@
 >
 > **Prior history**: [`iron-nuc-zen-log-mvp.md`](iron-nuc-zen-log-mvp.md) — Attempts 1 – 68, frozen at the closed-beta MVP gate (agnos 1.30.9, 2026-05-18). Consult for any pre-MVP-era root-cause shape recurrence.
 >
-> **Last Updated**: 2026-05-19 (log open)
+> **Last Updated**: 2026-05-19 (Attempt 71 result + Attempt 72 prep — FB handoff diagnostic extension landed, awaiting iron burn)
 
 # Iron Boot Test Log — Post-MVP
 
@@ -453,6 +453,107 @@ numbers and the typeable-shell-with-real-user moment are anchored
 together. AI-native user intent meeting a pre-userland kernel verb
 table is exactly the post-MVP roadmap framing — daimon / hadara /
 agnoshi LLM wiring is what closes the gap.
+
+### Attempt 71 — 2026-05-19 → PARTIAL
+
+1.30.11 hardening burn went down on archaemenid. Two BIOS toggles tested back-to-back, same kernel image, single USB cut.
+
+**Outcomes**
+
+| BIOS path | Result | Photo |
+|---|---|---|
+| **QuickBoot ON, VGA-spec display mode** | **PASS** — boot reaches typeable shell, clean BGRX glyphs end-to-end (`AGNOS shell v1.30.11`), keyboard alive, `fb: WC verified` (PAT entry 1) implied (no serial cable but the post-pmm WC remap landed without re-entering the original Attempt-33 failure region) | [`iron-nuc-zen-photos/attempt-71-quickboot-vga-pass.jpg`](iron-nuc-zen-photos/attempt-71-quickboot-vga-pass.jpg) |
+| **Quiet Boot ON** | **FAIL** — Attempt-33 garbled-glyph signature returns. Same kernel binary, same gnoboot, only BIOS toggle changes | not photographed (user reported in conversation) |
+
+**Hypothesis status — pf-aware-PixelFormat → FALSIFIED for quiet-boot ON**
+
+The 1.30.11 guard at `fb_console_init` (refuses to paint when `pf > 1`) did NOT change the quiet-boot ON behavior. If `pf` had been ≥ 2 under quiet boot, the guard would have produced a **black screen with serial-only fallback** (outcome row 3 in the prep table). What actually showed up is **outcome row 4** (garbled glyphs identical to Attempt 33) — the BGRX branch took, paint fired, but the result is corrupted. The PixelFormat reading is NOT the root cause of the Attempt-33 signature.
+
+**What this tells us**
+
+Different BIOS modes (QuickBoot+VGA vs Quiet Boot) cause archaemenid's firmware to hand gnoboot different GOP state. The 1.30.11 handoff struct captures `fb_phys / fb_pitch / fb_width / fb_height / fb_pf` but NOT `Mode->Mode` (which GOP mode the firmware selected) or `Mode->MaxMode` (how many modes exist). The PixelFormat field alone can't distinguish "VGA-spec mode 0 (BGRX, 1024×768)" from "quiet-boot mode N (BGRX, some-other-resolution, possibly-padded-pitch)". Pf is the same in both branches; whatever varies sits in the geometry tuple or the mode number itself.
+
+**Surviving hypotheses (ranked)**
+
+1. **GOP mode-number divergence** — firmware selects different `Mode->Mode` under each BIOS path; downstream geometry inherits the divergence. Most direct evidence to capture next.
+2. **Pitch-padding under quiet-boot's mode** — if quiet-boot lands on a native-HDMI mode where firmware pads scanlines (`ppl > width`), the kernel's pitch-aware paint should still work, but interaction with the WC remap range could shift bytes-per-pixel assumptions.
+3. **FB BAR placement divergence** — same kernel WC remap might miss the BAR under one BIOS path. Less likely (image confirms paint *partially* works under VGA-spec) but cheap to rule out.
+
+### Attempt 72 prep — 2026-05-19 → PENDING IRON BURN
+
+**Diagnostic-only cycle.** Pure observability extension, no behavioral repair. Audited per `feedback_redesign_dont_reinvent` (port the same captures Linux EFI stub, FreeBSD `loader.efi`, OpenBSD `efiboot`, and Limine all make pre-EBS).
+
+**Bundle under test**
+
+| Item | Value |
+|---|---|
+| `agnos` source | 1.30.11 + working-tree FB handoff diagnostic extension (uncommitted; 1.30.12 cut to follow if iron data warrants) |
+| `agnos` build | `build/agnos` — 417,544 B (was 416,496 B at 1.30.11 first cut; +1,048 B for accessors + CMOS stamps) |
+| `gnoboot` | **0.3.0** (cut today — cyrius pin → 6.0.1 + GOP `Mode->Mode` / `Mode->MaxMode` capture into `boot_info+0x60`/`+0x64`, reserved-slot overlay so wire stays v2) |
+| Cyrius pin | gnoboot **6.0.1** (toolchain-drift-clean), agnos **5.11.64** (unchanged; back-compat symlink path holds) |
+| Multiboot2 entry | `0x1000a8` (preserved) |
+| Visual banner | `AGNOS kernel v1.30.11` / `AGNOS shell v1.30.11 (type 'help')` (unchanged; no agnos VERSION bump) |
+
+**Behavioral diffs (zero)**
+
+This bundle is **observation-only**. The kernel's FB render path, WC remap, pf-guard, paint loops — none changed. The only differences vs Attempt 71's bundle are:
+
+1. **gnoboot captures GOP `Mode->Mode` + `Mode->MaxMode`** pre-EBS into `boot_info+0x60` / `+0x64` (was an opaque reserved u64 in v2). Struct wire version stays 2; readers that don't know about the overlay see zeros and behave unchanged.
+2. **Kernel adds two getters + extended `fb_console_init` serial diagnostic line.** New line on serial: `fb: mode=N/M phys=0x... pf=X w=W h=H pitch=P` (one line, includes everything the firmware handed us about the FB).
+3. **CMOS extended-bank stamp at fb_console_init.** 16 bytes at slots `0x90..0x9F`: w / h / pitch / pf / mode_current / mode_max / 0xFB sentinel. Readable post-mortem via the extended `read-boot-log.sh` decoder. **This is the iron observability channel** since archaemenid has no serial cable.
+4. **`read-boot-log` decoder extended** to print the new FB-geometry block in its default-summary output.
+
+No paint code changes. No WC-remap changes. No new guards. Pure stamp-what-firmware-tells-us.
+
+**Pre-burn verification gates — RESULTS**
+
+| Gate | Status |
+|---|---|
+| Cyrius rebuild after 6.0.1 patch (UEFI-emit fncallN regression fixed) | ✅ gnoboot clean, zero `ud2` sentinels in `.text` (was 32 under 6.0.0) |
+| gnoboot 0.3.0 binary | ✅ 33,792 B (was 32,768 B at 0.2.0; +1,024 B for new capture + banner string) |
+| agnos rebuild with new accessors + CMOS write | ✅ OK, 417,544 B |
+| `read-boot-log` rebuild with new decoder | ✅ OK (one `vec_get` warning is pre-existing, unrelated) |
+| QEMU Path-C headless smoke (`qemu-fb-smoke.sh EXPECT="fb: mode="`) | ✅ PASS — diagnostic line lands |
+| Multiboot2 ELF64 entry preserved | ✅ `0x1000a8` |
+| `build/agnos` freshness (per `feedback_build_freshness_is_mine`) | ✅ Rebuilt 2026-05-19 post-edits |
+
+**QEMU baseline observed (q35, OVMF, `QEMU_RES=1920x1080`)**
+
+```
+fb: mode=0/30 phys=0x80000000 pf=1 w=1920 h=1080 pitch=7680
+fb: WC verified (PAT entry 1)
+AGNOS kernel v1.30.11
+```
+
+Self-consistent under QEMU q35: pitch == width × 4 exactly (no padding), pf=1 BGRX (matches the kernel's monochrome paint assumption), phys above 1 GB (exercises the multi-chunk WC remap that 1.30.11 just fixed), mode 0 of 30 (OVMF enumerates a full mode table). This is the **shape of a no-divergence boot**.
+
+**Burn protocol**
+
+1. `cd ~/Repos/agnosticos && sudo ./scripts/install-usb.sh --update /dev/sdX`
+2. Reboot archaemenid; BIOS → **VGA-spec mode + QuickBoot ON** (Attempt 71's known-working path).
+3. F-key boot menu → USB. Observe boot reaches shell. **Power off cleanly** (don't trigger reset — preserve CMOS).
+4. **Boot Linux on the same archaemenid; `sudo ./scripts/read-boot-log.sh`**. Capture stdout: this is the **VGA-spec baseline geometry**.
+5. Reboot archaemenid; BIOS → **Quiet Boot ON** (the failing path). F-key → USB. Observe FB outcome (expected: Attempt-33 signature recurs).
+6. Power off cleanly. Boot Linux. `sudo ./scripts/read-boot-log.sh` again — **quiet-boot failing geometry**.
+7. Diff the two captures.
+
+**Diff interpretation table**
+
+| Diff signature | Diagnosis |
+|---|---|
+| Same `mode#` + same `w/h/pitch/pf` across both paths | Firmware exposes identical GOP under both BIOS settings — bug is downstream of the handoff (paint code, WC interaction, something kernel-internal). |
+| Different `mode#`, same `w/h` | Firmware picks different mode # but same dimensions; semantic-only difference. Unlikely to cause garble; worth ruling out. |
+| Different `w/h/pitch` with `pitch ≠ width × 4` under quiet boot | **Pitch-padding hypothesis confirmed**. The classic diagonal-shear signature. Renderer is already pitch-aware (`fb_console.cyr` lines 134-138 / 366-368 / 440) — points to a deeper interaction (WC range, glyph stride, canary residue). |
+| Different `fb_phys` between paths | **BAR placement divergence**. WC remap targets right address for working mode, possibly wrong for failing one. Verify against `vmm_get_pde_2mb()` readback in a follow-up. |
+| `pf=2` or `pf=3` in failing path | PixelBitMask / BltOnly under quiet — pf-guard would have refused the paint and produced black screen. Already ruled out by Attempt 71 (garbled ≠ black), but the geometry log confirms. |
+| All four slots zero, sentinel `[0x9F] != 0xFB` | Kernel didn't reach `fb_console_init` — failure is earlier in boot than the diagnostic-stamp site. Triage from CMOS kernel-checkpoint slot `0x50` (existing channel). |
+
+**Photos for the catalog (post-burn)**
+
+Anchored under "Post-MVP era (Attempts 69+)":
+- `attempt-72-vga-spec-baseline.jpg` — VGA-spec working boot (same shape as `13011_QuickBoot_Vga.jpg` but anchored to Attempt 72's bundle)
+- `attempt-72-quiet-boot-fail.jpg` — Attempt-33-signature reproduction under 1.30.11 + 0.3.0 bundle
+- (optional) `attempt-72-read-boot-log-diff.txt` — text capture of the two `read-boot-log.sh` outputs side-by-side; the actual diagnostic record
 
 ---
 

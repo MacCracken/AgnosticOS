@@ -312,6 +312,27 @@ fn main(): i64 {
     var xh_ccsent  = cmos_read(134);  # 0x86 — Repair (CC) extended-CMOS bank sentinel (0xCC = 0x72/0x73 pair live)
     var xh_ddsent  = cmos_read(135);  # 0x87 — Repair (DD) event-ring drain sentinel (0xDD = site executed)
 
+    # FB geometry post-mortem (extended-bank 0x90-0x9F, written by
+    # agnos/kernel/arch/x86_64/fb_console.cyr::fb_console_init). On iron
+    # (single-machine archaemenid, no serial cable) this is the only way
+    # to recover the GOP mode + geometry that gnoboot captured. Primary
+    # diagnostic for the quiet-boot ON vs VGA-spec ON garbled-glyph
+    # divergence — different mode numbers under each setting prove the
+    # firmware is exposing different GOP geometry.
+    var fbg_w_b0 = cmos_read(0x90);  var fbg_w_b1 = cmos_read(0x91);
+    var fbg_w_b2 = cmos_read(0x92);  var fbg_w_b3 = cmos_read(0x93);
+    var fbg_h_b0 = cmos_read(0x94);  var fbg_h_b1 = cmos_read(0x95);
+    var fbg_h_b2 = cmos_read(0x96);  var fbg_h_b3 = cmos_read(0x97);
+    var fbg_p_b0 = cmos_read(0x98);  var fbg_p_b1 = cmos_read(0x99);
+    var fbg_p_b2 = cmos_read(0x9A);  var fbg_p_b3 = cmos_read(0x9B);
+    var fbg_pf      = cmos_read(0x9C);
+    var fbg_mode    = cmos_read(0x9D);
+    var fbg_modemax = cmos_read(0x9E);
+    var fbg_magic   = cmos_read(0x9F);  # expect 0xFB if fb_console_init ran
+    var fbg_w     = fbg_w_b0 | (fbg_w_b1 << 8) | (fbg_w_b2 << 16) | (fbg_w_b3 << 24);
+    var fbg_h     = fbg_h_b0 | (fbg_h_b1 << 8) | (fbg_h_b2 << 16) | (fbg_h_b3 << 24);
+    var fbg_pitch = fbg_p_b0 | (fbg_p_b1 << 8) | (fbg_p_b2 << 16) | (fbg_p_b3 << 24);
+
     # --- Default: focused current-sweep summary ----------------------------
     # Strips the verbose chapters / interpretation prose / verdict layers
     # from the output and prints only the slots relevant to the active
@@ -368,6 +389,19 @@ fn main(): i64 {
         print_str("  "); print_check(xh_ccsent, 0xCC); print_str("\n");
         print_str("  DD event-drain + PCD   [0x87]  = "); print_hexb(xh_ddsent);
         print_str("  "); print_check(xh_ddsent, 0xDD); print_str("\n");
+        println("");
+        println("FB geometry (gnoboot GOP capture, written by fb_console_init):");
+        print_str("  sentinel [0x9F]        = "); print_hexb(fbg_magic);
+        print_str("  "); print_check(fbg_magic, 0xFB); print_str("   (0xFB = fb_console_init ran)\n");
+        print_str("  GOP mode#  [0x9D/0x9E] = "); print_hexb(fbg_mode);
+        print_str(" / "); print_hexb(fbg_modemax);
+        println("           (current / max — different across quiet-boot vs VGA-spec = divergent firmware modes)");
+        print_str("  PixelFormat [0x9C]     = "); print_hexb(fbg_pf);
+        println("                          (0=RGBX 1=BGRX 2=BitMask 3=BltOnly)");
+        print_str("  width  [0x90..0x93]    = "); print_num(fbg_w);  println("");
+        print_str("  height [0x94..0x97]    = "); print_num(fbg_h);  println("");
+        print_str("  pitch  [0x98..0x9B]    = "); print_num(fbg_pitch);
+        println(" bytes/scanline");
         println("");
         println("Sweep symptom: events_seen=0 after Enable Slot doorbell.");
         println("Audit doc:     docs/development/xhci-prior-art-audit.md");
