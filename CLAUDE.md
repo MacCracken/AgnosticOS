@@ -53,7 +53,7 @@ The role map below is for orientation. **Versions are intentionally omitted** â€
 | **ai-hwaccel** | GPU detection | **Ported** |
 | **hadara** | Culture modeling | **Native** |
 | **shravan** | Audio codecs | **Ported** |
-| **mabda** | GPU foundation (3.0.0-rc.2 soaking pre-GA stdlib fold) | **Ported** |
+| **mabda** | GPU foundation library | **Ported** |
 | **daimon** | Agent orchestrator, MCP tools | **Ported** |
 | **agnoshi** | AI shell | **Ported** |
 | **aethersafha** | Wayland compositor | Pending |
@@ -83,6 +83,9 @@ The role map below is for orientation. **Versions are intentionally omitted** â€
 | **mihi** | System-info probe library (CPU / RAM / GPU / kernel / uptime / distro / hostname) â€” substrate for iam, chakshu | **Native** |
 | **iam** | fastfetch-equivalent system-info display (consumes mihi; inverse of `whoami`) | **Native** |
 | **chakshu** | AI-augmented system monitor (`shu` binary; htop/btop-equivalent with LLM explanation hooks) | **Native** |
+| **darshana** | TTY/color primitives library (termios + ANSI + cursor positioning) â€” substrate for cyim, chakshu, bannermanor | **Native** |
+| **bannermanor** | figlet-equivalent ASCII-art banner generator (binary `bnrmr`; English-wordplay naming lane) | **Native** |
+| **hapi** | GNU `stow`-equivalent dotfile / symlink farm manager (CYML manifest per package, capability-bounded execution) | **Native** |
 
 > **Live versions, sizes, test counts, and per-repo cycle state**: see [`docs/development/state.md`](docs/development/state.md) and [`docs/development/planning/shared-crates.md`](docs/development/planning/shared-crates.md). This table is intentionally version-free â€” embedded counts drift, and pointer-to-registry is the cleaner pattern.
 

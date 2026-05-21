@@ -5,6 +5,25 @@ All notable changes to AGNOS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed — 1.31.x storage cycle + dual iron debut (Attempts 80 + 81)
+
+- **`docs/development/iron-nuc-zen-log.md` — Attempt 81 added.** AHCI/SATA iron debut on archaemenid: WD Blue SA510 2.5" 2 TB SATA SSD enumerated, IDENTIFY decoded (model `WD Blue SA510 2.5 2TB`, serial `24313QD00663`, firmware `5304 00WD`, LBA48=3907029168 sectors), LBA-5 write-then-read round-trip PASSED on real silicon (first AGNOS-issued disk write to land on physical platter). PASS-WITH-CAVEAT: post-RW IDENTIFY in `ahci_register_block_dev` timed out (`PxCI stuck`), AHCI silently bailed → did NOT register as secondary block_dev. Boot continued cleanly through GPT (NVMe-primary, hdr-CRC-OK arr-CRC-OK, 2 partitions parsed) → VFS → `AGNOS shell v1.31.1`. Per-hypothesis ranking captured for the 1.31.2 IDENTIFY-fix bite; ATA-string trailing-space drag noted as cosmetic carry-forward; §4 `AHCI_RW_DEMO` mitigation deferred-then-acceptable framing recorded.
+- **`docs/development/state.md` refreshed for 1.31.1 cut.** Header re-anchored to 2026-05-20 PM. AHCI iron debut footnote folded into the 1.31.x cycle block. Storage-target table updated: GPT parser + AHCI/SATA driver moved to ✅ DONE; new **AHCI iron carry-forward** sub-table (post-RW IDENTIFY hang / ATA-string trim / `AHCI_RW_DEMO` compile gate) captures the items rolling into 1.31.2. "Next storage targets after NVMe iron debut" heading retitled to "after NVMe + AHCI iron debuts"; hardware-catalog correction (sda is **2 TB**, not 1.8 TB) noted.
+- **`docs/development/iron-nuc-zen-photos/attempt-81-ahci-iron-debut-wd-blue-sa510.jpg`** added (790 KB framebuffer photo). Captures the Attempt 81 boot log top-to-bottom: NVMe + AHCI side-by-side enumeration, IDENTIFY decode, LBA-5 round-trip PASS, post-RW IDENTIFY timeout line, GPT parsing the NVMe (arr-CRC-OK), VFS through to `agnos>` shell prompt at v1.31.1.
+- **`docs/development/iron-nuc-zen-photos/README.md` catalog refreshed.** Post-MVP era table now includes both Attempt 80 (NVMe iron debut on Crucial P3) and Attempt 81 (AHCI iron debut on WD Blue SA510). Naming convention `attempt-NN-<short-handle>.jpg` continues unchanged.
+- **`docs/development/ahci-iron-burn-audit.md`** (added earlier in the session) — pre-burn audit covering Phase 1-4 risk surface, identifying the LBA-5 sentinel write in `ahci_rw_demo` as the only iron-write hazard, proposing the `AHCI_RW_DEMO` compile-gate mitigation. The audit's §7 partial-success-rubric matched the Attempt 81 outcome exactly.
+
+### Changed — agnos 1.31.1 framing in state.md
+
+- **agnos 1.31.1 cycle status: CUT 2026-05-20** (was "code-complete, pending rename + tag"). All planned engineering (GPT Phase 1-3 + AHCI/SATA Phase 1-4) plus both iron debuts (NVMe + AHCI) closed in a single session. Build trajectory captured (441,056 B → 475,096 B; total cycle delta +34,040 B / +7.7%). 1.31.2 opens with **USB Mass Storage** as primary scope + AHCI iron carry-forward as secondary.
+
+### Notes
+
+- Per `feedback_no_unprompted_version_bumps`: agnosticos VERSION (2026.5.13) NOT bumped — the storage cycle is an agnos kernel event, not an agnosticos scripts/docs cut. This `[Unreleased]` entry captures the genesis-repo ecosystem-context summary; per-cycle agnos receipts live in `/home/macro/Repos/agnos/CHANGELOG.md` § `[1.31.1]`.
+- Per `feedback_bootloader_kernel_ownership`: Claude owns the agnos kernel and gnoboot bootloader end-to-end during iron-boot bring-up — agnos CHANGELOG edits + agnos kernel work are within scope. Git ops (merge / tag / push) remain user-driven per CLAUDE.md.
+
 ## [2026.5.13] - 2026-05-13
 
 ### Iron-boot Attempts 2 + 3 + repairs

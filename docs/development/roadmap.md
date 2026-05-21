@@ -343,22 +343,23 @@ User-directed scope pivot 2026-05-20: 1.31.x is the **storage devices** cycle. N
 - QEMU end-to-end validated with byte-exact disk persistence (`CYRIUS!!` pattern round-trips through MMIO + DMA + I/O CQ)
 - MSI-X true-IRQ-driven completion **deferred** — xhci precedent (enable in PCI config, poll on timer ticks) covers correctness; real vector dispatch is a cross-driver framework slot, not an NVMe-only blocker
 
-**1.31.x — additional storage device backends (queued, this cycle's scope)**
+**1.31.x — storage device backends (status after 1.31.1 cut)**
 
-Each backend gets its own patch cycle. Block-layer dispatch abstraction landed in Phase 5 means each new backend just registers itself via `blk_register_*(capacity, lba_bytes)` and implements the three wrapper functions (`*_blk_read` / `*_blk_write` / `*_blk_read_sectors`). The branch-arm-count discipline from CLAUDE.md applies — reach for fn-ptr dispatch only when the branches start to repeat meaningfully.
+Each backend gets its own patch cycle. Block-layer dispatch abstraction landed in NVMe Phase 5 means each new backend just registers itself via `blk_register_*(capacity, lba_bytes)` and implements the three wrapper functions (`*_blk_read` / `*_blk_write` / `*_blk_read_sectors`). The branch-arm-count discipline from CLAUDE.md applies — reach for fn-ptr dispatch only when the branches start to repeat meaningfully.
 
-| Patch slot | Backend | Why | Scope estimate |
+| Patch slot | Backend | Status | Scope estimate |
 |---|---|---|---|
-| ?.? | **AHCI / SATA** | Older + cheap hardware (pre-NVMe NUCs, used laptops, low-end desktops). The legacy fallback for non-NVMe x86 storage. Spec is older but well-documented; many reference implementations. | ~1.5k LOC. PCI class 0x01/0x06/0x01. Ports + command list + FIS frames. |
-| ?.? | **USB Mass Storage (BBB transport)** | Boot from USB sticks WITHOUT going through gnoboot's loader path — kernel-level USB Mass Storage means AGNOS can mount USB storage as a regular block device post-boot. Consumes the existing xhci stack. | ~1k LOC over xhci. Bulk-only transport, SCSI INQUIRY / READ-10 / WRITE-10. |
-| ?.? | **VirtIO-blk modern (1.x)** | Existing `virtio_blk.cyr` is legacy (transitional 0.9.5 interface, port I/O). Modern hosts (libvirt 7+, recent QEMU machine types) push VirtIO 1.x with MMIO + feature negotiation. Upgrade keeps QEMU as a first-class dev target. | ~600 LOC delta vs existing virtio_blk. |
-| ?.? | **GPT / MBR partition-table parser** | Independent of any single backend — once block_dev is live, a partition layer above it lets fatfs / VFS pick the right partition rather than always reading from LBA 0. Iron NVMe disks have GPT headers; QEMU disks can carry either. | ~400 LOC. Pure parsing — no DMA, no doorbells. Lives in a new `kernel/core/partition.cyr`. |
-| ?.? | **Optical (ATAPI / SCSI MMC)** | Lowest priority but completes the catalog. CD/DVD/BD as block devices, sector size = 2048 (not 512). Useful for distribution media long-term (ISO Stage-4 cut would land here). | ~800 LOC over AHCI (ATAPI is AHCI's SCSI passthrough). Defer to 1.32.x+ unless a use case forces it. |
-| ?.? | **RAM-disk backend** | Pure-RAM block device (`/dev/ram0`-equivalent). Useful for tests + initrd-style workflows. Slots in trivially over `pmm_alloc` + a tag-checked dispatch. | ~150 LOC. Mostly bookkeeping. |
+| **1.31.0** | NVMe Phase 1-5 + block-layer dispatch | ✅ shipped 2026-05-20 (iron debut Attempt 80 — Crucial P3 2 TB) | ~940 LOC |
+| **1.31.1** | **AHCI / SATA** | ✅ shipped 2026-05-20 (iron debut Attempt 81 — WD Blue SA510 2 TB; PASS-WITH-CAVEAT, three carry-forward patches landed in 1.31.2 `[Unreleased]`) | ~1,100 LOC |
+| **1.31.1** | **GPT / MBR partition-table parser** | ✅ shipped 2026-05-20 (GPT Phase 1-3: header probe + UTF-16LE names + table-less CRC32 + backup-header recovery + 7-GUID type classifier + `parts` shell cmd) | ~870 LOC |
+| **1.31.2** | **USB Mass Storage (BBB + SCSI READ(10)/WRITE(10))** | planned (current cycle) | ~600-800 LOC over xhci. Bulk-only transport, SCSI INQUIRY / READ-10 / WRITE-10. Iron target: any USB flash/HDD on archaemenid. |
+| **1.31.2** | **Optical via USB MS (SCSI MMC profile)** — promoted from previously-punted "1.32.x+ ATAPI/AHCI" slot | planned (current cycle, bundles with USB MS) | ~200 LOC additional over USB MS. SCSI INQUIRY peripheral-device-type=0x05 + 2048-B sector handling through `lba_bytes` + MMC opcodes (TEST UNIT READY, READ CAPACITY(10)). **First non-512-B-sector device on AGNOS.** Iron target: HP external USB Blu-ray on archaemenid (Pitch Black BD-25 loaded). |
+| **1.31.3** | **RAM-disk backend** | planned | ~150 LOC. Mostly bookkeeping over `pmm_alloc` + tag-dispatch. |
+| **1.31.3** | **VirtIO-blk modern (1.x)** | planned | ~600 LOC delta vs existing transitional 0.9.5 `virtio_blk.cyr`. MMIO + feature negotiation. Keeps QEMU as a first-class dev target on modern machine types. |
+| **1.31.4** | **ext2 read-only** | planned (displaced from 1.31.3) | ~1000+ LOC. Filesystem class, not device class — FAT16 read-only at v1.11.0 is the floor; ext2 buys real Linux disk semantics (inodes, indirect blocks). |
+| punted | ~~Optical (ATAPI / AHCI passthrough)~~ | superseded — USB MS path covers optical iron use cases (HP external BD) at much lower cost | ~~~800 LOC over AHCI~~ — supplanted by ~200 LOC USB MS extension |
 
-**Sequencing recommendation**: NVMe (done) → AHCI/SATA → USB Mass Storage → GPT parser → VirtIO-blk modern → RAM disk → Optical. AHCI second because it unlocks pre-NVMe iron (laptops, older NUCs). USB Mass Storage third because it consumes the existing xhci substrate and makes USB-stick workflows real. GPT parser is a force multiplier — every prior backend gains partition-awareness once it lands.
-
-**Iron burn slot**: first burn proposal lands when NVMe Phase 5 cuts as 1.31.1 — install on archaemenid, verify the kernel sees the real NVMe SSD's IDENTIFY + LBA 0 GPT header. Per `feedback_iron_burns_block_other_work` that needs a written line-by-line audit before scheduling.
+**Iron-validation coverage after 1.31.1**: NVMe (Crucial P3, Attempt 80 PASS) + SATA (WD Blue SA510, Attempt 81 PASS-WITH-CAVEAT). After 1.31.2: + USB MS (USB flash/HDD) + USB optical (HP BD with Pitch Black). After 1.31.3: + RAM-disk (no iron) + VirtIO-blk modern (QEMU only — VirtIO doesn't exist on bare metal). All five iron-validatable backends complete a coherent ecosystem story; ext2 in 1.31.4 turns the block stack into a real filesystem.
 
 ### 1.32.x — Networking on iron (queued, displaced from 1.31.x)
 

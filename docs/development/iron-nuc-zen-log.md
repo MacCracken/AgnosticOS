@@ -1450,6 +1450,125 @@ AGNOS shell v1.31.0 (type 'help')
 
 ---
 
+### Attempt 81 — AHCI/SATA iron debut 2026-05-20 → PASS-WITH-CAVEAT (WD Blue SA510 2 TB enumerated + LBA-5 round-trip PASS; post-write IDENTIFY timeout → registration bailed; boot walked to shell)
+
+Second iron debut of the 1.31.x storage arc, same session as Attempt 80. AHCI/SATA Phases 1-4 + GPT Phase 3 had closed in QEMU q35 same-session (~1,100 LOC `kernel/core/ahci.cyr` + GPT CRC32 hardening). Install on archaemenid, exercise the real WD Blue SA510 2.5" 2 TB attached as the SATA surface — full driver lit up first-iron-try, LBA-5 sentinel write+read round-trip passed on real silicon, but a follow-up IDENTIFY in the registration path timed out (`PxCI stuck`), so `ahci_register_block_dev` returned early and AHCI is NOT currently registered as a secondary block_dev on iron. Boot continued cleanly through to `AGNOS shell v1.31.1` on the NVMe-primary path.
+
+**Build under test:**
+
+| Component | Version | Notes |
+|---|---|---|
+| `agnos` | **1.31.1 `[Unreleased]` HEAD** (~475,096 B) | AHCI Phase 1-4 + GPT Phase 3 live; **§4 `AHCI_RW_DEMO` mitigation NOT applied** — full `ahci_rw_demo` shipped uncondensed. |
+| `gnoboot` | 0.4.2 (unchanged from Attempts 78/80) | sovereign UEFI handoff, banner only. |
+| `cyrius` | 6.0.1 toolchain; kernel pin 5.11.x bedrock | AHCI arc compiled clean, no new compiler bug surfaced. |
+
+**§4 mitigation deferred — what landed on iron, and what's at stake:**
+
+Per [`ahci-iron-burn-audit.md`](ahci-iron-burn-audit.md) §4, the planned mitigation was a `AHCI_RW_DEMO` compile gate around the LBA-5 sentinel write. This burn shipped without the gate — the write demo ran on the WD Blue. The 8-byte `"AHCI-OK!"` payload (rest zero-filled) wrote to LBA 5 of the WD Blue. Per §3 of the audit, LBA 5 sits inside the GPT partition-entry array at entries 12-15 (if the drive uses standard `partition_entries_lba=2`). The WD Blue's actual layout is not enumerated by this burn — GPT ran on NVMe per the dispatch policy (`blk_active=BLK_NVME`), not on AHCI. If the WD has ≤12 partitions, entries 12-15 were empty and the sentinel replaces zeros with garbage → partition-array CRC will now fail on any GPT consumer that probes this disk. Recoverable via `sgdisk --backup`/`--load-backup` from the disk's tail backup array (UEFI § 5.3.4 — untouched). **Partition DATA (LBA 34+) was not touched.** Audit's §3 disposition stands: the drive's partition table is the only surface at risk.
+
+**Iron evidence shape — confirms real silicon, not QEMU emulation:**
+
+| Field | Iron value | Reading |
+|---|---|---|
+| HBA address | `4240441344` = `0xFCDA0000` | Real-PCIe BAR5, distinct from q35 ich9-ahci's QEMU placement. |
+| Version | `1.769` = `0x10300 / 0x10301`-ish decode | AHCI 1.3 family — Linux's `libahci.c` reference territory. |
+| NP / NCS / ISS | `1 / 32 / 3` | One port, 32-deep command slot count, Gen3 (6 Gbps) interface speed. |
+| SAM / SSS / SNCQ / S64A | `1 / 0 / 1 / 1` | AHCI-only mode + native command queueing + 64-bit DMA addressing supported; no staggered spin-up. |
+| GHC / PI | `2147483648 / 1` | `GHC.AE=1` (AHCI enable), `PI=0b1` (port 0 only implemented). |
+| Port 0 DET / SPD / SIG | `3 / 3 / 257` (= `0x101`) | Device present + PHY ready, Gen3 link speed negotiated, SATA signature (not ATAPI/SEMB/PM). |
+| Model | `WD Blue SA510 2.5 2TB` | Real-vendor decode — matches the SSD physically installed in archaemenid's SATA bay. |
+| Serial | `24313QD00663` | Real per-unit ID. |
+| Firmware | `5304 00WD` | WD-issued SA510 firmware revision. |
+| LBA48 capacity | `3907029168` sectors → 1907729 MiB | ≈ 2 TB usable — matches the part's spec. |
+| LBA 0 first 8 bytes | `146 20 0 0 0 111 111 116` (`0x92 0x14 0x00 0x00 0x00 0x6F 0x6F 0x74`) | Real-disk content, not zeros — different surface than the NVMe debut. The trailing `0x6F 0x6F 0x74` is the ASCII for `oot` (likely tail of `boot` from a previous Linux install's boot sector / GRUB stage1). |
+
+**Boot output through to shell** (photo: `iron-nuc-zen-photos/attempt-81-ahci-iron-debut-wd-blue-sa510.jpg`):
+
+```
+nvme: VID=49321 SSVID=49321 NN=1 MDTS=6
+nvme: model='CT2000P3SSD8                            '
+nvme: serial='2342E880DED6        '
+nvme: firmware='P9CR30A '
+nvme: ns1 NSZE=3907029168 LBAS=512B size=1907729MB
+nvme: I/O queue 1 ready (64 entries SQ+CQ)
+nvme: ns1 LBA0 first 8 bytes: 0 0 0 0 0 0 0 0
+nvme: registered as block_dev (3907029168 LBAs x 512B)
+ahci: found at 4240441344, version=1.769
+ahci: NP=1 NCS=32 ISS=3 SAM=1 SSS=0 SNCQ=1 S64A=1
+ahci: GHC=2147483648 PI=1
+ahci: port 0 DET=3 SPD=3 SIG=257 (SATA)
+ahci: port 0 initialized (CL @ 5988352, FIS @ 5992448)
+ahci: port 0 model='WD Blue SA510 2.5 2TB                            ' serial='24313QD00663            ' fw='5304 00WD'
+ahci: port 0 LBA48=3907029168 sectors (1907729 MiB)
+ahci: port 0 LBA0 first 8 bytes: 146 20 0 0 0 111 111 116
+ahci: port 0 LBA5 write-then-read round-trip PASS
+ahci: port 0 IDENTIFY: timeout (PxCI stuck)
+gpt: present, first=34 last=3907029134 parts=2/128 hdr-CRC-OK arr-CRC-OK
+partitions (2 active / 128 reserved):
+  [0] EFI System    LBA 2048-2099199 (1024 MiB)
+  [1] (unknown type)  LBA 2099200-3907026943 (1906703 MiB)
+VFS initialized
+Heap: 6025184 6029184 6029312
+SYSCALL/SYSRET initialized
+Stack canary initialized
+Interrupts enabled
+Timer ticks before sched: 7
+Activating scheduler...
+Launching kybernet...
+kybernet: starting init
+kybernet: 0 processes
+kybernet: 3545 free pages
+kybernet: launching shell
+AGNOS shell v1.31.1 (type 'help')
+agnos>
+```
+
+**What this validates on iron beyond QEMU:**
+- BAR5 at real-PCIe address `0xFCDA0000` — AMD FCH AHCI controller's actual placement; AGNOS's UC-remap path handled it without fault.
+- AHCI 1.3 spec port spin-up sequence (ST=0 → wait CR=0 → FRE=0 → wait FR=0 → CLB/FB program → clear SERR → FRE=1 → wait FR=1 → SUD=1 → wait BSY=DRQ=0 → ST=1 → wait CR=1) completed successfully against real silicon with firmware-handoff state from gnoboot's UEFI exit.
+- First IDENTIFY DEVICE (0xEC) returned full 512-byte device metadata: model + serial + firmware decoded via ATA byte-swap on a non-QEMU drive.
+- READ DMA EXT (0x25) read LBA 0 (real content, not all-zeros — meaningful data on this drive).
+- WRITE DMA EXT (0x35) succeeded at LBA 5 with a real DMA payload landing on the platter — this is the first AGNOS-issued disk write to land on real silicon.
+- Re-read at LBA 5 returned byte-identical payload → bidirectional DMA I/O confirmed on iron.
+- Dispatch wrapper's "NVMe primary; AHCI secondary if present" policy exercised end-to-end: NVMe registered first (Attempt 80 replay), AHCI driver attempted secondary registration, deferred to NVMe per `blk_active==BLK_NVME` guard — modulo the IDENTIFY-timeout bail (below).
+
+**Open carry-forward — post-write IDENTIFY timeout:**
+
+After `ahci_rw_demo` returned, the kernel called `ahci_register_block_dev` which calls `ahci_identify_device(port)` a second time to refresh capacity. This second IDENTIFY hung in the PxCI-completion wait loop (`PxCI stuck`). The function returned 0 → `ahci_register_block_dev` returned 0 → AHCI was NOT registered as a secondary block_dev. Boot continued cleanly because GPT/VFS/shell consumers all use `blk_active=BLK_NVME` and don't depend on AHCI registration.
+
+Hypotheses (sequence by Linux/spec prior-art likelihood):
+1. **`PxIS` not cleared between commands.** The Phase 4 R/W path may leave interrupt-status bits set; AHCI 1.3 § 5.6.2 requires PxIS cleared (W1C) before issuing a new command on some controllers. First IDENTIFY worked because PxIS was virgin from spin-up; post-RW it's dirty.
+2. **`PxSACT` / `PxCI` collision.** If R/W left `PxCI` bit set in a way the controller still considers "in-flight" (NCQ slot tag mismatch?), issuing a new command without polling for full quiescence stalls.
+3. **WD-specific quirk.** WD SA510 firmware may need a brief `BSY=0,DRQ=0` re-check after a DMA-write completion before accepting the next command — Linux's `libata-eh` has analogous quirk paths.
+4. **Buffer or slot reuse hazard.** `ahci_identify_device` allocates a fresh 512-byte buffer at the same physical address each call (or reuses); if the previous R/W's DMA region was not properly invalidated, the new IDENTIFY's PRDT may overlap stale state.
+
+Per `feedback_redesign_dont_reinvent`: consult Linux `drivers/ata/libahci.c` § `ahci_qc_issue` + `ahci_handle_port_interrupt` before generating diagnostic letters. Per `feedback_known_knowledge_first`: open Linux's code on this bug surface, stack every behavioral diff into one burn — no letter ladder.
+
+**Out of scope for this burn (deferred):**
+- Driving AHCI as primary block_dev: would require either a non-NVMe iron or a build-flag override of the `BLK_NVME` precedence. Out of cycle scope; 1.31.1 keeps NVMe primary.
+- Multi-port AHCI: archaemenid's PI=1 means only one SATA port exists; multi-port AHCI not iron-validatable on this box.
+- `ahci_hba_reset()`: defined but not called by default — UEFI/gnoboot left a working PHY state. No iron-exercise this burn.
+
+**Cosmetic carry-forward — ATA-string trailing-space drag:**
+
+ATA IDENTIFY DEVICE's model (offset 27, 40 bytes), serial (offset 10, 20 bytes), and firmware (offset 23, 8 bytes) fields are **space-padded fixed-width** per ATA8-ACS § 7.16.7. AGNOS's `ahci_print_id_string` byte-swaps but doesn't right-trim, so the FB shows the full padded width with trailing spaces — visible as a long whitespace drag between the model string and the next field on the same line. Linux's `ata_id_c_string` (drivers/ata/libata-core.c) right-trims to the last non-space byte; AGNOS should match. Tiny cosmetic patch — slot for next AHCI touch.
+
+**Status against the audit's success rubric (`ahci-iron-burn-audit.md` § 7):**
+
+- **Full success rubric:** missed by one line — the post-write IDENTIFY timeout means the "no new diagnostic letters or hypotheses needed" gate isn't cleared.
+- **Partial — vendor-specific quirk:** matches. AMD FCH AHCI + WD SA510 firmware combination exposed a state-reset gap that the q35 ich9-ahci QEMU model didn't have.
+- **Failure rubric:** not triggered — no hang, no triple-fault, kernel walked to shell.
+
+The PHY handshake, controller bring-up, IDENTIFY decoding, and full bidirectional DMA I/O ALL worked first-iron-try — a structural win echoing Attempt 80's "ported from Linux, lit up clean on first burn" pattern. The follow-up surface (post-RW IDENTIFY hang + secondary-registration bail + ATA-string trailing-space drag) is real but bounded — registration is the only behavioral consequence, and boot continues cleanly without it on a multi-disk iron.
+
+**Sources:**
+- Photo `iron-nuc-zen-photos/attempt-81-ahci-iron-debut-wd-blue-sa510.jpg`.
+- `ahci-iron-burn-audit.md` (the pre-burn audit; §4 mitigation deferred for this burn).
+- agnos CHANGELOG `[Unreleased]` § AHCI/SATA Phase 1-4 + § GPT Phase 3.
+- agnos `kernel/core/ahci.cyr` (~1,100 LOC; `ahci_register_block_dev` at line 1080).
+
+---
+
 ## Conventions for future entries
 
 - One H3 (`### Attempt N — date HH:MM TZ → STATUS`) per attempt.
