@@ -327,23 +327,50 @@ Native XHCI + USB-HID-boot driver in `agnos/kernel/arch/x86_64/usb/`. Modern UEF
 
 **Iron-burn cadence**: per `feedback_iron_burns_block_other_work`, burns are bundled with other "ready-to-ship" work to amortize single-machine disruption. **Next burn (Attempt 54) is externally gated on kriya 0.3.0 (M2 file operations) ship** — see [`iron-nuc-zen-log-mvp.md`](iron-nuc-zen-log-mvp.md) § Attempt 54 prep for the pre-bound outcome matrix and protocol.
 
-### 1.31.x — Networking on iron (queued, post-keyboard)
+### 1.31.x — Storage device backends (active, NVMe arc closed 2026-05-20)
 
-Once keyboard works, networking is the next "shell becomes useful" surface. Existing infrastructure:
+User-directed scope pivot 2026-05-20: 1.31.x is the **storage devices** cycle. Networking moved out to 1.32.x (next cycle). NVMe was the first and most-needed backend (archaemenid has NVMe; every modern x86 host has NVMe); landing it first unblocks every real-iron storage path that doesn't require a USB stick.
+
+**1.31.0** — cycle-open cut (2026-05-20). Lean-by-default build via `KTEST` + `XHCI_VERBOSE` compile gates, FB-absent guard, stale Attempt-N prose cleanup, new `agnos/docs/development/build.md`. No storage engineering — just the production-default-lean posture that makes subsequent storage cuts easier to validate. **Test 1.31.0 as the base; fixes for it go in 1.31.x patches.**
+
+**1.31.1 (queued — NVMe arc)** — five phases sitting in `[Unreleased]` 2026-05-20, ready to cut as a single tagged release:
+- Phase 1: PCI class probe + BAR0 UC-remap + CAP/VS decode + controller disable
+- Phase 2: admin queue + IDENTIFY CONTROLLER + IDENTIFY NAMESPACE
+- Phase 3: Create I/O CQ + Create I/O SQ + blocking Read
+- Phase 4: Write + multi-LBA + PRP1 / PRP2 / PRP-list dispatch
+- Phase 5: `kernel/core/block.cyr` tag-dispatch abstraction (virtio-blk + nvme behind one `blk_*` API; NVMe overrides virtio when both present)
+- ~940 LOC across `kernel/core/nvme.cyr` + new `kernel/core/block.cyr`
+- QEMU end-to-end validated with byte-exact disk persistence (`CYRIUS!!` pattern round-trips through MMIO + DMA + I/O CQ)
+- MSI-X true-IRQ-driven completion **deferred** — xhci precedent (enable in PCI config, poll on timer ticks) covers correctness; real vector dispatch is a cross-driver framework slot, not an NVMe-only blocker
+
+**1.31.x — additional storage device backends (queued, this cycle's scope)**
+
+Each backend gets its own patch cycle. Block-layer dispatch abstraction landed in Phase 5 means each new backend just registers itself via `blk_register_*(capacity, lba_bytes)` and implements the three wrapper functions (`*_blk_read` / `*_blk_write` / `*_blk_read_sectors`). The branch-arm-count discipline from CLAUDE.md applies — reach for fn-ptr dispatch only when the branches start to repeat meaningfully.
+
+| Patch slot | Backend | Why | Scope estimate |
+|---|---|---|---|
+| ?.? | **AHCI / SATA** | Older + cheap hardware (pre-NVMe NUCs, used laptops, low-end desktops). The legacy fallback for non-NVMe x86 storage. Spec is older but well-documented; many reference implementations. | ~1.5k LOC. PCI class 0x01/0x06/0x01. Ports + command list + FIS frames. |
+| ?.? | **USB Mass Storage (BBB transport)** | Boot from USB sticks WITHOUT going through gnoboot's loader path — kernel-level USB Mass Storage means AGNOS can mount USB storage as a regular block device post-boot. Consumes the existing xhci stack. | ~1k LOC over xhci. Bulk-only transport, SCSI INQUIRY / READ-10 / WRITE-10. |
+| ?.? | **VirtIO-blk modern (1.x)** | Existing `virtio_blk.cyr` is legacy (transitional 0.9.5 interface, port I/O). Modern hosts (libvirt 7+, recent QEMU machine types) push VirtIO 1.x with MMIO + feature negotiation. Upgrade keeps QEMU as a first-class dev target. | ~600 LOC delta vs existing virtio_blk. |
+| ?.? | **GPT / MBR partition-table parser** | Independent of any single backend — once block_dev is live, a partition layer above it lets fatfs / VFS pick the right partition rather than always reading from LBA 0. Iron NVMe disks have GPT headers; QEMU disks can carry either. | ~400 LOC. Pure parsing — no DMA, no doorbells. Lives in a new `kernel/core/partition.cyr`. |
+| ?.? | **Optical (ATAPI / SCSI MMC)** | Lowest priority but completes the catalog. CD/DVD/BD as block devices, sector size = 2048 (not 512). Useful for distribution media long-term (ISO Stage-4 cut would land here). | ~800 LOC over AHCI (ATAPI is AHCI's SCSI passthrough). Defer to 1.32.x+ unless a use case forces it. |
+| ?.? | **RAM-disk backend** | Pure-RAM block device (`/dev/ram0`-equivalent). Useful for tests + initrd-style workflows. Slots in trivially over `pmm_alloc` + a tag-checked dispatch. | ~150 LOC. Mostly bookkeeping. |
+
+**Sequencing recommendation**: NVMe (done) → AHCI/SATA → USB Mass Storage → GPT parser → VirtIO-blk modern → RAM disk → Optical. AHCI second because it unlocks pre-NVMe iron (laptops, older NUCs). USB Mass Storage third because it consumes the existing xhci substrate and makes USB-stick workflows real. GPT parser is a force multiplier — every prior backend gains partition-awareness once it lands.
+
+**Iron burn slot**: first burn proposal lands when NVMe Phase 5 cuts as 1.31.1 — install on archaemenid, verify the kernel sees the real NVMe SSD's IDENTIFY + LBA 0 GPT header. Per `feedback_iron_burns_block_other_work` that needs a written line-by-line audit before scheduling.
+
+### 1.32.x — Networking on iron (queued, displaced from 1.31.x)
+
+Originally planned as 1.31.x; storage took priority 2026-05-20 because the AMD archaemenid iron path needs real disk access before any user-facing FS work makes sense. Infrastructure stays:
 - `kernel/core/virtio_net.cyr` — VirtIO-net driver for QEMU; **does not work on iron** (real NICs are not VirtIO)
 - `kernel/core/net.cyr` — TCP/IP stack (works against virtio_net)
 
-Iron NIC support means a real bus + class driver pair similar to xHCI:
+Iron NIC support means a real bus + class driver pair similar to xHCI / NVMe:
 - **Bus**: PCIe scan (already there per pci.cyr), enumerate Realtek / Intel / Broadcom controllers
 - **Class**: per-vendor driver (Realtek r8169 is the most common; Intel e1000/e1000e/igc next)
 
-Recommendation: ship Realtek r8169 first (most common in NUC-class hardware). Scope estimate: 1.5–2.5k Cyrius LOC. Scoping doc due before 1.31.0 cuts.
-
-### 1.32.x — Mass storage on iron (queued, post-networking)
-
-Same shape — VirtIO-blk works in QEMU; real iron needs NVMe (most common) + AHCI/SATA (legacy). NVMe is the simpler protocol for new code; SATA is older but worth queuing for older hardware.
-
-Recommendation: NVMe first; SATA as time permits. Scope: ~2k Cyrius LOC for NVMe alone (ring-based MMIO + admin queue + I/O queue + SQ/CQ pair).
+Recommendation: ship Realtek r8169 first (most common in NUC-class hardware). Scope estimate: 1.5–2.5k Cyrius LOC. Scoping doc due before 1.32.0 cuts.
 
 ### 1.33.x — ISO Stage-4 cut + distribution (queued)
 
