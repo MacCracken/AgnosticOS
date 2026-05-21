@@ -1,12 +1,10 @@
 #!/bin/bash
 # install-usb.sh — Provision or refresh a USB drive as an AGNOS boot device
 #
-# Path C: gnoboot at EFI/BOOT/BOOTX64.EFI + agnos kernel at /boot/agnos.
+# gnoboot at EFI/BOOT/BOOTX64.EFI + agnos kernel at /boot/agnos.
 # UEFI firmware loads gnoboot from the removable-boot path; gnoboot loads
 # the kernel via SimpleFileSystemProtocol and hands off via the sovereign
 # boot-info struct (RDI = &boot_info, magic 0x41474E4F='AGNO'). No GRUB.
-# Pre-1.30.0 multiboot2-via-GRUB shape lives in git history; see Path A
-# notes in docs/development/path-a-elf64-multiboot2.md (closed).
 #
 # Two modes:
 #
@@ -176,7 +174,7 @@ done
 
 # --- confirmation ---
 
-echo "=== AGNOS USB Provisioning (Path C — gnoboot, no GRUB) ==="
+echo "=== AGNOS USB Provisioning (gnoboot, no GRUB) ==="
 echo ""
 echo "Target device: $DEV"
 echo ""
@@ -262,7 +260,7 @@ echo "  unallocated  rest of device  (reserved for future AGNOS data partition)"
 echo ""
 echo "Boot path:"
 echo "  UEFI firmware → EFI/BOOT/BOOTX64.EFI (gnoboot) → /boot/agnos (kernel)"
-echo "  Handoff: RDI = &boot_info (magic 0x41474E4F='AGNO'), see path-c-sovereign-uefi.md"
+echo "  Handoff: RDI = &boot_info (magic 0x41474E4F='AGNO'), see docs/development/ for sovereign UEFI design notes"
 echo ""
 echo "Next steps:"
 echo "  1. Reboot"
