@@ -182,36 +182,38 @@ CYML format — WARM CLUSTERS:
            aegis (5.10.34)
            — darshana graduated to v6.0.1 cluster 2026-05-20 (color primitives bump)
 
-CYML format — LIVE 5.10.44 BEDROCK (~15 repos, the boot path minus agnos):
-  v5.10.44: agnoshi (1.3.2),
-            agnostik (1.2.2), argonaut (1.7.0),
+CYML format — LIVE 5.10.44 BEDROCK (~14 repos, the boot path minus agnos + agnoshi):
+  v5.10.44: agnostik (1.2.2), argonaut (1.7.0),
             bote (2.7.2), daimon (1.2.3),
             kavach (3.2.1), kybernet (1.2.1),
             libro (2.6.3) — exited 5.4.x deep-lag,
             majra (2.4.4) — exited 5.4.x deep-lag,
             nein (1.5.1), phylax (1.1.1) — exited 5.7.48 held cluster,
             t-ron (2.1.4)
+            — agnoshi graduated to v6.0.1 cluster 2026-05-20 (1.3.2 → 1.3.3)
 
-CYML format — LEADING-EDGE 5.11.x cluster (MVP-gate-hit bedrock):
-  v5.11.64: agnos (1.31.0)
-            — pin re-anchored at the cyrius gvar-init-order fix
-              that unblocked Phase-3 xhci silent-absorb on iron;
-              held through the 1.30.x FB sweep + 1.31.x cycle-open
+CYML format — 5.11.x cluster (no leading-edge holdouts after agnos graduation):
   v5.11.59: agnosticos/scripts (2026.5.13)
             — boot pipeline; pin sweep deferred to next boot-side touch
+            — only 5.11.x leading-edge member remaining after agnos
+              graduated to 6.0.1 mid-1.31.x cycle
   v5.11.4:  agnosys (1.2.6), sigil (3.1.1), sankoch (2.2.5),
             sandhi (1.3.4), niyama (1.0.2), patra (1.9.4),
             sakshi (2.2.4), vani (0.9.3), yukti (2.2.3)
   v5.11.8:  ai-hwaccel (2.2.2)
 
 CYML format — LEADING-EDGE 6.0.x cluster (post-v5.11.x graduations):
-  v6.0.1:  mihi (1.0.0), iam (1.0.0), chakshu (0.6.0),
-           bannermanor (1.0.0), darshana (0.3.5), hapi (0.5.0)
-           — six repos on the v6.0.x lane after the 2026-05-20 terminal-
-             aesthetics burst: mihi + iam cut as NEW 1.0.0 repos straight
-             on v6.0.1; chakshu jumped 0.3.0 → 0.6.0 + 5.10.20 → 6.0.1.
-             bannermanor (`bnrmr` figlet-equivalent) + hapi (stow-equivalent)
-             cut at 0.5.0 straight on v6.0.1; darshana graduated from
+  v6.0.1:  agnos (1.31.2), agnoshi (1.3.3), mihi (1.0.0), iam (1.0.0),
+           chakshu (0.6.0), bannermanor (1.0.0), darshana (0.3.5),
+           hapi (0.5.0)
+           — eight repos on the v6.0.x lane. agnos graduated mid-1.31.x
+             cycle for binary fixes in cycc 6.0.1 (was 5.11.64, the
+             gvar-init-order anchor). The 2026-05-20 terminal-
+             aesthetics burst brought six: mihi + iam cut as NEW 1.0.0
+             repos straight on v6.0.1; chakshu jumped 0.3.0 → 0.6.0 +
+             5.10.20 → 6.0.1; bannermanor (`bnrmr` figlet-equivalent) +
+             hapi (stow-equivalent) cut at 0.5.0 straight on v6.0.1;
+             darshana graduated from
              v5.10.20 → v6.0.1 with the 0.3.0 → 0.3.5 color-primitives
              bump that bannermanor's banner colors needed.
 
@@ -224,11 +226,11 @@ NOT VERIFIED LOCALLY (remote-only, presumed pre-CYML or scaffolded):
   grapevine,chellys-beach-adventure,nba-jam}
 ```
 
-**Bands of attention (2026-05-20 — post-MVP-gate, post-v6.0.0 cycle-open, first v6.0.x graduations live):**
-- **6.0.1 leading-edge cluster** (2026-05-20, grew through the day): mihi (1.0.0), iam (1.0.0), chakshu (0.6.0), bannermanor (1.0.0), darshana (0.3.5), hapi (0.5.0). Six repos on the v6.0.x lane after the terminal-aesthetics burst — sys-info substrate (mihi/iam/chakshu) in the morning, banner + dotfile-manager + TTY-color-primitives (bannermanor / hapi / darshana) in the afternoon. These aren't post-bedrock-graduations; they're a parallel new lane on top of v6.0.x. The darshana 0.3.0 → 0.3.5 bump was demand-driven (bannermanor needed color escape sequences) — same shared-lib-evolves-to-second-consumer pattern as mihi's cyim → chakshu extraction.
-- **5.11.64 leading-edge cut**: agnos (1.31.0). MVP-gate-hit at 1.30.9 (Attempt 68) on this pin; held through the 1.30.x FB hardening sweep (1.30.10 → 1.30.12) and the 1.31.0 cycle-open. Consumers re-pinning to this cyrius snapshot get a working closed-beta MVP path + the production-default-lean build hygiene. agnosticos/scripts trails one cycle at 5.11.59 (boot pipeline; sweep deferred). Neither will move further during v6.0.x — back-compat symlinks keep both building against cyrius 6.0.0 install snapshots unchanged.
-- **5.11.x post-burst cluster** (~10 repos at .4/.8) — ahead of the bedrock but trailing the leading-edge pair.
-- **5.10.44 live bedrock** (~15 repos: kybernet, argonaut, agnoshi, kavach, daimon, bote, t-ron, libro, etc.) — still where the rest of the closed-beta MVP path runs. Graduates to v6.0.x on natural-next-touch.
+**Bands of attention (2026-05-20 PM — post-MVP-gate, post-v6.0.0 cycle-open, agnos + agnoshi graduated mid-1.31.x storage cycle):**
+- **6.0.1 leading-edge cluster** (2026-05-20, grew through the day, 8 repos): **agnos (1.31.2)** + **agnoshi (1.3.3)** + mihi (1.0.0), iam (1.0.0), chakshu (0.6.0), bannermanor (1.0.0), darshana (0.3.5), hapi (0.5.0). The morning brought sys-info substrate (mihi/iam/chakshu) and afternoon brought terminal-aesthetics (bannermanor / hapi / darshana). **The evening MVP-path graduation pair (agnos + agnoshi)** is the load-bearing change — agnos lifted off the 5.11.64 gvar-init-order anchor onto cycc 6.0.1 for binary fixes, agnoshi followed in the same cycle. The darshana 0.3.0 → 0.3.5 bump was demand-driven (bannermanor needed color escape sequences) — same shared-lib-evolves-to-second-consumer pattern as mihi's cyim → chakshu extraction.
+- **5.11.x cluster (no leading-edge holdouts)**: agnosticos/scripts (5.11.59, 2026.5.13 — boot pipeline; sweep deferred). agnos vacated 5.11.64 mid-1.31.x cycle. Back-compat symlinks (`cc5 → cycc`, `cyrc → cybs`) keep this cluster building unchanged through the v6.0.x window.
+- **5.11.x post-burst cluster** (~10 repos at .4/.8) — sandhi, niyama, patra, sakshi, vani, yukti, agnosys, sigil, sankoch, ai-hwaccel. Ahead of the bedrock but trailing the leading-edge.
+- **5.10.44 live bedrock** (~14 repos: kybernet, argonaut, kavach, daimon, bote, t-ron, libro, etc.) — agnoshi exited 2026-05-20, narrowing the MVP-path holdouts to **kybernet + argonaut** (these still pin 5.10.44 and still boot AGNOS on iron). Rest of the bedrock graduates to v6.0.x on natural-next-touch.
 - **Deep-lag tail** shrank but didn't vanish: ark (5.1.10) extreme, hisab/agnova/abaco/nous/bazaar/shakti in v5.7.x cluster, yantra (5.6.17). The 5.4.x cluster (libro, majra) FULLY EXITED at 5.10.44.
 - **Held cluster at 5.7.48** now **3 repos** (mabda, cyrius-doom, samvada) — phylax exited during v5.10.x. mabda is at 3.0.0-rc.2 (soak before GA fold to Cyrius stdlib); cyrius-doom is at 0.26.2 (gated on Cyrius optimization-arc closeout retroactive verification).
 - **Pre-CYML format tail**: only `hoosh` and `shravan` remain in the local-verified set. The previous 11-repo tail collapsed in the v5.10–v5.11 window.
@@ -238,6 +240,8 @@ NOT VERIFIED LOCALLY (remote-only, presumed pre-CYML or scaffolded):
 | Repo | Version | Pin | Notes |
 |------|---------|-----|-------|
 | **aegis** | **1.0.0** | 5.10.34 | **Hit v1.0** (was 0.8.2 in last refresh). Real system-security daemon now shipping. Skipped 0.9.x — straight implementation closeout to 1.0.0. |
+| **agnos** | **1.31.2** | **6.0.1** | **Kernel graduated mid-1.31.x cycle.** Was 1.31.0 / pin 5.11.64 in last refresh; bumped through the AHCI iron debut (1.31.1) and the AHCI carry-forward + version-open (1.31.2 `[Unreleased]`), then **pin lifted off the gvar-init-order anchor (5.11.64) onto cycc 6.0.1 for binary fixes**. Closes the toolchain-drift warning (`cyrius.cyml pins 5.11.64 but cycc is 6.0.1`) that was firing throughout the 1.31.x session. Rebuild verifies post-bump before any iron burn (per `feedback_build_freshness_is_mine`). |
+| **agnoshi** | **1.3.3** | **6.0.1** | AI shell + closed-beta MVP boot-path console. Was 1.3.2 / pin 5.10.44 (live-bedrock cluster) in last refresh; graduated straight to 6.0.1, skipping the 5.11.x leading-edge tier. After this bump + agnos's 6.0.1 graduation, the MVP-path 5.10.44 holdouts narrow to **kybernet + argonaut** — the two repos still on 5.10.44 that need to graduate before the entire closed-beta MVP path runs on v6.0.x. |
 | **chakshu** | **0.6.0** | **6.0.1** | AI-augmented system monitor (`shu` binary). Was 0.3.0 / pin 5.10.20 in last refresh — jumped three patch versions (0.3.0 → 0.6.0) AND graduated pin straight to 6.0.1 (one of the first three v6.0.x graduations). Started consuming mihi for its sys-info probe surface, which let the maturity arc compress. |
 | **cyim-lsp** | 1.5.0 | 5.10.20 | LSP server companion to cyim. Pin moved 5.10.10 → 5.10.20. |
 | **bannermanor** | **1.0.0** | **6.0.1** | **NEW + graduated to v1.0** (binary `bnrmr`). figlet-equivalent ASCII-art banner generator for login MOTDs / script intros / splash text. English wordplay (commandress/bannermanor naming lane); `bnrmr` vowel-dropped per the `commandress`→`cmdrs` compression pattern. Cut at 0.5.0 straight on v6.0.1 morning; jumped to **1.0.0** later 2026-05-20 — CLI flag surface, CYML font format (schema=1), and default in-tree font set (block / slim / big) all frozen as the v1.0 contract. Drove the darshana 0.3.0 → 0.3.5 color-primitives bump (banner colors). |
