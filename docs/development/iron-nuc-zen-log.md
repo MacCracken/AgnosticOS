@@ -1795,6 +1795,85 @@ Per `feedback_redesign_dont_reinvent`: Linux's `usb_stor_TUR` retry + `sd_spinup
 
 ---
 
+### Attempt 84 — USB MS Phase 2.5 hardening iron validation 2026-05-21 → PARTIAL — Phase 2.6 trigger condition met (Reset Recovery executes cleanly 3× on iron but device transport stays wedged across retries; CSW tag mismatch confirms stale device-side bulk-IN buffer; controller-side xHCI Reset Endpoint + Set TR Dequeue Pointer commands now justified by iron evidence)
+
+**Build under test:** agnos 1.31.2 with `msc.cyr` post-`18bd2bd` ("more mass storage updates/repairs") — Phase 2.5 fix stack (`msc_reset_recovery` helper, 3-retry TUR loop, INQUIRY hoisted out of TUR-pass gate, `msc_request_sense` decoder). cycc 6.0.1 toolchain. Different USB stick from Attempt 83 — Silicon Motion / SMI commodity controller (VID=`0x090C` PID=`0x1000`), still USB 2.0 / HS.
+
+**Photo:** `1312_USB_MASS_Log.jpg` (root of agnosticos worktree pending move to `iron-nuc-zen-photos/`).
+
+**Verbatim output (xhci/msc/nvme path only):**
+
+```
+xhci: halted, reset clean
+xhci: scratchpad ready, array=2699264
+xhci: controller running, HCH=0, ERDP=2715648
+xhci: port 1 connected, FS, slot=1, VID=1452 PID=591, class=0
+xhci: port 3 connected, HS, slot=2, VID=2316 PID=4096, class=0
+hid: keyboard layer initialized
+hid: keyboard configured, boot protocol on, EP=129, polling 8-byte reports
+msc: slot 2 BBB intf=0 bulk-IN=130 bulk-OUT=1 MPS(in/out)=512/512 MaxLUN=0
+xhci: transfer event timeout
+msc: data phase timeout
+msc: slot 2 INQUIRY failed
+msc: CSW tag mismatch
+msc: slot 2 transport wedged, attempting Reset Recovery
+msc: slot 2 Reset Recovery OK
+xhci: transfer event timeout
+msc: CSW transfer timeout
+msc: slot 2 transport wedged, attempting Reset Recovery
+msc: slot 2 Reset Recovery OK
+xhci: transfer event timeout
+msc: CBW transfer timeout
+msc: slot 2 transport wedged, attempting Reset Recovery
+msc: slot 2 Reset Recovery OK
+msc: slot 2 TEST UNIT READY -> not ready after 3 retries
+xhci: transfer event timeout
+msc: CBW transfer timeout
+msc: 1 mass-storage device(s) detected
+nvme: found at 4241489920, version=1.4.0
+[NVMe Phase 1-5 path completes through to AGNOS shell — same as Attempt 80/82.]
+```
+
+**What this validates beyond QEMU + Attempt 83:**
+
+- **Phase 2.5 fix stack code-path verified on real silicon.** Three lines that didn't exist before this burn fired:
+  - `msc: slot 2 transport wedged, attempting Reset Recovery` × 3 → the `transport_failed` sticky → recovery dispatch loop in `msc_probe_slot:354-364` works
+  - `msc: slot 2 Reset Recovery OK` × 3 → `msc_reset_recovery` (`msc.cyr:764-820`) all three control transfers (Bulk-Only Reset + CLEAR_FEATURE(HALT) bulk-IN + bulk-OUT) succeed; host-side ring rewind completes
+  - `msc: slot 2 TEST UNIT READY -> not ready after 3 retries` → the 3-iteration TUR retry loop ran to exhaustion
+- **INQUIRY hoist landed.** First print of the run on the MSC path is `data phase timeout` followed by `INQUIRY failed` — proving `msc_inquiry` runs unconditionally after Configure Endpoint (per SPC-4 §6.6), not gated behind TUR-pass.
+- **Per-step transport diagnostics landed.** Three distinct prints (`data phase timeout`, `CSW transfer timeout`, `CBW transfer timeout`) replace the misleading generic "(CSW status != 0)" from Attempt 83. Each tells you exactly which step of `msc_bbb_exec` wedged.
+
+**The signal — Phase 2.6 trigger condition now confirmed:**
+
+Three Reset Recovery cycles each completed (`OK`), and each subsequent transfer wedged at a **different** step:
+
+| Try | Wedge | Implication |
+|-----|-------|-------------|
+| Initial (Phase 3 INQUIRY) | `data phase timeout` — bulk-IN data TRB for 36-byte INQUIRY response never completed | Bulk-IN endpoint not delivering |
+| Post-RR-1 (TUR retry 1) | `CSW transfer timeout` — bulk-IN CSW TRB never completed | Bulk-IN still not delivering |
+| Post-RR-2 (TUR retry 2) | `CBW transfer timeout` — bulk-OUT CBW TRB never completed | Bulk-**OUT** wedged too — degradation, not stasis |
+| Post-RR-3 (TUR retry 3) | `CBW transfer timeout` again | Same |
+
+The CSW tag mismatch that surfaced before the first Reset Recovery is the smoking gun: the CSW signature *did* validate (4 bytes 'USBS' decoded cleanly) but the tag was wrong. That means the device delivered a CSW from a *prior* aborted transaction — its bulk-IN buffer was not drained by the eventual recovery, and the failed INQUIRY data-phase left a stale CSW queued device-side.
+
+Conclusion: **device-side recovery alone is insufficient on this stick.** The controller-side TR Dequeue Pointer is still pointing into pre-recovery ring state — the host has rewound its enqueue index but the xHC's endpoint context has not been told to follow. Every post-recovery transfer is enqueued at `ring + 0` while the xHC dequeues from somewhere else. This is exactly the held-Phase-2.6 trigger condition stated in `state.md` and `usb-ms-iron-burn-audit.md` § 5: "if `xhci: transfer event timeout` repeats on a post-Reset-Recovery retry, Phase 2.6 adds the xHCI command-level half." Iron has now provided that evidence.
+
+**Carry-forward:** four-patch Phase 2.6 fix stack, single burn, audited against Linux's `xhci_endpoint_reset` + `xhci_handle_cmd_set_deq` + USB MSC BBB §6.7.3 + xHCI 1.2 §4.6.8 / §4.6.10 / §4.10.2.1. Detail in [`msc-reset-recovery-prior-art.md`](msc-reset-recovery-prior-art.md). Per `feedback_redesign_dont_reinvent`: Linux's sequence is canonical; no first-principles diagnostic letters; stack all four patches into one burn.
+
+**Status against `usb-ms-iron-burn-audit.md` § 5 success rubric:**
+
+- **Full success rubric:** missed by the same ~5 lines as Attempt 83 (Phase 3 vendor decode, RC10, tertiary registration, LBA0 readback). Phase 2.5 surfaced clean diagnostics but didn't unwedge the transport.
+- **Partial — vendor-specific quirk:** matches § 3 hypothesis 4 / hypothesis 7 (cheap commodity stick with incomplete BBB Reset implementation; controller-side endpoint context not re-synced).
+- **Failure rubric:** not triggered. xhci enumeration clean, Configure Endpoint clean, no kernel fault, NVMe primary path through to shell unaffected — `msc: 1 mass-storage device(s) detected` keeps probe non-fatal so MVP is preserved.
+
+**Sources:**
+
+- Photo `1312_USB_MASS_Log.jpg` (root of agnosticos worktree).
+- agnos `kernel/arch/x86_64/usb/msc.cyr` post-`18bd2bd` (`msc_reset_recovery` device-side scope; lack of xHCI command-level recovery).
+- `msc-reset-recovery-prior-art.md` (Linux + xHCI spec reference walk for Phase 2.6).
+
+---
+
 ## Conventions for future entries
 
 - One H3 (`### Attempt N — date HH:MM TZ → STATUS`) per attempt.
