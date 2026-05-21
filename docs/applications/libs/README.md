@@ -2,16 +2,16 @@
 
 > Reusable library crates that form the AGNOS stack. Consumer [applications](../README.md) depend on these — they should never depend on external libraries when an AGNOS crate covers the domain.
 >
-> **78 libraries at v1.0+** (76 standalone + 2 stdlib-folded: sandhi v5.7.0, niyama v5.9.0; aegis 1.0.0 graduated from pre-1.0 during v5.10.x) — pre-1.0 libs tracked in [development/planning/](../../development/planning/README.md). Binary tools at v1.0+ (agnos, agnoshi, argonaut, cyim, cyim-lsp, **kriya**, kybernet, nous, owl) are listed separately in the [full registry](../../development/planning/shared-crates.md#binaries--tools-9-crates). **kriya 1.0.0 graduated 2026-05-18** (M5 closeout — `grep` / `find` / `xargs` shipped, dispatcher + sovereign-boundary surface stabilized).
+> **79 libraries at v1.0+** (77 standalone + 2 stdlib-folded: sandhi v5.7.0, niyama v5.9.0; aegis 1.0.0 graduated from pre-1.0 during v5.10.x; **mihi 1.0.0 graduated 2026-05-20** as system-info probe substrate for the terminal-aesthetics cohort) — pre-1.0 libs tracked in [development/planning/](../../development/planning/README.md). Binary tools at v1.0+ (agnos, agnoshi, argonaut, **bannermanor**, **commandress**, cyim, cyim-lsp, **iam**, **kriya**, kybernet, nous, owl) are listed separately in the [full registry](../../development/planning/shared-crates.md#binaries--tools-13-crates). **2026-05-20 cohort**: mihi 1.0.0 (OS & Infrastructure, probe lib), iam 1.0.0 (Binaries & Tools, fastfetch-equivalent), bannermanor 1.0.0 (Binaries & Tools, figlet-equivalent — graduated PM after CLI surface + CYML font format + default font set frozen).
 > Full registry: [Shared Crates Registry](../../development/planning/shared-crates.md) — that doc is the authoritative source; refresh from there.
 >
-> **Last Updated**: 2026-05-18
+> **Last Updated**: 2026-05-20 PM (post-Attempt-82 drift sweep)
 
 See also: [First-Party Standards — Own the Stack](../../development/planning/first-party-standards.md#own-the-stack) | [Science Crate Specs](../../development/guides/science-crate-specs.md)
 
 ---
 
-## OS & Infrastructure (25)
+## OS & Infrastructure (26)
 
 | Crate | Version | Domain |
 |-------|---------|--------|
@@ -28,6 +28,7 @@ See also: [First-Party Standards — Own the Stack](../../development/planning/f
 | libro | 2.6.3 | Cryptographic audit chain |
 | mabda | 3.0.0-rc.2 | GPU foundation |
 | majra | 2.4.4 | Queue/pub-sub |
+| mihi | 1.0.0 | System-info probe library (CPU / RAM / GPU / kernel / uptime / distro / hostname) — substrate for iam, chakshu |
 | nein | 1.5.1 | Programmatic nftables firewall |
 | patra | 1.9.4 | Structured storage & SQL — B+ tree, WAL (Cyrius-native) |
 | phylax | 1.1.1 | Threat detection — YARA, entropy, magic bytes, ML |

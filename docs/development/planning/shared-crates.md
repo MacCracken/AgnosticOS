@@ -1,19 +1,19 @@
 # Shared Crates — Registry & Status
 
-> **Status**: Active | **Last Updated**: 2026-05-20
+> **Status**: Active | **Last Updated**: 2026-05-20 PM (post-Attempt-82 drift sweep)
 >
-> **119 entries** — 89 at v1.0+ stable (75 libs + 12 binaries + **2 stdlib-folded**; aegis 1.0.0 graduated v5.10.x; **kriya 1.0.0** + **commandress 1.0.0** graduated 2026-05-18; **mihi 1.0.0 + iam 1.0.0** graduated 2026-05-20 morning as terminal-aesthetics cohort opener), 21 pre-1.0 libs, 13 pre-1.0 binaries/tools (gnoboot 0.4.1 + **bannermanor 0.5.0** + **hapi 0.5.0** added 2026-05-20 PM), 9 non-library, **3 planned** (krishi + prakriti + darshini — the terminal-aesthetics quintet shipped 4 of 5 today; only darshini remains queued), plus the Audio I/O / Video Codec / GitHub-only sub-sections (overlap with the v1.0+/pre-1.0 counts above where applicable).
+> **120 entries** — 91 at v1.0+ stable (76 libs + 14 binaries — `mihi` joined libs as system-info probe substrate; `iam` + `bannermanor` joined binaries — + **2 stdlib-folded**; aegis 1.0.0 graduated v5.10.x; **kriya 1.0.0** + **commandress 1.0.0** graduated 2026-05-18; **mihi 1.0.0 + iam 1.0.0** graduated 2026-05-20 morning; **bannermanor 1.0.0** graduated same day PM after CLI surface + CYML font format + default font set frozen as the v1.0 contract), 20 pre-1.0 libs, 11 pre-1.0 binaries/tools (gnoboot 0.4.2 + **hapi 0.5.0** added 2026-05-20 PM), 9 non-library, **2 planned** (krishi + prakriti + darshini — terminal-aesthetics quintet shipped 4 of 5 by 2026-05-20 PM; only darshini queued), plus the Audio I/O / Video Codec / GitHub-only sub-sections (overlap with the v1.0+/pre-1.0 counts above where applicable).
 >
 > **Classification rule**: pre-v1.0 crates are tracked in [`docs/development/planning/`](README.md). v1.0+ stable crates have their docs in [`docs/applications/libs/`](../../applications/libs/) (libraries) or [`docs/applications/`](../../applications/) (consumer apps).
 > See [First-Party Standards](first-party-standards.md) for versioning and publishing conventions.
 
 ---
 
-## v1.0+ Stable Index (86 entries)
+## v1.0+ Stable Index (89 entries)
 
 Full documentation for each library: [docs/applications/libs/](../../applications/libs/README.md). Consumer apps live one level up at [docs/applications/](../../applications/README.md).
 
-### OS & Infrastructure (25 crates)
+### OS & Infrastructure (26 crates)
 
 | Crate | Version | Domain |
 |-------|---------|--------|
@@ -30,6 +30,7 @@ Full documentation for each library: [docs/applications/libs/](../../application
 | libro | 2.6.3 | Cryptographic audit chain |
 | mabda | 3.0.0-rc.2 | GPU foundation |
 | majra | 2.4.4 | Queue/pub-sub |
+| mihi | 1.0.0 | System-info probe library (CPU / RAM / GPU / kernel / uptime / distro / hostname). Sanskrit-Hindi/Polynesian semantic lane (Maori: formal self-introduction ceremony). Substrate for iam, chakshu, and any tool that needs "tell me about this box." First of the 2026-05-20 v6.0.x graduations cut. |
 | nein | 1.5.1 | Programmatic nftables firewall |
 | patra | 1.9.4 | Structured storage & SQL — B+ tree, WAL (Cyrius-native) |
 | phylax | 1.1.1 | Threat detection — YARA, entropy, magic bytes, ML |
@@ -119,16 +120,18 @@ Full documentation for each library: [docs/applications/libs/](../../application
 | tanmatra | 1.2.1 | Atomic physics |
 | ushma | 1.3.0 | Thermodynamics |
 
-### Binaries & Tools (10 crates)
+### Binaries & Tools (13 crates)
 
 | Crate | Version | Domain |
 |-------|---------|--------|
-| [agnos](https://github.com/MacCracken/agnos) | 1.30.7 | AGNOS kernel (Cyrius-native, ELF64 + sovereign UEFI handoff via gnoboot v0.2.0). Iron-validated 2026-05-15 on NUC AMD (Boot-to-Shell MVP). 1.30.5 closed Phase 3 silent-absorb (Repair EE) + landed Phase 4/5 USB-HID kbd. 1.30.6 bundled the xHCI cmd-path arc Repairs FF→QQ (9-letter ladder + MSI-X table audit closeout). 1.30.7 = next-cycle bump. Iron-side gate: archaemenid Enable Slot CCE silent-absorb (QQ MSI-X Table vector-0 programming staged, not yet burned). Built with cyrius 5.11.59. |
-| [agnoshi](https://github.com/MacCracken/agnoshi) | 1.3.2 | AI shell (Cyrius) — depends on hoosh, daimon |
+| [agnos](https://github.com/MacCracken/agnos) | 1.31.2 | AGNOS kernel (Cyrius-native, ELF64 + sovereign UEFI handoff via gnoboot v0.4.2). **MVP gate cleared on iron at Attempt 68 (1.30.9); NVMe iron debut Attempt 80 (1.31.0) on Crucial P3 2 TB; AHCI iron debut Attempt 81 (1.31.1) on WD Blue SA510 2 TB; AHCI carry-forward iron-validation Attempt 82 (1.31.2) all three patches first-try.** 1.31.x = storage arc (NVMe Phase 1-5 + AHCI/SATA Phase 1-4 + GPT Phase 1-3 with CRC32 + backup-header + type-GUID classifier + 3-backend block-layer dispatch). **Cyrius pin lifted 5.11.64 → 6.0.1 mid-1.31.x cycle** (Attempt 82 is first iron burn of agnos on the v6.0.x toolchain). |
+| [agnoshi](https://github.com/MacCracken/agnoshi) | 1.3.3 | AI shell (Cyrius) — depends on hoosh, daimon. Cyrius pin lifted 5.10.44 → 6.0.1 mid-1.31.x cycle (followed agnos in the MVP-path graduation pair). |
 | [argonaut](https://github.com/MacCracken/argonaut) | 1.7.0 | Init system library (Cyrius) — depends on agnosys. v1.7.0 adds BOOT_MINIMAL agnoshi-as-no-deps-console-service (unblocks closed-beta MVP without aethersafha). |
+| [bannermanor](https://github.com/MacCracken/bannermanor) | 1.0.0 | `figlet`-equivalent ASCII-art banner generator (binary `bnrmr` — vowel-dropped per the `commandress`→`cmdrs` compression pattern). English-wordplay naming lane. Drives login MOTDs, script intros, splash text. **Graduated to v1.0+ 2026-05-20 PM** — CLI flag surface, CYML font format (schema=1), and default in-tree font set (block / slim / big) all frozen as the v1.0 contract. Drove the 2026-05-20 darshana 0.3.0 → 0.3.5 color-primitives bump (banner colors). Cyrius pin 6.0.1. Consumers: end-user shells; agnoshi MOTD; iam (logo rendering); darshana, mihi. |
 | [commandress](https://github.com/MacCracken/commandress) | 1.0.0 | Structured shell prompt renderer for agnoshi, bash, and zsh via per-shell adapters. Sovereign-stack equivalent of starship, in Cyrius. Binary name `cmdrs` (short for *commandress*). Stateless, segment-based, config-driven, zero non-stdlib deps. **Graduated to v1.0+ 2026-05-18** — segment renderer + config layer stabilized after the 2026-05-15 scaffold. Cyrius pin 5.11.64. Consumers: agnoshi, bash, zsh (prompt-hook adapters). |
 | [cyim](https://github.com/MacCracken/cyim) | 1.7.0 | Sovereign modal text editor (Cyrius-native, VIM-inspired, zero attack surface, no embedded scripting). Consumes vyakarana + niyama (regex via stdlib fold v5.9.0); consumers: agnoshi, aethersafha, daimon-orchestrated agents. |
 | [cyim-lsp](https://github.com/MacCracken/cyim-lsp) | 1.5.0 | Language Server Protocol companion to cyim (Cyrius-native). Editor-agnostic LSP backend serving cyim's grammar/regex/symbol surfaces over LSP. |
+| [iam](https://github.com/MacCracken/iam) | 1.0.0 | fastfetch/neofetch-equivalent system-info display for login MOTD + screenshot flex. Pure inverse of `whoami` — whoami says who the user is, iam says what the system is. Thin presentation layer over the mihi probe library. **Graduated to v1.0+ 2026-05-20** straight to 1.0.0 on cyrius 6.0.1 — second v6.0.x graduation. English-wordplay/trickster naming lane. Consumes mihi (probe) + darshana (color/TTY). |
 | [kriya](https://github.com/MacCracken/kriya) | 1.0.0 | Coreutils-equivalent for AGNOS (Sanskrit क्रिया — *action, operation, verb*). One repo, many small static utilities (`cp`, `mv`, `rm`, `mkdir`, `echo`, `wc`, `find`, `grep`, `xargs`, …) sharing infrastructure. BusyBox-style dispatcher + symlinks per utility. **Graduated to v1.0+ 2026-05-18** after M5 closeout (grep + find + xargs); dispatcher + sovereign-boundary surface stabilized. Sovereign-replacement boundaries: owl owns `cat`, cyim owns `vim`, sit owns `git`, chakshu owns `htop`, agnoshi owns shell builtins; kriya fills the gaps. Cyrius pin 5.11.61. Consumers: agnoshi (PATH lookup), zugot (install-time symlinks). |
 | [kybernet](https://github.com/MacCracken/kybernet) | 1.2.1 | PID 1 init binary (Cyrius, 140 tests) — depends on argonaut. v1.2.1 consumer pin bump for argonaut 1.7.0 BOOT_MINIMAL. |
 | [nous](https://github.com/MacCracken/nous) | 1.1.2 | Package resolver (Cyrius) |
@@ -178,7 +181,7 @@ Full documentation for each library: [docs/applications/libs/](../../application
 
 ---
 
-## Binaries & Tools (pre-1.0, 13 entries)
+## Binaries & Tools (pre-1.0, 11 entries)
 
 | Binary | Version | Description | Depends On |
 |--------|---------|-------------|------------|
@@ -190,9 +193,8 @@ Full documentation for each library: [docs/applications/libs/](../../application
 | [agnova](https://github.com/MacCracken/agnova) | 0.1.0 | OS installer (Cyrius port from 3,656 Rust lines, base established) | ark, kavach |
 | [seema](https://github.com/MacCracken/seema) | 0.1.0 | Edge fleet management | daimon, bote |
 | [samay](https://github.com/MacCracken/samay) | 0.1.0 | Task scheduler | szal |
-| [chakshu](https://github.com/MacCracken/chakshu) | 0.6.0 | AI-augmented system monitor (Sanskrit चक्षु — *the eye*; binary `shu` — **S**ystem **H**ealth **U**tility, per ADR 0001). Cyrius-native, reads `/proc` directly. Replaces htop/btop Bazaar packages at v1.0; adds AI explanations via daimon/hoosh at M3+. | mihi, darshana, sandhi (M3), niyama (M3), daimon (M3) |
-| [gnoboot](https://github.com/MacCracken/gnoboot) | 0.4.1 | Sovereign UEFI bootloader (Cyrius-native PE32+ EFI Application, ~33 KB) — replaces GRUB on the AGNOS boot path. Locates kernel at `\boot\agnos`, parses ELF64 program headers, allocates pages as `EfiLoaderCode`, zeroes BSS gap, captures GOP framebuffer + FrameBufferSize, builds 88-byte sovereign boot-info struct (magic `'AGNO'`), calls `ExitBootServices`, jumps with `RDI = &boot_info`. 0.4.x added GOP FrameBufferSize capture + SetMode arc (Attempts 73-74). Pairs with agnos 1.30.x. | agnos (kernel handoff consumer) |
-| [bannermanor](https://github.com/MacCracken/bannermanor) | 0.5.0 | `figlet`-equivalent ASCII-art banner generator (binary `bnrmr` — vowel-dropped per the `commandress`→`cmdrs` compression pattern). English-wordplay naming lane. Drives login MOTDs, script intros, splash text. Drove the 2026-05-20 darshana 0.3.0 → 0.3.5 color-primitives bump. | end-user shells; agnoshi MOTD; iam (logo rendering); darshana, mihi |
+| [chakshu](https://github.com/MacCracken/chakshu) | 0.6.0 | AI-augmented system monitor (Sanskrit चक्षु — *the eye*; binary `shu` — **S**ystem **H**ealth **U**tility, per ADR 0001). Cyrius-native, reads `/proc` directly. Replaces htop/btop Bazaar packages at v1.0; adds AI explanations via daimon/hoosh at M3+. Cyrius pin 6.0.1. | mihi, darshana, sandhi (M3), niyama (M3), daimon (M3) |
+| [gnoboot](https://github.com/MacCracken/gnoboot) | 0.4.2 | Sovereign UEFI bootloader (Cyrius-native PE32+ EFI Application, ~33 KB) — replaces GRUB on the AGNOS boot path. Locates kernel at `\boot\agnos`, parses ELF64 program headers, allocates pages as `EfiLoaderCode`, zeroes BSS gap, captures GOP framebuffer + FrameBufferSize, builds 88-byte sovereign boot-info struct (magic `'AGNO'`), calls `ExitBootServices`, jumps with `RDI = &boot_info`. 0.4.x added GOP FrameBufferSize capture + SetMode arc (Attempts 73-74). Pairs with agnos 1.31.x. | agnos (kernel handoff consumer) |
 | [hapi](https://github.com/MacCracken/hapi) | 0.5.0 | GNU `stow`-equivalent — dotfile / symlink farm manager. Dual-read name: Hawaiian हपी (*happy*) + **H**ome **A**sset **P**rovisioning **I**nterface. First Pacific Islands word in the AGNOS naming surface. CYML manifest per package, capability-bounded execution (`$HOME` only by default), lightweight audit trail. | end-user shells; possibly agnova for dotfile bootstrap; mihi |
 
 ---
@@ -252,7 +254,7 @@ Sovereign video codecs — no C, no FFI, no libav*. Each codec is a standalone c
 
 Five Cyrius-native tools covering the daily-driver shell experience — prompt, file listing, dotfile placement, banner output, system identity. Together with `commandress` (1.0.0, in `Binaries & Tools`), they form a coherent personal-computing aesthetics layer for AGNOS. Each lives as a standalone repo when scaffolded.
 
-**Shipped**: `mihi` 1.0.0, `iam` 1.0.0, `bannermanor` 0.5.0, `hapi` 0.5.0 — see `Binaries & Tools` (pre-1.0) section above for current entries. Brainstorm captured in `~/.claude/projects/-home-macro-Repos-agnosticos/memory/project_tools_stable_ideas.md`.
+**Shipped**: `mihi` 1.0.0 (v1.0+ OS & Infrastructure), `iam` 1.0.0 (v1.0+ Binaries & Tools), `bannermanor` 1.0.0 (v1.0+ Binaries & Tools — graduated 2026-05-20 PM), `hapi` 0.5.0 (pre-1.0 Binaries & Tools) — see those sections above for current entries. Brainstorm captured in `~/.claude/projects/-home-macro-Repos-agnosticos/memory/project_tools_stable_ideas.md`.
 
 **Still planned**:
 
@@ -299,4 +301,4 @@ See [k8s-roadmap.md](../vision/architecture/k8s-roadmap.md) for stiva + nein + m
 
 ---
 
-*Last Updated: 2026-05-09*
+*Last Updated: 2026-05-20 PM (post-Attempt-82 drift sweep — bannermanor + iam + mihi graduated to v1.0+; agnos 1.31.2 / agnoshi 1.3.3 pin-graduations to cycc 6.0.1; gnoboot 0.4.2)*
