@@ -4,19 +4,17 @@
 >
 > Volatile state stays in [`../state.md`](../state.md). Crate registries: [`shared-crates.md`](shared-crates.md) (full, incl. pre-1.0) and [`../../applications/libs/README.md`](../../applications/libs/README.md) (v1.0+ stable).
 >
-> **Last Updated**: 2026-05-17 — categorized restructure (was: pre-1.0 library index only)
+> **Last Updated**: 2026-05-21 — `usb-hid-keyboard-driver.md` archived (shipped + iron-validated through MVP gate); kernel-scope row repointed to archive
 
 ---
 
 ## Kernel-scope plans
 
-Plans for kernel subsystems, drivers, and bring-up gates. These are MVP-blocking or near-blocking — closing them is what makes AGNOS bootable on iron at all.
+Live kernel-scope planning + multi-source prior-art audits now live one directory up, in [`../`](../) (e.g. `ramdisk-virtio-modern-prior-art.md`, `usb-ms-iron-burn-audit.md`, `ahci-iron-burn-audit.md`, `msc-reset-recovery-prior-art.md`, `xhci-prior-art-audit.md`, `uefi-boot-prior-art.md`, `true-font-swap-plan.md`). The pattern: audit-first → execute → close — each lands its bite + iron-validation, then stays as a reference rather than migrating into this index.
 
-| Doc | Status | Note |
-|---|---|---|
-| [usb-hid-keyboard-driver.md](usb-hid-keyboard-driver.md) | ✅ All phases landed + iron-validated through MVP gate | All 5 phases in agnos 1.30.0–1.30.5; full bring-up arc (incl. the 10-letter Phase-3 silent-absorb that turned out to be a Cyrius compiler bug, fixed in cyrius 5.11.64) captured in [`../iron-nuc-zen-log-mvp.md`](../iron-nuc-zen-log-mvp.md) Attempts 30–68. MVP gate hit 2026-05-18 (Attempt 68, agnos 1.30.9). |
-
-*Future kernel plans land here: VFS, network stack (when scoped), USB mass-storage class driver (post-keyboard), GPU bring-up.*
+| Archived doc | Status |
+|---|---|
+| [`../../archive/usb-hid-keyboard-driver-shipped.md`](../../archive/usb-hid-keyboard-driver-shipped.md) | ✅ All 5 phases shipped in agnos 1.30.0–1.30.5; MVP gate iron-cleared 2026-05-18 (Attempt 68, agnos 1.30.9). 10-letter Phase-3 silent-absorb arc root-caused as cyrius compiler bug (v5.11.64 fix). Archived 2026-05-21. |
 
 ---
 

@@ -1,5 +1,9 @@
-# USB-HID Keyboard Driver — Scoping & Roadmap
+# USB-HID Keyboard Driver — Scoping & Roadmap (ARCHIVED — shipped)
 
+> **ARCHIVED 2026-05-21** — All 5 phases shipped and iron-validated end-to-end through the MVP gate. Iron-cleared at Attempt 68 on archaemenid (2026-05-18, agnos 1.30.9) — `agnos> echo "Assembly Up!"` echoed on iron Logitech keyboard (VID=0x5AC, PID=0x24F). The 10-letter Phase-3 silent-absorb arc that consumed Attempts 38-55 turned out to be a Cyrius compiler bug (gvar-init-order zero-reads at file scope), root-caused and fixed in cyrius v5.11.64; the entire letter ladder was falsified silicon hypotheses chasing a compile-time bug. Full arc in [`iron-nuc-zen-log-mvp.md`](../development/iron-nuc-zen-log-mvp.md) Attempts 30-68. Body preserved below for engineering-history reference.
+>
+> Original status header (preserved for record):
+>
 > **Status**: Code complete across all 5 phases (last landing 2026-05-17 in agnos 1.30.5). **2026-05-17: silent-absorb root cause identified — double-mask bug in `xhci_portsc_write` stripping PR bit. See § *Silent-Absorb Resolution Plan* below.** Phase 4/5 will activate as soon as the one-line fix lands; QEMU xhci-pci remains the parallel validation surface. | **Drafted**: 2026-05-15 | **Last status touch**: 2026-05-17 | **Target**: agnos kernel-side, in-tree
 >
 > Drives MVP gap #3 closeout. Real-answer fallback for Attempt 29's USB-keyboard blocker — BIOS legacy-USB knobs and every USB-A port swap have been exhausted on archaemenid; firmware genuinely does not emulate PS/2 post-`ExitBootServices`. The fix is a native XHCI + USB-HID-boot-protocol driver in the kernel.

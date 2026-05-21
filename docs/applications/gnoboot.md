@@ -4,15 +4,14 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Released — v0.1.0 (2026-05-13) |
-| Version | [`VERSION`](https://github.com/MacCracken/gnoboot/blob/main/VERSION) |
+| Status | Released — v0.4.2 (post-MVP, FB-handoff observability + Quiet-Boot scanout work). Live version in [`VERSION`](https://github.com/MacCracken/gnoboot/blob/main/VERSION). |
 | Repository | `MacCracken/gnoboot` |
-| Runtime | UEFI Application (~6 KB PE32+ EFI, x86_64) |
+| Runtime | UEFI Application (PE32+ EFI, x86_64) |
 | Recipe | Not in zugot — boot loaders ship via `agnosticos/scripts/install-usb.sh` |
 | MCP Tools | None (pre-kernel; no AGNOS userland to host MCP) |
 | Agnoshi Intents | None |
-| Cyrius pin | 5.11.53 |
-| Pairs with | agnos ≥ 1.30.0 |
+| Cyrius pin | 6.0.1 |
+| Pairs with | agnos ≥ 1.30.0 (current agnos 1.31.4 open) |
 
 ---
 
@@ -43,14 +42,15 @@ Key invariants:
 
 ## Verification
 
-- **QEMU OVMF**: `tests/ovmf_smoke.sh` in the gnoboot repo. Builds a GPT-disk-with-ESP, boots under `qemu-system-x86_64 -cpu max -machine q35` + OVMF firmware. Verified 2026-05-13: gnoboot delivers agnos 1.30.0's banner + 9 init checkpoints through `Activating scheduler`.
-- **Iron (NUC AMD)**: pending Attempt 5. Provisioning via `agnosticos/scripts/install-usb.sh`.
+- **QEMU OVMF**: `tests/ovmf_smoke.sh` in the gnoboot repo. Builds a GPT-disk-with-ESP, boots under `qemu-system-x86_64 -cpu max -machine q35` + OVMF firmware. Verified continuously through every minor release.
+- **Iron (NUC AMD archaemenid)**: iron-validated end-to-end. MVP gate cleared at Attempt 68 (2026-05-18, agnos 1.30.9) — `agnos> echo "Assembly Up!"` echoed on iron USB Logitech keyboard. Storage iron debuts followed: NVMe Attempt 80 (Crucial P3 2 TB), AHCI/SATA Attempt 81 (WD Blue SA510 2 TB), USB-MS Attempt 87 (Silicon Motion stick, full INQUIRY/TUR/RC10).
 
 ## Status
 
 - ✓ MVP handoff verified on QEMU OVMF emulation (2026-05-13)
-- ⏳ Iron Attempt 5 on NUC AMD — pending
-- ⏳ Full boot-info field population (cmdline, initramfs, ACPI RSDP) — gnoboot v0.3.0–v0.4.0
+- ✓ Iron MVP gate cleared on archaemenid NUC AMD at Attempt 68 (2026-05-18)
+- ✓ FB-handoff observability bundle (GOP mode capture, serial diagnostic, CMOS stamp) — 0.3.0 → 0.4.x
+- ⏳ AMD Zen Quiet-Boot scanout residue carry-forward (HUBP clear_tiling port or shadow-buffer eval) — parked at 0.4.2 closeout (2026-05-20)
 - ⏳ aarch64 UEFI port (Pi 4) — gnoboot v0.9.0
 - 🔒 Handoff contract freeze at gnoboot v1.0.0
 
@@ -58,9 +58,9 @@ Full roadmap: [gnoboot/docs/development/roadmap.md](https://github.com/MacCracke
 
 ## Cross-references
 
-- [agnos](agnos.md) (when added) — the kernel gnoboot loads. agnos 1.30.0 cuts the sovereign-struct ABI break that pairs with gnoboot v0.1.0.
-- [cyrius](https://github.com/MacCracken/cyrius) — toolchain. gnoboot's bring-up filed 4 cyrius issues (3 landed in v5.11.49–v5.11.53, 1 pending for v5.11.54).
-- [Path C plan](../development/path-c-sovereign-uefi.md) — full architecture
+- [agnos](agnos.md) (when added) — the kernel gnoboot loads. agnos 1.30.0 cut the sovereign-struct ABI break that originally paired with gnoboot v0.1.0; current pairing is agnos 1.31.4 + gnoboot 0.4.2.
+- [cyrius](https://github.com/MacCracken/cyrius) — toolchain. gnoboot's bring-up surfaced multiple cyrius issues that landed across v5.11.49 → v5.11.69 and into v6.0.x.
+- [Sovereign UEFI plan](../development/path-c-sovereign-uefi.md) — full architecture
 - [Iron-boot test log](../development/iron-nuc-zen-log.md) — active iron boot log (post-MVP). gnoboot ships from Attempt 5; full MVP-era arc (Attempts 1–68) at [`iron-nuc-zen-log-mvp.md`](../development/iron-nuc-zen-log-mvp.md).
 
 ## Related ADRs (in gnoboot)

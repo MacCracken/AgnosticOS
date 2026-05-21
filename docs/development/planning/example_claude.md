@@ -30,8 +30,7 @@ Example shape: "Own the database. Zero deps. Pure Cyrius. SQL + B-tree + JSONL i
 > current version, binary sizes, test/assertion counts, in-flight slots, recent
 > shipped releases, consumers, verification hosts, bootstrap chain. Refreshed
 > every release (ideally bumped by the release post-hook).
-> Historical release narrative lives in
-> [`docs/development/completed-phases.md`](docs/development/completed-phases.md).
+> Historical release narrative lives in [`CHANGELOG.md`](CHANGELOG.md) (per-tag chronology).
 
 This file (`CLAUDE.md`) is durable rules. See [first-party-documentation § CLAUDE.md](https://github.com/MacCracken/agnosticos/blob/main/docs/development/planning/first-party-documentation.md#claudemd) for what belongs where.
 

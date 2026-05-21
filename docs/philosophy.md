@@ -73,7 +73,7 @@ These names describe function directly. A security boundary is a shield. A messa
 **Cyrius** is AGNOS's sovereign systems language. The project's bootstrap chain demonstrates the language's self-sufficiency:
 
 ```
-seed (29 KB hand-written x86_64 asm) → cyrc (12 KB first compiler) → bridge → cc5 (self-hosting)
+seed (29 KB hand-written x86_64 asm) → cybs (bootstrap compiler) → cycc (self-hosting)
 ```
 
 No external toolchain. No rustc. No gcc. The chain starts from raw assembly and terminates in a compiler that produces byte-identical output when compiling itself. This is the foundation test — an operating system that depends on another operating system to build itself is scaffolding, not structure. AGNOS building AGNOS from source is the point at which the foundation proves itself capable of bearing weight.

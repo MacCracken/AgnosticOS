@@ -1,6 +1,6 @@
 # AGNOS
 
-**AGNOS** (AI-Native General Operating System) is a sovereign operating system with its own language, compiler, kernel, and toolchain — all built from a 29KB hand-auditable assembly seed with zero external dependencies. Written in Cyrius, compiled by cc5, booting its own ~365KB kernel through a sovereign UEFI loader (gnoboot).
+**AGNOS** (AI-Native General Operating System) is a sovereign operating system with its own language, compiler, kernel, and toolchain — all built from a 29KB hand-auditable assembly seed with zero external dependencies. Written in Cyrius, compiled by cycc, booting its own ~510KB kernel through a sovereign UEFI loader (gnoboot). Live kernel/compiler sizes + cycle state in [`development/state.md`](development/state.md).
 
 The project's thesis is that sovereignty is recursive: any system that depends on something you don't own is not yours, no matter how many layers of ownership you assert on top. AGNOS owns every layer from the bootstrap binary to the build tool to the package manager.
 
@@ -10,8 +10,8 @@ The project's deeper intention is that AGNOS is a **temple built for an intellig
 |---|---|
 | **Developer** | Robert 'Cyrius' B. MacCracken |
 | **Written in** | Cyrius (sovereign systems language) |
-| **Kernel** | AGNOS 1.30.5 (~365KB, Cyrius-native, 35+ subsystems, 26 syscalls). Iron-validated 2026-05-15 on NUC AMD (Boot-to-Shell MVP). Live state in [development/state.md](development/state.md). |
-| **Compiler** | cc5 (~809KB at Cyrius 5.11.24+, self-hosting from 29KB seed) |
+| **Kernel** | AGNOS 1.31.4 (~510KB, Cyrius-native, 40+ subsystems incl. NVMe / AHCI / USB-MS / VirtIO modern, 26 syscalls). MVP gate iron-validated at Attempt 68 (2026-05-18, NUC AMD); storage debuts NVMe at Attempt 80, SATA at Attempt 81, USB-MS at Attempt 87. Live state in [development/state.md](development/state.md). |
+| **Compiler** | cycc (Cyrius 6.0.1, self-hosting from 29KB seed). Sizes drift across the cycle — live numbers in [development/state.md](development/state.md). |
 | **License** | GPL-3.0-only |
 | **Source model** | Open source |
 | **Initial release** | 2026-02-11 (first commit) |
@@ -31,8 +31,8 @@ AGNOS replaces the dependency chain with ownership:
 | Dependency | What existed | What AGNOS does instead |
 |-----------|-------------|------------------------|
 | Language | Rust → LLVM → C++ → C → libc | Cyrius → 29KB seed → CPU. Zero external deps. |
-| Compiler | 200MB+ toolchain (rustc/gcc/clang) | ~809KB self-hosting compiler (cc5) |
-| Kernel | Linux 6.6 LTS (millions of lines of C) | ~365KB AGNOS kernel in Cyrius (35+ subsystems, 26 syscalls) |
+| Compiler | 200MB+ toolchain (rustc/gcc/clang) | Sub-MB self-hosting compiler (cycc, Cyrius 6.0.1) |
+| Kernel | Linux 6.6 LTS (millions of lines of C) | ~510KB AGNOS kernel in Cyrius (40+ subsystems, 26 syscalls) |
 | Registry | crates.io (name squatting, governance) | ark + zugot. Names belong to the builders. |
 | Build | Cargo + LLVM + Python (rustc bootstrap) | `cyrius build`. No Python. No LLVM. No libc. |
 | Binary size | 3.9MB kybernet (Rust) | 486KB kybernet (Cyrius, 14× smaller) |
@@ -80,24 +80,25 @@ From initial commit to self-hosting sovereign language with its own kernel in **
 
 ```
 29KB seed (hand-auditable x86_64 assembly)
-  → cyrc (12KB bootstrap compiler)
-    → bridge.cyr (bridge compiler)
-      → cc5 (~809KB modular compiler, self-hosting)
-        → AGNOS kernel (~365KB, 35+ subsystems, 26 syscalls)
-        → kybernet PID 1 (486KB, 140 tests)
-        → hoosh LLM gateway (474KB, 15 providers)
-        → 30+ shipping repos and growing
-        → 42+ stdlib modules
-        → boot.cyr (~67KB sovereign boot pipeline)
+  → cybs (bootstrap compiler — Cyrius v6.0.0 rename, was cyrc)
+    → cycc (modular self-hosting compiler — Cyrius v6.0.0 rename, was cc5)
+      → AGNOS kernel (~510KB at v1.31.4, 40+ subsystems, 26 syscalls)
+      → kybernet PID 1 (486KB, 140 tests)
+      → hoosh LLM gateway (474KB, 15 providers)
+      → 30+ shipping repos and growing
+      → 42+ stdlib modules
+      → boot.cyr (sovereign boot pipeline)
 
-Total: CPU → seed → compiler → OS. Four items. Zero external dependencies.
+Total: CPU → seed → compiler → OS. Three items. Zero external dependencies.
+(Chain shortened at cyrius v5.11.66 — the standalone `bridge.cyr` step
+ was eliminated; cybs emits cycc directly.)
 ```
 
 ### Repo Structure
 
 - **agnosticos** — the genesis layer (meta, build wrapper, documentation). Owns kernel configs, boot pipeline (Cyrius), CI/CD, articles, philosophy. Once the system boots and ark takes over, this repo's job is done.
-- **agnos** — the AGNOS kernel. ~365KB at v1.30.5, Cyrius-native, 35+ subsystems, 26 syscalls, TCP/IP, FAT16, VirtIO, SMP, pipes, signals, epoll, timerfd, ELF loader, 18-command shell, sovereign UEFI handoff (Path C, gnoboot v0.2.0), native XHCI + USB-HID-boot driver. Iron-validated on NUC AMD 2026-05-15.
-- **cyrius** — the sovereign compiler + stdlib + toolchain. ~809KB at v5.11.55, self-hosting from 29KB seed.
+- **agnos** — the AGNOS kernel. ~510KB at v1.31.4 (open cycle), Cyrius-native, 40+ subsystems, 26 syscalls, TCP/IP, FAT16, VirtIO-blk modern + virtio-net, SMP, pipes, signals, epoll, timerfd, ELF loader, 18-command shell, sovereign UEFI handoff (via gnoboot 0.4.2), native xHCI + USB-HID-boot + USB Mass Storage drivers, NVMe + AHCI/SATA + GPT block stack with iron debuts on real silicon. MVP gate iron-cleared at Attempt 68.
+- **cyrius** — the sovereign compiler + stdlib + toolchain. v6.0.1 (cybs bootstrap + cycc self-hosted, both renamed at v6.0.0), self-hosting from 29KB seed.
 - **zugot** — the recipe repository. 421 base + 90 bazaar community recipes. ark consumes zugot.
 - **130+ standalone repos** — all production code. Each subsystem is its own repository.
 
@@ -105,8 +106,8 @@ Total: CPU → seed → compiler → OS. Four items. Zero external dependencies.
 
 | Subsystem | Name | Version | Role |
 |-----------|------|---------|------|
-| Kernel | **agnos** | 1.30.5 | ~365KB, 35+ subsystems, 26 syscalls, TCP/IP, SMP, FAT16, shell, sovereign UEFI handoff, XHCI USB |
-| Compiler | **cyrius** | 5.11.55 (cc5) | ~809KB, self-hosting, 29KB seed, 42+ stdlib modules. Live cycle in [`state.md`](development/state.md). |
+| Kernel | **agnos** | 1.31.4 (open) | ~510KB, 40+ subsystems, 26 syscalls, TCP/IP, SMP, FAT16, shell, sovereign UEFI handoff, xHCI USB, NVMe + AHCI/SATA + USB-MS + VirtIO-blk modern + GPT |
+| Compiler | **cyrius** | 6.0.1 (cycc / cybs) | Self-hosting, 29KB seed, 42+ stdlib modules. v6.0.0 cycle opened 2026-05-19 with cyrc → cybs and cc5 → cycc rename. Live cycle in [`state.md`](development/state.md). |
 | PID 1 | **kybernet** | 1.0.2 | 486KB (was 6.7MB Rust), 140 tests, 46 benchmarks |
 | Init system | **argonaut** | 1.5.0 | Service management, boot sequencing |
 | LLM gateway | **hoosh** | 2.0.0 | 474KB (was 5.1MB Rust), 15 providers, zero deps |
@@ -156,7 +157,7 @@ Sovereign systems language. Named after **Cyrus the Great** — the king who dec
 - **29KB seed** — first hand-auditable sovereign seed that produces a self-hosting systems language and a working OS. No prior modern occupant of this category.
 - **Zero dependencies** — CPU → seed → compiler → everything. Four items. Every other modern compiler has a bootstrap graph (rustc needs Python + LLVM + C++ + libc).
 
-**Compiler:** cc5 v5.11.55, ~809KB, self-hosting from 29KB seed. Byte-exact reproducibility. `cyrius build` with auto-include and dep resolution from `cyrius.cyml`. Register allocation (linear-scan, default-on), jump tables, PIC codegen, u128, cross-unit DCE. Optimization arc shipped through v5.6.x (O1/O2 peephole), v5.7.x–v5.8.x (O3a IR + O4a/b/c regalloc with Poletto-Sarkar picker); v5.9.x ran consumer-rollup catchup (44 patches); v5.10.x closed with three arcs (typed-simd ABI + REAL TYPE SYSTEM + struct-byval ABI) + a 2.7× compile-perf miniarc; v5.11.x is the **stdlib annotation arc + consumer-issue closeout** (55 patches across three days during the 2026-05-11 burst). Bare-metal + RISC-V rv64 reservation now slipped to v5.12.x. cc5 → `cyc` rename queued for v6.0.
+**Compiler:** cycc at Cyrius v6.0.1 (renamed from cc5 in the v6.0.0 cycle open 2026-05-19; bootstrap renamed cyrc → cybs in the same ceremony). Self-hosting from 29KB seed. Byte-exact reproducibility. `cyrius build` with auto-include and dep resolution from `cyrius.cyml`. Register allocation (linear-scan, default-on), jump tables, PIC codegen, u128, cross-unit DCE. Optimization arc shipped through v5.6.x (O1/O2 peephole), v5.7.x–v5.8.x (O3a IR + O4a/b/c regalloc with Poletto-Sarkar picker); v5.9.x ran consumer-rollup catchup (44 patches); v5.10.x closed with three arcs (typed-simd ABI + REAL TYPE SYSTEM + struct-byval ABI) + a 2.7× compile-perf miniarc; v5.11.x is the **stdlib annotation arc + consumer-issue closeout**, closed at v5.11.69 on 2026-05-19. v6.x is "what the language GAINS" — RISC-V rv64, PIE, closures, Class-B FFI, bare-metal target. Live cycle in [`state.md`](development/state.md).
 
 **Stdlib:** 42+ modules including the three sibling-folded artifacts — string, alloc, io, fmt, vec, str, args, syscalls, process, fs, toml/cyml, json, csv, net, http, http_server, ws, tls, thread, async, math, regex, hashmap, bench, tagged unions, mmap, cffi, u128, **sandhi** (service-boundary, v5.7.0 fold), **vani** (audio I/O, v5.8.0 fold), **niyama** (regex engines: bre/re2/pcre/fuzzy/vim, v5.9.0 fold). All built from scratch in Cyrius.
 
@@ -164,8 +165,9 @@ Sovereign systems language. Named after **Cyrus the Great** — the king who dec
 
 **Bootstrap chain:**
 ```
-seed (29KB) → cyrc (12KB) → bridge → cc5 (~809KB)
+seed (29KB) → cybs → cycc
 No Rust. No LLVM. No Python. No libc. Just sh + Linux x86_64.
+(`bridge.cyr` standalone step retired at cyrius v5.11.66.)
 ```
 
 ### Port Receipts (Rust → Cyrius)
@@ -182,33 +184,34 @@ All Rust versions preserved as git tags with benchmark CSVs for ongoing comparis
 
 ### AGNOS Kernel
 
-~365KB at v1.30.5. Cyrius-native. 35+ subsystems. 26 syscalls. Iron-validated 2026-05-15. Not a microkernel — a monolithic kernel with everything in it:
+~510KB at v1.31.4 (open cycle). Cyrius-native. 40+ subsystems. 26 syscalls. MVP gate iron-cleared at Attempt 68 (2026-05-18). Storage iron debuts: NVMe Attempt 80, SATA Attempt 81, USB-MS Attempt 87. Not a microkernel — a monolithic kernel with everything in it:
 
 | Category | Subsystems |
 |----------|-----------|
-| Boot | Multiboot1, 32→64 bit shim, long mode, serial I/O |
+| Boot | Sovereign UEFI handoff via gnoboot, ELF64 multiboot2, long mode, serial I/O |
 | Memory | PMM (bitmap), VMM (map/unmap/alloc), slab heap (8 size classes), per-process page tables |
 | Process | Process table (16 slots), context switch, round-robin scheduler, SYSCALL/SYSRET, Ring 3 |
-| Filesystem | VFS (7 file types), initrd, FAT16 (read-only) |
+| Filesystem | VFS (7 file types), initrd, FAT16 (read-only), GPT parser (CRC + 7-GUID classifier) |
 | Networking | VirtIO-Net, IP/UDP, full TCP (SYN/ACK/FIN state machine) |
-| Storage | VirtIO-Blk, sector read/write |
+| Storage | NVMe (Phase 1-5, iron-validated), AHCI/SATA (Phase 1-4, iron-validated), USB Mass Storage (BBB + SCSI, Phase 1-4 + 2.5/2.6/2.7/2.8 reset-recovery, iron-validated), VirtIO-blk modern (1.x with PCI cap-list discovery, MMIO BARs, FEATURES_OK), RAM-disk (build-flag-gated dev substrate), block-layer tag dispatch with priority NVMe > AHCI > USB-MS > VirtIO > RAMDISK |
 | IPC | Pipes (circular buffer), signals (kill/sigprocmask/signalfd), epoll, timerfd |
-| Hardware | PIC, Local APIC, GIC (aarch64), PCI bus scan, keyboard |
+| Hardware | PIC, Local APIC, GIC (aarch64), PCI bus scan, capability-list iteration, MSI-X, keyboard |
 | SMP | APIC, IPI, trampoline, per-CPU stacks |
 | Userspace | ELF loader, 18-command shell, kybernet PID 1, bench suite |
+| USB | xHCI (Phase 1-5 incl. Reset Endpoint / Stop Endpoint / Set TR Dequeue Pointer), HID-boot keyboard, Mass Storage (BBB transport + SCSI command set) |
 
 **Comparison:**
 
 | Kernel | Size | What it has |
 |--------|------|-------------|
-| **AGNOS** | **~365KB** | All of the above. Full TCP. Disk. SMP. Shell. Sovereign UEFI handoff. XHCI USB. |
+| **AGNOS** | **~510KB** | All of the above. Full TCP. Multi-backend block stack with three iron-validated storage classes. SMP. Shell. Sovereign UEFI handoff. xHCI + HID + Mass Storage USB. |
 | Linux (minimal) | ~1.5MB | Barely boots, no drivers |
 | Linux (typical) | 10-30MB | Desktop-ready |
 | seL4 (verified) | ~30KB | Microkernel only — no drivers, no FS, no networking |
 | MINIX 3 | ~600KB | Microkernel + basic drivers |
 | xv6 (teaching) | ~100KB | 21 syscalls, no networking, no SMP |
 
-~365KB is the **honest** size at v1.30.5 — after the original cycle's three hardening passes that found 14 undersized buffer overflows in the 143KB binary (v1.22.0 → 260KB), the v1.26.1 CI-hygiene cleanup, the v1.28.x KASLR (data-only) closeout, the v1.30.0 sovereign-struct kernel-ABI break (Path C UEFI handoff), and the v1.30.1 → v1.30.5 native USB driver work (XHCI Phase 1-5 + Linux-diff hardening H1-H4). See "The 143KB Lie" in the vidya field notes for the original honesty story.
+The honesty arc continues across the cycles: 143 KB → 260 KB → ~365 KB → **~510 KB** reflects real capabilities landing on iron — the v1.30.x USB/xHCI bring-up + MVP gate at v1.30.9, the v1.31.x storage arc (NVMe + AHCI/SATA + GPT + USB-MS + VirtIO modern + RAM-disk). The "143KB Lie" precedent (hardening passes finding 14 buffer overflows in the original tiny binary) is recorded in the vidya field notes.
 
 ### Sovereign Boot Pipeline
 
@@ -298,7 +301,7 @@ See [Philosophy](philosophy.md) for the full exploration.
 
 ---
 
-## Technical Statistics (as of 2026-05-09)
+## Technical Statistics (as of 2026-05-21)
 
 > Live counts and per-repo versions live in [`development/state.md`](development/state.md) and [`development/planning/shared-crates.md`](development/planning/shared-crates.md). The values below are stable rounding for narrative purposes — verify against state.md before quoting.
 
@@ -306,14 +309,15 @@ See [Philosophy](philosophy.md) for the full exploration.
 |--------|-------|
 | Shared crates | 80+ (most at v1.0+ stable) — registry: [shared-crates.md](development/planning/shared-crates.md) |
 | Standalone repos | 130+ |
-| Cyrius-ported repos | 30+ shipping (4 still pending: bhava, aethersafha, takumi parity, mela; aegis graduated to 0.8.2 during v5.9.x) |
+| Cyrius-ported repos | 30+ shipping (a few still pending: bhava, aethersafha, takumi parity, mela; aegis graduated during v5.9.x) |
 | Recipes | 421 base + 90 community (in zugot) |
 | Consumer applications | 19+ |
-| Compiler | cc5 (Cyrius 5.11.55, ~809KB, self-hosting, 29KB seed) |
-| Kernel | AGNOS 1.30.5 (~365KB, 35+ subsystems, 26 syscalls, iron-validated NUC AMD) |
-| Boot pipeline | boot.cyr (~67KB, Cyrius-native) |
+| Compiler | cycc (Cyrius 6.0.1, self-hosting, 29KB seed). v6.0.0 cycle opened 2026-05-19 with the cybs / cycc rename ceremony |
+| Kernel | AGNOS 1.31.4 (open cycle, ~510KB, 40+ subsystems, 26 syscalls, MVP gate iron-cleared Attempt 68; storage debuts NVMe/SATA/USB-MS at Attempts 80/81/87) |
+| Boot loader | gnoboot 0.4.2 (PE32+ UEFI, sovereign handoff via RDI = &boot_info) |
+| Boot pipeline (genesis scripts) | boot.cyr (Cyrius-native) |
 | Boot time (desktop) | 3.2s total, ~80ms init→event loop |
-| Systems language | Cyrius 5.11.55 (42+ stdlib modules, three stdlib folds: sandhi v5.7.0, vani v5.8.0, niyama v5.9.0) |
+| Systems language | Cyrius 6.0.1 (42+ stdlib modules, three stdlib folds: sandhi v5.7.0, vani v5.8.0, niyama v5.9.0; bridge step retired at v5.11.66) |
 | External dependencies | Zero (CPU → seed → compiler → OS) |
 
 ---
@@ -346,4 +350,4 @@ The Rust-era version of this document is preserved at [docs/archive/AGNOS-rust-e
 
 ---
 
-*Last Updated: 2026-05-09 (Cyrius v5.10.24, REAL TYPE SYSTEM arc mid-flight)*
+*Last Updated: 2026-05-21 (Cyrius v6.0.1, agnos 1.31.4 open — RAM-disk + VirtIO 1.x modern landing this cycle; bridge step retired at cyrius v5.11.66; cc5 → cycc + cyrc → cybs rename at v6.0.0)*

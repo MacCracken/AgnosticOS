@@ -309,10 +309,13 @@ commits and tagging.
 These can be resolved when the gnoboot repo is being created — flagging
 now so they don't ambush implementation:
 
-1. **gnoboot version scheme.** `agnos` uses CalVer for the kernel
-   (1.29.x); cyrius uses semver (5.11.46); agnosticos uses CalVer
-   (2026.5.13). gnoboot is closer to cyrius (a tool, not a calendar
-   release). Recommend **semver starting 0.1.0**.
+1. **gnoboot version scheme.** `agnos` uses SemVer for the kernel
+   (currently 1.31.4); cyrius uses SemVer (currently 6.0.1); agnosticos
+   uses SemVer (currently 0.1.0 — flipped from CalVer at the 0.1.0 cut
+   2026-05-21 because daily-update cadence stopped fitting the date
+   stamp; CalVer may return later once cadence normalizes). gnoboot
+   uses SemVer too (currently 0.4.2). The whole AGNOS family is on
+   SemVer for now.
 2. **License.** GPL-3.0-only matches AGNOS family (kernel, cyrius,
    agnosticos). Lock that in.
 3. **gnoboot ↔ agnos sovereign-struct version negotiation.** What

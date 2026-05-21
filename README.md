@@ -3,8 +3,8 @@
 > **A**rtificial **G**eneral **N**etwork **O**perating **S**ystem
 
 [![License](https://img.shields.io/badge/license-GPLv3-blue)](LICENSE)
-[![Kernel](https://img.shields.io/badge/kernel-AGNOS%201.30.7-orange)](https://github.com/MacCracken/agnos)
-[![Language](https://img.shields.io/badge/Cyrius-5.11.59-red)](https://github.com/MacCracken/cyrius)
+[![Kernel](https://img.shields.io/badge/kernel-AGNOS%201.31.4-orange)](https://github.com/MacCracken/agnos)
+[![Language](https://img.shields.io/badge/Cyrius-6.0.1-red)](https://github.com/MacCracken/cyrius)
 [![Status](https://img.shields.io/badge/status-pre--beta-yellow)](docs/development/roadmap.md)
 
 **AGNOS** is a sovereign operating system written in **Cyrius** — a systems language with a 29KB seed, zero external dependencies, and a self-hosting compiler. The kernel is iron-validated on NUC AMD (Boot-to-Shell MVP, 2026-05-15). 30+ subsystems ported from Rust to Cyrius. No Linux dependency at runtime. Live binary sizes, per-repo versions, and cycle state: [`docs/development/state.md`](docs/development/state.md).
@@ -95,7 +95,7 @@ All ship as `.agnos-agent` marketplace bundles:
 | Sovereign kernel (35+ subsystems, iron-validated NUC AMD 2026-05-15) | Done |
 | Cyrius compiler (self-hosting, 42+ stdlib modules) | Done |
 | 30+ subsystem ports (Rust to Cyrius) | Done |
-| Sovereign boot pipeline (Cyrius) — Path-C UEFI handoff via gnoboot | Done |
+| Sovereign boot pipeline (Cyrius) — sovereign UEFI handoff via gnoboot | Done |
 | LFS base recipes (421 base + 90 bazaar) | Done |
 | Security stack (kavach, sigil, libro, aegis at v1.0+) | Done |
 | 19+ consumer apps with MCP integration | Done |

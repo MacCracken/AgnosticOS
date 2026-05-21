@@ -6,7 +6,7 @@
 
 - **Type**: Genesis repository — meta, build wrapper, documentation
 - **License**: GPL-3.0-only
-- **Version**: CalVer `2026.4.25` (YYYY.M.D, patches as `-N`)
+- **Version**: SemVer (`MAJOR.MINOR.PATCH`) — currently **0.1.0** (clean + prep cycle, opened 2026-05-21 on the `monolith-extraction` branch on the way to merge into `main`). Scheme switched from CalVer (`YYYY.M.D`) to SemVer at the 0.1.0 cut because daily-update cadence doesn't fit a date-stamped scheme — CalVer worked when cuts were spaced out; with continuous-update cadence the date stamp would need patch suffixes constantly. **CalVer may return later** once cadence normalizes around named ship milestones (ISO release, beta cuts, GA). Per [`feedback_no_unprompted_version_bumps`](https://github.com/MacCracken/agnosticos/blob/main/.claude/projects/-home-macro-Repos-agnosticos/memory/feedback_no_unprompted_version_bumps.md): bump on cycle OPEN, user tags on cycle CLOSE.
 - **Version file**: `VERSION` at repo root (single source of truth)
 - **Language**: Cyrius (sovereign systems language, 29KB seed, zero external deps)
 - **Status**: Pre-Beta — kernel and boot pipeline active, ISO assembly in progress; closed beta target early June 2026, public beta Q4 2026 (see `docs/development/roadmap.md`); current versions/sizes in `docs/development/state.md`
@@ -23,7 +23,7 @@ This repo is the **genesis layer** — meta, narrative, and the infrastructure t
 - **docker/** — Dockerfiles for dev/edge/installer
 
 **Does NOT own (extracted):**
-- **AGNOS kernel** → `agnos` repo (35+ subsystems, Cyrius-native — current version/size in `state.md`)
+- **AGNOS kernel** → `agnos` repo (40+ subsystems incl. NVMe / AHCI / USB-MS / VirtIO-modern / GPT / RAM-disk; Cyrius-native — current version/size in `state.md`)
 - **Cyrius compiler** → `cyrius` repo (self-hosting from 29KB seed — current toolchain in `state.md`)
 - **Recipes** → `zugot` repo (421 base + 90 bazaar recipes)
 - **Production code** → 130+ standalone repos under `/home/macro/Repos/{name}/`
@@ -117,10 +117,10 @@ The `scripts/` directory is a **Cyrius project** — the sovereign boot pipeline
 Cyrius is the AGNOS systems language. It has its own build tool and dep system.
 
 **Rules:**
-- **NEVER use raw `cat file | cc5`** — always `cyrius build`
+- **NEVER use raw `cat file | cycc`** — always `cyrius build`
 - `cyrius build` auto-resolves deps from `scripts/cyrius.cyml` and auto-prepends includes
 - Toolchain version pinned in `scripts/cyrius.cyml` via the `cyrius = "<version>"` field
-- If stdout/println doesn't work, you're missing includes — use `cyrius build`, not raw cc5
+- If stdout/println doesn't work, you're missing includes — use `cyrius build`, not raw cycc
 - **Programs must call main() at top level** — Cyrius executes top-level code, not fn main() automatically:
   ```cyrius
   fn main() { ... return 0; }
@@ -128,7 +128,7 @@ Cyrius is the AGNOS systems language. It has its own build tool and dep system.
   syscall(60, exit_code);
   ```
 - **Study working programs** before writing new code — see `cyrius/programs/*.cyr` (65+ examples)
-- **Heads-up:** cc5 → `cyc` rename is queued for v6.0 (single one-and-done cleanup so the binary name decouples from the version). Until then, `cc5` is current.
+- **Binary names**: `cycc` (self-hosting compiler, was `cc5`) + `cybs` (bootstrap compiler, was `cyrc`) — renamed at cyrius v6.0.0 cycle-open 2026-05-19. Names are now permanent — no `cycc6` at v7.0.0, etc. `~/.cyrius/bin/` ships symlinks `cc5 → cycc` + `cyrc → cybs` through the v6.0.x window (drop at v6.1.0). The bridge step in the bootstrap chain was retired at cyrius v5.11.66 — chain is `seed → cybs → cycc`.
 
 **Build:**
 ```sh
@@ -141,7 +141,7 @@ cyrius build src/boot.cyr build/boot
 **Deps are declared in `scripts/cyrius.cyml`** — do NOT manually include stdlib.
 Source files only need project includes (`src/types.cyr` etc.).
 
-**Current Cyrius release:** see `cyrius/VERSION` (verify at session start; **v5.11.x active — stdlib annotation arc + consumer-issue closeout cycle**, 24-patch same-day burst on 2026-05-11 from v5.11.0 to v5.11.24; v5.10.x closed at .50 with three completed arcs — typed-simd ABI 11 phases, REAL TYPE SYSTEM 5 phases, struct-byval ABI 3 phases). Toolchain pinned in `scripts/cyrius.cyml` via the `cyrius = "<version>"` field — manifest is single source of truth (no separate `.cyrius-toolchain` file). Cycle status, pin-lag spectrum, and active sweeps live in [`docs/development/state.md`](docs/development/state.md).
+**Current Cyrius release:** see `cyrius/VERSION` (verify at session start). **v6.0.x active — "what the language GAINS"** (RISC-V rv64, PIE, closures, Class-B FFI, bare-metal target). v6.0.0 opened 2026-05-19 with the cyrc → cybs and cc5 → cycc rename ceremony. v5.x closed: v5.11.x (stdlib annotation arc + consumer-issue closeout) at v5.11.69 on 2026-05-19; v5.10.x earlier with three completed arcs — typed-simd ABI 11 phases, REAL TYPE SYSTEM 5 phases, struct-byval ABI 3 phases. The standalone `bridge.cyr` step was retired at v5.11.66 (chain shortened to `seed → cybs → cycc`). Toolchain pinned in `scripts/cyrius.cyml` via the `cyrius = "<version>"` field — manifest is single source of truth (no separate `.cyrius-toolchain` file). Cycle status, pin-lag spectrum, and active sweeps live in [`docs/development/state.md`](docs/development/state.md).
 
 ## Documentation Structure
 
@@ -167,7 +167,7 @@ docs/ (when earned):
 
 scripts/ (Cyrius project):
   cyrius.cyml — build manifest + deps (modern CYML format)
-  src/boot.cyr — sovereign boot pipeline (48KB compiled)
+  src/boot.cyr — sovereign boot pipeline (Cyrius-native)
   tests/ — test suites
   archive-pre-cyrius/ — 34 archived bash scripts (Rust era, reference only)
 ```

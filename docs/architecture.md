@@ -1,6 +1,6 @@
 # AGNOS System Architecture
 
-> **Last Updated**: 2026-05-18 | **Version**: 2026.5.18
+> **Last Updated**: 2026-05-21
 >
 > Live ecosystem state (cycle, per-repo pins, sweeps): [`development/state.md`](development/state.md). Live kernel/cyrius versions + binary sizes: [`development/state.md`](development/state.md). Per-subsystem versions intentionally elided in this doc per the lib-doc precedent — refer to the registry files when quoting numbers.
 

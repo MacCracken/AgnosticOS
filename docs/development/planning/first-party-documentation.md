@@ -26,7 +26,7 @@ Each artifact answers a different question. Writing in the wrong layer is the mo
 | Roadmap | `docs/development/roadmap.md` | *What's done, next, and future?* |
 | Current state snapshot | `docs/development/state.md` | *What's the live status right now (version, tests, blockers)?* |
 | Doc-health ledger | `docs/doc-health.md` | *Which docs are fresh / stale / archive / open-question, and when were they last touched?* (Lives at `docs/` root, not under `development/` — its scope is the whole `docs/` tree plus root files.) |
-| Completed milestones | `docs/development/completed-phases.md` or `sprint-history.md` | *What's already shipped, in chronological order?* |
+| Sprint-tagged dev log | `docs/development/sprint-history.md` | *What did each named sprint cover?* (genesis-style time-bound prose; `CHANGELOG.md` covers per-tag chronology) |
 | Known issues / backlog | `docs/development/issues/` | *What's broken, deferred, or under investigation?* |
 | Process notes | `docs/development/process-notes.md` | *How does dev on this repo actually work day-to-day?* |
 | Migration strategy | `docs/development/migration-*.md` | *How do we move from state A to state B across releases?* |
@@ -95,7 +95,6 @@ docs/
 │   └── YYYY-MM-DD-audit.md
 ├── compliance/                       # Regulatory / licensing / cert docs
 ├── development/
-│   ├── completed-phases.md           # What's shipped, chronological
 │   ├── issues/                       # Known bugs / deferred work (one file per issue)
 │   ├── migration-*.md                # Cross-version migration strategy
 │   ├── performance.md                # Hot paths, wins, remaining targets
@@ -244,8 +243,7 @@ The home for *how the work happens on this repo*. Distinct from `docs/architectu
 
 - **`state.md`** — current live status snapshot. Cheap substitute for "what's going on right now?" Always reflects the tip of the branch — update it in the same PR that changes the state.
 - **`docs/doc-health.md`** (note: at `docs/` root, **not** under `development/`) — fresh / stale / archive / open-question ledger across the whole doc tree. Pattern parallels `state.md` (state.md = code-state ledger; doc-health.md = doc-state ledger). Refreshed in place when docs are touched. Worth scaffolding once a repo has more than ~30 docs or any meaningful drift surface; smaller repos can defer until the surface justifies it. Earn it before you create it — but the convention is the same wherever it lands: `> **Last refresh**: YYYY-MM-DD | **Refresh cadence**: ...` header, tier tables (root files / development / articles / etc.), buckets (✅ Fresh / 🟡 Stale / 🟠 Read-through / 🔵 Evergreen / 📦 Archive). **Location matters**: it goes at `docs/doc-health.md`, not `docs/development/doc-health.md` — the ledger sweeps the whole tree and the location should match the scope.
-- **`completed-phases.md`** — chronological record of shipped phases / sprints. Useful when `CHANGELOG.md` gets too dense to read at a glance.
-- **`sprint-history.md`** — time-bound dev log for repos that work in named sprints (genesis pattern).
+- **`sprint-history.md`** — time-bound dev log for repos that work in named sprints (genesis pattern). The previous `completed-phases.md` pattern is **retired** ecosystem-wide as of 2026-05-21 — it relitigated `CHANGELOG.md` per-tag chronology. New repos do not scaffold it; existing repos (incl. cyrius) are slowly phasing it out. Per-tag chronological "what shipped" → `CHANGELOG.md`. Named-sprint narrative across multiple tags → `sprint-history.md` (genesis-style only — most repos don't need this either).
 - **`issues/`** — one file per known-but-deferred issue. Complements the GitHub issue tracker when an issue needs durable, in-repo prose (design context, rejected fixes, invariants to preserve).
 - **`migration-*.md`** — per-migration strategy docs, e.g. `migration-strategy.md`, `migration-rust-to-cyrius.md`. Each covers source state, target state, steps, and verification.
 - **`performance.md`** — where the hot paths are, what's been optimized (with numbers), what's next. Links to benchmark history.
@@ -349,7 +347,7 @@ Every repo root carries a `CLAUDE.md`. It's read at the start of every agent ses
 
 1. **Project Identity** — name + etymology, type, license, language + toolchain pin, version-file pointer, genesis-repo link. No version number inlined here if the `VERSION` file is the source of truth — reference the file, don't duplicate the number.
 2. **Goal** — one paragraph on what this repo owns. Changes rarely.
-3. **Current State (pointer block)** — a short block pointing to `docs/development/state.md` for volatile state and `docs/development/completed-phases.md` (or equivalent) for historical release narrative. **Do not inline state here.** See [cyrius/CLAUDE.md#current-state](https://github.com/MacCracken/cyrius/blob/main/CLAUDE.md) for the pattern.
+3. **Current State (pointer block)** — a short block pointing to `docs/development/state.md` for volatile state and `CHANGELOG.md` for historical release narrative. **Do not inline state here.** See [cyrius/CLAUDE.md#current-state](https://github.com/MacCracken/cyrius/blob/main/CLAUDE.md) for the pattern.
 4. **Quick Start** — the 3–7 commands that get a new contributor from clone to built-and-tested. Durable; these commands don't change per release.
 5. **Key Principles / Rules** — at minimum: *read genesis `CLAUDE.md` first*, *never use `gh` CLI*, *do not commit or push*, plus build-tool rules and any domain-specific invariants ("self-hosting is non-negotiable", "own the stack", "no magic", etc.).
 6. **Process (P(-1), closeout, release, etc.)** — the procedures the project runs on. Durable.
@@ -450,7 +448,7 @@ Quick reference for when an agent is about to write the wrong kind of doc:
 | *"What's shipped, next, and future"* | `docs/development/roadmap.md` |
 | *"What's the current status right now"* | `docs/development/state.md` |
 | *"Which docs are fresh / stale / archive"* | `docs/doc-health.md` (whole-tree ledger; lives at `docs/` root, not under `development/`) |
-| *"What's already shipped, chronologically"* | `docs/development/completed-phases.md` or `sprint-history.md` |
+| *"What's already shipped, chronologically"* | `CHANGELOG.md` (per-tag) or `sprint-history.md` (genesis-style sprint prose) |
 | *"Here's a deferred bug with design context"* | `docs/development/issues/*.md` |
 | *"How the work actually happens on this repo"* | `docs/development/process-notes.md` |
 | *"How we move from state A to state B"* | `docs/development/migration-*.md` |
@@ -481,4 +479,4 @@ When in doubt, default to the smaller / more specific layer and let it graduate 
 
 ---
 
-*Last Updated: 2026-05-09 (doc-health.md convention codified — small-repo scaffolding guidance + correct location)*
+*Last Updated: 2026-05-21 (`completed-phases.md` pattern retired — it relitigated `CHANGELOG.md`; sprint-history.md remains the genesis-style alternative when named-sprint prose adds value beyond per-tag chronology)*

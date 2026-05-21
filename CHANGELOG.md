@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] — TBD (clean + prep cycle on `monolith-extraction` branch, on the way to merge into `main`)
+
+### Versioning — scheme transition
+
+- **VERSION file: `2026.5.13` → `0.1.0`** — switched from CalVer (`YYYY.M.D`) to SemVer (`MAJOR.MINOR.PATCH`). Reason: with the kernel + tooling in continuous-update mode (multiple cuts per day during active arcs like the 1.31.x storage cycle), CalVer's date stamp would need patch suffixes constantly and stops being useful as a work-tracking anchor. SemVer cycles absorb arbitrary work between cuts without re-stamping. CHANGELOG header already declared SemVer adherence — the file bump reconciles VERSION with the declared convention. **CalVer may return later** once cadence normalizes around named ship milestones (ISO cut, closed beta, public beta, GA). Per [`feedback_no_unprompted_version_bumps`](https://github.com/MacCracken/agnosticos/blob/main/.claude/projects/-home-macro-Repos-agnosticos/memory/feedback_no_unprompted_version_bumps.md): bump on cycle OPEN (this IS the OPEN of 0.1.0), user drives the close + tag. The 0.1.0 cycle will close when kernel items + ISO prep are ready for merge into `main`.
+- **`CLAUDE.md` Project Identity** — versioning line updated to reflect SemVer + 0.1.0 active cycle + open-bump convention pointer.
+
+### Changed — Documentation sweep (kernel-week catchup, 2026-05-21)
+
+The 1.30.x → 1.31.x kernel-focused week left several root + tier-1 docs at older version cells. Tier 1 + Tier 2 + Tier 4 of the sweep landed in this session (Tier 3 articles deliberately skipped per user direction). Full ledger entry in [`docs/doc-health.md`](docs/doc-health.md) — eight touchpoints, summarized:
+
+- **`README.md`** — kernel badge `1.30.7 → 1.31.4`; Cyrius badge `5.11.59 → 6.0.1`; "Path-C UEFI handoff" label retired from the Sovereign-boot-pipeline milestone (sovereign UEFI is the only UEFI path now — nothing left to disambiguate).
+- **`docs/AGNOS.md`** — full version-cell sweep: kernel `1.30.5 (~365KB) → 1.31.4 (~510KB, open cycle)`, compiler `cc5 5.11.55 → cycc 6.0.1`, bootstrap chain shortened to `seed → cybs → cycc` (bridge step retired at cyrius v5.11.66), kernel subsystem table extended for NVMe / AHCI / USB-MS / GPT / VirtIO-modern / RAM-disk + iron debut Attempts 68 / 80 / 81 / 87, Technical Statistics dated 2026-05-21.
+- **`docs/applications/gnoboot.md`** — `0.1.0 (2026-05-13) → 0.4.2`, Cyrius pin `5.11.53 → 6.0.1`, iron-validation note (MVP gate cleared at Attempt 68; storage iron debuts followed at 80 / 81 / 87), Quiet-Boot scanout carry-forward parked at 0.4.2 closeout. "Path C plan" label relabeled "Sovereign UEFI plan" (file literal preserved).
+- **`docs/architecture.md`** — Last Updated `2026-05-18 → 2026-05-21`; redundant Version stamp removed (CalVer→SemVer transition).
+- **`docs/development/README.md`** — Last Updated `2026-05-09 → 2026-05-21`; index extended with two new sections — *Iron Boot Bring-up* (4 docs incl. iron-nuc-zen-log, MVP-era log, photos directory) and *Prior-Art Audits + Kernel Plans* (9 docs: the audit-first / port-from-multi-source pattern that landed NVMe, AHCI, USB-MS, RAM-disk + VirtIO-modern first-iron-try).
+- **`docs/philosophy.md`** — bootstrap chain line updated `seed → cyrc → bridge → cc5` → `seed → cybs → cycc` per cyrius v5.11.66 bridge retirement + v6.0.0 binary rename.
+- **`docs/development/planning/first-party-documentation.md`** — `completed-phases.md` pattern retired ecosystem-wide (relitigated `CHANGELOG.md` per-tag chronology; cyrius slowly phasing out too). Five live references stripped (Doc Layer Map row, optional-subtree listing, development-docs bullet, CLAUDE.md Current State pointer, quick-ref table); footer rationale appended. `docs/development/planning/example_claude.md` updated to match.
+- **`docs/development/planning/usb-hid-keyboard-driver.md`** archived → `docs/archive/usb-hid-keyboard-driver-shipped.md` (`git mv` + archive notice prepended). All 5 phases shipped + MVP gate iron-validated at Attempt 68; planning doc was fossil. `planning/README.md` Kernel-scope row repointed to archive + note about the prior-art-audit pattern superseding the explicit kernel-plan table.
+- **`scripts/build.sh`** — Path-C labelling retired from comments + the visible `Boot:` echo (sovereign UEFI is just "the UEFI path" now). Boot banner now reads `Boot: gnoboot + OVMF (QEMU) or install-usb.sh (iron)` without the dangling `— Path-C` suffix.
+- **`CLAUDE.md`** — five durable drifts: CalVer hardcoded `2026.4.25` → SemVer 0.1.0; subsystem count `35+` → `40+`; `cat file | cc5` rule → `cat file | cycc` (rename completed); `cc5 → cyc rename queued for v6.0` retired (rename happened at v6.0.0, names are `cycc` + `cybs`, both permanent); Current Cyrius release blurb refreshed (`v5.11.x active` → `v6.0.x active "what the language GAINS"`, v5.11.x retired at .69 / 2026-05-19); boot-pipeline size cell dropped (drift-prone — surrounding convention is pointer-to-state.md).
+- **`docs/doc-health.md`** — refresh entry prepended summarizing all eight touchpoints with the cross-references above.
+
+### Notes
+
+- **Branch context**: this 0.1.0 cycle is opening on the `monolith-extraction` branch and is the prep cycle to get that branch to a clean state for merging into `main`. User drives the merge + git tag per CLAUDE.md.
+- **Engineering work this cycle** lives in `[Unreleased]` above; gets folded into [0.1.0] as it lands (or rolls forward into [0.2.0] if scope expands). The existing 1.31.x storage / dual-iron-debut entries (which describe agnos-repo events from the genesis perspective) are accreting under the next section below.
+
 ### Changed — 1.31.x storage cycle + dual iron debut (Attempts 80 + 81)
 
 - **`docs/development/iron-nuc-zen-log.md` — Attempt 81 added.** AHCI/SATA iron debut on archaemenid: WD Blue SA510 2.5" 2 TB SATA SSD enumerated, IDENTIFY decoded (model `WD Blue SA510 2.5 2TB`, serial `24313QD00663`, firmware `5304 00WD`, LBA48=3907029168 sectors), LBA-5 write-then-read round-trip PASSED on real silicon (first AGNOS-issued disk write to land on physical platter). PASS-WITH-CAVEAT: post-RW IDENTIFY in `ahci_register_block_dev` timed out (`PxCI stuck`), AHCI silently bailed → did NOT register as secondary block_dev. Boot continued cleanly through GPT (NVMe-primary, hdr-CRC-OK arr-CRC-OK, 2 partitions parsed) → VFS → `AGNOS shell v1.31.1`. Per-hypothesis ranking captured for the 1.31.2 IDENTIFY-fix bite; ATA-string trailing-space drag noted as cosmetic carry-forward; §4 `AHCI_RW_DEMO` mitigation deferred-then-acceptable framing recorded.

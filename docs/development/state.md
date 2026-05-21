@@ -228,7 +228,7 @@ CYML format — LIVE 5.10.44 BEDROCK (~14 repos, the boot path minus agnos + agn
             — agnoshi graduated to v6.0.1 cluster 2026-05-20 (1.3.2 → 1.3.3)
 
 CYML format — 5.11.x cluster (no leading-edge holdouts after agnos graduation):
-  v5.11.59: agnosticos/scripts (2026.5.13)
+  v5.11.59: agnosticos/scripts (genesis 0.1.0)
             — boot pipeline; pin sweep deferred to next boot-side touch
             — only 5.11.x leading-edge member remaining after agnos
               graduated to 6.0.1 mid-1.31.x cycle
@@ -263,7 +263,7 @@ NOT VERIFIED LOCALLY (remote-only, presumed pre-CYML or scaffolded):
 
 **Bands of attention (2026-05-20 PM — post-MVP-gate, post-v6.0.0 cycle-open, agnos + agnoshi graduated mid-1.31.x storage cycle):**
 - **6.0.1 leading-edge cluster** (2026-05-20, grew through the day, 8 repos): **agnos (1.31.2)** + **agnoshi (1.3.3)** + mihi (1.0.0), iam (1.0.0), chakshu (0.6.0), bannermanor (1.0.0), darshana (0.3.5), hapi (0.5.0). The morning brought sys-info substrate (mihi/iam/chakshu) and afternoon brought terminal-aesthetics (bannermanor / hapi / darshana). **The evening MVP-path graduation pair (agnos + agnoshi)** is the load-bearing change — agnos lifted off the 5.11.64 gvar-init-order anchor onto cycc 6.0.1 for binary fixes, agnoshi followed in the same cycle. The darshana 0.3.0 → 0.3.5 bump was demand-driven (bannermanor needed color escape sequences) — same shared-lib-evolves-to-second-consumer pattern as mihi's cyim → chakshu extraction.
-- **5.11.x cluster (no leading-edge holdouts)**: agnosticos/scripts (5.11.59, 2026.5.13 — boot pipeline; sweep deferred). agnos vacated 5.11.64 mid-1.31.x cycle. Back-compat symlinks (`cc5 → cycc`, `cyrc → cybs`) keep this cluster building unchanged through the v6.0.x window.
+- **5.11.x cluster (no leading-edge holdouts)**: agnosticos/scripts (5.11.59 — boot pipeline; sweep deferred; genesis-repo VERSION flipped CalVer → SemVer at 0.1.0 cycle-open 2026-05-21). agnos vacated 5.11.64 mid-1.31.x cycle. Back-compat symlinks (`cc5 → cycc`, `cyrc → cybs`) keep this cluster building unchanged through the v6.0.x window.
 - **5.11.x post-burst cluster** (~10 repos at .4/.8) — sandhi, niyama, patra, sakshi, vani, yukti, agnosys, sigil, sankoch, ai-hwaccel. Ahead of the bedrock but trailing the leading-edge.
 - **5.10.44 live bedrock** (~14 repos: kybernet, argonaut, kavach, daimon, bote, t-ron, libro, etc.) — agnoshi exited 2026-05-20, narrowing the MVP-path holdouts to **kybernet + argonaut** (these still pin 5.10.44 and still boot AGNOS on iron). Rest of the bedrock graduates to v6.0.x on natural-next-touch.
 - **Deep-lag tail** shrank but didn't vanish: ark (5.1.10) extreme, hisab/agnova/abaco/nous/bazaar/shakti in v5.7.x cluster, yantra (5.6.17). The 5.4.x cluster (libro, majra) FULLY EXITED at 5.10.44.
