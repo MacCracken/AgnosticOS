@@ -1569,6 +1569,103 @@ The PHY handshake, controller bring-up, IDENTIFY decoding, and full bidirectiona
 
 ---
 
+### Attempt 82 — AHCI carry-forward iron validation + agnos-on-cycc-6.0.x debut 2026-05-20 → PASS (all three carry-forward patches landed clean first iron try; agnos's first iron burn on cyrius 6.0.1 toolchain clean)
+
+First iron burn of agnos 1.31.2. Two distinct validations land in a single attempt:
+
+1. **AHCI carry-forward triplet** — the three named patches from CHANGELOG `[Unreleased]` § *AHCI carry-forward* (`ahci_port_wait_idle` quiescence gate + `ahci_print_id_string` right-trim + `ahci_rw_demo` `AHCI_RW_DEMO` split). All three target the Attempt-81 PASS-WITH-CAVEAT residue.
+2. **Pin graduation 5.11.64 → 6.0.1** — `agnos/cyrius.cyml` lifted off the v5.11.64 gvar-init-order anchor onto cycc 6.0.1 at commit `c70541c` "update to latest cyrius". Attempt 82 is therefore the first iron burn of the AGNOS kernel compiled by the v6.0.x toolchain (cycc / cybs binary-name rename ceremony lane).
+
+Both surfaces cleared on the first burn. No letter ladder, no QQ-style chase, no carry-forward residue.
+
+**Build under test:**
+
+| Component | Version | Notes |
+|---|---|---|
+| `agnos` | **1.31.2 `[Unreleased]` HEAD** (`474,600 B`, built 22:41 PDT) | AHCI carry-forward triplet landed at `1838ec3`; pin graduation at `c70541c`; fmt fix at `db1a660`. Size delta vs 1.31.1's 475,096 B: −496 B (the `AHCI_RW_DEMO`-gated write-demo path's compile-out exceeds the `ahci_port_wait_idle` helper's addition). |
+| `gnoboot` | 0.4.2 (unchanged from Attempts 78/80/81) | Sovereign UEFI handoff, banner only. No bootloader-side change. |
+| `cyrius` | **6.0.1 toolchain; kernel pin 6.0.1** | First iron burn of agnos compiled by cycc 6.0.1. v6.0.0 cycle opened 2026-05-19; .1 patch closed the UEFI-emit fncallN regression same-day. |
+
+**§4 mitigation now in place — what changed vs Attempt 81:**
+
+Attempt 81 shipped without the `AHCI_RW_DEMO` compile gate; the LBA-5 sentinel write ran on the WD Blue SA510 and (potentially) corrupted GPT partition-array entries 12-15. Attempt 82's build defaults to `AHCI_RW_DEMO` OFF: `ahci_read_demo()` runs (LBA 0 readback only, no writes), `ahci_write_demo()` compiles out entirely. Boot output reflects this — the LBA-0 first-8-bytes line prints, the `LBA5 write-then-read round-trip PASS` line is **absent**. No new writes to the WD Blue's partition-array region this burn.
+
+**Iron evidence shape — Attempt 82's full boot log (photo `iron-nuc-zen-photos/attempt-82-ahci-carry-forward-validation.jpg` — captured by user as `1312_Logs.jpg`, pending move into the photos dir):**
+
+```
+nvme: VID=49321 SSVID=49321 NN=1 MDTS=6
+nvme: model='CT2000P3SSD8'
+nvme: serial='2342E880DED6'
+nvme: firmware='P9CR30A '
+nvme: ns1 NSZE=3907029168 LBAS=512B size=1907729MB
+nvme: I/O queue 1 ready (64 entries SQ+CQ)
+nvme: ns1 LBA0 first 8 bytes: 0 0 0 0 0 0 0 0
+nvme: registered as block_dev (3907029168 LBAs x 512B)
+ahci: found at 4240441344, version=1.769
+ahci: NP=1 NCS=32 ISS=3 SAM=1 SSS=0 SNCQ=1 S64A=1
+ahci: GHC=2147483648 PI=1
+ahci: port 0 DET=3 SPD=3 SIG=257 (SATA)
+ahci: port 0 initialized (CL @ 13545472, FIS @ 13549568)
+ahci: port 0 model='WD Blue SA510 2.5 2TB' serial='24313QD00663' fw='5304 00WD'
+ahci: port 0 LBA48=3907029168 sectors (1907729 MiB)
+ahci: port 0 LBA0 first 8 bytes: 146 20 0 0 0 111 111 116
+ahci: port 0 model='WD Blue SA510 2.5 2TB' serial='24313QD00663' fw='5304 00WD'
+ahci: port 0 LBA48=3907029168 sectors (1907729 MiB)
+ahci: registered as secondary block_dev (port 0, 3907029168 LBAs x 512B; NVMe primary)
+gpt: present, first=34 last=3907029134 parts=2/128 hdr-CRC-OK arr-CRC-OK
+partitions (2 active / 128 reserved):
+  [0] EFI System    LBA 2048-2099199 (1024 MiB)
+  [1] (unknown type)  LBA 2099200-3907026943 (1906703 MiB)
+VFS initialized
+Heap: 13578208 13582208 13582336
+SYSCALL/SYSRET initialized
+Stack canary initialized
+Interrupts enabled
+Timer ticks before sched: 6
+Activating scheduler...
+Launching kybernet...
+kybernet: starting init
+kybernet: 0 processes
+kybernet: 3543 free pages
+kybernet: launching shell
+AGNOS shell v1.31.2 (type 'help')
+agnos>
+```
+
+**What each carry-forward patch validates against the Attempt-81 baseline:**
+
+| Patch | Attempt-81 evidence | Attempt-82 evidence | Verdict |
+|---|---|---|---|
+| `ahci_port_wait_idle` quiescence gate | `ahci: port 0 IDENTIFY: timeout (PxCI stuck)` after WRITE DMA EXT; `ahci_register_block_dev` returned 0; AHCI did NOT register | Second IDENTIFY in `ahci_register_block_dev` succeeds (model/serial/fw line + LBA48 line print a second time); `ahci: registered as secondary block_dev` follows | ✅ Fixed on iron. Root-cause hypothesis from CHANGELOG (controller slot-release lag on WD SA510 SATA Gen3 6 Gbps on AMD FCH AHCI 1.3) confirmed: a pre-issue `PxTFD.STS.BSY=0 + DRQ=0 + PxCI=0 + PxSACT=0` quiescence poll closes the window. Single-burn fix matches the `feedback_redesign_dont_reinvent` / `feedback_known_knowledge_first` rubric (Linux `ata_qc_issue` / `ahci_qc_issue` pattern ported, redesigned to Cyrius conventions). |
+| `ahci_print_id_string` right-trim | `model='WD Blue SA510 2.5 2TB                            '` — trailing-space drag from ATA8-ACS §7.16.7 fixed-width padding | `model='WD Blue SA510 2.5 2TB'` — no visible trailing whitespace; closing single-quote sits flush against `2TB` | ✅ Fixed on iron. Byte-swapped right-trim (printed-char-index `k` → field-byte `k XOR 1`, matching Linux's `ata_id_c_string`) renders correctly. |
+| `AHCI_RW_DEMO` compile gate | Unconditional `ahci_rw_demo()` ran on iron → LBA-5 sentinel write landed on the WD Blue → potential GPT partition-array corruption | Production-lean default holds: `ahci_read_demo()` runs (LBA-0 line prints), `ahci_write_demo()` compiles out (no `LBA5 write-then-read round-trip PASS` line in boot output) | ✅ Fixed on iron. Production builds against user-owned drives no longer ship sentinel writes. QEMU smoke retains write-path coverage via `AHCI_RW_DEMO=1 ./scripts/build.sh`. |
+
+**What this validates beyond Attempt 81's "PASS-WITH-CAVEAT":**
+
+- **Full success rubric** from `ahci-iron-burn-audit.md` § 7 now cleared. No new diagnostic letters, no new hypotheses, no follow-up carry-forward.
+- **First iron burn of agnos on cycc 6.0.1** — the v5.x→v6.x toolchain boundary is now iron-validated for kernel-side code per `project_cyrius_5x_6x_boundary`. The gvar-init-order anchor (`feedback_known_knowledge_first` / `project_cyrius_5x_6x_boundary` — the v5.11.64 root-cause of the FF→QQ+QQ2 silent-absorb arc Attempts 57-63) is closed for agnos. State.md's `cyrius.cyml pins 5.11.64 but cycc is 6.0.1` toolchain-drift warning is silenced.
+- **NVMe Phase 1-5 path (Attempt 80) replays clean** under the new toolchain — `nvme0` enumerates, registers as primary block_dev, GPT parses its partition table with `hdr-CRC-OK arr-CRC-OK`. No 6.0.x-side regression on the NVMe path.
+- **Dispatch wrapper "NVMe primary; AHCI secondary if present" policy** end-to-end-validated for the first time on iron — Attempt 81 short-circuited at the secondary-registration bail; Attempt 82 shows both registrations landing in order, GPT consuming `blk_active=BLK_NVME`, AHCI sitting as secondary but callable.
+- **Heap delta vs Attempt 81** (`6025184` → `13578208` base; `3545` → `3543` free pages): expected — extra pages consumed by the now-complete AHCI registration path (`ahci_register_block_dev` allocates its second IDENTIFY buffer, no longer leaks via the timeout bail).
+
+**Status against the success rubric (`ahci-iron-burn-audit.md` § 7):**
+
+- **Full success rubric:** ✅ cleared. No new diagnostic letters, no new hypotheses, no behavioral follow-up surface.
+- **Partial — vendor-specific quirk:** N/A — the previous Attempt-81 vendor quirk (AMD FCH AHCI + WD SA510 slot-release lag) was the carry-forward this burn was validating; it is now structurally closed.
+- **Failure rubric:** not triggered.
+
+**Sources:**
+- Photo `1312_Logs.jpg` (pending move into `iron-nuc-zen-photos/attempt-82-ahci-carry-forward-validation.jpg`).
+- agnos CHANGELOG `[Unreleased]` § AHCI carry-forward.
+- agnos commits `1838ec3` (open version + AHCI triplet), `c70541c` (pin → 6.0.1), `db1a660` (fmt fix).
+- agnos `kernel/core/ahci.cyr` (`ahci_port_wait_idle` near top of file; `ahci_print_id_string` byte-swap right-trim; `ahci_read_demo` / `ahci_write_demo` split).
+- `scripts/build.sh` (`AHCI_RW_DEMO=1 ./scripts/build.sh` opts in to write demo for QEMU smoke).
+- `docs/development/build.md` (new flag row alongside `KTEST` / `XHCI_VERBOSE`).
+
+**Carry-forward into 1.31.2:** None on the AHCI surface. The cycle's primary engineering bite — **USB Mass Storage (BBB + SCSI) + Optical via USB MS (SCSI MMC profile)** — opens next per CHANGELOG `[Unreleased]` § *1.31.2 remaining scope — opening* and `agnosticos/docs/development/state.md` § *Next storage targets after NVMe + AHCI iron debuts* row 3a/3b. Iron-validation target for the next storage burn: any USB flash/HDD on archaemenid (USB MS) + HP external USB Blu-ray with Pitch Black BD-25 loaded (optical via SCSI MMC).
+
+---
+
 ## Conventions for future entries
 
 - One H3 (`### Attempt N — date HH:MM TZ → STATUS`) per attempt.
