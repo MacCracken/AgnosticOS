@@ -1384,6 +1384,72 @@ These are the recorded options for next-cycle resumption, not commitments. Pin: 
 
 ---
 
+### Attempt 80 — NVMe iron debut 2026-05-20 → PASS (Crucial P3 2TB enumerated end-to-end, kernel walked to shell)
+
+First iron burn of the 1.31.x storage arc. NVMe Phases 1-5 had closed in QEMU same-session (~940 LOC across `kernel/core/nvme.cyr` + new `kernel/core/block.cyr`, byte-exact write/read round-trips through the new dispatch wrapper validated). Install on archaemenid, let the driver introduce itself to the real Crucial P3 SSD — full stack lit up on first try, kernel walked through to `AGNOS shell v1.31.0`.
+
+**Build under test:**
+
+| Component | Version | Notes |
+|---|---|---|
+| `agnos` | **1.31.0** — NVMe Phase 1-5 + iron-debut folded into the cycle-open release (~441,056 B, +19,144 B over the post-cycle-open production-lean baseline of 421,912 B) | block-layer dispatch live (`blk_active=2` = NVMe); archaemenid has no virtio so NVMe registers alone |
+| `gnoboot` | 0.4.2 (unchanged from Attempt 78 closeout) | sovereign UEFI handoff, banner only |
+| `cyrius` | 6.0.1 toolchain post-cycle-open; kernel pin 5.11.x bedrock | NVMe arc compiled clean, no new compiler bug surfaced |
+
+**Iron evidence shape — confirms real silicon, not QEMU emulation:**
+
+| Field | Iron value | Reading |
+|---|---|---|
+| VID | `49321` = `0xC0A9` | Micron Technology (Crucial's parent). QEMU's NVMe model uses `0x1B36` (Red Hat). |
+| Model | `CT2000P3SSD8` | Crucial P3 2 TB — matches the SSD physically installed in archaemenid. |
+| Serial | `2342E880DED6` | Real per-unit ID. |
+| Firmware | `P9CR30A` | Crucial-issued P3 firmware revision. |
+| NSZE × LBADS | `3907029168 × 512B` | 1907729 MB ≈ 1.86 TB usable — matches the part's spec. |
+| LBA 0 first 8 bytes | `0 0 0 0 0 0 0 0` | Drive is blank (no GPT yet on this surface) — expected, not a problem. |
+
+**Boot output through to shell** (photo: `iron-nuc-zen-photos/attempt-80-nvme-iron-debut-crucial-p3.jpg`):
+
+```
+nvme: found at 4241489920, version=1.4.0
+nvme: MQES=65535 DSTRD=0 TO=255x500ms CSS_NVM=1 MPSMIN=0 MPSMAX=0
+nvme: controller disabled, RDY=0
+nvme: admin queue ready, CC.EN=1 RDY=1
+nvme: VID=49321 SSVID=49321 NN=1 MDTS=6
+nvme: model='CT2000P3SSD8                            '
+nvme: serial='2342E880DED6        '
+nvme: firmware='P9CR30A '
+nvme: ns1 NSZE=3907029168 LBAS=512B size=1907729MB
+nvme: I/O queues 1 ready (64 entries SQ+CQ)
+nvme: ns1 LBA0 first 8 bytes: 0 0 0 0 0 0 0 0
+nvme: registered as block_dev (3907029168 LBAs x 512B)
+VFS initialized
+...
+AGNOS shell v1.31.0 (type 'help')
+```
+
+**What this validates on iron beyond QEMU:**
+- BAR0 64-bit at real-PCIe address `0xFCE00000` — mid-range, different shape than QEMU's `0xC0000000000` high-BAR shatter path.
+- `MPSMAX=0` = controller supports 4 KB host pages only. AGNOS's 4 KB host-page baseline is exactly what this drive expects; the Phase 1 `MPSMIN > 0` refusal path is now exercised against a real `MPSMIN=0` controller.
+- `MDTS=6` → 256 KB max single transfer cap; AGNOS only ever requests small transfers, well under the cap.
+- IDENTIFY CTRL + IDENTIFY NS1 both polled to status=0 against real silicon — admin queue + phase-tag tracking + doorbell stride decode work on non-QEMU.
+- I/O SQ+CQ create + single-LBA read of LBA 0 closed the loop end-to-end. The 8-zero readout confirms the drive serviced the command (empty disk reads zeros, not garbage).
+- `nvme_register_block_dev` fired (capacity 3907029168 sectors); dispatch wrapper now points at real NVMe.
+
+**Contrast with the xHCI arc.** xHCI took 5 weeks, 19 iron attempts, 9 letter codes, and a prior-art reckoning before clearing on archaemenid. NVMe ported from Linux's `drivers/nvme/host/pci.c` to Cyrius conventions per `feedback_redesign_dont_reinvent` and lit up first iron try. Driver-class shape differs (NVMe is structurally simpler — fewer error paths, simpler queue model, MSI-X deferred per xHCI's polling precedent), but the consultation-not-first-principles posture is what compounded the win.
+
+**Out of scope (debut):**
+- No write to the drive on iron (LBA 0 read only). AGNOS lacks GPT / ext2 / fat32 formatters and won't write to archaemenid's surface casually.
+- PRP-list path: only PRP1 / PRP2-single-page exercised on iron; PRP-list coded + QEMU-validated but not iron-exercised yet.
+- Multi-namespace: only NSID=1 fetched (drive's `NN=1` confirms one namespace anyway).
+- MSI-X IRQ-driven completion: polling-only on iron, as in QEMU.
+
+**Sources:**
+- Photo `iron-nuc-zen-photos/attempt-80-nvme-iron-debut-crucial-p3.jpg` (only on-disk evidence for this burn — no read-boot-log run).
+- agnos CHANGELOG `[Unreleased]` § NVMe arc — iron debut.
+- agnosticos `state.md` for the cross-repo arc framing.
+
+---
+
 ## Conventions for future entries
 
 - One H3 (`### Attempt N — date HH:MM TZ → STATUS`) per attempt.
