@@ -267,5 +267,66 @@ Existing QEMU `qemu-xhci` + `usb-storage` smoke needs an artificial Stall-inject
 - agnos `kernel/arch/x86_64/usb/xhci.cyr` — `xhci_wait_transfer_event` (event-ring drain surface).
 - agnos `kernel/arch/x86_64/usb/xhci_cmd.cyr` — `xhci_cmd_issue` (general command dispatcher; no change needed for Phase 2.6).
 - agnos `kernel/arch/x86_64/usb/xhci_regs.cyr` — XHCI_TRB_* constants (three to add).
-- Iron evidence: [`iron-nuc-zen-log.md` § Attempt 84](iron-nuc-zen-log.md), `1312_USB_MASS_Log.jpg`.
+- Iron evidence: [`iron-nuc-zen-log.md` § Attempt 84](iron-nuc-zen-log.md), `iron-nuc-zen-photos/attempt-84-usb-ms-phase-2-5-reset-recovery-still-wedged.jpg`.
 - Phase 2.5 reference: [`usb-ms-iron-burn-audit.md`](usb-ms-iron-burn-audit.md) §3 (hypothesis ladder), §5 (success rubric).
+
+---
+
+## 9. Phase 2.7 — multi-source addendum (post-Attempt-85, 2026-05-21)
+
+Phase 2.6's controller-side commands shipped at agnos 1.31.2 commit `8fd8c5c` ("updated usb-storage work") and went to iron as **Attempt 85** on the same Silicon Motion stick. Outcome: **Reset Endpoint command itself failed** (`msc: Reset Endpoint(bulk-IN) failed` × 2; iron photo `iron-nuc-zen-photos/attempt-85-usb-ms-phase-2-6-endpoint-reset-failed.jpg`). Aborts the recovery chain before Set TR Dequeue Pointer can fire.
+
+Root cause (read from `xhci_cmd.cyr` + `msc.cyr` + xHCI 1.2 §4.6.8 + §4.10.2.1): **Reset Endpoint is only legal from Halted state.** Attempt 84/85's transport wedge is a transfer-event timeout (not a device STALL); the EP never entered Halted. After Stop Endpoint, EP is in **Stopped**. Reset Endpoint on Stopped returns `Context State Error` (CC=19). The Phase 2.6 helper treated any non-Success as failure → recovery aborted.
+
+Per [`feedback_redesign_dont_reinvent`](../../../../.claude/projects/-home-macro-Repos-agnosticos/memory/feedback_redesign_dont_reinvent.md) (refreshed 2026-05-21 with hard "multi-source" rule, after user feedback "LINUX ISN'T THE ONLY RESOURCE OF PRIOR ART"): Linux alone is insufficient. Phase 2.7 audit cross-referenced **four** independent reference impls (Linux not load-bearing).
+
+### 9.1 Multi-source convergence (4 impls)
+
+| Source | What it does | File / function |
+|---|---|---|
+| **FreeBSD** | State-aware dispatch — reads EP State from EP context, branches: HALTED → Reset Endpoint; STOPPED → skip; default → Stop Endpoint | `sys/dev/usb/controller/xhci.c` § `xhci_get_endpoint_state` + `xhci_configure_reset_endpoint` |
+| **FreeBSD** umass | Device-side sequence with **50ms `.interval`** between RESET1 → RESET2 → RESET3 callbacks (implicit delay) | `sys/dev/usb/storage/umass.c` § `umass_t_bbb_reset1_callback` + `umass_bbb_config` |
+| **OpenBSD** umass | Same device-side TSTATE_BBB_RESET1/2/3 sequence; unconditional CLEAR_FEATURE on both endpoints | `sys/dev/usb/umass.c` § `umass_bbb_reset` |
+| **EDK2** UsbMassBot | **Explicit 100ms `gBS->Stall(USB_BOT_RESET_DEVICE_STALL)` after Bulk-Only Reset, before CLEAR_FEATURE.** Spec rationale quoted inline: *"The device shall NAK the host's request until the reset is complete."* | `MdeModulePkg/Bus/Usb/UsbMassStorageDxe/UsbMassBot.c` § `UsbBotResetDevice` |
+| Linux | Confirmatory only — `xhci_endpoint_reset` does the same state-aware dispatch FreeBSD does, plus a TSP=1 soft-reset variant | `drivers/usb/host/xhci.c` |
+
+**Convergent behaviors (all 3+ non-Linux sources agree):**
+
+1. Device-side reset (Bulk-Only Reset → CLEAR_FEATURE×2) runs **FIRST**, before any host-controller resync
+2. CLEAR_FEATURE(HALT) issued **unconditionally** on both endpoints — no halt-state check on the device side
+3. Reset Endpoint is **gated on EP State == Halted** (FreeBSD reads state explicitly; OpenBSD/EDK2 don't issue Reset Endpoint at all because their HCD layer abstracts it)
+4. TSP=0 on Reset Endpoint (full state clear, not soft reset)
+5. Stream ID = 0 for Set TR Dequeue on non-stream EPs
+
+**Divergent behavior across sources:**
+
+- EDK2 has an **explicit 100ms post-BOT-Reset stall**; FreeBSD has an **implicit 50ms** via state-machine interval; OpenBSD has none visible (relies on callback latency). Linux's `usb_stor_Bulk_reset` does `msleep(100)`. **Convergent recommendation: 100ms minimum.** AGNOS Phase 2.6 had ZERO delay → this is the **most likely contributing root cause** for Attempt 84's "Reset Recovery OK but transport stays wedged" symptom: subsequent CLEAR_FEATURE arrived while the device was still mid-reset.
+
+### 9.2 Phase 2.7 patch stack — landed in agnos 1.31.2 `[Unreleased]`; Attempt 86 burn pending
+
+Per [`feedback_no_letter_codes_for_repairs`](../../../../.claude/projects/-home-macro-Repos-agnosticos/memory/feedback_no_letter_codes_for_repairs.md): name fixes for what they do.
+
+1. **Reset Endpoint CSE tolerance** (`xhci_cmd.cyr:299-322`). `xhci_cmd_reset_endpoint` now tolerates `XHCI_CC_CONTEXT_STATE_ERROR` the same way `xhci_cmd_stop_endpoint` already does. Defensive backstop — primary dispatch is patch #2.
+
+2. **EP-state-aware Reset Endpoint dispatch** (`xhci_ctx.cyr` + `msc.cyr` step 7). New helper `xhci_ep_state(slot_id, dci)` reads Output EP Context dword 0 bits 0-2 per xHCI 1.2 §6.2.3 (values declared as `XHCI_EP_STATE_*` enum in `xhci_regs.cyr`). `msc_reset_recovery` step 7 gates `xhci_cmd_reset_endpoint` on `XHCI_EP_STATE_HALTED`; STOPPED / RUNNING / DISABLED skip the command entirely. Mirrors FreeBSD `xhci_get_endpoint_state` + `xhci_configure_reset_endpoint` switch.
+
+3. **100ms post-BOT-Reset device stall** (`msc.cyr` step 2). 50M-iteration busy-wait between Bulk-Only Mass Storage Reset and CLEAR_FEATURE(HALT). Calibrated against existing 5M ≈ 5-10ms loop at `msc.cyr:369`. Matches EDK2's explicit `gBS->Stall(USB_BOT_RESET_DEVICE_STALL)`; FreeBSD's implicit 50ms `.interval`; Linux's `msleep(100)` in `usb_stor_Bulk_reset`. **This is the highest-confidence fix in the Phase 2.7 stack** — Attempt 84's "Reset Recovery OK but transport stays wedged across retries" matches a CLEAR_FEATURE arriving mid-device-reset.
+
+4. **Reset Recovery step reorder: device-side first** (`msc.cyr` full `msc_reset_recovery` body). New order: (1) BOT Reset → (2) 100ms stall → (3-4) CLEAR_FEATURE×2 → (5) drain stale events → (6) Stop Endpoint×2 → (7) Reset Endpoint×2 (gated on Halted) → (8) ring rewind → (9) Set TR Dequeue×2 → (10) clear sticky. Matches convergent reference ordering — device sees a clean reset first, then controller state is resynced to match.
+
+### 9.3 Held for Phase 2.8 (only if Attempt 86 iron evidence requires)
+
+- **TSP=1 soft-reset variant.** If iron shows a halt scenario we missed, Linux's `xhci_endpoint_reset(ep, true)` soft-reset path (TSP bit set, preserves stream state) might be needed for stream-capable EPs. Bulk-only MSC EPs aren't stream-capable so this is unlikely.
+- **Vendor quirk for Silicon Motion `0x090C`.** None of the four references carry a specific quirk for this VID; defer until a second stick from the same vendor exhibits a unique failure.
+- **Optical via USB MS (SCSI MMC profile).** Originally bundled into 1.31.2 scope; deferred to 1.31.3 since MSC bring-up is still blocked at transport layer.
+
+### 9.4 Attempt 86 success rubric
+
+| Outcome | Iron signal | Action |
+|---|---|---|
+| **Full success** | `msc: slot N Reset Recovery OK` followed by `TEST UNIT READY -> ready (Pass)` on retry 2 or 3, then INQUIRY decode + RC10 + tertiary block_dev registration + LBA0 readback | Close USB MS arc; promote to MVP storage roster |
+| **Partial — Reset Recovery completes, TUR still fails with sense data** | Reset Recovery OK × N, `sense key=K ASC=A ASCQ=Q` printed | Transport layer fixed; SCSI-layer issue remains. Different problem class — investigate sense data. |
+| **Partial — Reset Recovery still wedges** | Recovery completes structurally but post-recovery transfers still timeout | Phase 2.8 territory. Re-read Linux + FreeBSD for missed step. Single-stick problem ≠ general bug. |
+| **Failure — recovery aborts at new step** | Any new `failed` line not seen in Attempt 85 | Code bug in Phase 2.7 patch. Iron-debug from photo. |
+
+Per [`feedback_iron_burns_block_other_work`](../../../../.claude/projects/-home-macro-Repos-agnosticos/memory/feedback_iron_burns_block_other_work.md): no further burn proposed without written audit. This § 9 IS the Attempt 86 audit.

@@ -1868,9 +1868,77 @@ Conclusion: **device-side recovery alone is insufficient on this stick.** The co
 
 **Sources:**
 
-- Photo `1312_USB_MASS_Log.jpg` (root of agnosticos worktree).
+- Photo [`iron-nuc-zen-photos/attempt-84-usb-ms-phase-2-5-reset-recovery-still-wedged.jpg`](iron-nuc-zen-photos/attempt-84-usb-ms-phase-2-5-reset-recovery-still-wedged.jpg).
 - agnos `kernel/arch/x86_64/usb/msc.cyr` post-`18bd2bd` (`msc_reset_recovery` device-side scope; lack of xHCI command-level recovery).
 - `msc-reset-recovery-prior-art.md` (Linux + xHCI spec reference walk for Phase 2.6).
+
+---
+
+### Attempt 85 — USB MS Phase 2.6 controller-side commands iron validation 2026-05-21 → FALSIFIED (Reset Endpoint command itself returns failure CC; recovery chain aborts before Set TR Dequeue Pointer can fire; root cause = Reset Endpoint requires Halted state per xHCI 1.2 §4.6.8 but our EP was Stopped post-Stop-Endpoint)
+
+**Build under test:** agnos 1.31.2 with Phase 2.6 patch stack (`xhci_cmd_reset_endpoint`, `xhci_cmd_stop_endpoint`, `xhci_cmd_set_tr_dequeue` in `xhci_cmd.cyr`; `xhci_drain_transfer_events` in `xhci.cyr`; `msc_reset_recovery` rewritten with controller-side-first ordering in `msc.cyr`). cycc 6.0.1 toolchain. Same Silicon Motion stick as Attempt 84 (`VID=0x090C PID=0x1000`).
+
+**Photo:** [`iron-nuc-zen-photos/attempt-85-usb-ms-phase-2-6-endpoint-reset-failed.jpg`](iron-nuc-zen-photos/attempt-85-usb-ms-phase-2-6-endpoint-reset-failed.jpg).
+
+**Verbatim output (xhci/msc path only):**
+
+```
+msc: slot 2 BBB intf=0 bulk-IN=130 bulk-OUT=1 MPS(in/out)=512/512 MaxLUN=0
+xhci: transfer event timeout
+msc: data phase timeout
+msc: slot 2 INQUIRY failed
+msc: CSW tag mismatch
+msc: slot 2 transport wedged, attempting Reset Recovery
+msc: Reset Endpoint(bulk-IN) failed
+msc: slot 2 transport wedged, attempting Reset Recovery
+msc: Reset Endpoint(bulk-IN) failed
+msc: slot 2 TEST UNIT READY -> not ready after 3 retries
+xhci: transfer event timeout
+msc: CBW transfer timeout
+msc: 1 mass-storage device(s) detected
+```
+
+**What this confirms:**
+
+- **Phase 2.6 xHCI command surface lands on iron.** `xhci_cmd_stop_endpoint` evidently ran successfully (no "Stop Endpoint failed" line); `xhci_cmd_reset_endpoint` ran but returned a non-Success completion code (printed `Reset Endpoint(bulk-IN) failed`).
+- **EP state mismatch root cause.** Reading `xhci_cmd.cyr` post-burn against xHCI 1.2 §4.6.8: Reset Endpoint requires the EP to be in **Halted** state. The transfer-event-timeout wedge never put the EP into Halted — it stayed Running, then Stop Endpoint moved it to Stopped. Reset Endpoint on Stopped returns `Context State Error` (CC=19) — exactly the symptom.
+- **`xhci_cmd_stop_endpoint` already tolerates CSE** (`xhci_cmd.cyr:317-324`). The decision to NOT extend the same tolerance to `xhci_cmd_reset_endpoint` (a deliberate choice because Reset Endpoint failure is usually load-bearing) is what aborted recovery — but in the Stopped-not-Halted case, Reset Endpoint isn't needed at all (Stop Endpoint already put the EP in Stopped, which is the destination state Reset Endpoint would have produced from Halted).
+
+**Per `feedback_redesign_dont_reinvent` (refreshed 2026-05-21 with hard "multi-source" rule):** four-impl audit landed in [`msc-reset-recovery-prior-art.md` § 9](msc-reset-recovery-prior-art.md). FreeBSD's `xhci_get_endpoint_state` + `xhci_configure_reset_endpoint` reads EP state and dispatches; OpenBSD / EDK2 don't issue Reset Endpoint at all (their HCD abstraction handles it). Linux confirmatory only. **Convergent fix:** gate Reset Endpoint on `EP_STATE == Halted`.
+
+**Carry-forward — Phase 2.7 patch stack:** four behavioral repairs landed in agnos 1.31.2 (closing release) before next iron burn. (1) Reset Endpoint CSE tolerance — defensive backstop. (2) EP-state-aware Reset Endpoint dispatch — primary fix; mirrors FreeBSD. (3) 100ms post-BOT-Reset device stall — matches EDK2's explicit `gBS->Stall(USB_BOT_RESET_DEVICE_STALL)` + FreeBSD's implicit 50ms `.interval`; addresses Attempt 84's "Reset Recovery OK but transport stays wedged" because CLEAR_FEATURE was arriving mid-device-reset. (4) Reset Recovery step reorder: device-side first, then defensive event drain, then controller-side. Matches convergent reference ordering. Detail in [`msc-reset-recovery-prior-art.md` § 9.2](msc-reset-recovery-prior-art.md).
+
+**Status against `usb-ms-iron-burn-audit.md` § 5 success rubric:**
+
+- **Full success rubric:** missed by the same ~5 lines as Attempts 83/84.
+- **Partial — vendor-specific quirk:** matches § 3 hypothesis 7 shape (controller-side EP context not re-synced) but with the additional fault that Reset Endpoint dispatch itself was wrong.
+- **Failure rubric:** not triggered. xhci enumeration clean; Configure Endpoint clean; no kernel fault; NVMe primary path through to shell unaffected — `msc: 1 mass-storage device(s) detected` keeps probe non-fatal so MVP gate stays cleared.
+
+**Sources:**
+
+- Photo [`iron-nuc-zen-photos/attempt-85-usb-ms-phase-2-6-endpoint-reset-failed.jpg`](iron-nuc-zen-photos/attempt-85-usb-ms-phase-2-6-endpoint-reset-failed.jpg).
+- agnos `kernel/arch/x86_64/usb/xhci_cmd.cyr` Phase 2.6 commit `8fd8c5c` (Reset Endpoint helper without CSE tolerance + without state-aware dispatch).
+- xHCI 1.2 §4.6.8 Reset Endpoint (Halted-state precondition) + §4.10.2.1 EP State Machine.
+- [`msc-reset-recovery-prior-art.md` § 9](msc-reset-recovery-prior-art.md) — four-source convergent audit (FreeBSD + OpenBSD + EDK2 + Linux).
+
+---
+
+### Attempt 86 — PENDING IRON BURN — USB MS Phase 2.7 multi-source-converged Reset Recovery (device-side-first ordering + 100ms post-BOT-Reset stall + EP-state-aware Reset Endpoint dispatch + CSE tolerance) — agnos 1.31.2 `[Unreleased]`
+
+**Build under test:** agnos 1.31.2 `[Unreleased]` HEAD with Phase 2.7 four-patch stack landing on top of Phase 2.6 commit `8fd8c5c`. cycc 6.0.1 toolchain. Build `build/agnos` 499,816 B (was 499,736 B at Attempt 85; +80 B from added comments + 50M-iter delay loop + EP-state dispatch helper). **VERSION stays at 1.31.2 until Attempt 86 burns and user calls the close.**
+
+**Pre-burn audit:** [`msc-reset-recovery-prior-art.md` § 9](msc-reset-recovery-prior-art.md) — multi-source addendum (FreeBSD `umass.c` + `xhci.c`, OpenBSD `umass.c`, EDK2 `UsbMassBot.c`, Linux confirmatory). Per [`feedback_redesign_dont_reinvent`](../../../../.claude/projects/-home-macro-Repos-agnosticos/memory/feedback_redesign_dont_reinvent.md) refreshed 2026-05-21 with hard "multi-source" rule.
+
+**Patches landed (named per [`feedback_no_letter_codes_for_repairs`](../../../../.claude/projects/-home-macro-Repos-agnosticos/memory/feedback_no_letter_codes_for_repairs.md)):**
+
+1. **Reset Endpoint CSE tolerance** (`xhci_cmd.cyr` `xhci_cmd_reset_endpoint`). Defensive backstop — `XHCI_CC_CONTEXT_STATE_ERROR` returned as success. Same shape `xhci_cmd_stop_endpoint` already had.
+2. **EP-state-aware Reset Endpoint dispatch** (`xhci_ctx.cyr` new `xhci_ep_state` + `xhci_regs.cyr` new `XhciEpState` enum + `msc.cyr` step 7). Reads Output EP Context dword 0 bits 0-2 per xHCI 1.2 §6.2.3; gates Reset Endpoint on `XHCI_EP_STATE_HALTED`. Mirrors FreeBSD `xhci_get_endpoint_state` + `xhci_configure_reset_endpoint`.
+3. **100ms post-BOT-Reset device stall** (`msc.cyr` step 2). 50M-iteration busy-wait between Bulk-Only Mass Storage Reset and CLEAR_FEATURE(HALT). Matches EDK2 explicit + FreeBSD implicit + Linux `msleep(100)`. **Highest-confidence fix** — Attempt 84's "Reset Recovery OK but transport stays wedged" matches CLEAR_FEATURE arriving mid-reset.
+4. **Reset Recovery step reorder: device-side first** (`msc.cyr` full `msc_reset_recovery` body). New order: BOT Reset → 100ms stall → CLEAR_FEATURE×2 → drain events → Stop Endpoint×2 → Reset Endpoint×2 (Halted-gated) → ring rewind → Set TR Dequeue×2 → clear sticky. Matches FreeBSD / OpenBSD / EDK2 convergent ordering — device sees a clean reset first, then controller state is resynced.
+
+**Same iron + same stick as Attempts 83-85** (Silicon Motion `VID=0x090C PID=0x1000`). Outcomes per [`msc-reset-recovery-prior-art.md` § 9.4](msc-reset-recovery-prior-art.md) success rubric.
+
+**MVP gate posture:** unaffected. `msc_probe_slot` already returns 1 even on transport failure (Phase 1-4 design), so MVP boot-to-shell stays green regardless of Attempt 86 outcome. USB MS arc is opportunistic — closed beta MVP gate doesn't depend on it.
 
 ---
 
