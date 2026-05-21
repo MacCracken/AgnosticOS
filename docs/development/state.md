@@ -38,7 +38,7 @@ QEMU end-to-end validated with byte-exact disk persistence: `nvme: registered as
 >   → 470,664 B (+7,552 AHCI P4)
 >   → **475,096 B** (+4,432 GPT P3).
 >   **Total session delta: +34,040 B** (~34 KB for two new device-class drivers + GPT layer with full validation + helper surface + ~1,700 LOC engineering).
-> **1.31.1 cycle: code-complete.** All planned scope landed in `[Unreleased]`. Closing handoff: iron-burn audit (per `feedback_iron_burns_block_other_work`) covering AHCI Phase 4's LBA-5 sentinel write, then `[Unreleased]` → `[1.31.1] — 2026-05-20` rename + tag at user's discretion. Cycle plan continues: **1.31.2 = USB Mass Storage**, **1.31.3 = ext2**.
+> **1.31.1 cycle: code-complete.** All planned scope landed in `[Unreleased]`. Closing handoff: iron-burn audit drafted at [`ahci-iron-burn-audit.md`](ahci-iron-burn-audit.md) — covers Phase 1-4 risk surface, identifies LBA-5 sentinel write as the only iron-write hazard, proposes `AHCI_RW_DEMO` compile-gate mitigation matching the `KTEST` / `XHCI_VERBOSE` pattern. Awaits user review + §4 patch decision before iron burn scheduling. Then `[Unreleased]` → `[1.31.1] — 2026-05-20` rename + tag at user's discretion. Cycle plan continues: **1.31.2 = USB Mass Storage**, **1.31.3 = ext2**.
 > **Crate registries**: [`planning/shared-crates.md`](planning/shared-crates.md) (full, incl. pre-1.0); [`docs/applications/libs/README.md`](../applications/libs/README.md) (v1.0+ subset).
 
 ### Next storage targets after NVMe iron debut
