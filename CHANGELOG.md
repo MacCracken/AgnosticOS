@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `scripts/install-usb.sh` 2-partition + agnos-fs seed upgrade (2026-05-22)
+
+Provision-mode upgrade from single-partition (256 MiB ESP + rest unallocated) to **two-partition layout**: ESP + 25 GiB ext4 `agnos-fs` partition pre-seeded for the upcoming **1.33.x ext4 WRITE** bring-up arc.
+
+- **New partition** — GPT name + fs label `agnos-fs`, formatted via default `mkfs.ext4 -F -L agnos-fs $PART2` → 64BIT-enabled per Attempt 91 iron-validated profile.
+- **Pre-seeded content** — `/hello.txt` (primary), `/welcome.txt` (secondary hello at root), `/agnos/notes.txt` (file inside subfolder, for `cd` + `cat` + `ls` validation). All three timestamped at provision time via `$(date -u +%Y-%m-%d)`.
+- **`--update` mode unchanged** — still ESP-only (gnoboot + kernel + initramfs refresh). The data partition + seed are **deliberately untouched** on `--update` so writes that 1.33.x lands on `agnos-fs` survive every subsequent kernel-iteration cycle. Per [[feedback_prefer_mount_modify_over_reflash]] — for AGNOS-side seed changes, mount the partition from Linux and edit in place; reserve `--update` reflash for kernel/gnoboot binary changes.
+- **Mount-priority note** — per `agnos/kernel/core/ext2.cyr:198-205` the probe order is **NVMe → AHCI → USB-MS → VirtIO → RAMDISK, first match wins**. On archaemenid the internal NVMe `agnos-fs` keeps winning, so the USB `agnos-fs` sits *dormant* (kernel mounts NVMe, USB seed invisible to `ls`/`cat`). That's the desired posture — keeps the sacred NVMe partition out of the path for 1.33.x WRITE bring-up while the **sacrificial USB partition** stays ready to swap into the probe priority once writes start landing.
+- **Step count** — provision mode goes `[1/6]…[6/6]` → `[1/8]…[8/8]`; added `mkfs.ext4` to tool preflight.
+- **Strategic role** — this is the **base-stage** persistence surface getting prepped ahead of 1.33.x landing. Per the maturity arc ([roadmap.md § Maturity Arc](docs/development/roadmap.md#maturity-arc) / [[project_agnos_maturity_arc]]), the demo→base transition is what triggers archaemenid's dual-boot migration; `install-usb.sh` is the **base-stage** installer, with `agnova` (native AGNOS-side installer) taking over at **server-stage**.
+
 ## [0.1.0] — TBD (clean + prep cycle on `monolith-extraction` branch, on the way to merge into `main`)
 
 ### Versioning — scheme transition

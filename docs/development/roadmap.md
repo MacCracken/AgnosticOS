@@ -1,6 +1,6 @@
 # AGNOS Development Roadmap
 
-> **Status**: Pre-Beta — Closed Beta targeting **early June 2026** | **Last Updated**: 2026-05-11
+> **Status**: Pre-Beta — Closed Beta targeting **early June 2026** | **Last Updated**: 2026-05-22 (maturity arc section added; live cycle/version state lives in [`state.md`](state.md) — refer there for current kernel / Cyrius / per-repo status, not the stale per-cycle quotes embedded in this doc's top-matter below).
 >
 > 🔴 **BETA RESCOPED (2026-05-06)**: Two-stage beta. **Closed beta** targets early June 2026 — Phase 13A complete, exercised by a small private cohort of trusted testers (friend-network), no formal community-program enrollment. **Public beta** retains the original Q4 2026 window and adds the third-party security audit + community testing program. This is a deliberate compression: previously-mandatory beta gates (audit, community program) move to the public-beta gate so the closed-beta line is honest about what shipped.
 >
@@ -36,6 +36,24 @@
 > **Critical path CLEARED**: libro ✅ argonaut ✅ kybernet ✅ kernel ✅ boot pipeline ✅ kavach ✅ ark ✅ nous ✅
 > **Shared ecosystem**: 30+ repos ported to Cyrius. In port (partial, `rust-old/` still authoritative): takumi 0.8.0. Pending port: bhava, aethersafha. (aegis hit **1.0.0** in the v5.10.x window — out of pending.)
 > **Next milestone**: **May 1 V1** — bootable ISO runs DOOM from Cyrius; kernel + toolchain + 30+ ports + science library shipped. Then biweekly cadence to DEF CON.
+
+---
+
+## Maturity Arc
+
+AGNOS capability follows a **5-stage arc** that anchors what "the next stage" means at any cycle. Orthogonal to the [Strategic Vision](#strategic-vision) (release-milestone framing) and the [Phase 13A / 13C / 16 numbering](#critical-path-to-beta) (work-area framing) — the arc is the *capability lens* above both. User-defined 2026-05-22.
+
+| Stage | Capability content | Status (2026-05-22) | Exit trigger |
+|---|---|---|---|
+| **demo** | Boots to shell on iron, ext4 read-only, networking client-side. Can be *shown* working but not lived in — no state persistence across reboots. | **Current.** MVP gate (Attempt 68 / 1.30.9 / 2026-05-15) was the demo entry; everything since has been demo-stage hardening (storage drivers Phase 2-5, ext2/4 read, GPT, USB MS, kybernet+agnoshi typeable, r8169 Phase 1-4). | 1.33.x ext4 WRITE landing. |
+| **base** | Kernel solid; ext4 read+write; ark/nous package manager working end-to-end (resolve / fetch / install / remove); AGNOS-side update mechanism; enough soak surface for real-workload exposure without weekly showstoppers. | **Pending 1.33.x WRITE + ark/nous client maturation.** Triggers archaemenid dual-boot migration (AGNOS-primary on internal NVMe + Linux on SATA — see [`state.md`](state.md) § *archaemenid migration*). Functional-readiness trigger ≠ full base-stage exit; the stage matures over the subsequent ark/nous client cycles. | Native installer + server ecosystem landing. |
+| **server** | **agnova native installer** (AGNOS installs itself onto target hardware; install-usb.sh host-side script retires); non-desktop subsystem suite (BBS, MUD, sovereign remote-shell, web server, ark+nous server-side) + the libs they consume. **Most of "Linux's purpose" gets absorbed at this stage** — archaemenid Linux usage is predominantly server-flavored (build hosting, file serving, CLI dev, network services), so server-stage AGNOS replaces it without needing GUI work. Archaemenid Linux eviction lands at **server**, not "swallow." | **Not started.** 1.32.x server-side TCP primitives (bite A) are the kernel foundation. | aethersafha + GUI userland landing. |
+| **desktop** | aethersafha (Wayland compositor — currently Pending in CLAUDE.md table) + display drivers (mabda + iGPU/dGPU) + user-facing app ports + GUI userland. Absorbs the daily-driver / GUI / browser workloads that server stage couldn't. | **Not started.** | Compat sandbox + non-native-workload absorption. |
+| **swallow** | **Compat sandbox layer** — AGNOS hosts non-AGNOS-native apps (Windows binaries, Linux binaries, web apps) inside a sovereign sandbox so endusers can move to AGNOS without giving up their existing app ecosystem. Connects directly to **Phase 20 — Cross-Platform Compat Subsystem** below. Sovereignty via **universal hosting**, not eviction — AGNOS becomes the host that can run anything, removing the last reason anyone would keep a separate non-AGNOS install. | **End-state.** No fixed date; trigger is final-workload capability parity. | (Terminal — no exit.) |
+
+**The arc is sequential.** Don't skip stages: desktop work doesn't open before server lands; swallow doesn't open before desktop lands. Stage exits map loosely to release milestones — demo→base ≈ MVP entry maturation, base→server ≈ Public Beta, server→desktop ≈ v1.0, desktop→swallow ≈ post-v1.0 horizon.
+
+**Distributed swallowing.** The "swallow" eviction events are distributed *across* stages 3-4-5 based on each workload's nature: server stage absorbs most Linux workloads (native replacements); desktop stage absorbs daily-driver / GUI workloads (native GUI apps via aethersafha); swallow stage absorbs the long-tail niche workloads via compat sandbox (no per-app native port needed). This is why "swallow" is small as a capability-construction stage despite being the terminal stage — most work is already done by stages 3+4.
 
 ---
 

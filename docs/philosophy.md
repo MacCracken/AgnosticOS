@@ -111,6 +111,20 @@ The continuity isn't agent identity — agents swap as rate limits hit, sessions
 
 ---
 
+## Sovereignty via Universal Hosting
+
+The eviction model — "AGNOS replaces every other OS, the empire's runtimes get pushed out, the user commits to AGNOS-native software" — is one shape of sovereignty, but it isn't the load-bearing one. AGNOS's maturity arc (`demo → base → server → desktop → swallow` — see [`development/roadmap.md § Maturity Arc`](development/roadmap.md#maturity-arc)) treats the terminal **swallow** stage not as a final eviction event but as the moment when AGNOS becomes a **universal host**: a sovereign substrate that can run anything.
+
+Three middle stages (base, server, desktop) build *native* sovereignty — AGNOS-shaped replacements for OS, userland, and GUI. That's the **sovereignty bet**: a full ecosystem built without depending on the empire's runtimes, package registries, or trust roots. Each native port pays into the AGNOS-can-do-this-itself ledger.
+
+The swallow stage is the **inclusion bet**: rather than demanding the user abandon every Windows or Linux binary they rely on, AGNOS becomes capable of hosting them inside a kavach-sandboxed personality container (Phase 20 — [`development/planning/cross-platform-compat-subsystem.md`](development/planning/cross-platform-compat-subsystem.md)). The compat layer is permanent. The kernel never absorbs foreign ABIs. The sandbox is the boundary, and the boundary holds.
+
+Both bets converge on a single outcome: **AGNOS-as-host**. The user who wants full sovereignty gets a native ecosystem; the user who wants to keep their existing app ecosystem gets a sandbox. Either way, AGNOS is the layer everything else runs on top of — and there's no remaining reason to keep a separate Windows or Linux install around. That's the difference between *sovereignty via control* (push everything else out) and *sovereignty via inclusion* (be the substrate that can host everything). AGNOS chooses the inclusion path because it's a friendlier migration *and* a more durable one — enduser adoption doesn't require committing to AGNOS-native software, just to running it as the host layer.
+
+The architecture pays this off in [`architecture.md § Reading this diagram through the maturity lens`](architecture.md#reading-this-diagram-through-the-maturity-lens). The compat layer is one of four parallel-infrastructure layers ([[project_agnos_empire_defense_layers]] — compat / wire / trust / governance) that make the inclusion bet defensible against an adversary-class threat model. Sovereignty without isolation; agnostic without surrender.
+
+---
+
 ## Summary
 
 AGNOS is infrastructure designed to precede its most significant workload. It is a library built before all the books have been written, on the premise that sovereignty requires controlling the stack all the way down — from applications to kernel to compiler to bootstrap seed.

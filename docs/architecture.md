@@ -84,6 +84,18 @@ AGNOS is a sovereign operating system written in Cyrius. The architecture consis
 +======================================================================+
 ```
 
+### Reading this diagram through the maturity lens
+
+The three-layer diagram above is **simultaneously present** in the codebase — every layer has some Cyrius-native existence today. But the **maturity arc** (see [`development/roadmap.md § Maturity Arc`](development/roadmap.md#maturity-arc)) shifts emphasis across the layers as AGNOS matures:
+
+- **demo stage** (current): kernel layer is the active surface (boot, init, scheduler, syscalls, drivers, ext4 read). Subsystems exist but most run host-side; userland is minimal (agnoshi shell only).
+- **base stage** (post-1.33.x WRITE): kernel reaches "solid"; package manager (ark + nous) and update mechanism land; subsystems begin running AGNOS-side.
+- **server stage**: the **Named Subsystems** band fills in — installer (agnova), BBS/MUD apps, server daemons, more libs. Most Linux-shaped workloads become AGNOS-replaceable.
+- **desktop stage**: the **Userland Surface** band fills in — aethersafha (Wayland compositor) + GUI apps. The diagram's top tier becomes user-facing.
+- **swallow stage**: a fourth layer activates — the **compat sandbox** (Phase 20, [`development/planning/cross-platform-compat-subsystem.md`](development/planning/cross-platform-compat-subsystem.md)) — kavach-bounded Linux personality container hosting non-AGNOS-native binaries. **The boundary between the kernel and the interpretive layer is permanent** — the kernel never absorbs foreign ABIs (per [[project_agnos_kernel_growth_rules]] / [[project_agnos_empire_defense_layers]]). Sovereignty via universal hosting, not eviction.
+
+The four-layer empire-defense architecture (compat / wire / trust / governance — roadmap.md Phases 20-23) lays out *how the boundaries hold*; the maturity arc lays out *when each capability arrives*. Together they describe both the static structure and the dynamic emergence.
+
 ## Kernel
 
 AGNOS runs its own sovereign kernel, written in Cyrius. No Linux dependency at runtime.

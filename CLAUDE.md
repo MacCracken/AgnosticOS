@@ -86,6 +86,7 @@ The role map below is for orientation. **Versions are intentionally omitted** �
 | **darshana** | TTY/color primitives library (termios + ANSI + cursor positioning) — substrate for cyim, chakshu, bannermanor | **Native** |
 | **bannermanor** | figlet-equivalent ASCII-art banner generator (binary `bnrmr`; English-wordplay naming lane) | **Native** |
 | **hapi** | GNU `stow`-equivalent dotfile / symlink farm manager (CYML manifest per package, capability-bounded execution) | **Native** |
+| **kii** | `chafa` / `jp2a` / `viu`-equivalent — image → ANSI/ASCII-art converter for terminal display. **Four-layered name** across three language families: (1) Hawaiian *image / picture / likeness* — what the tool produces; (2) East Asian *ki* (気) / *chi* (氣) — life-force / vital energy: kii is the *ki of the terminal*, the animating force that brings the screen to life via images; (3) phonetic back-half of **a-scii** — what the tool emits; (4) functional convergence — produces images via ASCII to animate the terminal, all three language angles describe the same operation. Substrate for BBS MOTD banners, MUD room illustrations, `iam` splashes. Polynesian Hawaiian micro-cluster with `hapi`, `anuenue`. | **Native** |
 
 > **Live versions, sizes, test counts, and per-repo cycle state**: see [`docs/development/state.md`](docs/development/state.md) and [`docs/development/planning/shared-crates.md`](docs/development/planning/shared-crates.md). This table is intentionally version-free — embedded counts drift, and pointer-to-registry is the cleaner pattern.
 

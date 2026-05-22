@@ -6,16 +6,26 @@
 # the kernel via SimpleFileSystemProtocol and hands off via the sovereign
 # boot-info struct (RDI = &boot_info, magic 0x41474E4F='AGNO'). No GRUB.
 #
+# GPT layout (provision mode):
+#   p1  256 MiB  FAT32 ESP        (label AGNOSBOOT)  — gnoboot + kernel + initramfs
+#   p2   25 GiB  ext4 agnos-fs    (GPT name agnos-fs, fs label agnos-fs)
+#                                  — pre-seeded with /hello.txt, /welcome.txt,
+#                                    /agnos/, /agnos/notes.txt; ready surface
+#                                    for 1.33.x ext4 WRITE bring-up.
+#   rest        unallocated       (reserved for future expansion)
+#
 # Two modes:
 #
 #   sudo ./scripts/install-usb.sh /dev/sdX
-#     Full provision: wipes, GPT + 256MB FAT32 ESP, copies gnoboot.efi
-#     + kernel + initramfs. No grub-install.
+#     Full provision: wipes, GPT + 256MB FAT32 ESP + 25GiB ext4 agnos-fs
+#     partition (pre-seeded), copies gnoboot.efi + kernel + initramfs.
+#     No grub-install.
 #
 #   sudo ./scripts/install-usb.sh --update /dev/sdX
 #     Iteration refresh: mounts the existing ESP, overwrites gnoboot +
-#     kernel + initramfs, unmounts. No wipe. Use this after rebuilding
-#     gnoboot and/or agnos kernel locally.
+#     kernel + initramfs, unmounts. No wipe. Does NOT touch the agnos-fs
+#     data partition — writes that 1.33.x lands there will survive
+#     kernel-refresh iterations.
 #
 # After either: reboot, F-key boot menu, select the USB.
 #
@@ -51,8 +61,8 @@ fi
 
 # NVMe partitions use 'p1' suffix; SATA/USB use plain '1'
 case "$DEV" in
-    *nvme*) PART="${DEV}p1" ;;
-    *)      PART="${DEV}1" ;;
+    *nvme*) PART="${DEV}p1"; PART2="${DEV}p2" ;;
+    *)      PART="${DEV}1";  PART2="${DEV}2"  ;;
 esac
 
 # --- paths ---
@@ -63,6 +73,7 @@ KERNEL_SRC="${REPO_ROOT}/../agnos/build/agnos"
 GNOBOOT_SRC="${GNOBOOT_SRC:-${REPO_ROOT}/../gnoboot/build/BOOTX64.EFI}"
 INITRAMFS_SRC="${SCRIPT_DIR}/build/initramfs.cpio.gz"
 MOUNT_POINT="/mnt/agnos-usb"
+MOUNT_POINT_DATA="/mnt/agnos-usb-data"
 
 # --- preflight ---
 
@@ -165,7 +176,7 @@ fi
 
 # --- provision-mode preflight (tools only needed for full wipe path) ---
 
-for tool in parted mkfs.fat wipefs partprobe; do
+for tool in parted mkfs.fat mkfs.ext4 wipefs partprobe; do
     if ! command -v "$tool" >/dev/null 2>&1; then
         echo "ERROR: required tool '$tool' not found"
         exit 1
@@ -183,14 +194,19 @@ lsblk -o NAME,SIZE,TYPE,MOUNTPOINTS,LABEL,MODEL "$DEV" 2>/dev/null || true
 echo ""
 udevadm info --query=property --name="$DEV" 2>/dev/null | grep -E "ID_BUS|ID_MODEL|ID_VENDOR" || true
 echo ""
-echo "Files to install:"
+echo "Files to install (ESP, partition 1):"
 echo "  gnoboot:   $GNOBOOT_SRC ($(stat -c%s "$GNOBOOT_SRC") bytes)"
 echo "  Kernel:    $KERNEL_SRC ($(stat -c%s "$KERNEL_SRC") bytes)"
 echo "  Initramfs: $INITRAMFS_SRC ($(stat -c%s "$INITRAMFS_SRC") bytes)"
 echo ""
+echo "Data partition (ext4 agnos-fs, partition 2, 25 GiB):"
+echo "  Pre-seeded with /hello.txt, /welcome.txt, /agnos/notes.txt"
+echo "  Ready surface for 1.33.x ext4 WRITE bring-up. Persists across"
+echo "  --update refresh cycles (only the ESP is touched on --update)."
+echo ""
 echo "*** THIS WILL WIPE ALL DATA ON $DEV ***"
 echo "  (For just refreshing gnoboot/kernel/initramfs on a USB you've already"
-echo "   provisioned once, re-run with --update — no wipe.)"
+echo "   provisioned once, re-run with --update — no wipe, data partition untouched.)"
 echo ""
 read -r -p "Type 'YES' to proceed: " confirm
 if [[ "$confirm" != "YES" ]]; then
@@ -201,47 +217,64 @@ fi
 # --- 1. wipe ---
 
 echo ""
-echo "[1/6] Wiping existing partition table on $DEV..."
+echo "[1/8] Wiping existing partition table on $DEV..."
 wipefs -a "$DEV"
 
 # --- 2. partition ---
 
-echo "[2/6] Creating GPT layout (256MB FAT32 ESP at 1MiB + rest unallocated)..."
+echo "[2/8] Creating GPT layout (256MiB FAT32 ESP at 1MiB + 25GiB ext4 agnos-fs at 256MiB + rest unallocated)..."
 parted -s "$DEV" mklabel gpt
 parted -s "$DEV" mkpart AGNOS-BOOT fat32 1MiB 256MiB
 parted -s "$DEV" set 1 esp on
+# Second partition: GPT name "agnos-fs" so the kernel's GPT-aware ext2
+# probe (ext2.cyr:160-185, gates on Linux-FS type GUID + matches name)
+# can recognize it. End offset: 256MiB + 25 GiB (25600 MiB) = 25856 MiB.
+parted -s "$DEV" mkpart agnos-fs ext4 256MiB 25856MiB
 partprobe "$DEV"
 sleep 1
 
-# --- 3. format ---
+# --- 3. format ESP ---
 
-echo "[3/6] Formatting $PART as FAT32 (label AGNOSBOOT)..."
+echo "[3/8] Formatting $PART as FAT32 (label AGNOSBOOT)..."
 mkfs.fat -F32 -n AGNOSBOOT "$PART"
 
-# --- 4. mount ---
+# --- 4. format data partition (ext4, default 64BIT-enabled per Attempt 91) ---
 
-echo "[4/6] Mounting $PART at $MOUNT_POINT..."
+echo "[4/8] Formatting $PART2 as ext4 (label agnos-fs, default mkfs.ext4 → 64BIT)..."
+mkfs.ext4 -F -L agnos-fs "$PART2"
+
+# --- 5. mount ESP ---
+
+echo "[5/8] Mounting $PART at $MOUNT_POINT..."
 mkdir -p "$MOUNT_POINT"
 mount "$PART" "$MOUNT_POINT"
 
-# --- 5. copy gnoboot (UEFI removable-boot path) ---
+# --- 6. copy gnoboot + kernel + initramfs (ESP contents) ---
 
-echo "[5/6] Copying gnoboot to EFI/BOOT/BOOTX64.EFI..."
+echo "[6/8] Copying gnoboot + kernel + initramfs to ESP..."
 mkdir -p "${MOUNT_POINT}/EFI/BOOT"
 cp "$GNOBOOT_SRC" "${MOUNT_POINT}/EFI/BOOT/BOOTX64.EFI"
-
-# --- 6. copy AGNOS kernel + initramfs ---
-
-echo "[6/6] Copying AGNOS kernel + initramfs..."
 mkdir -p "${MOUNT_POINT}/boot"
 cp "$KERNEL_SRC" "${MOUNT_POINT}/boot/agnos"
 cp "$INITRAMFS_SRC" "${MOUNT_POINT}/boot/initramfs.cpio.gz"
 
-# --- unmount + sync ---
-
-echo ""
-echo "Unmounting and syncing..."
 umount "$MOUNT_POINT"
+
+# --- 7. mount data partition + seed ---
+
+echo "[7/8] Mounting $PART2 at $MOUNT_POINT_DATA + seeding hello + welcome + /agnos/ subfolder..."
+mkdir -p "$MOUNT_POINT_DATA"
+mount "$PART2" "$MOUNT_POINT_DATA"
+PROV_DATE="$(date -u +%Y-%m-%d)"
+printf 'hello from agnos USB ext4 seed   provisioned %s\n' "$PROV_DATE" > "${MOUNT_POINT_DATA}/hello.txt"
+printf 'welcome — secondary hello on agnos-fs root   provisioned %s\n' "$PROV_DATE" > "${MOUNT_POINT_DATA}/welcome.txt"
+mkdir -p "${MOUNT_POINT_DATA}/agnos"
+printf 'notes from the /agnos/ subfolder — cd+cat+ls validation surface   provisioned %s\n' "$PROV_DATE" > "${MOUNT_POINT_DATA}/agnos/notes.txt"
+
+# --- 8. unmount + sync ---
+
+echo "[8/8] Unmounting and syncing..."
+umount "$MOUNT_POINT_DATA"
 sync
 
 # --- done ---
@@ -252,11 +285,22 @@ echo "✓ AGNOS USB ready at $DEV"
 echo "============================================================"
 echo ""
 echo "Layout:"
-echo "  $PART   256MB  FAT32 ESP  (label AGNOSBOOT)"
+echo "  $PART   256MiB  FAT32 ESP        (label AGNOSBOOT)"
 echo "    EFI/BOOT/BOOTX64.EFI    — gnoboot (UEFI removable-boot path)"
 echo "    boot/agnos              — AGNOS kernel (ELF64)"
 echo "    boot/initramfs.cpio.gz  — initramfs (consumed by kernel; not gnoboot v0.1.0)"
-echo "  unallocated  rest of device  (reserved for future AGNOS data partition)"
+echo "  $PART2   25GiB   ext4 agnos-fs   (GPT name & fs label 'agnos-fs', 64BIT-enabled)"
+echo "    /hello.txt              — primary hello seed"
+echo "    /welcome.txt            — secondary hello seed (root)"
+echo "    /agnos/notes.txt        — content inside /agnos/ subfolder"
+echo "  unallocated  rest of device  (reserved for future expansion)"
+echo ""
+echo "Note on mount priority (per agnos/kernel/core/ext2.cyr probe order"
+echo "NVMe → AHCI → USB-MS → VirtIO → RAMDISK, first match wins): if a"
+echo "machine also has an internal NVMe 'agnos-fs' partition (e.g. archaemenid),"
+echo "NVMe wins and the USB seed sits dormant. That's intentional — the USB"
+echo "agnos-fs is the sacrificial write-test surface for 1.33.x WRITE bring-up,"
+echo "kept ready without competing with the NVMe primary."
 echo ""
 echo "Boot path:"
 echo "  UEFI firmware → EFI/BOOT/BOOTX64.EFI (gnoboot) → /boot/agnos (kernel)"
