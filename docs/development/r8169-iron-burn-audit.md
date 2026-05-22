@@ -219,3 +219,264 @@ See [`network-arc-prior-art.md`](network-arc-prior-art.md) § 1 for the full con
 **Next document on PASS**: this audit closes; companion `r8169-iron-burn-receipt.md` (or section in `iron-nuc-zen-log.md`) records the captured boot lines + per-hypothesis outcome + photos. State.md bite B row flips to `Phase 5 ✅ CLOSED — iron-validated at Attempt 92+`.
 
 **Next document on Partial/Falsified**: per § 3 triage columns, the relevant hypothesis-fix lands in code as the next bite (smallest-first; one hypothesis per repair to avoid bundling per [[feedback_stop_letter_laddering]]); audit doc closes with the partial outcome captured; new audit doc opens for the repair burn.
+
+---
+
+## §10 — Post-Attempt-93 audit extension (§5b — now-reachable H1/H7/H8 surface)
+
+This section opens at agnos **1.32.1 cycle-open** (2026-05-22) per the user-stated discipline: *"track items we still need to write work for, wait until on that particular iron."* It extends § 3 + § 5 with the post-burn reality: Attempt 92 (PARTIAL — pre-fix) + Attempt 93 (PARTIAL — gate-fix verified) collapsed the 9-hypothesis pre-burn surface to **three now-reachable candidates** (H1 / H7 / H8). Bites A-D of the 1.32.1 cycle execute against this section's findings.
+
+### §10.1 — What Attempt 93 changed about reachability
+
+Pre-burn (§ 3) ranking treated H1-H9 as **independent unknowns** because no iron evidence existed. Attempts 92 + 93 collected evidence that **eliminates six of the nine hypotheses** as the proximate cause of `dhcp: OFFER timeout`:
+
+| # | Pre-burn status | Post-93 status | Reason |
+|---|-----------------|----------------|--------|
+| H1 (PHY not configured) | HIGH risk | ⚠️ **REACHABLE — top candidate** | All six `r8169:` Phase 1-3 lines printed clean; ring init succeeded; the failure mode is *exactly* the "Phase 1-3 lines all print correctly; DHCP exits with OFFER timeout" outcome predicted in §5 *"Partial — Probe + reset OK, no link"*. |
+| H2 (chip-revision reset quirk) | MEDIUM | ❌ falsified | `r8169: reset OK; Phase 1 complete` printed. Reset succeeded within the 1000-iteration poll. |
+| H3 (MAC read garbage) | LOW | ❌ falsified | `r8169: MAC=176:65:111:12:228:37` = `b0:41:6f:0c:e4:25` byte-matches lspci. EEPROM auto-load worked. |
+| H4 (BAR2 mapping wrong) | LOW | ❌ falsified | `r8169: found at 4243603456` = 0xFCF04000 byte-matches lspci BAR2. MMIO base correct. |
+| H5 (bus master not enabled) | LOW | ⚠️ **REACHABLE — re-elevated** | Pre-burn this was LOW because the same call works for NVMe/AHCI/xHCI. Post-93 it stays viable as a secondary candidate for *both* H7 and H8: if the NIC has the bus-master enable bit cleared, RX descriptors stay OWN=1 (NIC can't DMA into them) and TX descriptors with OWN=1 stay set (NIC can't DMA out of them). Identical symptom shape to H1, distinguishable only by post-mortem CR / PCI cmd register read. |
+| H6 (PAT/cache attribute) | LOW | ❌ falsified | If PAT was wrong, MMIO reads would have returned stale/cached values — MAC bytes would have read garbage on the second access pattern, or chip-rev would have been wrong. Both read clean. |
+| H7 (TX OWN never clears) | MEDIUM-LOW | ⚠️ **REACHABLE** | DISCOVER was built + handed to `r8169_send` (gate-fix VERIFIED on iron — `dhcp: DISCOVER` egress line printed). The frame **reached** the driver; whether it left the NIC is unknown. Driver code has no TX OWN poll-back to disambiguate. |
+| H8 (RX OWN never clears) | MEDIUM-LOW | ⚠️ **REACHABLE** | OFFER may have arrived but `r8169_poll` returned 0 every iteration. Distinguishable from "no OFFER on the wire" only by reading the RX ring head/tail and the buffer contents post-timeout. |
+| H9 (cross-driver interaction) | LOW | ❌ falsified | Storage trio (NVMe/AHCI/USB-MS) + GPT + ext4 mount + shell launch all byte-clean across Attempts 92 + 93. No symptom of arbitration starvation. |
+
+**Net**: H1 + H5 + H7 + H8 stay open; H1 is the highest-probability *root* cause; H5 + H7 + H8 are *downstream* of an H1 failure (all three present identically when there's no link to clock the PHY). Discriminating between them requires post-mortem driver state — which the kernel currently has zero observability into. That's bite B (discriminator instrumentation) of the 1.32.1 cycle.
+
+### §10.2 — H1 (PHY not configured) — line-by-line vs current `r8169.cyr` + multi-source convergence
+
+**Current code (file: `agnos/kernel/core/r8169.cyr`)**:
+
+- `r8169_probe()` at line 155-234 — does PCI probe (line 156), MMIO BAR discovery (167-176), bus-master enable (179), result cache (182-187), MAC read (190-192), chip-rev capture (198-199), **CR.RST=1 soft reset + 1000-iteration poll** (205-217), summary print (220-232). **Zero PHY-side register writes.**
+- `r8169_init_rx()` at line 249 — programs RDSAR, RxConfig, RMS, sets CR.RE. **Zero PHY-side register writes.**
+- `r8169_init_tx()` at line 336 — programs TNPDS, TxConfig, MTPS, sets CR.TE. **Zero PHY-side register writes.**
+
+The chip's internal PHY (RTL8211B/C/D depending on chip-rev byte 0x87 = RTL8168f-vl or RTL8168g-vl family per Linux's `mac_version` table) reaches power-on default state, which **may or may not** be "autoneg-enabled + link-up-once-cable-detected." For some board EEPROM configurations the PHY comes up clean; for others it stays in power-down or with autoneg disabled. archaemenid's Beelink SER falls in the latter group per the Attempt 93 outcome — DISCOVER egress was attempted, no OFFER returned within the timeout window, no link-state transition fired.
+
+**Multi-source convergence on minimum PHY init** (consulted per [[feedback_redesign_dont_reinvent]]):
+
+| Source | PHY-init shape | Where |
+|--------|----------------|-------|
+| Linux `r8169_main.c` | Full per-mac_version dispatch table (`rtl_hw_phy_config_*` family, ~10-40 MDIO writes each, 50+ chip-rev branches) | `drivers/net/ethernet/realtek/r8169_phy_config.c` |
+| FreeBSD `if_re.c` | `re_phy_power_up` (BMCR bit 11 = power-down → 0, then autoneg-restart) + `mii_attach`-based autoneg | `sys/dev/re/if_re.c` |
+| OpenBSD `re.c` | `re_phy_init` — simplest converged form: write BMCR (reg 0) with autoneg-enable + restart-autoneg; poll BMSR (reg 1) bit 2 for link-up | `sys/dev/ic/re.c` |
+| NetBSD `re.c` | Mirror of OpenBSD shape with explicit timeout (3000ms) | `sys/dev/ic/re.c` |
+| Haiku | `RealtekRTL8169Family.cpp` mirrors OpenBSD shape | `src/add-ons/kernel/drivers/network/ether/rtl8169/` |
+| RTL8168/8111 datasheet | §11 (PHYAR register at offset 0x60) + §13 (PHY register map: BMCR=0, BMSR=1, ANAR=4, GBCR=9, etc.) | RealTek RTL8168E-VL datasheet |
+
+**Converged minimum PHY init** (OpenBSD `re_phy_init` shape; the simplest cross-validated form across all four BSD refs):
+
+```
+1. Write BMCR (PHY reg 0) = 0x1200 via MDIO
+   (BIT 12 = autoneg-enable, BIT 9 = restart-autoneg; BIT 11 = power-down stays 0)
+2. Poll BMSR (PHY reg 1) bit 2 (LinkStatus) with timeout (~3000ms typical;
+   actual link establishment varies by switch — usually <1s on a hot cable)
+3. Optionally read BMSR bit 5 (autoneg-complete) for explicit confirmation
+4. Print link state (e.g., "r8169: link up (autoneg complete)")
+```
+
+**RTL811x MDIO interface** (RealTek datasheet §11 — PHYAR register at MMIO offset 0x60):
+
+- **PHYAR layout**: bit 31 = Flag (write-direction trigger / read-direction completion); bits 25:21 = reserved; bits 20:16 = PHY register address (5 bits, 0-31); bits 15:0 = data.
+- **Write protocol**: set bit 31 + reg-addr in bits 16:20 + data in bits 0:15; poll bit 31 until clear (chip clears on completion; typical 1-10 µs).
+- **Read protocol**: clear bit 31 + reg-addr in bits 16:20; poll bit 31 until set (chip sets on read completion; data appears in bits 0:15).
+
+**Proposed Cyrius shape** (lands at bite C if discriminator confirms H1):
+
+```
+fn r8169_phy_read(reg) {
+    var par = (reg & 0x1F) << 16;        # bit 31 = 0 (read direction)
+    store32(r8169_mmio_base + 0x60, par);
+    # Poll for completion (bit 31 set = chip wrote the result)
+    for (var i = 0; i < 1000; i = i + 1) {
+        var r = load32(r8169_mmio_base + 0x60);
+        if ((r & 0x80000000) != 0) {
+            return r & 0xFFFF;
+        }
+    }
+    return 0xFFFF;                         # timeout sentinel
+}
+
+fn r8169_phy_write(reg, val) {
+    var par = 0x80000000 | ((reg & 0x1F) << 16) | (val & 0xFFFF);
+    store32(r8169_mmio_base + 0x60, par);
+    # Poll for completion (bit 31 cleared = chip processed the write)
+    for (var i = 0; i < 1000; i = i + 1) {
+        var r = load32(r8169_mmio_base + 0x60);
+        if ((r & 0x80000000) == 0) { return 1; }
+    }
+    return 0;                              # timeout
+}
+
+fn r8169_phy_init() {
+    # Restart autonegotiation. BMCR bit 12 = autoneg-enable; bit 9 = restart-autoneg.
+    var bmcr = r8169_phy_read(0x00);       # current BMCR
+    bmcr = bmcr | 0x1200;                  # autoneg-enable | restart-autoneg
+    bmcr = bmcr & 0xF7FF;                  # clear power-down (bit 11) just in case
+    r8169_phy_write(0x00, bmcr);
+
+    # Poll BMSR (reg 1) bit 2 for link-up. ~3 seconds at 1ms granularity
+    # is the BSD-converged timeout; we use a busy-loop approximation.
+    for (var i = 0; i < 300; i = i + 1) {
+        var bmsr = r8169_phy_read(0x01);
+        if ((bmsr & 0x0004) != 0) {        # bit 2 = link-up
+            kprintln("r8169: link up", 13);
+            return 1;
+        }
+        # ~10ms busy delay (TBD — could be a pmm_alloc-amount of cycles)
+        for (var j = 0; j < 100000; j = j + 1) { }
+    }
+    kprintln("r8169: no link (autoneg timeout)", 32);
+    return 0;
+}
+```
+
+Call site: append to `r8169_probe()` after step 8 (reset OK), before step 9 (summary print) — so the new line "r8169: link up" or "r8169: no link (autoneg timeout)" prints in the existing six-line block.
+
+**Estimated LOC**: ~80 LOC (~30 helper + ~30 init + comments). Minimum-viable form per BSD-converged shape; no per-chip-rev dispatch.
+
+### §10.3 — H7 (TX OWN bit stuck after kick) — line-by-line vs `r8169_send`
+
+**Current code (`r8169.cyr:390-415`)**:
+
+```
+fn r8169_send(buf, len) {
+    ...
+    var desc = r8169_tx_ring_phys + r8169_tx_idx * 16;
+    var status = load32(desc);
+    if ((status & 0x80000000) != 0) { return 0 - 1; }   # ring full
+
+    var bufaddr = load64(&r8169_tx_bufs + r8169_tx_idx * 8);
+    for (var i = 0; i < len; i = i + 1) {
+        store8(bufaddr + i, load8(buf + i));
+    }
+
+    # Set OWN | FS | LS | length; preserve EOR on last descriptor.
+    var new_status = 0x80000000 | 0x20000000 | 0x10000000 | len;
+    if (r8169_tx_idx == 15) { new_status = new_status | 0x40000000; }
+    store32(desc, new_status);
+
+    # Kick TX engine: write NPQ bit (0x40) to TPPoll.
+    store8(r8169_mmio_base + 0x38, 0x40);
+
+    r8169_tx_idx = (r8169_tx_idx + 1) & 0x0F;
+    return len;
+}
+```
+
+**What current code does**: writes desc[idx] with `OWN=1 | FS=1 | LS=1 | length` (correct single-segment frame layout per § 8 datasheet convergence), kicks TPPoll NPQ, returns. **Crucially: no post-kick poll-back to verify TX OWN cleared.**
+
+**What Linux/FreeBSD do for the same primitive**:
+
+- **Linux `r8169_main.c` `rtl8169_xmit`**: writes desc with `DescOwn | FirstFrag | LastFrag | size`, wmb() barrier, writes TX_POLL (= NPQ on the IO port form), schedules NAPI poll. Post-kick visibility comes from NAPI's `rtl8169_tx_interrupt` polling TX completions. Driver doesn't synchronously verify each descriptor's OWN-clear; relies on the interrupt/NAPI for batch reclaim.
+- **FreeBSD `if_re.c` `re_encap`**: writes desc with own bit, calls bus_dmamap_sync, then `CSR_WRITE_1(sc, RE_TPPOLL, RE_NPQ)`. Same pattern — no synchronous poll-back; relies on `re_intr` for completion.
+- **OpenBSD `re.c` `re_encap`**: identical shape.
+
+**Verdict for H7 candidacy**: current `r8169_send` matches all three converged refs **structurally** — same write pattern + kick. The ONLY material difference is that all three refs run their drivers with TX completion interrupts; AGNOS polls. **For DHCP DISCOVER** specifically:
+
+- AGNOS builds DISCOVER, calls `r8169_send` → write desc + kick → return len → DHCP state machine logs `dhcp: DISCOVER` → enters wait loop.
+- Wait loop calls `net_poll` → `nic_poll` → `r8169_poll` (RX only).
+- If TX completion didn't actually happen (PHY no-link, NIC won't push frame), descriptor stays OWN=1; next `r8169_send` call would return -1 (ring full at TX idx 0).
+- We don't call `r8169_send` again during the DHCP timeout window, so the TX-side stuck-state is **invisible from the boot log** — same observable as H1 (PHY no-link) and H8 (RX never delivers).
+
+**H7 as primary cause is unlikely** (no code shape difference from BSD-converged refs that would cause stuck-OWN by itself) — but H7 as **side effect of H1** is the actual mechanism. If PHY isn't configured, TX frames sit with OWN=1 forever even though the driver code is correct. Distinguishing H1-driven-H7 from H7-as-root requires post-mortem observability.
+
+### §10.4 — H8 (RX OWN bit stuck) — line-by-line vs `r8169_poll`
+
+**Current code (`r8169.cyr:306-334`)** (reproduced from grep + context — full read available):
+
+```
+fn r8169_poll(buf, maxlen) {
+    ...
+    var desc = r8169_rx_ring_phys + r8169_rx_idx * 16;
+    var status = load32(desc);
+    if ((status & 0x80000000) != 0) { return 0; }       # NIC still owns (empty)
+
+    # OWN=0: NIC wrote a packet. Read length (strip 4-byte FCS).
+    var len = (status & 0x3FFF) - 4;
+    if (len > maxlen) { len = maxlen; }
+
+    var bufaddr = load64(&r8169_rx_bufs + r8169_rx_idx * 8);
+    for (var i = 0; i < len; i = i + 1) {
+        store8(buf + i, load8(bufaddr + i));
+    }
+
+    # Re-arm descriptor: clear status, set OWN | BUF_SIZE, preserve EOR.
+    var new_status = 0x80000000 | 2048;
+    if (r8169_rx_idx == 15) { new_status = new_status | 0x40000000; }
+    store32(desc, new_status);
+
+    r8169_rx_idx = (r8169_rx_idx + 1) & 0x0F;
+    return len;
+}
+```
+
+**What current code does**: reads desc[idx] OWN bit; if OWN=1 (NIC owns, empty), return 0; if OWN=0 (NIC wrote a packet), copy buffer to caller, re-arm descriptor with OWN=1, advance.
+
+**Multi-source convergence**: same primitive pattern in Linux `rtl8169_rx_interrupt`, FreeBSD `re_rxeof`, OpenBSD `re_rxeof`, NetBSD `re_rxeof`, Haiku. Driver code is **structurally correct**.
+
+**Verdict for H8 candidacy**: like H7, H8 as primary cause is unlikely (code shape converges with all five refs) — but H8 as **side effect of H1** is the actual mechanism. With no link, no frame ever arrives on the wire, no RX DMA ever happens, descriptors stay OWN=1 forever, `r8169_poll` returns 0 every call. Same observable as H1 and H7.
+
+### §10.5 — Discriminator instrumentation (bite B — CMOS-bank stamps)
+
+Per [[feedback_no_serial_on_iron]] + [[feedback_no_instrumentation_means_no_instrumentation]] (CMOS extended bank is the only iron-readable channel for non-`kprintln` state), the smallest discriminator set:
+
+| CMOS slot | Stamp condition | Decodes which hypothesis |
+|-----------|-----------------|--------------------------|
+| 0x60 | written = 1 at end of `r8169_probe()` after reset OK | sanity (probe completed) |
+| 0x61 | written = phy-init outcome: 0 = no PHY init done (current state), 1 = link up, 2 = autoneg timeout, 3 = PHY init code reached but BMCR write timed out | **H1 discriminator (after bite C's PHY init lands)** |
+| 0x62 | written = `r8169_send` invocation count (high byte; capped at 255 = many sends) | TX-side activity counter |
+| 0x63 | written = TX desc 0 OWN bit at moment of read-boot-log post-mortem: 0 = NIC cleared it (TX succeeded at least once), 1 = still NIC-owned (H7 fires) | **H7 discriminator** |
+| 0x64 | written = `r8169_poll` invocation count (high byte; capped at 255) | RX-side activity counter |
+| 0x65 | written = RX desc 0 OWN bit at post-mortem read: 0 = NIC wrote it (H8 falsified), 1 = NIC never wrote (H8 fires) | **H8 discriminator** |
+| 0x66 | written = first 8 bytes of RX desc 0 buffer (high byte of length field) — proves whether DMA happened even if OWN walking is wrong | H8 secondary (DMA happened-but-bit-stuck case) |
+
+Stamps written in two places:
+- After `r8169_probe()` returns: stamps 0x60 + 0x61.
+- Inside `r8169_send`: increment counter at 0x62; on first invocation after build, also stamp current TX desc state at 0x63.
+- Inside `r8169_poll`: increment counter at 0x64; on first OWN=0 transition stamp 0x65; opportunistically stamp 0x66 on first DMA-detect.
+
+Read path: after iron burn, `scripts/read-boot-log.sh` already reads CMOS extended bank — extend with parse rules for 0x60-0x66.
+
+**Estimated LOC**: ~30-60 LOC across `r8169.cyr` (six stamp sites) + ~5 LOC CMOS helper extension if `kcp_write` shape already covers the slot range.
+
+### §10.6 — Corrective-patch shape per hypothesis (bite C)
+
+Order by probability + smallest-fix-first:
+
+1. **H1 fix (primary candidate)**: port BSD-converged minimum PHY init per § 10.2. Adds `r8169_phy_read` / `r8169_phy_write` MDIO helpers + `r8169_phy_init` call hooked into `r8169_probe()` after reset OK. **~80 LOC.** Discriminator: stamp 0x61 transitions from 2 (current "no PHY init done") to 0 = success → 1 = link up. Iron Attempt 94 outcome on success: `r8169: link up` prints between reset OK and Phase 1 complete; DHCP cycle completes (`DISCOVER` → `OFFER ip=…` → `REQUEST` → `ACK ip=…`).
+
+2. **H7 fix (only if discriminator stamp 0x63 = 1 after H1 fix lands)**: TX completion is genuinely stuck. Most likely culprits in order: (a) TPPoll write-width mismatch — currently `store8` to 0x38; verify against datasheet that this register is byte-writable vs requires `store16` / `store32`. (b) TX descriptor's buf_addr DMA mapping — verify the physical address survives translation. (c) NIC's TX TFA/TFD limits (TxConfig bits 10:8 = max DMA burst) — already programmed 0x03000700 = burst=7 (unlimited). **~10-30 LOC** depending on which culprit fires.
+
+3. **H8 fix (only if discriminator stamp 0x65 = 1 after H1 fix lands)**: RX completion is genuinely stuck. Same shape as H7 fix but RX-side. Most likely culprits in order: (a) RxConfig `0xE700 | AB | AM | APM` — verify the four `RxConfig` bits 6:8 (RX FIFO threshold) and 12:8 (MAX_DMA_burst); currently magic constant 0xE700. (b) RDSAR write-width — currently `store32` to 0xE4/0xE8 as 32-bit halves; verify against Linux's `rtl_set_rx_descriptor_base`. **~10-30 LOC.**
+
+If all three discriminators (0x61=success, 0x63=0, 0x65=0) and DHCP **still** times out: escalate to H5 (bus master not enabled correctly) or a deeper datasheet read of section 6.7 (RX/TX state machine semantics on this specific chip rev byte 0x87).
+
+### §10.7 — Cycle ordering for 1.32.1
+
+Per [[feedback_iron_burns_block_other_work]] — every iron burn requires a written audit FIRST. The bite sequence:
+
+1. **bite A (this section)** ✅ in flight — extends audit; lands at 1.32.1 cycle-open.
+2. **bite B** — discriminator instrumentation per § 10.5. ~30-60 LOC + smoke validation. Stacks WITH bite C into a single Attempt 94 burn per [[feedback_no_instrumentation_means_no_instrumentation]] (no instrumentation-only burns).
+3. **bite C** — H1 fix per § 10.6 step 1 (PHY init, ~80 LOC). Stacks WITH bite B.
+4. **bite D** — Iron Attempt 94 burn — validates B + C bundled. Expected outcome on H1 success: stamp 0x61 = 1 (link up); `r8169: link up` boot line; full DHCP cycle visible on FB; TCP_LISTEN_SMOKE 8080 reachable from LAN. Expected outcome on H1 failure: stamp 0x61 = 2 (autoneg timeout) + escalation to H7/H8 discriminator examination.
+5. **bite E** — cycle-close sweep + Attempt 94 transcript per [[feedback_cycle_close_shape]].
+
+**Pre-burn for Attempt 94**: bite A must close (this section's findings land). Bite B + C code must land + 4/4 test.sh + QEMU smoke green. Then iron burn with checklist similar to Attempt 93.
+
+### §10.8 — Audit disposition for 1.32.1 cycle-open
+
+**Bite A status**: ✅ landed (this § 10 extension). The cycle-open lean shape per [[feedback_changelog_captures_movement]] holds: no code touches, only the planning surface (audit + state + CHANGELOG).
+
+**Bite B + C readiness**: blocked on bite A's audit landing (just happened) + per-edit user consent for the r8169.cyr modifications per [[feedback_per_action_consent]]. Estimated stacked LOC: ~80-140. No new audit doc needed for bite B + C themselves — they execute against this section's findings.
+
+**Iron Attempt 94 readiness**: blocked on bite B + C landing + build green. Once landed: iron-burn checklist will mirror Attempt 93's, with one addition — user reads CMOS slots 0x60-0x66 via `scripts/read-boot-log.sh` post-burn for the discriminator data.
+
+**Multi-source posture**: every hypothesis triage in §10.2-10.4 cited at least 3 of (Linux / FreeBSD / OpenBSD / NetBSD / Haiku / RTL811x datasheet) per [[feedback_redesign_dont_reinvent]]. Linux is one source of many — **not** the singular reference. The proposed PHY init in §10.2 is OpenBSD-converged shape (simplest cross-validated form) with cross-checks against FreeBSD / NetBSD / Haiku / RealTek datasheet §11/§13.
+
+**Next document on PASS** (bite D Attempt 94 outcome: full DHCP cycle visible): cycle closes per § 10.7; agnos 1.32.1 CHANGELOG cycle-close summary mirrors 1.32.0's shape.
+
+**Next document on Partial** (discriminator fires for H7 or H8 specifically): § 10.6 step 2 or 3 fix lands as bite F of 1.32.1 — no new audit doc, just an extension to this section with the discriminator readout + corrective patch shape.
+
+**Next document on Falsified** (Attempt 94 boot doesn't reach shell, or storage regression): bisect via `KTEST` + `R8169_DISABLE` build flag to confirm causality, then write a new audit doc framed around the regression rather than the H1/H7/H8 surface.
