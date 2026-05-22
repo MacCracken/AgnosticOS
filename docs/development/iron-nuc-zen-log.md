@@ -2045,76 +2045,117 @@ First iron burn of the 1.31.4 cycle. State.md flagged this cycle's engineering (
 
 ---
 
-### Attempt 89 — PENDING IRON BURN — ext2 / ext4 read-only filesystem on archaemenid NVMe Linux-FS partition (agnos 1.31.5)
+### Attempt 89 — agnos 1.31.5 interim no-regression burn 2026-05-21 evening → PASS (ext2/ext4 Phase 1-4 code doesn't regress iron boot; new NVMe agnos-fs partition enumerates clean through GPT Phase 3; ext2 mount silently misses as predicted — gated on 1.31.6 bite (G))
 
-**Build under test:** agnos **1.31.5** (cyrius 6.0.1 toolchain). New `kernel/core/ext2.cyr` ~870 LOC across Phase 1-4: superblock + BGDT + inode-by-number + direct-block read (Phase 1); single/double/triple indirect blocks (Phase 2); dirent walk + path resolution + `VFS_EXT2_FILE` tag + `ls`/`cat` shell verbs (Phase 3); ext4 extents header + leaf walker (Phase 4). Build `build/agnos` **568,960 B** (+47 KB over 1.31.4 baseline). gnoboot 0.4.2 unchanged.
+The interim smoke the PRE entry explicitly anticipated as an option. Fired ahead of bite (G) to answer the cheaper question first: "does the 1.31.5 build (ext2/ext4 Phase 1-4, +47 KB, new VFS_EXT2_FILE arm + extent walker) regress iron boot, or break GPT enumeration after the NVMe was carved?" Answer to both: no.
 
-**Pre-burn audit:** [`ext2-ext4-extents-prior-art.md`](ext2-ext4-extents-prior-art.md) — multi-source convergent (Linux v6.6 `fs/ext2` + `fs/ext4` + FreeBSD `sys/fs/ext2fs` + OpenBSD `sys/ufs/ext2fs` + Haiku ext2 add-on + ext4 wiki + nongnu ext2 spec). Per [`feedback_redesign_dont_reinvent`](../../../../.claude/projects/-home-macro-Repos-agnosticos/memory/feedback_redesign_dont_reinvent.md). A more focused pre-burn audit doc (`ext2-iron-burn-audit.md` modeled on `nvme-iron-burn-audit` / `ahci-iron-burn-audit` / `usb-ms-iron-burn-audit` / `ramdisk-virtio-modern-prior-art`) is item E of the planned 1.31.6 cleanup cycle — should land BEFORE the burn fires if the cycle ordering allows.
+**Build under test:** agnos **1.31.5** (build `568,960 B`, cyrius 6.0.1 toolchain). gnoboot 0.4.2 unchanged. NVMe carved per the PRE plan: p2 shrunk online by 4 GiB; p3 created with Linux-FS GUID `0FC63DAF-8483-4772-8E79-3D69D8477DE4`, formatted `mkfs.ext4 -L AGNOS-NVME-FS -O extents,^huge_file,^64bit,^metadata_csum,^has_journal,^orphan_file,^resize_inode` (incompat `0x242`, within mask `0x6746`).
 
-**Pre-burn derisk OUTCOME (USER ran `tune2fs` + `blkid` on 2026-05-21 PM):**
+**Verbatim chain on iron (pt1 — xhci / USB-MS / NVMe bring-up):**
 
 ```
-$ sudo tune2fs -l /dev/nvme0n1p2 | grep 'Filesystem features'
-tune2fs: Bad magic number in super-block while trying to open /dev/nvme0n1p2
-
-$ sudo blkid /dev/nvme0n1p2
-/dev/nvme0n1p2: UUID="6f41727d-d502-4ae1-92c6-68194c5e6abc"
-                BLOCK_SIZE="4096" TYPE="btrfs"
-                PARTUUID="6661adb9-05a5-4933-9653-c21c46372a3b"
+PCI: 32 devices
+amdvi: disabled, ctrl_rb=0
+xhci: MSI-X enabled (no function-mask)
+xhci: found at 4237295616, ver=272, 64 slots, 6 ports
+xhci: controller running, HCH=0, ERDP=12025856
+xhci: port 1 connected, FS, slot=1, VID=1452 PID=591, class=0
+xhci: port 3 connected, HS, slot=2, VID=2316 PID=4096, class=0
+hid: keyboard configured, boot protocol on, EP=129, polling 8-byte reports
+msc: slot 2 BBB intf=0 bulk-IN=130 bulk-OUT=1 MPS(in/out)=512/512 MaxLUN=0
+msc: slot 2 INQUIRY: vendor='General' product='USB Flash Disk' rev='1100' type=block
+msc: slot 2 TEST UNIT READY -> ready (Pass)
+msc: slot 2 READ CAPACITY: last_lba=252051455 blk=512B -> 123072 MiB
+msc: 1 mass-storage device(s) detected
+nvme: found at 4241489920, version=1.4.0
+nvme: model='CT2000P3SSD8'
+nvme: serial='2342E880DED6'
+nvme: firmware='P9CR30A '
+nvme: ns1 NSZE=3907029168 LBAS=512B size=1907729MB
+nvme: I/O queue 1 ready (64 entries SQ+CQ)
+nvme: ns1 LBA0 first 8 bytes: 0 0 0 0 0 0 0 0
+nvme: registered as block_dev (3907029168 LBAs x 512B)
+ahci: found at 4240441344, version=1.769
 ```
 
-**Finding: archaemenid's NVMe Linux root partition is btrfs, in use, can't be reformatted.** AGNOS has no btrfs driver (multi-cycle project of its own; not on the roadmap). So the original Phase 4 goal of "iron `ls /` against the real Linux root" is **not achievable on archaemenid as-is** — there's no ext-family partition on the box.
+**Verbatim chain on iron (pt2 — AHCI bring-up + GPT + VFS + scheduler):**
 
-**Iron surface plan — FINAL (per user setup 2026-05-21 PM): TWO ext4 partitions across TWO storage stacks.**
-
-**Surface A — `/dev/sda1` on the WD Blue SA510 2 TB SATA SSD** (AHCI backend; same drive iron-validated as `sda` at Attempts 81/82). `sda` had no partitions or mountpoints — truly unused space. User ran:
-
-```sh
-mkdir -p /tmp/ext2-seed && \
-echo -n "Hello from ext2 on archaemenid SATA — iron burn 89 reads me byte-exact" > /tmp/ext2-seed/hello.txt && \
-sudo parted -s /dev/sda mklabel gpt mkpart agnos-fs ext4 1MiB 4GiB && \
-sudo sgdisk -t 1:8300 /dev/sda && \
-sudo mkfs.ext4 -F -L AGNOS-FS -O extents,^huge_file,^64bit,^metadata_csum -b 4096 -d /tmp/ext2-seed /dev/sda1
+```
+ahci: port 0 model='WD Blue SA510 2.5 2TB' serial='24313QD00663' fw='5304 00WD'
+ahci: port 0 LBA48=3907029168 sectors (1907729 MiB)
+ahci: registered as secondary block_dev (port 0, 3907029168 LBAs x 512B; NVMe primary)
+msc: registered as tertiary block_dev (slot 2, 252051456 LBAs x 512B; NVMe primary)
+gpt: present, first=34 last=3907029134 parts=3/128 hdr-CRC-OK arr-CRC-OK
+partitions (3 active / 128 reserved):
+ [0] EFI System    LBA 2048-2099199 (1024 MiB)
+ [1] (unknown type) LBA 2099200-3898638335 (1902607 MiB)
+ [2] (unknown type) agnos-fs LBA 3898638336-3907026943 (4096 MiB)
+VFS initialized
+Heap: 12177376 12181376 12181504
+SYSCALL/SYSRET initialized
+Stack canary initialized
+Interrupts enabled
+Timer ticks before sched: 6
+Activating scheduler...
+Launching kybernet...
 ```
 
-Verified: `LABEL="AGNOS-FS" TYPE="ext4" PARTLABEL="agnos-fs"`. Features: `has_journal ext_attr resize_inode dir_index orphan_file filetype extent flex_bg sparse_super large_file dir_nlink extra_isize` — incompat sum `0x242`, well within AGNOS supported mask `0x6746` ✓.
+**What this closes:**
 
-**Surface B — `/dev/nvme0n1p3` on the Crucial P3 2 TB NVMe** (NVMe backend; same drive iron-validated at Attempt 80). Carved via the v2 disposable script `/tmp/agnos-carve-nvme-v2.sh` which used `sgdisk` for partition table edits (v1 had a parted-`-s`-doesn't-suppress-"partition in use"-prompt bug; v2 fixed via sgdisk + ERR trap + idempotency). Script shrank btrfs root by 4 GiB online, then `sgdisk -d 2 + sgdisk -n 2:...` preserved p2's PARTUUID/type/name identity, then created p3 with Linux-FS GUID, then `mkfs.ext4` with a tighter feature set (`-O extents,^huge_file,^64bit,^metadata_csum,^has_journal,^orphan_file,^resize_inode`).
+- **Storage trio re-validated under 1.31.5**: NVMe (Crucial P3 byte-match Attempt 80/88), AHCI (WD Blue SA510 byte-match Attempt 82/88, IDENTIFY-twice still holds), USB MS (Silicon Motion stick byte-match Attempt 87/88). The +47 KB ext2/ext4 code drop didn't regress any of them.
+- **GPT Phase 3 handles the new carve correctly**: `parts=3/128 hdr-CRC-OK arr-CRC-OK`, p3 prints as `(unknown type) agnos-fs LBA 3898638336-3907026943 (4096 MiB)`. p2 shrunk to LBA-end `3898638335` (was `3907026943` at Attempt 88) confirms the online btrfs shrink + sgdisk preservation worked round-trip through the kernel's parser. "(unknown type)" on p3 is correct — Linux-FS GUID `0FC63DAF-8483-4772-8E79-3D69D8477DE4` is in the GUID classifier (1.31.1 Phase 3) but the labelling here is mirroring the type-GUID classifier's text, which is fine.
+- **Kernel walks to `Launching kybernet...`**: VFS + SYSCALL + canary + IRQ + timer all initialize clean; scheduler activates after 6 timer ticks (same shape as Attempts 87/88).
 
-Verified: `LABEL="AGNOS-NVME-FS" TYPE="ext4" PARTLABEL="agnos-fs"`. Features: `ext_attr dir_index filetype extent flex_bg sparse_super large_file dir_nlink extra_isize` — cleaner than sda1 (no journal / orphan_file / resize_inode), same incompat sum `0x242` ✓.
+**What's NOT in the output (and shouldn't be, per the PRE prediction):**
 
-**Why two surfaces:** iron burn 89 now exercises bite (G) multi-backend probe AND bite (H) partition-aware mount against TWO different storage stacks (AHCI/SATA + NVMe) in a single burn. Either surface alone would have validated the ext2/ext4 driver, but having both isolates "AGNOS reads FS on this transport" from "AGNOS reads FS on that transport" — if one works and the other doesn't, the failure mode is per-backend not per-filesystem-driver. The 125 GB Silicon Motion USB stick stays as USB-MS regression surface (unmodified).
+- No `ext2: mounted` line. With `blk_active = BLK_NVME` and the NVMe still holding the active slot, `ext2_init` reads NVMe LBA 2-3 = the btrfs partition area (or zeros — bytes are deep inside the NVMe data, not the new ext4 carve at LBA 3898638336). Magic mismatch, silent return. **Multi-backend probe (bite G) is exactly the fix.**
+- No `ext2 read@...` / `ext2 ls /` smoke lines either — the boot-time smoke hook only fires after a successful mount.
 
-**However: this requires kernel work first.** AGNOS's current `ext2_init` uses `blk_active`, which the override policy sets to BLK_NVME on archaemenid (NVMe wins > AHCI > USB MS > VirtIO > RAMDISK). With the NVMe holding the active slot AND being btrfs-formatted, `ext2_init` reads NVMe LBA 2-3 = btrfs metadata, magic mismatch (0xEF53 ≠ 0x4D5F53FB), silent return. The USB stick's ext2 superblock is never read. **Gating fix lands as 1.31.6 bite (G): multi-backend ext2 probe** — `ext2_init` walks all registered backends (NVMe / AHCI / USB-MS / VirtIO / RAMDISK) looking for `0xEF53` magic at LBA 2-3 of each, mounting the first match. New `blk_read_on(backend_tag, sector, buf)` helper does explicit per-backend dispatch instead of going through the `blk_active`-routed `blk_read`. ~80 LOC.
+**Photos:**
 
-**Reframed burn 89 expectations (post-1.31.6 bite (G)):**
+- [`iron-nuc-zen-photos/attempt-89-agnos-1.31.5-ext2-no-regression-pre-bite-g-pt1-xhci-usb-ms-nvme.jpg`](iron-nuc-zen-photos/attempt-89-agnos-1.31.5-ext2-no-regression-pre-bite-g-pt1-xhci-usb-ms-nvme.jpg)
+- [`iron-nuc-zen-photos/attempt-89-agnos-1.31.5-ext2-no-regression-pre-bite-g-pt2-ahci-gpt-3parts-vfs-kybernet.jpg`](iron-nuc-zen-photos/attempt-89-agnos-1.31.5-ext2-no-regression-pre-bite-g-pt2-ahci-gpt-3parts-vfs-kybernet.jpg)
 
-- **Iron burn 89 fires AFTER 1.31.6 bite (G) lands.** Pre-G, iron burn 89 is reduced to a no-regression smoke (1.31.5 still boots clean) — useful but not the Phase 4 victory lap.
-- **Sequencing**: tag 1.31.5 → 1.31.6 cleanup cycle (including bite G + reformat the USB stick host-side) → iron burn 89 with the formatted stick plugged in.
+**Status against rubric:**
 
-**QEMU validation already cleared (2026-05-21):**
+- **Regression-test success:** ✅ all three storage backends register, all enumeration shapes byte-match Attempt 88, GPT validates with new 3-partition layout, boot walks to scheduler + `Launching kybernet...`.
+- **ext2 mount expected miss:** ✅ silent miss as the PRE entry predicted. Bite (G) multi-backend probe is the unlock for the Phase 4 victory lap.
+- **MVP gate:** unaffected.
 
-| Image | Format | Outcome |
-|---|---|---|
-| `ext2-smoke.img` (mkfs.ext2, 1K-block, filetype-only incompat) | ext2 indirect tree | `ls /` shows `./ ../ lost+found/ hello.txt` + `cat /hello.txt` 32 B byte-exact via VFS_EXT2_FILE |
-| `ext4-smoke.img` (mkfs.ext4 -O extents,^huge_file,^64bit,^metadata_csum) | ext4 extents | Same `ls /` + `cat /hello.txt` byte-exact via extent walker; no regression on ext2 image in same boot |
+**Sources:**
 
-**Iron success rubric (preview, post-1.31.6 bite (G)):**
+- Two photos above.
+- agnos CHANGELOG `[1.31.5]` § ext2 / ext4 Phase 1-4 + § fatfs hardening.
+- Attempt 89 PRE entry (this section's previous content, now superseded; see git history).
 
-- **Full PASS**: `ext2: mounted (blocksize=1024 or 4096, inode_size=256, inodes_per_group=...)` prints with the geometry of the USB stick's filesystem. `agnos> ls /` (typed at the keyboard) returns the test files we seeded onto the stick (e.g. `hello.txt lost+found/`). `agnos> cat /hello.txt` returns the seed content byte-exact. **NVMe + AHCI continue clean below the ext2 line** (no regression on the storage trio).
-- **Partial — supported-incompat miss on the stick's format choice**: boot log shows `ext2: unsupported incompat bits: <decimal>`. Decode the decimal → identify which bit; if it's `64bit` (=128/0x80), reformat the stick with `mkfs.ext4 -O ^64bit` (or stay on `mkfs.ext2` which never sets 64bit) until 1.31.7 Phase 5 lands. Anything else → audit triage per [`ext2-ext4-extents-prior-art.md` § 6.1](ext2-ext4-extents-prior-art.md).
-- **Partial — multi-backend probe found nothing**: USB stick not enumerated by xhci/USB-MS, or stick is at LBA-0-ext2 but the probe couldn't read it. Triage via the existing USB-MS chain (Attempt 87 transcript shape).
-- **FALSIFIED**: kernel hangs / faults / can't reach shell. Triage same as other iron arcs (CMOS kcp, FB readback).
+---
 
-**Carry-forward into next-session planning:**
+### Attempt 90 — PENDING IRON BURN — ext4 victory lap on the carved agnos-fs partitions (agnos 1.31.6, post-bite-G)
 
-1. **1.31.6 cleanup cycle scope (planned next per agnos roadmap)** — EIGHT bites: (A) ext2 input validation sweep; (B) fatfs BPB validation sweep; (C) drop ext2 boot-time smoke hook from `main.cyr`; (D) save Cyrius `var X[N]` byte-vs-u64 gotcha as feedback memory + CLAUDE.md note; (E) pre-iron-burn audit doc `agnosticos/docs/development/ext2-iron-burn-audit.md`; (F) state.md / roadmap / iron-log sweep; **(G) multi-backend ext2 probe — GATING work for iron burn 89** (without (G), `ext2_init` only sees the btrfs NVMe and silently misses the USB-MS-attached ext2 stick); (H) partition-aware mount via GPT consumption (useful for future test surfaces, not gating burn 89). ~270 LOC + ~200 audit prose.
-2. **1.31.7 ext4 64BIT support (Phase 5, PINNED per user direction 2026-05-21)** — BGDT entry size 32 → 64 bytes + block# width 32 → 64 (~200 LOC). Closes the audit gap regardless. (`mkfs.ext2` and `mkfs.ext4 -O ^64bit` keep iron burn 89 viable WITHOUT 64BIT support; this slot is for completeness, not unblocking.)
-3. **Host-side prep before iron burn 89** — reformat 125 GB Silicon Motion USB stick (VID=`0x090C` PID=`0x1000`) as ext2 or ext4 (without 64bit). Seed a known test file (e.g. `hello.txt` with deterministic content matching the QEMU smoke pattern) so success/failure is unambiguous against the rubric above. Sample command: `sudo mkfs.ext4 -F -L AGNOS-FS -O ^64bit,^huge_file,^metadata_csum -d /tmp/ext2-seed /dev/sdX`.
-4. **1.32.x networking cycle** (queued per existing agnos roadmap § 1.32.x — Realtek r8169 first, then Intel e1000/e1000e/igc).
-5. **1.33.x WRITE cycle (PINNED per user direction 2026-05-21)** — ext2/ext4 mutation paths: block/inode allocator, dirent insertion/removal, file create/truncate/unlink, mkdir/rmdir, journal-less commit semantics. ~1,500+ LOC; own multi-source audit doc first.
+**Build under test:** agnos **1.31.6** after the cleanup-cycle bites land (target: A + B + C + D + E + F + **G — GATING** + H per agnos roadmap § 7a). cyrius 6.0.1 toolchain unchanged. gnoboot 0.4.2 unchanged.
 
-**Per `feedback_iron_burns_block_other_work`**: this PRE entry IS the audit; no instrumentation bundled. The burn IS GATED on 1.31.6 bite (G) landing — do NOT fire iron burn 89 before multi-backend probe is in place. If staging an interim no-regression burn before (G) is desired, that's fine but it's a different (cheaper) signal: "1.31.5 ext2 code doesn't break iron boot" rather than "iron `ls /` works against ext2 USB stick."
+**Iron surface plan (from Attempt 89 PRE, now host-side ready):**
+
+- **Surface A** — `/dev/sda1` on the WD Blue SA510 2 TB SATA (AHCI backend, iron-validated Attempts 81/82/88/89). `mkfs.ext4 -L AGNOS-FS -O extents,^huge_file,^64bit,^metadata_csum -b 4096` with `hello.txt` ASCII seed.
+- **Surface B** — `/dev/nvme0n1p3` on the Crucial P3 2 TB NVMe (NVMe backend, iron-validated Attempts 80/88/89). `mkfs.ext4 -L AGNOS-NVME-FS -O extents,^huge_file,^64bit,^metadata_csum,^has_journal,^orphan_file,^resize_inode`.
+- USB stick stays as USB-MS regression surface (unmodified Silicon Motion 125 GB, VID=`0x090C` PID=`0x1000`).
+
+**Pre-burn audit:** [`ext2-iron-burn-audit.md`](ext2-iron-burn-audit.md) — landed as bite (E) of the 1.31.6 cycle per agnos roadmap. Builds on [`ext2-ext4-extents-prior-art.md`](ext2-ext4-extents-prior-art.md).
+
+**Iron success rubric (preview):**
+
+- **Full PASS:** `ext2: mounted (blocksize=4096, inode_size=256, inodes_per_group=...)` prints with the geometry of the AGNOS-NVME-FS partition (NVMe wins probe order). `agnos> ls /` returns `./ ../ lost+found/ hello.txt`. `agnos> cat /hello.txt` returns the seed content byte-exact. Storage trio continues clean below the ext2 line.
+- **Partial — wrong-backend probe hit:** ext2 mounts but on the wrong surface (e.g. AHCI sda1 before NVMe p3 because of probe ordering). Triage: deterministic vs first-LBA-magic ordering decision; document in audit doc § 4.
+- **Partial — incompat miss:** boot log shows `ext2: unsupported incompat bits: <decimal>`. Decode; if `64bit` (0x80), pin to 1.31.7. Other bits → audit triage.
+- **Partial — partition-aware mount needed (bite H):** ext2 finds the magic on neither LBA-2 of any backend because the FS lives at partition-offset LBA 3898638336+ on NVMe, not whole-disk. Bite G should mount p3 via partition-aware path; if not, bite H is the unlock.
+- **FALSIFIED:** kernel hangs / faults / can't reach shell. Triage per other iron arcs (CMOS kcp, FB readback).
+
+**Carry-forward (only if Attempt 90 surfaces residue):**
+
+1. 1.31.7 ext4 64BIT support (already pinned per user direction 2026-05-21).
+2. Phase-6+ surfaces (HTREE, symlinks) per roadmap items 13-14 — only if a real consumer needs them.
+
+**Per `feedback_iron_burns_block_other_work`**: this PRE entry is the carry-forward summary; the audit proper lives in `ext2-iron-burn-audit.md` (bite E). No instrumentation bundled with this burn.
 
 ---
 

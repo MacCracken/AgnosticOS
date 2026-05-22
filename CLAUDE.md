@@ -127,6 +127,7 @@ Cyrius is the AGNOS systems language. It has its own build tool and dep system.
   var exit_code = main();
   syscall(60, exit_code);
   ```
+- **`var X[N]` allocation unit differs by scope**: **module-global** `var X[N]` = N×u64 (8N bytes); **function-local** `var X[N]` = N bytes. See `agnos/kernel/core/ext2.cyr:28-44` for canonical inline-commented examples. When porting Linux/BSD drivers, a module-scope `u8 buf[4096]` becomes `var buf[512]` in Cyrius. Memory: [[cyrius-var-array-u64-units]].
 - **Study working programs** before writing new code — see `cyrius/programs/*.cyr` (65+ examples)
 - **Binary names**: `cycc` (self-hosting compiler, was `cc5`) + `cybs` (bootstrap compiler, was `cyrc`) — renamed at cyrius v6.0.0 cycle-open 2026-05-19. Names are now permanent — no `cycc6` at v7.0.0, etc. `~/.cyrius/bin/` ships symlinks `cc5 → cycc` + `cyrc → cybs` through the v6.0.x window (drop at v6.1.0). The bridge step in the bootstrap chain was retired at cyrius v5.11.66 — chain is `seed → cybs → cycc`.
 

@@ -285,6 +285,14 @@ User-facing CLI for archive / compressed-file handling. Substrate is the already
 
 > **AGNOS-native compression composition channel.** Once `vahana` is the shell-level archive surface and `sankoch` is the codec substrate, the pair becomes the natural channel for AGNOS-native compression formats: compose new compression schemes from sankoch's primitives (or new primitives added to sankoch), distribute the resulting algorithm through vahana. Same idiom as `cyrius.cyml` (AGNOS's own manifest format alongside existing ones) — interop with the world's formats *and* ship AGNOS's own where divergence has a reason. Not a v1 deliverable; the design space the v1 architecture has to leave room for.
 
+### Pipe-decorator family (proposed 2026-05-21)
+
+Stdin → stdout aesthetic / transform filters. Composable into any shell pipeline; each is a pure-filter consumer of `darshana` (ANSI color + cursor positioning) or related rendering substrate. Distinct family from terminal-aesthetics tools (those produce their own output); pipe-decorators only transform what passes through them.
+
+| Crate | Description | Key Consumers |
+|-------|-------------|---------------|
+| **anuenue** | `lolcat`-equivalent — rainbow-tint stdin → stdout, per-character HSV cycling, optional animation flag (`-a`). Hawaiian ānuenue (*rainbow*); second Pacific Islands name in the AGNOS naming surface after `hapi`. Direct-semantic non-English lane (vs the English-wordplay default for user-facing tools). Pure pipe filter — `iam \| anuenue`, `bnrmr "AGNOS" \| anuenue`, `kriya cat README.md \| anuenue`. Consumes `darshana` as ANSI color substrate. Binary name (undecided at capture): full `anuenue` (matches `darshini` precedent) or `anue` (front-syllable, mirrors the `vahana → vah` candidate shape). | end-user shells; agnoshi MOTD pipeline; iam / bannermanor display chains; demo / streaming flair |
+
 ---
 
 ## Extraction Guidelines
