@@ -2392,6 +2392,40 @@ agnos>
 
 ---
 
+### Attempt 92 — PENDING IRON BURN — agnos 1.32.0 r8169 NIC iron debut (bite B Phases 1-4 + retroactive validation of bites A/F/G)
+
+**Build under test:** agnos **1.32.0** (build `600,432 B` production / `600,520 B` with `TCP_LISTEN_SMOKE=1`; cyrius 6.0.1 toolchain unchanged). gnoboot 0.4.2 unchanged. No partition layout changes — same NVMe + AHCI carves as Attempt 91. **New iron surface: archaemenid's onboard r8169 NIC** (`10ec:8168` rev 15 at `0000:01:00.0`, MAC `b0:41:6f:0c:e4:25`, BAR2 MMIO `0xFCF04000`).
+
+**What's new in this build:** five networking-arc bites land in this burn surface:
+
+- **Bite A** — TCP server primitives (`tcp_listen`/`tcp_bind`/`tcp_accept` + passive-open SYN handler + SYN_RCVD state branch + ARP REQUEST handler + flag-field metadata bits). Smoke scenario 2 (listen-no-connect) PASS in QEMU; scenario 1 (accept-success) blocked on SLIRP-inbound gap — this burn validates it on real LAN.
+- **Bite F** — UDP server-side (`udp_bind` / `udp_recv_from` / `udp_send_from` / listener table + dispatch in `net_handle_udp`). Foundation for bite G.
+- **Bite G** — DHCP client (`dhcp_init` full RFC 2131 cycle). QEMU: DISCOVER egress works but OFFER timeout (SLIRP-RX gap). This burn validates full cycle on real LAN.
+- **Bite B Phase 1** — r8169 PCI discovery + MAC read + reset.
+- **Bite B Phases 2-4** — RX descriptor ring (16×16 B), TX descriptor ring (16×16 B), `nic_send`/`nic_poll`/`nic_ready` dispatcher in r8169.cyr, net.cyr migration (6+1+7 call sites).
+
+**Pre-burn audit**: [`r8169-iron-burn-audit.md`](r8169-iron-burn-audit.md) — 9 sections, 9 hypotheses ranked H1-H9. Highest-risk: H1 = PHY not configured (driver writes zero MDIO; depends on EEPROM-default PHY state). Likely outcome if H1 fires: Partial PASS — Phase 1-3 lines print correctly but no inbound packets on the wire.
+
+**Iron surface plan:**
+
+- Same archaemenid hardware as Attempts 80-91 (NUC AMD Beelink SER, Zen-class).
+- Storage trio (NVMe / AHCI / USB-MS) unchanged from Attempt 91 — regression cross-check.
+- **NEW**: r8169 NIC. Ethernet cable to be connected for full-validation surface (DHCP + LAN TCP probe); cable-optional for Phase 1-3 init-only validation.
+
+**Iron success rubric** (full taxonomy in audit § 5):
+
+- **Full PASS:** boot log shows the six expected `r8169:` lines (`found at <0xFCF04000-decimal>` / `MAC=176:65:111:12:228:37` / `chip-rev byte=0x<N>` / `reset OK; Phase 1 complete` / `RX ring up` / `TX ring up`). With Ethernet: `dhcp: ACK ip=<lan-IP>` overrides the net_init 10.0.2.15 fallback. With bite-A host probe to LAN-IP:8080 from a second machine: `tcp_accept: conn_id=` prints + host receives the banner.
+- **Partial — H1 (no link):** Phase 1-3 lines correct; DHCP OFFER timeout; bite-A accept-success fails. Next burn writes a minimal PHY init sequence ported from OpenBSD's `re_phy_init`.
+- **Partial — H3 (MAC garbage):** Phase 1 MAC line mismatches `b0:41:6f:0c:e4:25`; other phases proceed.
+- **Partial — H7/H8 (TX or RX OWN stuck):** asymmetric egress/ingress failure.
+- **FALSIFIED:** kernel doesn't reach shell. Triage paths: H2 (reset hang — but bounded poll prevents this), H6 (PAT cache attr), H9 (cross-driver interaction).
+
+**MVP gate posture:** unaffected — closed beta gates on kernel + kybernet + agnoshi typeable on iron (green since Attempt 68 / 1.30.9). r8169 is post-MVP capability expansion.
+
+**Per [[feedback_iron_burns_block_other_work]]**: audit FIRST (this entry's pointer to `r8169-iron-burn-audit.md`), burn SECOND. No instrumentation bundled with this burn per [[feedback_no_instrumentation_means_no_instrumentation]] — the driver is the test surface; the boot log + `kprint`-to-FB lines are the iron-readable output channel; CMOS stamps NOT reserved this burn (boot log is enough; audit § 7 explains).
+
+---
+
 ## Conventions for future entries
 
 - One H3 (`### Attempt N — date HH:MM TZ → STATUS`) per attempt.
