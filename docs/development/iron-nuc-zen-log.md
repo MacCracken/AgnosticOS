@@ -2567,7 +2567,94 @@ One-line change landed in `agnos/kernel/core/main.cyr:655`. `nic_ready()` is dec
 - agnos `kernel/core/virtio_net.cyr:16,76` (`vnet_active` declaration + set site).
 - [`r8169-iron-burn-audit.md`](r8169-iron-burn-audit.md) (pre-burn — 9 hypotheses, did not anticipate gate-predicate bug).
 
-**Awaiting user direction:** the one-line `nic_ready()` predicate swap in `main.cyr:655` is the entire fix surface. Per [[feedback_per_action_consent]] the kernel edit is not applied speculatively — user can land it manually or grant per-edit consent for the gate swap + rebuild + re-burn (Attempt 93). The TCP_LISTEN_SMOKE-block off-screen question is independent and can be folded into the same Attempt 93 if the user shoots a third photo of the post-`Interrupts enabled` tail.
+**Resolved:** gate fix landed same-day and was validated by Attempt 93 — see next entry. DHCP `DISCOVER` line now egresses on iron; the failure mode has moved one layer down (`OFFER timeout` instead of gate-block silence).
+
+---
+
+### Attempt 93 — agnos 1.32.0 DHCP gate-fix re-burn 2026-05-22 → PARTIAL PASS (gate fix VERIFIED — `dhcp: DISCOVER` now egresses on iron; new failure mode is `dhcp: OFFER timeout` — driver-level H1/H7/H8 surface from the pre-burn audit, no longer blocked by the call-site predicate)
+
+Re-burn of the same archaemenid topology as Attempt 92, with the one-line `main.cyr:655` predicate swap (`vnet_active != 0 || nic_ready() != 0`) applied. Validates exactly the discriminator the pre-burn Attempt-92 entry called out: *"presence of `dhcp: DISCOVER` line alone proves the gate was the issue."* That line is present on iron now. The DHCP failure has not been eliminated, but its character has changed — from `dhcp` block entirely absent (call-site never fires `dhcp_init()`) to `dhcp_init()` firing, building the BOOTP request, handing it down through `nic_send()` → r8169 TX ring, and then nothing coming back within the OFFER timeout window. That is the H1 (PHY-not-configured) / H7 (TX OWN stuck) / H8 (RX OWN stuck) bucket from `r8169-iron-burn-audit.md` § 5 — the originally-anticipated risk surface, now reachable. Storage trio (NVMe + AHCI + USB-MS) + GPT + ext4 mount + kybernet + shell all byte-clean — no regressions from Attempt 91/92.
+
+**Build under test:** agnos **1.32.0** (build `601,392 B` with `TCP_LISTEN_SMOKE=1`; cyrius 6.0.1 toolchain unchanged). gnoboot 0.4.2 unchanged. NVMe + AHCI carves byte-identical to Attempts 91/92.
+
+**Verbatim chain on iron (tail crop — boot top through shell prompt):**
+
+```
+ahci: port 0 model='WD Blue SA510 2.5 2TB' serial='24313QD00663' f...
+ahci: port 0 LBA48=3907029168 sectors (1907729 MiB)
+ahci: registered as secondary block_dev (port 0, 3907029168...
+msc: registered as tertiary block_dev (slot 2, 252051456 LBAs x 51...
+msc: slot 2 LBA0 first 8 bytes: 0 0 0 0 0 0 0 0
+gpt: present, first=34 last=3907029134 parts=3/128 hdr-CRC-OK arr-...
+partitions (3 active / 128 reserved):
+  [0] EFI System  LBA 2048-2099199 (1024 MiB)
+  [1] (unknown type) LBA 2099200-3898638335 (1902607 MiB)
+  [2] Linux FS agnos-fs LBA 3898638336-3907026943 (4096 MiB)
+VFS initialized
+ext2: probe matched backend=2 partition_lba=3898638336
+ext2: mounted (blocksize=4096, inode_size=256, inodes_per_group=819...)
+Heap: 12025824 12029952
+SYSCALL/SYSRET initialized
+Stack canary initialized
+Interrupts enabled
+Timer ticks before sched: 6
+Activating scheduler...
+dhcp: DISCOVER
+dhcp: OFFER timeout
+tcp_listen smoke: start
+tcp_listen(8080) lid=0
+tcp_listen smoke: no connection within timeout
+tcp_listen smoke: done
+Launching kybernet...
+kybernet: starting init
+kybernet: 0 processes
+kybernet: 3500 free pages
+kybernet: launching shell
+AGNOS shell v1.32.0 (type 'help')
+agnos>
+```
+
+(Photo crop begins mid-`ahci:` line; the upper boot section — heap / ACPI / PCI / amdvi / xhci / HID / USB-MS / r8169 Phase 1-4 / nvme / first `ahci:` line — was off-frame this burn but is unchanged from Attempt 92 pt1 by no-regression observation: ext4 mount + GPT + storage trio + shell launch are all downstream of those layers, and they all printed clean here. The two new lines vs Attempt 92 are exactly `dhcp: DISCOVER` + `dhcp: OFFER timeout`; everything else is byte-identical to Attempts 91/92 tail.)
+
+**Discriminator verdict (per Attempt 92's own pre-stated rubric):**
+
+| Hypothesis | Attempt 92 status | Attempt 93 status |
+|---|---|---|
+| `main.cyr:655` DHCP gate predicate keys on wrong abstraction | ✅ confirmed root cause of Attempt 92 silence | ✅ **FIXED + VERIFIED** — `dhcp: DISCOVER` now prints on iron; `nic_ready()` arm of the OR fires through the r8169-only path. |
+| H1 — PHY not configured / no link | not testable (gate intercepted first) | ⚠️ **NOW REACHABLE** — top candidate for the new `OFFER timeout` failure: DISCOVER built into a UDP/IP/Eth frame, handed to `r8169_send`, but no actual electrical link → bits go into the void. |
+| H7 — TX OWN bit stuck (frame queued but not clocked out) | not testable | ⚠️ **NOW REACHABLE** — DISCOVER could be sitting in TX desc 0 with OWN=1 (DMA-handed-to-NIC) forever; no observable distinction from "egressed but server didn't reply" without TX-ring instrumentation. |
+| H8 — RX OWN bit stuck (OFFER arrived but we couldn't see it) | not testable | ⚠️ **NOW REACHABLE** — RX ring may not be walking; OFFER could have arrived on the wire and landed in a buffer whose OWN bit we're not polling correctly. |
+| H3 — MAC garbage | ❌ falsified Attempt 92 (`b0:41:6f:0c:e4:25` byte-matched lspci) | ❌ unchanged. |
+
+**What the next-cycle audit needs to disambiguate:** the three open hypotheses (H1/H7/H8) each have different fixes and different observability shapes. Currently the kernel has zero post-DISCOVER instrumentation — `r8169_send` returns, `dhcp_init` blocks on `udp_recv_from` with a timeout, the timeout fires, the function returns. No way from the boot log to tell whether the DISCOVER frame actually left the NIC or whether OFFER replies are arriving and being silently dropped. Audit doc (writing next per user direction) will line-by-line examine each hypothesis against current `r8169.cyr` code + Linux/FreeBSD/Haiku prior-art convergence and propose discriminator instrumentation (CMOS-bank stamp marks per the no-serial-on-iron constraint) that can be stacked into the next iron burn.
+
+**Side observation — `tcp_listen smoke: no connection within timeout` is correlated, not independent.** The TCP listener primitive worked exactly as expected: `tcp_listen(8080) lid=0` succeeded, the listen ID was issued, the smoke harness sat in its wait loop. But with no DHCP lease the box has no LAN-reachable IP, so the user's "should I have curl'd 8080 from another box?" question resolves to *yes, but you couldn't have* — same root cause (link/MAC-frame-on-wire) blocks both DHCP and any external TCP. When DHCP gets fixed, the TCP_LISTEN_SMOKE window becomes reachable from another box on the LAN for the first time on iron.
+
+**Build delta vs Attempt 92:** zero structural change to the kernel image. The Attempt-92 entry already recorded the build going from 600,520 → 601,392 B when the gate fix landed; that's the same `601,392 B` binary burned here. **No new code touched between Attempts 92 and 93.** This was a pure validation re-burn.
+
+**Status against rubric:**
+
+- **Full PASS:** ❌ — DHCP cycle not complete (`OFFER timeout`).
+- **Gate-fix validation PASS:** ✅ — `dhcp: DISCOVER` line present on iron; r8169-only path now fires `dhcp_init()`.
+- **H1 / H7 / H8:** all three now-reachable + open; next-cycle audit + code patches needed.
+- **Storage trio + ext4 mount + kybernet + shell:** ✅ no-regression.
+
+**MVP gate posture:** unchanged. Closed beta gates on kernel + kybernet + agnoshi typeable on iron — green since Attempt 68 / 1.30.9 and still green at Attempt 93 (shell prompt reached, byte-clean).
+
+**Photo:**
+
+- [`iron-nuc-zen-photos/attempt-93-agnos-1.32.0-dhcp-gate-fix-verified-offer-timeout.jpg`](iron-nuc-zen-photos/attempt-93-agnos-1.32.0-dhcp-gate-fix-verified-offer-timeout.jpg) — boot-tail crop: `ahci:` block → GPT enumeration → ext4 mount → `SYSCALL/SYSRET initialized` / `Stack canary initialized` / `Interrupts enabled` / `Activating scheduler...` → `dhcp: DISCOVER` → `dhcp: OFFER timeout` → TCP_LISTEN_SMOKE block (start/listen/no-connection/done) → kybernet init/shell launch → `agnos>` prompt.
+
+**Sources:**
+
+- Photo above.
+- agnos `kernel/core/main.cyr:655` (fixed gate site — predicate is now `vnet_active != 0 || nic_ready() != 0`).
+- agnos `kernel/core/r8169.cyr:425-431` (`nic_ready` abstraction returning 1 on r8169 path).
+- agnos `kernel/core/net.cyr:286-303` (`dhcp_init` — builds DISCOVER, blocks on `udp_recv_from` timeout).
+- [`r8169-iron-burn-audit.md`](r8169-iron-burn-audit.md) § 5 (H1 / H7 / H8 — now-reachable hypothesis surface; next audit cycle extends with discriminator instrumentation).
+- Attempt 92 entry above (pre-burn discriminator + gate-fix derivation).
+
+**Awaiting user direction:** OFFER-timeout audit doc landing next (this cycle, no code touches, no burn). Audit will rank H1 / H7 / H8 against r8169.cyr + multi-source prior art, propose the smallest discriminator-instrumentation patch (CMOS-bank stamp, since no serial on iron), and surface for per-edit consent before any code lands. Attempt 94 not proposed until the audit lands and the user reviews.
 
 ---
 
