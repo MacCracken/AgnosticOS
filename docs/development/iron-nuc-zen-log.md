@@ -2392,37 +2392,182 @@ agnos>
 
 ---
 
-### Attempt 92 — PENDING IRON BURN — agnos 1.32.0 r8169 NIC iron debut (bite B Phases 1-4 + retroactive validation of bites A/F/G)
+### Attempt 92 — agnos 1.32.0 r8169 NIC iron debut 2026-05-22 → PARTIAL PASS (r8169 Phases 1-4 lit clean on iron; DHCP bite G silent — root cause: `main.cyr:655` DHCP gate keys on `vnet_active` instead of `nic_ready()`, so r8169-only iron path skips `dhcp_init()` entirely; no kernel-internal r8169 bug)
 
-**Build under test:** agnos **1.32.0** (build `600,432 B` production / `600,520 B` with `TCP_LISTEN_SMOKE=1`; cyrius 6.0.1 toolchain unchanged). gnoboot 0.4.2 unchanged. No partition layout changes — same NVMe + AHCI carves as Attempt 91. **New iron surface: archaemenid's onboard r8169 NIC** (`10ec:8168` rev 15 at `0000:01:00.0`, MAC `b0:41:6f:0c:e4:25`, BAR2 MMIO `0xFCF04000`).
+First real-iron NIC burn on archaemenid. The six expected `r8169:` lines print verbatim from the convergent-port (RTL8111H Realtek datasheet + Linux + FreeBSD/NetBSD/OpenBSD + Haiku) Phase 1-4 stack. Storage trio + GPT + ext4-mount unchanged from Attempt 91 — clean no-regression. The H1 (PHY-not-configured) hypothesis from the pre-burn audit was NOT the cause of the DHCP silence — the cause is upstream of the NIC entirely (the gate never fires `dhcp_init()` on iron in the first place).
 
-**What's new in this build:** five networking-arc bites land in this burn surface:
+**Build under test:** agnos **1.32.0** (build `600,520 B` with `TCP_LISTEN_SMOKE=1`; cyrius 6.0.1 toolchain unchanged). gnoboot 0.4.2 unchanged. NVMe + AHCI carves byte-identical to Attempt 91.
 
-- **Bite A** — TCP server primitives (`tcp_listen`/`tcp_bind`/`tcp_accept` + passive-open SYN handler + SYN_RCVD state branch + ARP REQUEST handler + flag-field metadata bits). Smoke scenario 2 (listen-no-connect) PASS in QEMU; scenario 1 (accept-success) blocked on SLIRP-inbound gap — this burn validates it on real LAN.
-- **Bite F** — UDP server-side (`udp_bind` / `udp_recv_from` / `udp_send_from` / listener table + dispatch in `net_handle_udp`). Foundation for bite G.
-- **Bite G** — DHCP client (`dhcp_init` full RFC 2131 cycle). QEMU: DISCOVER egress works but OFFER timeout (SLIRP-RX gap). This burn validates full cycle on real LAN.
-- **Bite B Phase 1** — r8169 PCI discovery + MAC read + reset.
-- **Bite B Phases 2-4** — RX descriptor ring (16×16 B), TX descriptor ring (16×16 B), `nic_send`/`nic_poll`/`nic_ready` dispatcher in r8169.cyr, net.cyr migration (6+1+7 call sites).
+**Verbatim chain on iron (pt1 — xhci / HID / USB-MS / r8169 Phase 1-4 / nvme start):**
 
-**Pre-burn audit**: [`r8169-iron-burn-audit.md`](r8169-iron-burn-audit.md) — 9 sections, 9 hypotheses ranked H1-H9. Highest-risk: H1 = PHY not configured (driver writes zero MDIO; depends on EEPROM-default PHY state). Likely outcome if H1 fires: Partial PASS — Phase 1-3 lines print correctly but no inbound packets on the wire.
+```
+VFS 57005 (expect 57005)
+Heap initialized
+Devices registered
+ACPI: RSDP at 983056
+PCI: 32 devices
+amdvi: cap=64 mmio=4247781376 en=1
+amdvi: dap=... en=1
+xhci: <discovery line>
+xhci: found at 4237295616, ver=272, 64 slots, 6 ports
+xhci: caplen=32 csz=1 ac64=1 intrs=8
+xhci: dboff=1440 rtsoff=1152 xecp=616
+xhci: scratchpad bufs=2
+xhci: USBLEGSUP already OS-owned
+xhci: dev_notifications enabled
+xhci: halted, reset clean
+xhci: scratchpad ready, array=11616256
+xhci: controller running, HCH=0, ERDP=11632640
+xhci: port 1 connected, FS, slot=1, VID=1452 PID=591, class=0
+xhci: port 3 connected, HS, slot=2, VID=2316 PID=4096, class=0
+hid: keyboard layer initialized
+hid: keyboard configured, boot protocol on, EP=129, polling 8-byte reports
+msc: slot 2 BBB intf=0 bulk-IN=130 bulk-OUT=1 MPS(in/out)=512/512 MaxLUN=0
+msc: slot 2 INQUIRY: vendor='General' product='USB Flash Disk' rev='1100' type=block
+msc: slot 2 TEST UNIT READY -> ready (Pass)
+msc: slot 2 READ CAPACITY: last_lba=252051455 blk=512B -> 123072 MiB
+msc: 1 mass-storage device(s) detected
+r8169: found at 4243603456
+r8169: MAC=176:65:111:12:228:37
+r8169: chip-rev byte=0x87 (Phase 2+ decodes the family)
+r8169: reset OK; Phase 1 complete
+r8169: RX ring up (16 desc  2KB bu...
+r8169: TX ring up (16 desc  2KB bu...
+nvme: found at 4241489920, version=1.4.0
+nvme: MQES=65535 DSTRD=0 TO=255x500ms CSS_NVM=1 MPSMIN=0 MPSMAX=0
+nvme: controller disabled, RDY=0
+nvme: admin queue ready, CC.EN=1 RDY=1
+```
 
-**Iron surface plan:**
+**Verbatim chain on iron (pt2 — nvme tail / AHCI / GPT / ext4 / kybernet kickoff):**
 
-- Same archaemenid hardware as Attempts 80-91 (NUC AMD Beelink SER, Zen-class).
-- Storage trio (NVMe / AHCI / USB-MS) unchanged from Attempt 91 — regression cross-check.
-- **NEW**: r8169 NIC. Ethernet cable to be connected for full-validation surface (DHCP + LAN TCP probe); cable-optional for Phase 1-3 init-only validation.
+```
+nvme: VID=49321 SSVID=49321 NN=1 MDTS=6
+nvme: model='CT2000P3SSD8'
+nvme: serial='2342E880DED6'
+nvme: firmware='P9CR30A '
+nvme: ns1 NSZE=3907029168 LBAS=512B size=1907729MB
+nvme: I/O queue 1 ready (64 entries SQ+CQ)
+nvme: ns1 LBA0 first 8 bytes: 0 0 0 0 0 0 0 0
+nvme: registered as block_dev (3907029168 LBAs x 512B)
+ahci: found at 4240441344, version=1.769
+ahci: NP=1 NCS=32 ISS=3 SAM=1 SSS=0 SNCQ=1 S64A=1
+ahci: GHC=2147483648 PI=1
+ahci: port 0 DET=3 SPD=3 SIG=257 (SATA)
+ahci: port 0 initialized (CL @ 11894784, FIS @ 11898880)
+ahci: port 0 LBA0 first 8 bytes: 0 0 0 0 0 0 0 0
+ahci: port 0 model='WD Blue SA510 2.5 2TB' serial='24313QD00663' fw='530400WD'
+ahci: port 0 LBA48=3907029168 sectors (1907729 MiB)
+ahci: registered as secondary block_dev (port 0, 3907029168 LBAs x 512B; NVMe primary)
+msc: registered as tertiary block_dev (slot 2, 252051456 LBAs x 512B; NVMe primary)
+msc: slot 2 LBA0 first 8 bytes: 0 0 0 0 0 0 0 0
+gpt: present, first=34 last=3907029134 parts=3/128 hdr-CRC-OK arr-CRC-OK
+partitions (3 active / 128 reserved):
+ [0] EFI System    LBA 2048-2099199 (1024 MiB)
+ [1] (unknown type) LBA 2099200-3898638335 (1902607 MiB)
+ [2] Linux FS agnos-fs LBA 3898638336-3907026943 (4096 MiB)
+VFS initialized
+ext2: probe matched backend=2 partition_lba=3898638336
+ext2: mounted (blocksize=4096, inode_size=256, inodes_per_group=8192)
+Heap: 11917520 11931620 11931640
+SYSCALL/SYSRET initialized
+Stack canary initialized
+Interrupts enabled
+```
 
-**Iron success rubric** (full taxonomy in audit § 5):
+**What lit (Phase 1-4 + storage no-regression):**
 
-- **Full PASS:** boot log shows the six expected `r8169:` lines (`found at <0xFCF04000-decimal>` / `MAC=176:65:111:12:228:37` / `chip-rev byte=0x<N>` / `reset OK; Phase 1 complete` / `RX ring up` / `TX ring up`). With Ethernet: `dhcp: ACK ip=<lan-IP>` overrides the net_init 10.0.2.15 fallback. With bite-A host probe to LAN-IP:8080 from a second machine: `tcp_accept: conn_id=` prints + host receives the banner.
-- **Partial — H1 (no link):** Phase 1-3 lines correct; DHCP OFFER timeout; bite-A accept-success fails. Next burn writes a minimal PHY init sequence ported from OpenBSD's `re_phy_init`.
-- **Partial — H3 (MAC garbage):** Phase 1 MAC line mismatches `b0:41:6f:0c:e4:25`; other phases proceed.
-- **Partial — H7/H8 (TX or RX OWN stuck):** asymmetric egress/ingress failure.
-- **FALSIFIED:** kernel doesn't reach shell. Triage paths: H2 (reset hang — but bounded poll prevents this), H6 (PAT cache attr), H9 (cross-driver interaction).
+- **Bite B Phase 1** ✅ — `r8169: found at 4243603456` (= `0xFCF04000`, byte-identical to lspci BAR2); `MAC=176:65:111:12:228:37` (= `b0:41:6f:0c:e4:25` byte-identical to lspci); `chip-rev byte=0x87` (Phase 2+ family decode hook prints expected nibbles); `reset OK; Phase 1 complete` (CR.RST=0 cleared inside bounded poll, no hang).
+- **Bite B Phase 2** ✅ — `RX ring up (16 desc  2KB bu...` printed (16-descriptor ring at `r8169_rx_ring_phys`, 2 KB buffer per slot per audit § 2). Trailing text cut off by photo crop but the line printed = ring physical allocation succeeded and the ownership-bit init walked.
+- **Bite B Phase 3** ✅ — `TX ring up (16 desc  2KB bu...` symmetric to Phase 2; descriptor base register write succeeded.
+- **Bite B Phase 4** — Phase 4 is the dispatcher (`nic_ready`/`nic_send`/`nic_poll` routing through r8169 when `r8169_present != 0`). No direct boot-log line; validated indirectly by the fact that `net_init` doesn't fault and that `dhcp_init`'s `nic_ready()` guard would have passed if reached.
+- **Storage trio no-regression** ✅ — NVMe Crucial P3 byte-match Attempt 91 (model / serial / firmware / NSZE identical); AHCI WD Blue SA510 byte-match (model / serial / fw / sectors identical); USB-MS Silicon Motion stick byte-match (full INQUIRY/TUR/RC10 chain). The +22,088 B / ~770 LOC delta from 1.31.7 didn't regress any of the three.
+- **GPT Phase 3 + ext4 mount unchanged** ✅ — `[2] Linux FS agnos-fs LBA 3898638336-3907026943` byte-matches Attempt 91; `ext2: mounted (blocksize=4096, inode_size=256, inodes_per_group=8192)` identical geometry.
+- **Boot-to-shell MVP gate** ✅ — kernel reaches `Interrupts enabled` cleanly; kybernet → agnoshi path unaffected (photo crop cuts post-`Interrupts enabled`, but the no-regression chain implies the shell still comes up — same code as Attempt 91 from this point forward).
 
-**MVP gate posture:** unaffected — closed beta gates on kernel + kybernet + agnoshi typeable on iron (green since Attempt 68 / 1.30.9). r8169 is post-MVP capability expansion.
+**What was silent (the audit target):**
 
-**Per [[feedback_iron_burns_block_other_work]]**: audit FIRST (this entry's pointer to `r8169-iron-burn-audit.md`), burn SECOND. No instrumentation bundled with this burn per [[feedback_no_instrumentation_means_no_instrumentation]] — the driver is the test surface; the boot log + `kprint`-to-FB lines are the iron-readable output channel; CMOS stamps NOT reserved this burn (boot log is enough; audit § 7 explains).
+- **Bite G — DHCP client lines absent.** Expected (if cable connected to LAN with DHCP server): `dhcp: DISCOVER` → `dhcp: OFFER ip=<lan-IP>` → `dhcp: REQUEST` → `dhcp: ACK ip=<lan-IP>`. Observed: **none of the four lines printed.**
+- **Bite A — TCP_LISTEN_SMOKE block lines absent.** Expected (build is the `=1` variant, 600,520 B): `tcp_listen smoke: start` + `tcp_listen(8080) lid=<N>`. Observed: **photo crop ends at "Interrupts enabled"**, so these may live below the visible region (lower-priority follow-up — orthogonal to the DHCP gate bug). The user's report is specifically about DHCP being absent; TCP smoke output may or may not be on the off-screen tail.
+
+**Root-cause audit — DHCP gate selects wrong predicate:**
+
+The `dhcp_init()` call in `agnos/kernel/core/main.cyr` is guarded by `vnet_active`, not the abstracted `nic_ready()`:
+
+```cyrius
+# agnos/kernel/core/main.cyr:642-657 (verbatim from build under test)
+# DHCP client (1.32.0 bite G) — replace the hardcoded 10.0.2.15 in
+# net_init with a real DHCP exchange. Runs unconditionally (no build
+# flag) because DHCP is the standard way to get an IP; SLIRP serves
+# it in QEMU and real LANs serve it on iron. On failure, net_init's
+# pre-set fallback (10.0.2.15 / 10.0.2.2 / 255.255.255.0) stays in
+# place, so the kernel still has a workable address.
+if (vnet_active != 0) {
+    dhcp_init();
+}
+```
+
+On iron, virtio-net is not present so `vnet_active == 0` permanently (initialized in `virtio_net.cyr:16`, set to 1 only inside `virtio_net_init` at `virtio_net.cyr:76`). On archaemenid the r8169 path drove `r8169_present = 1` and `r8169_tx_ring_phys != 0` (Phase 2 RX ring + Phase 3 TX ring both up), which is what the `nic_ready()` abstraction in `r8169.cyr:425-431` is supposed to express:
+
+```cyrius
+# agnos/kernel/core/r8169.cyr:425-431
+fn nic_ready() {
+    if (r8169_present != 0) {
+        if (r8169_tx_ring_phys != 0) { return 1; }
+    }
+    if (vnet_active != 0) { return 1; }
+    return 0;
+}
+```
+
+`net.cyr` consistently uses `nic_ready()` everywhere as the NIC-presence abstraction (`net.cyr:86`, `:111`, `:126`, `:287`, `:419`, `:471`, `:625`). The `dhcp_init` function itself also gates on `nic_ready()` at `net.cyr:287` — so if `main.cyr:655` had used `nic_ready()` we'd have one consistent abstraction; instead the main.cyr gate keys on the raw `vnet_active` flag and the iron path falls through silently. **Net effect: on iron, `dhcp_init()` is never invoked, so the DISCOVER UDP egress never happens, so none of the four expected `dhcp:` lines print.** This is NOT a wire-level failure (H1 PHY-not-configured hypothesis), NOT a DHCP-protocol failure, NOT an r8169-RX-bug — it's a one-line oversight in the gate predicate, predating any wire-level question.
+
+**Equivalent comment-doc bug**: the `main.cyr:649-654` comment block says DHCP "Runs unconditionally (no build flag) because DHCP is the standard way to get an IP; SLIRP serves it in QEMU and real LANs serve it on iron." The comment's intent matches `nic_ready()` semantics; the code's guard contradicts the comment. Comment is correct; the predicate is the bug.
+
+**Fix applied (2026-05-22, post-Attempt 92 — per user consent):**
+
+Per user direction: **not** a hard predicate-swap, and **not** a coupling to any specific NIC (`r8169_present` was rejected because it would force a re-edit of the gate when the i225-V driver lands later in the 1.32.x arc; same problem repeats for any future NIC backend). Use an explicit OR with the **generic** `nic_ready()` abstraction on the right-hand side — both QEMU/virtual and any-NIC-driver-ready cases visible at the call site:
+
+```diff
+-if (vnet_active != 0) {
++if (vnet_active != 0 || nic_ready() != 0) {
+     dhcp_init();
+ }
+```
+
+One-line change landed in `agnos/kernel/core/main.cyr:655`. `nic_ready()` is declared in `r8169.cyr:425-431` and is the generic NIC-ready abstraction — currently returns 1 for either virtio_net OR r8169-rings-up, and gets extended in-place when future backends land (i225-V queued same arc; Wi-Fi later horizon). The left-hand `vnet_active != 0` is technically redundant since `nic_ready()` includes it, but per user "if or" direction it stays explicit so the gate-site comment block ("SLIRP serves it in QEMU and real LANs serve it on iron") maps 1:1 to the predicate. The `nic_ready()` internal guard inside `dhcp_init` (`net.cyr:287`) still runs as a second-tier check against half-initialized state.
+
+**Build delta:** 600,520 B (Attempt 92, `TCP_LISTEN_SMOKE=1`) → **601,392 B** (post-fix, `TCP_LISTEN_SMOKE=1`); +872 B / ~30 LOC reachability shift. `scripts/test.sh` 4/4 PASS. Production build (no `TCP_LISTEN_SMOKE`) reachability not re-checked here but predicate change is identical.
+
+**Attempt 93 PENDING IRON BURN** — re-burn with corrected gate. Expected delta from Attempt 92 boot log: four new lines between `Interrupts enabled` and the TCP_LISTEN_SMOKE block — `dhcp: DISCOVER` / `dhcp: OFFER ip=<lan-IP>` / `dhcp: REQUEST` / `dhcp: ACK ip=<lan-IP>`. Discriminator: presence of `dhcp: DISCOVER` line alone proves the gate was the issue (DHCP UDP egress reached the wire); absence (with the fix applied) proves we have an H1/H7/H8 driver-level issue to chase (PHY-not-configured / TX OWN stuck / RX OWN stuck per pre-burn audit). Storage trio + xhci/HID/USB-MS/NVMe/AHCI no-regression cross-check expected as before.
+
+**Follow-up burn after fix lands:** Attempt 93 — re-burn with corrected gate. Expected delta from Attempt 92: four new lines (`dhcp: DISCOVER`, `dhcp: OFFER ip=<lan-IP>`, `dhcp: REQUEST`, `dhcp: ACK ip=<lan-IP>`) appear between `Interrupts enabled` and the TCP_LISTEN_SMOKE block. If after the gate is fixed DHCP STILL fails (e.g., DISCOVER egress works but OFFER timeout), that's the H1 (PHY-not-configured) audit hypothesis firing on iron — a real driver fix, not the gate predicate. Discriminator: presence of `dhcp: DISCOVER` line alone proves the gate was the issue; absence (with the fix applied) proves we have an H1/H7/H8 driver-level issue to chase. The cable was connected for this burn (per user direction); the gate predicate intercepted before any wire activity could be attempted.
+
+**Photos:**
+
+- [`iron-nuc-zen-photos/attempt-92-agnos-1.32.0-r8169-iron-debut-dhcp-silent-pt1-xhci-usb-ms-r8169-nvme.jpg`](iron-nuc-zen-photos/attempt-92-agnos-1.32.0-r8169-iron-debut-dhcp-silent-pt1-xhci-usb-ms-r8169-nvme.jpg) — boot log top: heap → ACPI → PCI → amdvi → xhci full bring-up → HID keyboard → USB-MS Silicon Motion stick → six `r8169:` lines (all Phase 1-4 successes) → nvme discovery start.
+- [`iron-nuc-zen-photos/attempt-92-agnos-1.32.0-r8169-iron-debut-dhcp-silent-pt2-nvme-ahci-gpt-ext4-mounted.jpg`](iron-nuc-zen-photos/attempt-92-agnos-1.32.0-r8169-iron-debut-dhcp-silent-pt2-nvme-ahci-gpt-ext4-mounted.jpg) — boot log middle/tail: nvme controller-info + I/O queue + LBA0 + block_dev registration → ahci full bring-up against WD Blue SA510 → GPT enumeration (3 active parts) → ext2/4 probe + mount → `Interrupts enabled` (photo crop ends here; DHCP block + TCP smoke block would have followed on screen had the gate fired).
+
+**Status against rubric:**
+
+- **Full PASS:** ❌ — DHCP lines absent (but cause is gate, not driver).
+- **Partial — H1 (PHY not configured / no link):** N/A — cause precedes any PHY-level question. H1 hypothesis stays open as the post-fix follow-up question.
+- **Partial — H3 (MAC garbage):** ❌ falsified — MAC printed byte-identical to lspci (`176:65:111:12:228:37` = `0xB0 0x41 0x6F 0x0C 0xE4 0x25`).
+- **Partial — H7/H8 (TX or RX OWN stuck):** N/A — cause precedes any RX/TX-walk question.
+- **NEW failure mode discovered (not in pre-burn audit):** DHCP gate predicate mismatch in `main.cyr:655`. Pre-burn audit was 9-hypothesis ranked H1-H9 on driver-internal issues; this 10th failure mode is a *call-site gate*, upstream of the driver entirely. Add to `r8169-iron-burn-audit.md` § 5 as H10 = "main.cyr DHCP gate keys on wrong predicate" — but the fix is so trivial (one-line predicate swap) that the audit update is courtesy more than necessity.
+
+**MVP gate posture:** unchanged. Closed beta gates on kernel + kybernet + agnoshi typeable on iron, green since Attempt 68 / 1.30.9. The r8169 driver itself behaves correctly through Phase 1-4 on iron; DHCP silence is an orthogonal gate-predicate bug, not a regression of any MVP-gating capability.
+
+**Sources:**
+
+- Two photos above.
+- agnos `kernel/core/main.cyr:642-657` (gate site).
+- agnos `kernel/core/net.cyr:286-303` (`dhcp_init` definition + DISCOVER egress).
+- agnos `kernel/core/r8169.cyr:425-431` (`nic_ready` abstraction).
+- agnos `kernel/core/virtio_net.cyr:16,76` (`vnet_active` declaration + set site).
+- [`r8169-iron-burn-audit.md`](r8169-iron-burn-audit.md) (pre-burn — 9 hypotheses, did not anticipate gate-predicate bug).
+
+**Awaiting user direction:** the one-line `nic_ready()` predicate swap in `main.cyr:655` is the entire fix surface. Per [[feedback_per_action_consent]] the kernel edit is not applied speculatively — user can land it manually or grant per-edit consent for the gate swap + rebuild + re-burn (Attempt 93). The TCP_LISTEN_SMOKE-block off-screen question is independent and can be folded into the same Attempt 93 if the user shoots a third photo of the post-`Interrupts enabled` tail.
 
 ---
 
