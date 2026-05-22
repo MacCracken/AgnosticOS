@@ -1,7 +1,7 @@
 # AGNOS Design Patterns
 
 > **Status**: Outline / accretion document — pending GA retrospective.
-> **Last Updated**: 2026-05-09 (date bump only — vani-fold / niyama-fold / Om-cyclone patterns already present from prior stages; absence-by-design pattern from CVE-2026-31431 still gated on host-defconfig pinning per `development/state.md`)
+> **Last Updated**: 2026-05-22 (added three new pattern-instance stubs to "Patterns Yet to Add": multi-source convergent prior-art audits as §9 instance, audit-before-iron-burn as §8 instance, bite-decomposition cadence as §2 instance; corrected stale `cc5 → cyc` references to actual `cc5 → cycc` rename that landed at Cyrius v6.0.0 on 2026-05-19; refreshed kernel-size anchors)
 > **Purpose**: Document the recurring cognitive patterns behind AGNOS decisions — the through-lines that produced many specific choices across many repos. This is the *interpretation* layer.
 
 ## What This Doc Is (And Isn't)
@@ -35,7 +35,7 @@ This is the layer that lets a cold reader in 2030 reconstruct *why* the decision
 - **hoosh 40 crates → 0, 70× compile.** Refused the Python-dominant-inference-stack era. Its scaffolding supports an ecosystem AGNOS isn't in.
 - **kavach 448 crates → 1, 500× sandbox lifecycle.** Refused pre-Landlock sandboxing (seccomp workarounds, cgroup isolation tricks). Dead once Landlock is a first-class primitive.
 - **ark 4× smaller than cargo.** Refused serde + format! + alloc/dealloc as the baseline dep-graph paradigm.
-- **AGNOS kernel ~365 KB at v1.30.5.** Refused Linux's decomposition, which carries driver models and device support spanning 30 years of hardware most users never touch.
+- **AGNOS kernel ~571 KB at v1.31.7 / 40+ subsystems.** Refused Linux's decomposition, which carries driver models and device support spanning 30 years of hardware most users never touch. **Iron-validated**: MVP gate at Attempt 68 (v1.30.9, typeable shell on archaemenid), storage arc closed at Attempt 90 (v1.31.6, real Linux ext4 mounted on NVMe NAND).
 - **mabda v3 ~3× smaller API than wgpu.** Refused pre-2018 GPU hardware support. VMA's 20 K lines exist to support every GPU-memory combination since 2016. wgpu's 7 buffer variants carry DX9 / OpenGL shape that nothing new uses. 30-stage pipeline bitmask carries transform-feedback, conditional-rendering, and legacy fixed-function stages no modern workload hits.
 - **yantra in Cyrius stdlib — UI automation as a library, not an ecosystem.** Refused the inherited "UI automation is a third-party concern" default that Selenium, Playwright, Appium, Cypress, and Puppeteer all ride. Every other mainstream language draws its own boundary short of the pixel surface — Rust, Go, Zig, Swift, Python, JS all expect you to pull a separate registry dep when `.tcyr`-style tests need to drive a browser or a mobile device. The headline: ***"Every other language draws the line before what you can see. Cyrius draws it after."*** Stdlib-folded UI automation is the receipt; the refused inheritance is the entire ecosystem-as-governance-boundary pattern.
 - **Librarian role (§5).** Refused extending into applier — which inherits the scope-creep drift that kills every sovereignty project.
@@ -85,7 +85,7 @@ AGNOS runs the same way. Every subsystem, every API surface, every deletion — 
 - Bootstrap chain: Rust seed retired; 29 KB hand-audited assembly as the foundation
 - libc removed from the runtime
 - mabda folded into Cyrius stdlib (removed an independent naming/versioning surface)
-- `cc` → `cc2` → `cc3` → `cc5` → `cyc` at v6.0 (four rename events — the last one ends the treadmill for all future major versions)
+- `cc` → `cc2` → `cc3` → `cc5` → `cycc` at v6.0.0 (2026-05-19, paired with `cyrc` → `cybs` for the bootstrap compiler — four rename events total; both new names declared permanent, no `cycc6`/`cybs7` at future major versions)
 
 **Why.** Addition looks like progress because it's visible. Subtraction looks like nothing happened until you measure what's left. The cultural pressure is all toward adding "value." AGNOS runs the other way — most of the receipts are what's no longer there.
 
@@ -100,7 +100,7 @@ AGNOS runs the same way. Every subsystem, every API surface, every deletion — 
 **Examples.**
 - v5.5.x Windows / Apple platform closeout → v5.6.x optimization arc (O1–O6) → v5.7.0 RISC-V → v5.8.0 bare-metal — each phase is a queued explicit block
 - Port sequencing: system ports shipped now, compute ports scheduled after v5.6.x
-- cc5 → `cyc` rename scheduled for v6.0 as the one-and-done cleanup — not deferred indefinitely
+- cc5 → `cycc` rename scheduled for v6.0 as the one-and-done cleanup — shipped 2026-05-19; not deferred indefinitely
 
 **Why.** Most projects ship features and leave "we'll optimize later" debt that never gets paid because priorities shift. AGNOS doesn't let optimization become a floating someday-item — it's always the literal next block. Drift can't accumulate because there's nowhere for it to sit.
 
@@ -129,7 +129,7 @@ AGNOS runs the same way. Every subsystem, every API surface, every deletion — 
 
 **Examples.**
 - `VERSION` file at repo root (CalVer, single authority) — docs and scripts pull from it, never hardcode
-- cc5 → `cyc` rename: binary name becomes stable; version lives in `VERSION`; no more `cc → cc2 → cc3 → cc5` renaming treadmill across scripts, CI, install paths, docs (four historical renames — `cyc` is the final one)
+- cc5 → `cycc` rename (Cyrius v6.0.0, 2026-05-19): binary name becomes stable; version lives in `VERSION`; no more `cc → cc2 → cc3 → cc5` renaming treadmill across scripts, CI, install paths, docs (four historical renames — `cycc` is declared the final one, paired with `cyrc → cybs` for the bootstrap binary)
 - Size comparisons live in cyrius repo's `docs/size-comparisons.md`; genesis docs link out rather than duplicate tables that would drift per optimization release
 - Per-repo CLAUDE.md is authoritative for that repo's state — sibling repos reference, don't copy
 
@@ -216,7 +216,7 @@ AGNOS runs the same way. Every subsystem, every API surface, every deletion — 
 - **kavach** is not "bubblewrap in Cyrius." It's a sandbox designed with Landlock as a first-class primitive rather than an afterthought. → 500× sandbox lifecycle, 448 crates → 1
 - **ark** is not "cargo in Cyrius." It's a package manager designed around bump allocator + str_builder instead of serde + format! + alloc/dealloc. → 4× smaller, 40× compile
 - **Cyrius** is not "C++ in Cyrius." It's C's successor designed after 50 years of watching what went wrong with the C family. → 29KB seed, zero deps, byte-identical self-host
-- **AGNOS kernel** is not "Linux in Cyrius." It's ~365KB across 35+ subsystems — a completely different decomposition of the kernel problem.
+- **AGNOS kernel** is not "Linux in Cyrius." It's ~571 KB at v1.31.7 across 40+ subsystems — a completely different decomposition of the kernel problem. Multi-source convergent prior-art audits across BSDs / Haiku / EDK2 / SeaBIOS surface what the *problem* shape is, then redesign for AGNOS — Linux is one source of many, never the singular reference.
 - **mabda v3** (in flight) is not "wgpu in Cyrius." It's a GPU API designed around a render-graph orchestrator, a modern hardware floor, and Cyrius idioms — dropping 20 years of Vulkan/legacy-device accretion.
 - **abaco** is not "GMP in Cyrius." It's a number-theory library designed to drive hardware-primitive feedback into the compiler (→ `u64_mulmod` intrinsic in Cyrius 4.8.5 → 12× end-to-end on Miller-Rabin).
 
@@ -238,7 +238,7 @@ AGNOS runs the same way. Every subsystem, every API surface, every deletion — 
 - **Bhava's compositional framework** — SY's YAML traits were already doing compositional-personality work before there was a name for it. Bhava formalized what the prototype was already proving out.
 - **Hadara as first Cyrius-native crate** — emerged from the port work as a natural first test case, not from a planned *"let's prove Cyrius-native on hadara"* roadmap item.
 - **abaco → Cyrius `u64_mulmod` feedback loop** — the abaco port surfaced a missing hardware primitive; Cyrius shipped the primitive; abaco re-measured ~12× end-to-end on Miller-Rabin. The optimization opportunity was received, not planned.
-- **The kernel going from zero to a Boot-to-Shell-iron-validated ~365 KB in weeks (v1.30.5)** — not a *"plan for rapid kernel development."* A consequence of having a sovereign compiler ready and needing a kernel to run on it.
+- **The kernel going from zero to a Boot-to-Shell-iron-validated ~571 KB in weeks** (initial bare-metal-iron debut at v1.30.5 / 2026-05-15; MVP gate at v1.30.9 / Attempt 68 / typeable shell on archaemenid; storage arc closed at v1.31.6 / Attempt 90 / ext4 on real NVMe NAND) — not a *"plan for rapid kernel development."* A consequence of having a sovereign compiler ready and needing a kernel to run on it.
 
 **Why.** Projects that force their shape end up fighting themselves — every decision has to be defended against the shape instead of flowing with it. Projects that work with attention, noticing when something fits unexpectedly, compound faster: each happy accident reduces the next design's cost, because the structure has been quietly building itself. Bob Ross's "happy accidents": you weren't planning that cloud, but now that it's there, the painting is better. The discipline is *noticing* — and promoting the incidental-that-became-load-bearing to first-class, rather than leaving it as an incidental.
 
@@ -283,11 +283,23 @@ Space for accretion. When a pattern surfaces in work and isn't covered above, ad
 
 ### Sibling-distfile fold (added 2026-05-06)
 
-Three instances now: **sandhi** (Cyrius v5.7.0, service-boundary layer, 376 KB / 469 fns), **vani** (Cyrius v5.8.0, audio device I/O), **niyama** (Cyrius v5.9.0, regex engines, 6,664 lines / 5 engines). The pattern: a sibling repo proves out a domain, hits multi-consumer status, gets vendored byte-identical into Cyrius stdlib's `lib/` as a single artifact, and the standalone repo enters maintenance mode while the fold becomes the canonical source. Multi-consumer gate is the trigger (sandhi: 6+ AGNOS consumers; niyama: cyim + queued bare-metal kernel). cc5 binary size is unaffected (foldins are `lib/` content; the compiler doesn't include them). Pattern instance of §0 (Refusal as Architecture) at the stdlib-boundary layer — refusing the multiplication of dep-graph layers when the surface is mature enough to anchor in stdlib. The decision framework (gates + anti-criteria + cost) is articulated in [*What Justifies a Stdlib Foldin*](articles/what-justifies-a-stdlib-foldin.md). Expand into a full §12 once the next fold lands and the framework's been tested across four instances.
+Three instances now: **sandhi** (Cyrius v5.7.0, service-boundary layer, 376 KB / 469 fns), **vani** (Cyrius v5.8.0, audio device I/O), **niyama** (Cyrius v5.9.0, regex engines, 6,664 lines / 5 engines). The pattern: a sibling repo proves out a domain, hits multi-consumer status, gets vendored byte-identical into Cyrius stdlib's `lib/` as a single artifact, and the standalone repo enters maintenance mode while the fold becomes the canonical source. Multi-consumer gate is the trigger (sandhi: 6+ AGNOS consumers; niyama: cyim + queued bare-metal kernel). `cycc` binary size is unaffected (foldins are `lib/` content; the compiler doesn't include them). Pattern instance of §0 (Refusal as Architecture) at the stdlib-boundary layer — refusing the multiplication of dep-graph layers when the surface is mature enough to anchor in stdlib. The decision framework (gates + anti-criteria + cost) is articulated in [*What Justifies a Stdlib Foldin*](articles/what-justifies-a-stdlib-foldin.md). Expand into a full §12 once the next fold lands and the framework's been tested across four instances.
 
 ### Terminal-symbol identity (added 2026-05-06)
 
 Cyrius packages render in the shell prompt with **ॐ** (Om, U+0950) and the active toolchain version with **🌀** (cyclone, U+1F300), formatted: `ॐ <pkg-name> <pkg-version> (<repo>) | 🌀 <toolchain-version>`. Shipped Cyrius v5.8.0 via the `cyriusly` starship.toml prompt rework. The convention establishes Cyrius as a distinct ecosystem alongside the existing prompt-engine visual vocabulary (Rust 📦, Go gopher, Python snake) — not by adopting one of those, not by going symbol-less, but by picking glyphs that *describe what the ecosystem is*: **Om** = source/origin in the Sanskrit lineage that names AGNOS subsystems; **cyclone** = active rotation, the cycle the toolchain ships in. `𝕮` (mathematical fraktur C, U+1D49C) is retained as documented ASCII fallback for emoji-hostile terminals — graceful degradation rather than feature-loss. Pattern instance of §6 (User-Side Naming) extended to visual identity at the terminal: the symbol describes function, not personality, not author-journey. Possible promotion path: if more ecosystem-identity micro-conventions accrete (CLI banner, file-type icon, error-marker glyph), hoist into a fuller pattern about *visual sovereignty at the surface*.
+
+### Multi-source convergent prior-art audits (added 2026-05-22)
+
+Pattern instance of **§9 (Reference Don't Mimic)** with a sharpened operational rule: when porting a solved-problem subsystem (storage drivers, filesystem code, USB stacks, GPT parsing), the audit reads from **multiple references and triangulates the converged shape** — never a single source treated as authoritative. Captured as memory `feedback_redesign_dont_reinvent` after the 2026-05-21 USB MS Phase 2.7 recovery: an earlier draft of the rule said "port from Linux"; user pushback ("LINUX ISN'T THE ONLY RESOURCE OF PRIOR ART") refined it to read FreeBSD `umass.c` + OpenBSD `umass.c` + EDK2 `UsbMassBot.c` + Linux confirmatory — that four-source convergence is what surfaced the 100ms post-BOT-Reset device stall and the EP-state-aware Reset Endpoint dispatch ordering that became Phase 2.7. Live instances landed under the 1.31.x storage arc: [`msc-reset-recovery-prior-art.md`](development/msc-reset-recovery-prior-art.md), [`ext2-ext4-extents-prior-art.md`](development/ext2-ext4-extents-prior-art.md), [`ext4-64bit-prior-art.md`](development/ext4-64bit-prior-art.md). Why it matters: single-source porting inherits one project's accretion and architecture; multi-source converged porting surfaces the *invariants* across multiple implementations, which are the genuine domain truths. Possible promotion path: when a fourth audit doc lands (next storage cycle or networking arc), hoist into a full §12 with the audit-doc template + the "Linux is one source of many" discipline as named rules.
+
+### Audit before iron burn (added 2026-05-22)
+
+Pattern instance of **§8 (Pain → Procedure)**. Iron burns on archaemenid (the user's primary AMD test target) hold up the user's other work — the machine is in-use, the cabling is non-trivial, and a burn cycle costs 5–15 min of physical interruption. Encoded as memory `feedback_iron_burns_block_other_work` after a stretch of speculative-fix iron burns wasted multiple cycles: **no iron burn is proposed without a written line-by-line audit first.** Audit docs live alongside the iron-nuc-zen-log per cycle: [`ext2-iron-burn-audit.md`](development/ext2-iron-burn-audit.md), [`ahci-iron-burn-audit.md`](development/ahci-iron-burn-audit.md), [`usb-ms-iron-burn-audit.md`](development/usb-ms-iron-burn-audit.md). Each follows the same shape: scope, hypotheses ranked by iron-specific risk, what NOT to do, success rubrics (full PASS + partial-failure paths + FALSIFIED), mitigations applied, multi-source prior-art references, audit disposition. The Attempt 87 USB MS PASS, Attempt 90 ext4 PASS, and Attempt 82 AHCI carry-forward PASS each cleared their audit's success rubric on the first iron try — the audit's job is to make that outcome the default, not the exception. Possible promotion path: companion rule **no instrumentation bundled with diagnostic burns** (memory `feedback_no_instrumentation_means_no_instrumentation`) is the same discipline at the instrumentation layer; together they'd form a fuller "pre-iron rigor" pattern when a fourth audit doc + a fourth burn-discipline rule accumulate.
+
+### Bite-decomposition cadence (added 2026-05-22)
+
+Pattern instance of **§2 (Staged Optimization)** at the cycle-internal scale. Multi-bite cycles (1.31.6 cleanup with bites A–H; 1.31.7 filesystem-follow-ups + shell-UX with bites D/B/C/A/E) order their work **smallest-first to bank wins quickly** rather than starting with the biggest bite. 1.31.7 ordering: `ls -la` flag dispatch (~25 LOC, 30 min) → bare-name `cat` ext2 fall-through (~20 LOC) → `cd` + `pwd` + CWD scoping (~190 LOC, the medium piece) → ext4 64BIT Phase 5 (~25 LOC + new prior-art audit doc, the heaviest because of the audit gating) → cycle-close sweep + iron Attempt 91. Why the order matters: each landed bite verifies the toolchain + build pipeline + smoke matrix before the next bite ships; a regression in a small early bite is cheap to bisect, a regression in a large late bite is expensive. Compounds with the **audit-before-iron-burn** rule: the cycle's small bites can ship through QEMU smoke with no iron involvement; iron burn happens once at cycle close for no-regression validation. Possible promotion path: when a third multi-bite cycle ships in this cadence (1.32.x networking would be a natural candidate), hoist into a fuller pattern with the explicit ordering heuristic + the QEMU-iron split + the audit-doc gating-by-bite-size dimension.
 
 ---
 

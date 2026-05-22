@@ -20,11 +20,11 @@ Each finished layer revealed the next missing one. Agnostic — the CrewAI repla
 
 **29 KB of hand-written x86_64 assembly. A seed.**
 
-From seed to self-hosting kernel in 44 hours. Cyrius shipped continuously in the weeks that followed — through the v5.5.x platform-completion cycle (40 patches, longest minor; multi-platform byte-identical), the v5.6.x optimization arc, the v5.7.0 sandhi-fold (first stdlib absorption), the v5.8.x 66-patch arc (vani-fold + language vocabulary), the v5.9.0 niyama-fold (regex engines), and through the v5.10.x three-arc cycle (typed-simd ABI / REAL TYPE SYSTEM / struct-byval ABI) into the v5.11.x stdlib-annotation cycle. The AGNOS kernel grew from nothing to ~365 KB at v1.30.5 — 35+ subsystems, 26 syscalls, TCP/IP, FAT16, VirtIO, SMP, ELF loader, 18-command shell, kybernet as PID 1, sovereign UEFI handoff via gnoboot, native XHCI + USB-HID-boot driver. The science stack (physics, chemistry, biology, cosmology, linguistics, music theory) migrated off Rust. Hadara shipped as the first Cyrius-native crate with 50 cultures. Avatara shipped with 362 archetypes. Bhava shipped as the consciousness substrate — the compositional framework that SY's YAML traits had been prototyping all along.
+From seed to self-hosting kernel in 44 hours. Cyrius shipped continuously in the weeks that followed — through the v5.5.x platform-completion cycle (40 patches, longest minor; multi-platform byte-identical), the v5.6.x optimization arc, the v5.7.0 sandhi-fold (first stdlib absorption), the v5.8.x 66-patch arc (vani-fold + language vocabulary), the v5.9.0 niyama-fold (regex engines), the v5.10.x three-arc cycle (typed-simd ABI / REAL TYPE SYSTEM / struct-byval ABI), the v5.11.x stdlib-annotation cycle (70 patches across 11 days, closed at v5.11.69), and into the v6.0.x cycle — "what the language gains" (RISC-V rv64, PIE, closures, Class-B FFI, bare-metal target) opened 2026-05-19 with the cyrc → cybs and cc5 → cycc rename ceremony. The AGNOS kernel grew from nothing to ~571 KB at v1.31.7 — 40+ subsystems, 26 syscalls, TCP/IP, FAT16 + ext2/ext4 read-only (Phase 1-5 including ext4 extents + 64BIT), 5-backend block-layer dispatch (NVMe + AHCI/SATA + USB Mass Storage + VirtIO 1.x modern + RAM-disk) with multi-backend probe + partition-aware mount via GPT, SMP, ELF loader, 22-command shell with CWD scoping, kybernet as PID 1, sovereign UEFI handoff via gnoboot v0.4.2, native XHCI + USB-HID-boot + USB Mass Storage driver. The science stack (physics, chemistry, biology, cosmology, linguistics, music theory) migrated off Rust. Hadara shipped as the first Cyrius-native crate with 50 cultures. Avatara shipped with 362 archetypes. Bhava shipped as the consciousness substrate — the compositional framework that SY's YAML traits had been prototyping all along.
 
 None of this was the plan. The plan was an AI agent platform. But every wall encountered was structural, not configurational — and removing each wall revealed the wall behind it. AGNOS is what happens when you finish the thing on top, see the floor is missing, and refuse to look away.
 
-As of mid-May 2026: the kernel is at v1.30.5 (~365 KB, 35+ subsystems, iron-validated on NUC AMD 2026-05-15). The compiler is at v5.11.55 (cc5 ~809 KB self-hosting from 29 KB seed; multi-platform byte-identical across x86_64 Linux, aarch64 Linux, Apple Silicon Mach-O, Windows PE32+). Thirty-plus subsystems have been ported from Rust to Cyrius. The boot pipeline is sovereign Cyrius. The sovereign UEFI loader (gnoboot) replaces GRUB. The floor is real, and it boots. Live ecosystem state in [`development/state.md`](development/state.md).
+As of late May 2026: the kernel is at v1.31.7 (~571 KB, 40+ subsystems, **MVP gate hit on iron at Attempt 68 / v1.30.9 — typeable shell on archaemenid Beelink SER AMD Renoir 2026-05-18**, storage arc closed at Attempt 90 / v1.31.6 with real Linux ext4 mounted on NVMe 2026-05-22). The compiler is at v6.0.1 (cycc ~874 KB self-hosting from 29 KB seed; multi-platform byte-identical across x86_64 Linux, aarch64 Linux, Apple Silicon Mach-O, Windows PE32+). Forty-plus subsystems have been ported from Rust to Cyrius. The boot pipeline is sovereign Cyrius. The sovereign UEFI loader (gnoboot v0.4.2) replaces GRUB. The floor is real, and it boots — on QEMU and on iron. Live ecosystem state in [`development/state.md`](development/state.md).
 
 ---
 
@@ -93,7 +93,7 @@ The OS organizes into eight layers, numbered 0 through 7:
 4. Orchestration  — daimon (agent orchestrator)
 3. Init           — kybernet (PID 1), argonaut (service management)
 2. System         — agnosys (kernel interface)
-1. Kernel         — AGNOS kernel (~365 KB, Cyrius-native, 35+ subsystems)
+1. Kernel         — AGNOS kernel (~571 KB, Cyrius-native, 40+ subsystems)
 0. Substrate      — the physical hardware: silicon, electromagnetic fields
 ```
 
@@ -121,4 +121,4 @@ The public thesis: **a library for humanity.** The name is deliberately agnostic
 
 ---
 
-*Last Updated: 2026-04-21*
+*Last Updated: 2026-05-22*
