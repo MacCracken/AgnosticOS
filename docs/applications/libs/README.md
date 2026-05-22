@@ -5,7 +5,7 @@
 > **79 libraries at v1.0+** (77 standalone + 2 stdlib-folded: sandhi v5.7.0, niyama v5.9.0; aegis 1.0.0 graduated from pre-1.0 during v5.10.x; **mihi 1.0.0 graduated 2026-05-20** as system-info probe substrate for the terminal-aesthetics cohort) — pre-1.0 libs tracked in [development/planning/](../../development/planning/README.md). Binary tools at v1.0+ (agnos, agnoshi, argonaut, **bannermanor**, **commandress**, cyim, cyim-lsp, **iam**, **kriya**, kybernet, nous, owl) are listed separately in the [full registry](../../development/planning/shared-crates.md#binaries--tools-13-crates). **2026-05-20 cohort**: mihi 1.0.0 (OS & Infrastructure, probe lib), iam 1.0.0 (Binaries & Tools, fastfetch-equivalent), bannermanor 1.0.0 (Binaries & Tools, figlet-equivalent — graduated PM after CLI surface + CYML font format + default font set frozen).
 > Full registry: [Shared Crates Registry](../../development/planning/shared-crates.md) — that doc is the authoritative source; refresh from there.
 >
-> **Last Updated**: 2026-05-20 PM (post-Attempt-82 drift sweep)
+> **Last Updated**: 2026-05-22 (post-1.31.6 close + 1.31.7 open drift sweep)
 
 See also: [First-Party Standards — Own the Stack](../../development/planning/first-party-standards.md#own-the-stack) | [Science Crate Specs](../../development/guides/science-crate-specs.md)
 
@@ -18,8 +18,8 @@ See also: [First-Party Standards — Own the Stack](../../development/planning/f
 | aegis | 1.0.0 | Security daemon — graduated from pre-1.0 in the v5.10.x window |
 | agnosai | 1.1.0 | AI orchestration |
 | agnostik | 1.2.2 | Shared types & domain primitives (Cyrius, GitHub-release only) |
-| agnosys | 1.2.6 | Kernel interface — Landlock, seccomp, syscall bindings (Cyrius) |
-| ai-hwaccel | 2.2.2 | GPU detection |
+| agnosys | 1.2.7 | Kernel interface — Landlock, seccomp, syscall bindings (Cyrius) |
+| ai-hwaccel | 2.2.6 | GPU detection |
 | bote | 2.7.2 | MCP core (~5us/message, streamable HTTP) |
 | daimon | 1.2.3 | Agent orchestrator (144 MCP tools) |
 | hoosh | 2.0.0 | LLM gateway (15 providers) |
@@ -33,13 +33,13 @@ See also: [First-Party Standards — Own the Stack](../../development/planning/f
 | patra | 1.9.4 | Structured storage & SQL — B+ tree, WAL (Cyrius-native) |
 | phylax | 1.1.1 | Threat detection — YARA, entropy, magic bytes, ML |
 | sakshi | 2.2.4 | Tracing, error handling, structured logging (Cyrius-native) |
-| sankoch | 2.2.5 | Lossless compression — LZ4, DEFLATE, zlib, gzip |
-| sigil | 3.1.1 | Trust verification & crypto — AES-NI + SHA-NI hardware accel |
+| sankoch | 2.2.6 | Lossless compression — LZ4, DEFLATE, zlib, gzip |
+| sigil | 3.2.6 | Trust verification & crypto — AES-NI + SHA-NI hardware accel |
 | soorat | 1.0.0 | GPU rendering |
 | stiva | — | Container runtime — **Rust-era scaffold; Cyrius port pending** (GitHub remote `MacCracken/stiva` last pushed 2026-04-29) |
 | szal | 1.1.0 | Workflow engine |
 | t-ron | 2.1.4 | MCP security |
-| vidya | 2.7.0 | Programming reference |
+| vidya | 2.7.1 | Programming reference |
 | yukti | 2.2.3 | Device abstraction (USB, block, udev) |
 
 ## Science & Knowledge (27)
@@ -95,7 +95,7 @@ See also: [First-Party Standards — Own the Stack](../../development/planning/f
 
 | Crate | Version | Domain |
 |-------|---------|--------|
-| bsp | 1.1.2 | BSP geometry (Cyrius-native) |
+| bsp | 1.1.3 | BSP geometry (Cyrius-native) |
 | kiran | 1.0.0 | Game engine (ECS, scene hierarchy) |
 | ranga | 1.0.0 | Image processing (color, blend, GPU compute) |
 

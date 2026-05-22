@@ -2252,7 +2252,42 @@ agnos>
 - agnos CHANGELOG `[1.31.6]` § Bite (G) + § Bite (H) + § Smoke-surfaced fixes + § Iron Attempt 90.
 - [`ext2-iron-burn-audit.md`](ext2-iron-burn-audit.md) (bite E pre-burn audit, success rubric § 7).
 
-**Storage arc closes here.** Five iron debuts (NVMe @ Attempt 80 / SATA @ 81 / USB MS @ 87 / RAM-disk+VirtIO @ 88 with QEMU primary + iron no-regression / ext4 @ 90 partition-aware-on-NVMe) plus four no-regression burns (82 / 88 / 89 plus 90's storage-trio check) across the 1.31.0 → 1.31.6 trajectory (+150 KB / ~6,500 LOC: NVMe + AHCI + GPT + USB MS + RAM-disk + VirtIO modern + ext2/4 + cleanup hardening). Next cycle theme TBD per user direction.
+**Storage arc closes here.** Five iron debuts (NVMe @ Attempt 80 / SATA @ 81 / USB MS @ 87 / RAM-disk+VirtIO @ 88 with QEMU primary + iron no-regression / ext4 @ 90 partition-aware-on-NVMe) plus four no-regression burns (82 / 88 / 89 plus 90's storage-trio check) across the 1.31.0 → 1.31.6 trajectory (+150 KB / ~6,500 LOC: NVMe + AHCI + GPT + USB MS + RAM-disk + VirtIO modern + ext2/4 + cleanup hardening). **Next cycle: 1.31.7 filesystem follow-ups + shell UX (OPEN same day as 1.31.6 close).**
+
+---
+
+### Attempt 91 — PENDING IRON BURN — agnos 1.31.7 cycle-close no-regression burn (filesystem follow-ups + shell UX)
+
+**Build under test:** agnos **1.31.7** (build `578,432 B`, +7,136 B vs 1.31.6 close; cyrius 6.0.1 toolchain unchanged). gnoboot 0.4.2 unchanged. NVMe `agnos-fs` p3 carving: user re-formats with default `mkfs.ext4` (drops `-O ^64bit` from the previous Attempt 90 carve) to exercise the Phase 5 64BIT-aware mount path on iron. ASCII `hello.txt` seed retained.
+
+**What's new in this build:** four shell-UX + filesystem code bites landed under 1.31.7:
+
+- **(D)** `ls -la` flag-aware dispatch (`sh_cmd_ls` parses `-` flag tokens before the path).
+- **(B)** bare-name `cat` ext2 fall-through (`sh_cmd_cat` tries ext2 against CWD prefix before initrd).
+- **(C)** `cd` + `pwd` + CWD scoping (`sh_cwd_inode`/`sh_cwd_path`/`sh_cwd_len` globals + helpers + verbs; `sh_cmd_cat`/`sh_cmd_ls` consume CWD).
+- **(A)** ext4 64BIT support (Phase 5) — `s_desc_size` parse + dynamic BGDT stride + `bg_inode_table_hi` guard + supported_incompat mask 0x6746 → 0x67C6. Per [`ext4-64bit-prior-art.md`](ext4-64bit-prior-art.md).
+
+**Pre-burn audit**: reuses [`ext2-iron-burn-audit.md`](ext2-iron-burn-audit.md) — Attempt 91 has no new iron-validation surface vs 1.31.6 / Attempt 90, just a regression-check pass after adding ~260 LOC and a fresh 64BIT-flagged NVMe carve.
+
+**Iron surface plan:**
+
+- Same archaemenid hardware as Attempt 90 (NUC AMD, Beelink SER, Zen-class).
+- NVMe `agnos-fs` p3 re-formatted with default `mkfs.ext4` (64BIT-enabled).
+- AHCI + USB MS unchanged from Attempt 90.
+
+**Iron success rubric:**
+
+- **Full PASS:** boot log shows `ext2: probe matched backend=2 partition_lba=3898638336` + `ext2: mounted (blocksize=4096, inode_size=256, inodes_per_group=<...>)` with the geometry of the new 64BIT-flagged partition. `agnos> ls /` returns `./ ../ lost+found/ hello.txt` byte-exact. New `agnos> pwd` returns `/`. `agnos> cd lost+found && pwd` returns `/lost+found`. `agnos> cd .. && ls` lists root again. `agnos> ls -la` returns identical output to bare `ls` (flag parser swallows `-la`). `agnos> cat hello.txt` (bare name) returns seed content byte-exact (bites B + C composition). Storage trio (NVMe / AHCI / USB MS) byte-matches Attempt 90.
+- **Partial — 64BIT mount miss:** boot log shows `ext2: bg_inode_table_hi != 0 (Phase 6 unlock)` against the new carve. Unexpected on a 4 GiB partition; would mean `mkfs.ext4`'s 64BIT default carved high block#s. Triage: `dumpe2fs -h <image>` on the host.
+- **Partial — shell verb regression:** any of the new verbs (`cd`/`pwd`/bare-name `cat`/`ls -la`) misbehaves. Triage: rebuild from a known-good 1.31.6 tag, bisect the four code bites.
+- **Partial — storage-trio regression:** NVMe / AHCI / USB MS enumeration drifts from Attempt 90. Storage stack untouched in 1.31.7, so this would indicate cross-subsystem regression (unlikely).
+- **FALSIFIED:** kernel hangs / faults / can't reach shell. Triage per other iron arcs (CMOS kcp, FB readback).
+
+**MVP gate posture**: unaffected — closed beta gates on kernel + kybernet + agnoshi typeable on iron, which has been green since Attempt 68.
+
+**QEMU pre-burn validation (host-side):** `scripts/test.sh` 4/4 PASS; `scripts/ext2-smoke.sh` 5/5 PASS + 5/5 regression cross-check (smoke 5 = new 64BIT-flagged ext4 partition). All five smokes reach `AGNOS shell v1.31.7`.
+
+**Per `feedback_iron_burns_block_other_work`**: no new audit doc needed — reusing existing `ext2-iron-burn-audit.md`. No instrumentation bundled with this burn (per `feedback_no_instrumentation_means_no_instrumentation`).
 
 ---
 

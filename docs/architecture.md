@@ -125,12 +125,32 @@ The kernel was originally planned as five layers — *boots*, *runs programs*, *
 
 ### Layer 3 — Can Access Storage
 
-- **VFS** — file table, 7 file types (device, memfile, signalfd, epoll, timerfd, pipe, regular)
-- **Initrd** — flat format, name lookup
-- **VirtIO-Blk** — legacy PCI, sector read/write, DMA buffers
-- **FAT16** — read-only, root directory listing, file open/read
+The original 5-layer plan listed VirtIO-Blk + FAT16. The 1.31.x cycle (Mar–May 2026) substantially expanded this layer into a full storage stack on real silicon. Five iron debuts on archaemenid (Beelink SER, AMD Renoir) — see Attempts 80 / 81 / 87 / 88 / 90 in [`development/iron-nuc-zen-log.md`](development/iron-nuc-zen-log.md).
 
-**Not yet shipped**: ATA/NVMe drivers for real hardware disk, additional filesystems (ext2/ext4, FAT32), framebuffer/MMIO graphics.
+**VFS layer:**
+- **VFS** — file table, **8 file types**: device, memfile, signalfd, epoll, timerfd, pipe, regular, ext2_file (added 1.31.5 Phase 3)
+- **Initrd** — flat format, name lookup; bare-name fallback for shell verbs after CWD-prefixed ext2 lookup miss
+
+**Block-layer dispatch (5-backend, multi-backend probe):**
+- **`block.cyr`** — priority-order tag dispatch: NVMe primary > AHCI secondary > USB MS tertiary > VirtIO fallback > RAM-disk
+- **`blk_registered` bitmask** + **`blk_read_on(tag, sector, buf)`** — explicit per-backend dispatch independent of `blk_active`; lets the filesystem probe walk all registered backends instead of just the active one (1.31.6 bite G)
+
+**Storage device drivers:**
+- **NVMe (Phase 1-5)** — probe + admin queue + I/O queue + R/W + PRP1/2/list dispatch. Iron-validated on Crucial P3 2 TB at Attempt 80 (1.31.0, first-try clean)
+- **AHCI/SATA (Phase 1-4)** — HBA probe + per-port CL+FIS bring-up + IDENTIFY DEVICE + READ/WRITE DMA EXT. Iron-validated on WD Blue SA510 2 TB at Attempt 81 (1.31.1); three carry-forward patches (port quiescence gate / ATA-string right-trim / RW_DEMO compile gate) landed in 1.31.2
+- **USB Mass Storage (Phase 1-2.8)** — BBB transport + SCSI INQUIRY/TUR/RC10/READ(10)/WRITE(10). Eight-bug repair stack (bulk-timeout extension + strict TRB matching + SHORT_PACKET residue check + unified retry-recover wrapper + drain reposition + 64-bit param_hi). Iron-validated on Silicon Motion 125 GB stick at Attempt 87 (1.31.3)
+- **VirtIO-blk modern (1.x)** — full PCI cap-list + MMIO + 64-bit FEATURES_OK + polled used-ring rewrite (1.31.4); replaces the legacy 0.9.5 transitional driver. QEMU-only by design
+- **RAM-disk** — `pmm_alloc`-backed, `RAMDISK_ENABLE=1` compile-flag gated (1.31.4)
+
+**Partition + filesystem layer:**
+- **GPT (Phase 1-3)** — header + full 16 KB array walk + UTF-16LE partition names + table-less CRC32 + backup-header recovery + 7-GUID type classifier + `parts` shell command. Iron-validated multi-partition layouts at Attempts 81/89/90
+- **ext2 / ext4 read-only (Phase 1-5)** — superblock + BGDT + inode (direct + single/double/triple indirect tree) + dirent walk + absolute-path resolution + `VFS_EXT2_FILE` FD type + ext4 extents header/leaf walker (FreeBSD-shape) + 64BIT support (s_desc_size + dynamic BGDT stride + bg_inode_table_hi guard). **Iron-validated** on real Linux ext4 on NVMe at Attempt 90 (1.31.6)
+- **Partition-aware mount via GPT consumption** — `ext2_try_partition_mount` iterates Linux-FS-GUID partitions when whole-disk probe misses; mounts the first match
+- **fatfs (read-only FAT16)** — root directory listing, file open/read; BPB validation sweep at 1.31.6 (num_fats / sectors_per_cluster / root_entry sanity)
+
+**Multi-source convergent prior-art audits**: every non-trivial subsystem in this layer gets a written audit before its iron burn — see [`development/ext2-ext4-extents-prior-art.md`](development/ext2-ext4-extents-prior-art.md), [`development/ext4-64bit-prior-art.md`](development/ext4-64bit-prior-art.md), [`development/msc-reset-recovery-prior-art.md`](development/msc-reset-recovery-prior-art.md), [`development/ext2-iron-burn-audit.md`](development/ext2-iron-burn-audit.md). Linux is one source of many — FreeBSD / OpenBSD / NetBSD / Haiku / EDK2 / SeaBIOS / U-Boot / Plan 9 + vendor errata triangulated per [`feedback_redesign_dont_reinvent`](../../../.claude/projects/-home-macro-Repos-agnosticos/memory/feedback_redesign_dont_reinvent.md).
+
+**Not yet shipped at this layer**: FAT32 (no consumer pressure), per-backend GPT parsing (only `blk_active` parses today; deferred to next storage-cycle reopening), HTREE indexed directories, fast/slow symlink resolution, ext2/ext4 write paths (write cycle pinned to 1.33.x). Framebuffer/MMIO graphics belongs to a separate display layer, not Layer 3.
 
 ### Layer 4 — Can Talk to the World
 
@@ -141,7 +161,7 @@ The kernel was originally planned as five layers — *boots*, *runs programs*, *
 
 ### Layer 5 — Can Be Used
 
-- **Shell** — 19 commands: `help echo ps free cat uptime lspci cpus net send recv tcp pipe blkread ls disk bench test halt`
+- **Shell** — 22 commands: `help echo ps free cat uptime lspci cpus net send recv tcp pipe blkread parts ls cd pwd disk bench test halt`. `ls` accepts flag tokens (`-la` no-op for now); `cat` falls through to initrd on ext2 miss; `cd` + `pwd` consume `sh_cwd_inode` / `sh_cwd_path` globals for CWD-relative path resolution (1.31.7 bites D/B/C)
 - **kybernet PID 1** — service supervision, signal/event-loop, kernel-interface boundary. Per-repo benchmarks + test count in kybernet's own state.md.
 - **Signals** — per-process `proc_signals` / `proc_sigmask`, `kill` / `sigprocmask` / `signalfd`
 - **Epoll** — `epoll_create`, `epoll_ctl`, `epoll_wait`
@@ -190,11 +210,16 @@ umount(24)      pipe(25)
 
 | Gap | Why it's deferred |
 |-----|-------------------|
-| Framebuffer / MMIO graphics | Prereq for DOOM kernel demo and Wayland compositor (aethersafha). Scheduled alongside ISO assembly work. |
-| Real-hardware disk drivers (ATA/NVMe) | VirtIO-Blk covers QEMU; real-hw bring-up is post-Beltane. |
-| Additional filesystems (ext2/ext4, FAT32) | FAT16 sufficient for current boot path. |
-| USB stack | Not needed for current boot/test pipeline. |
-| SMP scheduling (beyond infrastructure) | APIC/IPI/trampoline are in place; cross-core scheduler work deferred. |
+| Framebuffer text rendering quality (Quiet-Boot legibility on AMD Zen) | Banding observed on archaemenid Quiet-Boot framebuffer; closeout-pinned at gnoboot 0.4.2 / agnos 1.30.12 after two GOP SetMode levers were falsified. Next-cycle options: HUBP `clear_tiling` port or shadow-buffer architectural eval. Doesn't block MVP (VGA-path legible). |
+| Wayland compositor (aethersafha) | Display-layer prereq for the GUI track; scaffold only at 0.1.0. Closed-beta MVP runs without it (agnoshi-as-console via argonaut 1.7.0 BOOT_MINIMAL). |
+| Per-backend GPT parsing | `gpt.cyr` currently only parses against `blk_active`; partitions on non-active backends aren't reachable. Deferred to next storage-cycle reopening or to a real consumer surfacing demand. |
+| ext2/ext4 write paths | Pinned to **1.33.x** as the WRITE cycle (block/inode allocator, dirent insertion/removal, file create/truncate/unlink, mkdir/rmdir). Substantial own-cycle (~1,500+ LOC); multi-source audit doc first. Read-only is sufficient for current iron + boot paths. |
+| HTREE indexed dirs + fast/slow symlinks (ext4) | Performance optimizations + extension; linear dirent scan + indirect-tree read suffices today. Queue when a real consumer needs them. |
+| FAT32 + additional read-only FSes | No consumer pressure. FAT16 + ext2/4 cover current boot path + iron read surface. |
+| Full USB hub / hot-plug | xHCI cmd-path + USB-HID + USB Mass Storage classes shipped (1.30.x → 1.31.3); hub topology + hot-add deferred to plug-and-play cycle (pre-1.35.0). |
+| SMP scheduling (beyond infrastructure) | APIC/IPI/trampoline are in place; cross-core scheduler + AP-wakeup-on-real-hardware deferred. Gated on hardware-validation infra. |
+| Real-iron NIC (e1000e / I225-V / RTL8125) | Different device class; carved out for **1.32.x networking cycle** (`storage ✅ → networking → write`). |
+| Optical via USB MS (SCSI MMC profile) | HP external USB Blu-ray on archaemenid derps the NUC at cold boot pre-power-on (firmware quirk). Deferred to plug-and-play cycle; AllInOne internal CD/DVD an alternative path. |
 
 ## Named Subsystems
 
