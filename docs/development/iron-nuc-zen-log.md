@@ -1923,22 +1923,198 @@ msc: 1 mass-storage device(s) detected
 
 ---
 
-### Attempt 86 — PENDING IRON BURN — USB MS Phase 2.7 multi-source-converged Reset Recovery (device-side-first ordering + 100ms post-BOT-Reset stall + EP-state-aware Reset Endpoint dispatch + CSE tolerance) — agnos 1.31.2 `[Unreleased]`
+### Attempt 86 — USB MS Phase 2.7 multi-source-converged Reset Recovery 2026-05-21 → FALSIFIED (Reset Recovery executed correctly on iron — `Reset Recovery OK` × 3, no `Reset Endpoint failed` — but every post-recovery TUR retry still failed with `CSW signature mismatch`; root cause = bulk-vs-cmd timeout conflation + stale completion-event matching, eight bugs surfaced for Phase 2.8)
 
-**Build under test:** agnos 1.31.2 `[Unreleased]` HEAD with Phase 2.7 four-patch stack landing on top of Phase 2.6 commit `8fd8c5c`. cycc 6.0.1 toolchain. Build `build/agnos` 499,816 B (was 499,736 B at Attempt 85; +80 B from added comments + 50M-iter delay loop + EP-state dispatch helper). **VERSION stays at 1.31.2 until Attempt 86 burns and user calls the close.**
+**Build under test:** agnos 1.31.2 `[Unreleased]` HEAD with Phase 2.7 four-patch stack (Reset Endpoint CSE tolerance + EP-state-aware dispatch + 100ms post-BOT-Reset stall + device-side-first step reorder) on top of Phase 2.6 commit `8fd8c5c`. cycc 6.0.1 toolchain. Build `build/agnos` 499,816 B. Same Silicon Motion stick as Attempts 83-85 (`VID=0x090C PID=0x1000`).
 
-**Pre-burn audit:** [`msc-reset-recovery-prior-art.md` § 9](msc-reset-recovery-prior-art.md) — multi-source addendum (FreeBSD `umass.c` + `xhci.c`, OpenBSD `umass.c`, EDK2 `UsbMassBot.c`, Linux confirmatory). Per [`feedback_redesign_dont_reinvent`](../../../../.claude/projects/-home-macro-Repos-agnosticos/memory/feedback_redesign_dont_reinvent.md) refreshed 2026-05-21 with hard "multi-source" rule.
+**What worked (Phase 2.7 stack executed as designed):**
 
-**Patches landed (named per [`feedback_no_letter_codes_for_repairs`](../../../../.claude/projects/-home-macro-Repos-agnosticos/memory/feedback_no_letter_codes_for_repairs.md)):**
+- `msc: slot 2 Reset Recovery OK` printed 3× — full ordered sequence (BOT Reset → 100ms stall → CLEAR_FEATURE×2 → drain → Stop Endpoint×2 → Reset Endpoint×2 Halted-gated → ring rewind → Set TR Dequeue×2) completed each cycle.
+- No `Reset Endpoint(bulk-IN) failed` line — EP-state-aware dispatch correctly gated Reset Endpoint to Halted and skipped it for Stopped (the Attempt 85 falsification path is dead).
+- 100ms post-BOT-Reset stall held; CLEAR_FEATURE no longer arrives mid-device-reset.
 
-1. **Reset Endpoint CSE tolerance** (`xhci_cmd.cyr` `xhci_cmd_reset_endpoint`). Defensive backstop — `XHCI_CC_CONTEXT_STATE_ERROR` returned as success. Same shape `xhci_cmd_stop_endpoint` already had.
-2. **EP-state-aware Reset Endpoint dispatch** (`xhci_ctx.cyr` new `xhci_ep_state` + `xhci_regs.cyr` new `XhciEpState` enum + `msc.cyr` step 7). Reads Output EP Context dword 0 bits 0-2 per xHCI 1.2 §6.2.3; gates Reset Endpoint on `XHCI_EP_STATE_HALTED`. Mirrors FreeBSD `xhci_get_endpoint_state` + `xhci_configure_reset_endpoint`.
-3. **100ms post-BOT-Reset device stall** (`msc.cyr` step 2). 50M-iteration busy-wait between Bulk-Only Mass Storage Reset and CLEAR_FEATURE(HALT). Matches EDK2 explicit + FreeBSD implicit + Linux `msleep(100)`. **Highest-confidence fix** — Attempt 84's "Reset Recovery OK but transport stays wedged" matches CLEAR_FEATURE arriving mid-reset.
-4. **Reset Recovery step reorder: device-side first** (`msc.cyr` full `msc_reset_recovery` body). New order: BOT Reset → 100ms stall → CLEAR_FEATURE×2 → drain events → Stop Endpoint×2 → Reset Endpoint×2 (Halted-gated) → ring rewind → Set TR Dequeue×2 → clear sticky. Matches FreeBSD / OpenBSD / EDK2 convergent ordering — device sees a clean reset first, then controller state is resynced.
+**What still wedged (post-recovery retries kept failing):**
 
-**Same iron + same stick as Attempts 83-85** (Silicon Motion `VID=0x090C PID=0x1000`). Outcomes per [`msc-reset-recovery-prior-art.md` § 9.4](msc-reset-recovery-prior-art.md) success rubric.
+Every post-recovery TUR retry returned `CSW signature mismatch` instead of the expected 'USBS' sig. Eight distinct bugs surfaced through audit — the orthogonal stack now landed for Phase 2.8 in agnos 1.31.3:
 
-**MVP gate posture:** unaffected. `msc_probe_slot` already returns 1 even on transport failure (Phase 1-4 design), so MVP boot-to-shell stays green regardless of Attempt 86 outcome. USB MS arc is opportunistic — closed beta MVP gate doesn't depend on it.
+1. **`XHCI_CMD_TIMEOUT_SPINS=10M` (~25-50ms) applied to bulk transfers** — primary root cause. The cmd-ring timeout was abandoning the INQUIRY data phase mid-flight against real Silicon Motion silicon (Linux `USB_CTRL_GET_TIMEOUT=5000ms`; FreeBSD comparable). Phase 2.8 introduces `XHCI_BULK_TIMEOUT_SPINS=200M` (~1s wall), bulk-specific.
+2. **Stale completion events attributed to the wrong TRB** — Attempt 86's "CSW tag mismatch on TUR #0" was a late INQUIRY CSW being read as if it were the TUR's. Phase 2.8 adds `xhci_wait_transfer_for_trb(slot_id, expected_trb_phys, expected_len)` for strict matching.
+3. **No SHORT_PACKET residue check** — direct cause of the repeating `CSW signature mismatch`: device's ZLP-then-real-CSW pattern after Reset Recovery left `csw_phys[0..3]=0`. Phase 2.8 reads event dw2 bits 23:0 (residue) and rejects when residue ≥ expected.
+4. **No entry guard on `msc_bbb_exec`** — needed a wrapper that runs Reset Recovery BEFORE the first retry if sticky already set. Phase 2.8 introduces `msc_scsi_exec(retries)` for all SCSI ops.
+5. **Drain mis-positioned (was BEFORE Stop Endpoint)** — Stop Endpoint × 2 posts Transfer Events for pinned in-flight TRBs (xHCI 1.2 §4.6.9.1); pre-Stop drain missed them. Phase 2.8 moves the drain to AFTER Stop Endpoint.
+6. **Hand-rolled TUR retry loop in `msc_probe_slot`** — duplicated `msc_scsi_exec` shape inconsistently. Phase 2.8 migrates INQUIRY/TUR/RC10/RS/READ/WRITE all through the unified wrapper.
+7. **Stop Endpoint on transfer-event timeout missing** — collapsed into the entry guard above.
+8. **`xhci_cmd_set_tr_dequeue` `param_hi=0` hardcoded** — fine on archaemenid (PMM stays <4GB) but malformed for future high-memory placement. Phase 2.8 plumbs the full 64-bit phys.
+
+**Photo:** [`iron-nuc-zen-photos/attempt-86-usb-ms-phase-2-7-csw-signature-mismatch.jpg`](iron-nuc-zen-photos/attempt-86-usb-ms-phase-2-7-csw-signature-mismatch.jpg).
+
+**MVP gate posture:** unaffected — `msc_probe_slot` returns 1 regardless; boot walks to shell on NVMe primary.
+
+**Carry-forward:** Phase 2.8 eight-bug stack landed in agnos 1.31.3 (CUT 2026-05-21). See Attempt 87.
+
+---
+
+### Attempt 87 — USB MS Phase 2.8 eight-bug repair stack iron validation 2026-05-21 → PASS (full INQUIRY / TUR / RC10 chain on real Silicon Motion silicon; third storage-class iron debut closes after NVMe @ 80 + SATA @ 81)
+
+**Build under test:** agnos **1.31.3** with the eight-bug Phase 2.8 repair stack listed in Attempt 86 carry-forward. cycc 6.0.1 toolchain. Same iron + same stick as Attempts 83-86 (Silicon Motion `VID=0x090C PID=0x1000`).
+
+**Verbatim chain on iron (xhci/msc path):**
+
+```
+xhci: port 3 connected, HS, slot=2, VID=2316 PID=4096, class=0
+hid: keyboard configured, boot protocol on, EP=129, polling 8-byte reports
+msc: slot 2 BBB intf=0 bulk-IN=130 bulk-OUT=1 MPS(in/out)=512/512 MaxLUN=0
+msc: slot 2 INQUIRY: vendor='General' product='USB Flash Disk' rev='1100' type=block
+msc: slot 2 TEST UNIT READY -> ready (Pass)
+msc: slot 2 READ CAPACITY: last_lba=252051455 blk=512B -> 123072 MiB
+msc: 1 mass-storage device(s) detected
+```
+
+252,051,456 LBAs × 512 B ≈ 120 GiB — matches the Silicon Motion stick's nameplate.
+
+**What this closes:**
+
+- `xhci: bulk transfer event timeout` **absent** from the MSC chain — the bulk-timeout extension (`XHCI_BULK_TIMEOUT_SPINS=200M`) gave the data phase the wall it needed.
+- INQUIRY succeeds first try — strict TRB-pointer matching + SHORT_PACKET residue check eliminated the stale-event misattribution.
+- TUR + RC10 both pass first try through the unified `msc_scsi_exec` wrapper.
+- NVMe + AHCI continue clean below; boot walks through to `AGNOS shell v1.31.3`.
+
+**Third storage-class iron debut closes** (NVMe at Attempt 80 → SATA at Attempt 81 → USB MS at Attempt 87). agnos VERSION cut to **1.31.3** on this iron evidence; CHANGELOG `[1.31.3]` documents the eight-bug audit.
+
+**Photo:** [`iron-nuc-zen-photos/attempt-87-usb-ms-phase-2-8-inquiry-tur-rc10-success.jpg`](iron-nuc-zen-photos/attempt-87-usb-ms-phase-2-8-inquiry-tur-rc10-success.jpg).
+
+**Sources:**
+
+- [`msc-reset-recovery-prior-art.md` § 9](msc-reset-recovery-prior-art.md) — four-source convergent audit (FreeBSD + OpenBSD + EDK2 + Linux) that informed Phase 2.7 + 2.8.
+- agnos CHANGELOG `[1.31.3]` § USB Mass Storage Phase 2.8 — eight-bug stack with per-bug commits.
+- xHCI 1.2 §4.6.9 Stop Endpoint, §4.6.10 Set TR Dequeue Pointer, §6.4.2.1 Transfer Event TRB residue field.
+
+---
+
+### Attempt 88 — agnos 1.31.4 iron debut 2026-05-21 PM → PASS (RAM-disk + VirtIO cycle no-regression burn; full storage trio re-validated; kernel reaches scheduler init)
+
+First iron burn of the 1.31.4 cycle. State.md flagged this cycle's engineering (RAM-disk backend, build-flag-gated `RAMDISK_ENABLE=1` + VirtIO 1.x modern virtio-blk-pci rewrite) as "no iron exposure — both bites are paravirt/RAM-only" — so the iron question for 1.31.4 is **regression-only**: did the changes break NVMe / AHCI / USB-MS bring-up on archaemenid? Answer is no.
+
+**Build under test:**
+
+| Component | Version | Notes |
+|---|---|---|
+| `agnos` | **1.31.4** | Default build (no `RAMDISK_ENABLE=1`); RAM-disk code compiled out, VirtIO has nothing to probe on bare metal. |
+| `gnoboot` | 0.4.2 | Unchanged. |
+| `cyrius` | 6.0.1 | Unchanged. |
+
+**Iron evidence — full boot through to scheduler init:**
+
+| Stage | Verbatim line | Reading |
+|---|---|---|
+| Memory | `PMM test: 3583 free` / `VMM: 57005 (expect 57005)` | PMM + VMM sanity passes. |
+| ACPI | `ACPI: RSDP at 983056` | UEFI handoff intact. |
+| PCI | `PCI: 32 devices` | Same count as 1.31.3 — no enumeration regression. |
+| IOMMU | `amdvi: disabled, ctrl_rb=0` | AMD-Vi detected, disabled (expected on archaemenid; we don't program it). |
+| xhci | `controller running, HCH=0, ERDP=7131136` | Heap addresses higher than 1.31.3 (was 3399680) — confirms larger binary, i.e. genuinely 1.31.4. |
+| xhci ports | `port 1 ... FS, slot=1, VID=1452 PID=591` + `port 3 ... HS, slot=2, VID=2316 PID=4096` | Keyboard + Silicon Motion stick — same shapes as Attempt 87. |
+| hid | `keyboard configured, boot protocol on, EP=129` | HID up. |
+| msc | `INQUIRY: vendor='General' ... TUR -> ready (Pass) ... READ CAPACITY: last_lba=252051455 blk=512B -> 123072 MiB` | Phase 2.8 eight-bug stack holds across the 1.31.4 build — no regression. |
+| nvme | `model='CT2000P3SSD8' ... ns1 NSZE=3907029168 LBAS=512B size=1907729MB ... LBA0 first 8 bytes: 0 0 0 0 0 0 0 0` | NVMe Phase 1-5 clean — Crucial P3 enumerated identically to Attempt 80. |
+| ahci | `port 0 model='WD Blue SA510 2.5 2TB' serial='24313QD00663' fw='5304 00WD' LBA48=3907029168 sectors` + `LBA0 first 8 bytes: 146 20 0 0 0 111 111 116` | Two IDENTIFYs both complete (the Attempt 82 quiescence-gate carry-forward keeps holding). LBA-0 reads real GPT protective MBR signature bytes — drive has data. |
+| Block layer | `nvme: registered as block_dev (3907029168 LBAs x 512B)` + `ahci: registered as secondary block_dev (port 0, ... NVMe primary)` + `msc: registered as tertiary block_dev (slot 2, 252051456 LBAs x 512B; NVMe primary)` | **All three backends register cleanly**, NVMe-primary > AHCI-secondary > USB-MS-tertiary policy correct. |
+| GPT | `gpt: present, first=34 last=3907029134 parts=2/128 hdr-CRC-OK arr-CRC-OK` + `[0] EFI System LBA 2048-2099199 (1024 MiB)` + `[1] (unknown type) LBA 2099200-3907026943 (1906703 MiB)` | GPT Phase 3 hardening intact — CRCs both validate. Partition [1] reading "(unknown type)" is expected — `parted` default mkpart doesn't set the Linux-FS GUID. |
+| Late boot | `VFS initialized` → `SYSCALL/SYSRET initialized` → `Stack canary initialized` → `Interrupts enabled` → `Timer ticks before sched: 6` | Kernel reaches scheduler bring-up — 6 timer ticks observed before scheduler entry. |
+
+**What's NOT in the output (and shouldn't be):**
+
+- No `ramdisk:` line — RAM-disk is compiled out without `RAMDISK_ENABLE=1`. To exercise on iron later, rebuild with the flag set and re-run. Won't tell us anything new about hardware behavior (RAM-disk is `pmm_alloc`-backed).
+- No `virtio:` line — VirtIO doesn't enumerate on bare metal (no virtio-blk-pci device exists on archaemenid). 1.31.4's VirtIO rewrite is QEMU-only by construction; iron is the wrong surface to test it.
+
+**Photos:**
+
+- `iron-nuc-zen-photos/attempt-88-agnos-1.31.4-iron-debut-pt1-xhci-usb-ms.jpg` — memory init → ACPI → PCI → amdvi → xhci enumeration → USB-MS INQUIRY/TUR/RC10 → NVMe controller bring-up start. (Top three lines blurry due to camera motion; meaningful content starts at `PMM test: 3583 free`.)
+- `iron-nuc-zen-photos/attempt-88-agnos-1.31.4-iron-debut-pt2-nvme-ahci-gpt-vfs.jpg` — NVMe model/serial/firmware decode → I/O queue → LBA-0 read → block-dev registration → AHCI port 0 spin-up → IDENTIFY → secondary block_dev → MSC tertiary block_dev → GPT parse → VFS / SYSCALL / canary / IRQ / timer.
+
+**Status against rubric:**
+
+- **Full regression-test success:** ✅ All three storage backends registered, all enumeration prints byte-match the Attempt 82/87 reference shapes, GPT validates, boot walks to scheduler.
+- **MVP gate:** unaffected — kybernet/agnoshi path stays green.
+- **Out of scope:** no behavioral repair landed, no new bug surfaced.
+
+**Sources:**
+
+- Two photos above (only on-disk evidence — no read-boot-log run this burn).
+- agnos CHANGELOG `[1.31.4]` § RAM-disk + VirtIO-blk modern.
+- state.md "1.31.4 ENGINEERING COMPLETE" prose (updated this commit to reflect iron debut PASS).
+
+---
+
+### Attempt 89 — PENDING IRON BURN — ext2 / ext4 read-only filesystem on archaemenid NVMe Linux-FS partition (agnos 1.31.5)
+
+**Build under test:** agnos **1.31.5** (cyrius 6.0.1 toolchain). New `kernel/core/ext2.cyr` ~870 LOC across Phase 1-4: superblock + BGDT + inode-by-number + direct-block read (Phase 1); single/double/triple indirect blocks (Phase 2); dirent walk + path resolution + `VFS_EXT2_FILE` tag + `ls`/`cat` shell verbs (Phase 3); ext4 extents header + leaf walker (Phase 4). Build `build/agnos` **568,960 B** (+47 KB over 1.31.4 baseline). gnoboot 0.4.2 unchanged.
+
+**Pre-burn audit:** [`ext2-ext4-extents-prior-art.md`](ext2-ext4-extents-prior-art.md) — multi-source convergent (Linux v6.6 `fs/ext2` + `fs/ext4` + FreeBSD `sys/fs/ext2fs` + OpenBSD `sys/ufs/ext2fs` + Haiku ext2 add-on + ext4 wiki + nongnu ext2 spec). Per [`feedback_redesign_dont_reinvent`](../../../../.claude/projects/-home-macro-Repos-agnosticos/memory/feedback_redesign_dont_reinvent.md). A more focused pre-burn audit doc (`ext2-iron-burn-audit.md` modeled on `nvme-iron-burn-audit` / `ahci-iron-burn-audit` / `usb-ms-iron-burn-audit` / `ramdisk-virtio-modern-prior-art`) is item E of the planned 1.31.6 cleanup cycle — should land BEFORE the burn fires if the cycle ordering allows.
+
+**Pre-burn derisk OUTCOME (USER ran `tune2fs` + `blkid` on 2026-05-21 PM):**
+
+```
+$ sudo tune2fs -l /dev/nvme0n1p2 | grep 'Filesystem features'
+tune2fs: Bad magic number in super-block while trying to open /dev/nvme0n1p2
+
+$ sudo blkid /dev/nvme0n1p2
+/dev/nvme0n1p2: UUID="6f41727d-d502-4ae1-92c6-68194c5e6abc"
+                BLOCK_SIZE="4096" TYPE="btrfs"
+                PARTUUID="6661adb9-05a5-4933-9653-c21c46372a3b"
+```
+
+**Finding: archaemenid's NVMe Linux root partition is btrfs, in use, can't be reformatted.** AGNOS has no btrfs driver (multi-cycle project of its own; not on the roadmap). So the original Phase 4 goal of "iron `ls /` against the real Linux root" is **not achievable on archaemenid as-is** — there's no ext-family partition on the box.
+
+**Iron surface plan — FINAL (per user setup 2026-05-21 PM): TWO ext4 partitions across TWO storage stacks.**
+
+**Surface A — `/dev/sda1` on the WD Blue SA510 2 TB SATA SSD** (AHCI backend; same drive iron-validated as `sda` at Attempts 81/82). `sda` had no partitions or mountpoints — truly unused space. User ran:
+
+```sh
+mkdir -p /tmp/ext2-seed && \
+echo -n "Hello from ext2 on archaemenid SATA — iron burn 89 reads me byte-exact" > /tmp/ext2-seed/hello.txt && \
+sudo parted -s /dev/sda mklabel gpt mkpart agnos-fs ext4 1MiB 4GiB && \
+sudo sgdisk -t 1:8300 /dev/sda && \
+sudo mkfs.ext4 -F -L AGNOS-FS -O extents,^huge_file,^64bit,^metadata_csum -b 4096 -d /tmp/ext2-seed /dev/sda1
+```
+
+Verified: `LABEL="AGNOS-FS" TYPE="ext4" PARTLABEL="agnos-fs"`. Features: `has_journal ext_attr resize_inode dir_index orphan_file filetype extent flex_bg sparse_super large_file dir_nlink extra_isize` — incompat sum `0x242`, well within AGNOS supported mask `0x6746` ✓.
+
+**Surface B — `/dev/nvme0n1p3` on the Crucial P3 2 TB NVMe** (NVMe backend; same drive iron-validated at Attempt 80). Carved via the v2 disposable script `/tmp/agnos-carve-nvme-v2.sh` which used `sgdisk` for partition table edits (v1 had a parted-`-s`-doesn't-suppress-"partition in use"-prompt bug; v2 fixed via sgdisk + ERR trap + idempotency). Script shrank btrfs root by 4 GiB online, then `sgdisk -d 2 + sgdisk -n 2:...` preserved p2's PARTUUID/type/name identity, then created p3 with Linux-FS GUID, then `mkfs.ext4` with a tighter feature set (`-O extents,^huge_file,^64bit,^metadata_csum,^has_journal,^orphan_file,^resize_inode`).
+
+Verified: `LABEL="AGNOS-NVME-FS" TYPE="ext4" PARTLABEL="agnos-fs"`. Features: `ext_attr dir_index filetype extent flex_bg sparse_super large_file dir_nlink extra_isize` — cleaner than sda1 (no journal / orphan_file / resize_inode), same incompat sum `0x242` ✓.
+
+**Why two surfaces:** iron burn 89 now exercises bite (G) multi-backend probe AND bite (H) partition-aware mount against TWO different storage stacks (AHCI/SATA + NVMe) in a single burn. Either surface alone would have validated the ext2/ext4 driver, but having both isolates "AGNOS reads FS on this transport" from "AGNOS reads FS on that transport" — if one works and the other doesn't, the failure mode is per-backend not per-filesystem-driver. The 125 GB Silicon Motion USB stick stays as USB-MS regression surface (unmodified).
+
+**However: this requires kernel work first.** AGNOS's current `ext2_init` uses `blk_active`, which the override policy sets to BLK_NVME on archaemenid (NVMe wins > AHCI > USB MS > VirtIO > RAMDISK). With the NVMe holding the active slot AND being btrfs-formatted, `ext2_init` reads NVMe LBA 2-3 = btrfs metadata, magic mismatch (0xEF53 ≠ 0x4D5F53FB), silent return. The USB stick's ext2 superblock is never read. **Gating fix lands as 1.31.6 bite (G): multi-backend ext2 probe** — `ext2_init` walks all registered backends (NVMe / AHCI / USB-MS / VirtIO / RAMDISK) looking for `0xEF53` magic at LBA 2-3 of each, mounting the first match. New `blk_read_on(backend_tag, sector, buf)` helper does explicit per-backend dispatch instead of going through the `blk_active`-routed `blk_read`. ~80 LOC.
+
+**Reframed burn 89 expectations (post-1.31.6 bite (G)):**
+
+- **Iron burn 89 fires AFTER 1.31.6 bite (G) lands.** Pre-G, iron burn 89 is reduced to a no-regression smoke (1.31.5 still boots clean) — useful but not the Phase 4 victory lap.
+- **Sequencing**: tag 1.31.5 → 1.31.6 cleanup cycle (including bite G + reformat the USB stick host-side) → iron burn 89 with the formatted stick plugged in.
+
+**QEMU validation already cleared (2026-05-21):**
+
+| Image | Format | Outcome |
+|---|---|---|
+| `ext2-smoke.img` (mkfs.ext2, 1K-block, filetype-only incompat) | ext2 indirect tree | `ls /` shows `./ ../ lost+found/ hello.txt` + `cat /hello.txt` 32 B byte-exact via VFS_EXT2_FILE |
+| `ext4-smoke.img` (mkfs.ext4 -O extents,^huge_file,^64bit,^metadata_csum) | ext4 extents | Same `ls /` + `cat /hello.txt` byte-exact via extent walker; no regression on ext2 image in same boot |
+
+**Iron success rubric (preview, post-1.31.6 bite (G)):**
+
+- **Full PASS**: `ext2: mounted (blocksize=1024 or 4096, inode_size=256, inodes_per_group=...)` prints with the geometry of the USB stick's filesystem. `agnos> ls /` (typed at the keyboard) returns the test files we seeded onto the stick (e.g. `hello.txt lost+found/`). `agnos> cat /hello.txt` returns the seed content byte-exact. **NVMe + AHCI continue clean below the ext2 line** (no regression on the storage trio).
+- **Partial — supported-incompat miss on the stick's format choice**: boot log shows `ext2: unsupported incompat bits: <decimal>`. Decode the decimal → identify which bit; if it's `64bit` (=128/0x80), reformat the stick with `mkfs.ext4 -O ^64bit` (or stay on `mkfs.ext2` which never sets 64bit) until 1.31.7 Phase 5 lands. Anything else → audit triage per [`ext2-ext4-extents-prior-art.md` § 6.1](ext2-ext4-extents-prior-art.md).
+- **Partial — multi-backend probe found nothing**: USB stick not enumerated by xhci/USB-MS, or stick is at LBA-0-ext2 but the probe couldn't read it. Triage via the existing USB-MS chain (Attempt 87 transcript shape).
+- **FALSIFIED**: kernel hangs / faults / can't reach shell. Triage same as other iron arcs (CMOS kcp, FB readback).
+
+**Carry-forward into next-session planning:**
+
+1. **1.31.6 cleanup cycle scope (planned next per agnos roadmap)** — EIGHT bites: (A) ext2 input validation sweep; (B) fatfs BPB validation sweep; (C) drop ext2 boot-time smoke hook from `main.cyr`; (D) save Cyrius `var X[N]` byte-vs-u64 gotcha as feedback memory + CLAUDE.md note; (E) pre-iron-burn audit doc `agnosticos/docs/development/ext2-iron-burn-audit.md`; (F) state.md / roadmap / iron-log sweep; **(G) multi-backend ext2 probe — GATING work for iron burn 89** (without (G), `ext2_init` only sees the btrfs NVMe and silently misses the USB-MS-attached ext2 stick); (H) partition-aware mount via GPT consumption (useful for future test surfaces, not gating burn 89). ~270 LOC + ~200 audit prose.
+2. **1.31.7 ext4 64BIT support (Phase 5, PINNED per user direction 2026-05-21)** — BGDT entry size 32 → 64 bytes + block# width 32 → 64 (~200 LOC). Closes the audit gap regardless. (`mkfs.ext2` and `mkfs.ext4 -O ^64bit` keep iron burn 89 viable WITHOUT 64BIT support; this slot is for completeness, not unblocking.)
+3. **Host-side prep before iron burn 89** — reformat 125 GB Silicon Motion USB stick (VID=`0x090C` PID=`0x1000`) as ext2 or ext4 (without 64bit). Seed a known test file (e.g. `hello.txt` with deterministic content matching the QEMU smoke pattern) so success/failure is unambiguous against the rubric above. Sample command: `sudo mkfs.ext4 -F -L AGNOS-FS -O ^64bit,^huge_file,^metadata_csum -d /tmp/ext2-seed /dev/sdX`.
+4. **1.32.x networking cycle** (queued per existing agnos roadmap § 1.32.x — Realtek r8169 first, then Intel e1000/e1000e/igc).
+5. **1.33.x WRITE cycle (PINNED per user direction 2026-05-21)** — ext2/ext4 mutation paths: block/inode allocator, dirent insertion/removal, file create/truncate/unlink, mkdir/rmdir, journal-less commit semantics. ~1,500+ LOC; own multi-source audit doc first.
+
+**Per `feedback_iron_burns_block_other_work`**: this PRE entry IS the audit; no instrumentation bundled. The burn IS GATED on 1.31.6 bite (G) landing — do NOT fire iron burn 89 before multi-backend probe is in place. If staging an interim no-regression burn before (G) is desired, that's fine but it's a different (cheaper) signal: "1.31.5 ext2 code doesn't break iron boot" rather than "iron `ls /` works against ext2 USB stick."
 
 ---
 
