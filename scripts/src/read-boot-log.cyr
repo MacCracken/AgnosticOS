@@ -214,6 +214,17 @@ fn main(): i64 {
             println("  --dump     raw CMOS 0x0E-0x7F hex grid");
             return 0;
         }
+        else {
+            # Unknown arg — error loudly. Past behavior silently fell through
+            # to the focused summary, which made typos like `--versbose`
+            # look like `--verbose was broken`. Attempt 96 (1.32.2) caught it.
+            print_str("error: unknown argument '"); print_str(arg); println("'");
+            println("Usage: read-boot-log [--dump | --verbose]");
+            println("  default    focused current-sweep summary (decoded, no chapters)");
+            println("  --verbose  full CMOS slot listing + interpretation chapters + verdict layers");
+            println("  --dump     raw CMOS 0x0E-0x7F hex grid");
+            return 1;
+        }
         i = i + 1;
     }
 
@@ -372,8 +383,8 @@ fn main(): i64 {
     if (verbose_mode == 0) {
         println("");
         println("=== AGNOS current-sweep boot log ===");
-        println("True-font swap (Attempt 77 prep) — agnos 1.30.12 replaces the hand-drawn 8x8 CGA bitmap with the canonical IBM VGA 8x16 ROM font and revises fb_scale() to a 2-tier policy. Quiet Boot MVP gate cleared at Attempt 76 (no lockup, keyboard live, refresh live); the remaining legibility bar is the font-source swap.");
-        println("Reference: docs/development/iron-nuc-zen-log.md § Attempt 76 (closeout) + agnosticos true-font-swap-plan.md");
+        println("agnos 1.32.2 cycle — Attempt 96 FALSIFIED the 4-FIX bundle (FIX #7 IDR write-back + #8 UDP/DHCP buf 1024B + #9 DISCOVER/REQUEST midpoint retransmit + #10 PHY-restart-only-if-down). PHY came up + RX/TX rings up cleanly on iron, but `dhcp: OFFER timeout` persists. Engine-wedge hypothesis disproved. NEXT STEP IS THIS COMMAND WITH --verbose to read CMOS 0x58-0x5F and pick branch (a) engines healthy / root cause upstream of NIC vs (b) wedge via different mechanism than hypothesized.");
+        println("Reference: docs/development/iron-nuc-zen-log.md § Attempt 96 + dhcp-end-to-end-audit.md § 10");
         println("");
         println("Boot reached:");
         print_str("  kernel  checkpoint = "); print_hexb(kcp);
@@ -433,10 +444,10 @@ fn main(): i64 {
         println(" bytes/scanline");
         println("");
         println("");
-        println("Sweep symptom: Quiet Boot ON rendered tiny-glyph stripes at native HDMI (8x8 CGA bitmap at 2560x1440 = 0.5% screen height per row — Attempt-33 signature).");
-        println("Burn under test: agnos 1.30.12 — VGA 8x16 font swap (replaces hand-drawn 8x8 source) + fb_scale 2-tier (h <= 1200 -> 1, else 2) + MTRR/audit dead-code removal.");
-        println("Audit doc:     docs/development/iron-nuc-zen-log.md § Attempt 77 (next iron burn)");
-        println("Verbose log:   ./scripts/read-boot-log.sh --verbose    (full interpretation chapters, incl. MVP-era xHCI slots above)");
+        println("Sweep symptom: r8169 link up + RX/TX rings up; `dhcp: DISCOVER` egresses; `dhcp: OFFER timeout` instead of OFFER-ACK roundtrip. Identical to Attempts 93/94/95/96.");
+        println("Burn under test: agnos 1.32.2 — FIX #7 IDR0..IDR5 write-back + FIX #8 UDP/DHCP buf 1024B + FIX #9 midpoint retransmit + FIX #10 PHY-restart-only-if-down. FALSIFIED at Attempt 96; engine-wedge hypothesis disproved.");
+        println("Audit doc:     docs/development/iron-nuc-zen-log.md § Attempt 96 + dhcp-end-to-end-audit.md § 10");
+        println("Verbose log:   ./scripts/read-boot-log.sh --verbose    (full CMOS r8169 slots 0x58-0x5F + xHCI MVP-era slots — required to disambiguate branch (a) vs (b) above)");
         return 0;
     }
 

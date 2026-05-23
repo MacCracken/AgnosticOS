@@ -360,7 +360,7 @@ All public APIs should be documented with comments:
 
 ### Documentation Locations
 
-This is the **genesis repo**. Per-repo doc conventions (where to put API docs, user guides, etc., inside each subsystem repo) are defined in [first-party-documentation.md](docs/development/planning/first-party-documentation.md). The genesis repo's own `docs/` tree is structured as follows:
+This is the **genesis repo**. Per-repo doc conventions (where to put API docs, user guides, etc., inside each subsystem repo) are defined in [first-party-documentation.md](docs/development/first-party/first-party-documentation.md). The genesis repo's own `docs/` tree is structured as follows:
 
 | Type | Location |
 |------|----------|

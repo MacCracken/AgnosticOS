@@ -34,13 +34,28 @@ later entry pointing back. Status is one of `FAIL` / `PASS` /
 >
 > **State.md cycle headers link to these anchors via `iron-nuc-zen-log.md#tracker-1322-cycle` style.**
 
-### Tracker: 1.32.2 cycle (OPEN — sweep hardening) {#tracker-1322-cycle}
+### Tracker: 1.32.2 cycle (OPEN — Attempt 96 FALSIFIED the 4-FIX bundle; iron CMOS proves r8169 NIC engines healthy; QEMU pcap exposes a SEPARATE bug: virtio_net TX never reaches the wire — virtio legacy layout suspected; two independent bugs surface same shell-level symptom) {#tracker-1322-cycle}
 
-**Hypothesis under test**: **FIX #10** (`r8169_phy_init` reads BMSR.LinkStatus first; only kicks `BMCR.ANRESTART` if link is actually down) is the load-bearing fix for the Attempt 94 → 95 NIC engine regression. Supporting FIXes #7 (IDR0..IDR5 write-back), #8 (UDP buffer 1024-byte sizing), and #9 (DHCP midpoint retransmit) round out the upstream/downstream gaps surfaced by the full-stack sweep.
+**Hypothesis tested**: **FIX #10** (`r8169_phy_init` reads BMSR.LinkStatus first; only kicks `BMCR.ANRESTART` if link is actually down) is the load-bearing fix for the Attempt 94 → 95 NIC engine regression. Supporting FIXes #7 (IDR0..IDR5 write-back), #8 (UDP buffer 1024-byte sizing), and #9 (DHCP midpoint retransmit) round out the upstream/downstream gaps surfaced by the full-stack sweep.
 
-**Why FIX #10 is load-bearing**: Attempt 94 (with bite-C blocking PHY init) had CMOS 0x5B=0x30 (TX OWN cleared = NIC processed the desc) + 0x5E=0x01 (RX DMA captured multicast byte = RX engine alive). Attempt 95 (with FIX #3 non-blocking PHY init) had 0x5B=0xb0 (TX OWN stuck = NIC never processed) + 0x5E=0x00 (no RX DMA = RX engine dead). The only behavioral change between burns was FIX #3 making the PHY restart non-blocking, which races init_rx/init_tx through the 1-3s autoneg-restart link-down window. Some RTL8168 variants wedge their TX/RX engines under `CR.RE=1 / CR.TE=1 / link=down`. FIX #10 reverts the "restart on every probe" default to "restart only when needed" — matches Linux `phy_start` async notifier shape + OpenBSD/FreeBSD/NetBSD `re_init` media-change-only semantics.
+**Result**: **FALSIFIED at Attempt 96 (2026-05-23).** Boot block printed BOTH `PHY autoneg kicked (link async)` AND `link up` BEFORE the RX/TX rings initialized — i.e., FIX #10's safe path engaged, link was up by init_rx/init_tx, the engine-wedge mechanism the bundle was designed to prevent did not apply. **DHCP still timed out** (`dhcp: DISCOVER → dhcp: OFFER timeout`, no OFFER ip line). The NIC-engine-wedge framing is the wrong hypothesis. Two next branches available, gated on CMOS verbose readback (0x5B + 0x5E) to disambiguate:
 
-**Expected outcome for Attempt 96** (the next burn whenever user authorizes):
+- **Branch (a) — engines healthy, root cause upstream/downstream of NIC.** If 0x5B=0x30 + 0x5E ≥ 0x01, the NIC engines did fire. OFFER-timeout must be (a1) wire/server (no DHCP server reachable on this segment / VLAN / firewall drop) OR (a2) RX-path delivery (`net_handle_udp` or `udp_recv_from` not handing frames to dhcp_init).
+- **Branch (b) — wedge mechanism different from hypothesized.** If 0x5B=0xb0 + 0x5E=0x00 persists despite FIX #10, the wedge isn't triggered by the link-down window — it's some other PHY/MAC post-autoneg state condition. Multi-source re-audit needed per FreeBSD `re_init_locked` + Linux `__rtl_set_features` chip-quirk path.
+
+**Readback completed 2026-05-23 same-session** — see Attempt 96 entry below for the slot-by-slot table. **Branch (a) confirmed on iron** (0x5B=0x30 + 0x5E=0x01, identical to Attempt 94's healthy baseline). r8169 engines are not the bottleneck.
+
+**QEMU pivot 2026-05-23** (per user direction "exhaust the QEMU route before more burns"): Boot full kernel under QEMU virtio-net + SLIRP via `tcp-listen-smoke.sh`. Result: **DHCP fails identically to iron** (`dhcp: DISCOVER → OFFER timeout`). Pcap via `-object filter-dump,id=f0,netdev=u1,file=/tmp/agnos-dhcp.pcap` captures the wire definitively: **only OVMF's IPv6 Neighbor Solicitation (DAD probe) appears on the wire — ZERO AGNOS-generated frames egress through virtio_net.** This is a SEPARATE bug from the iron OFFER-timeout: r8169 TX works on iron (CMOS-proven); virtio_net TX in QEMU does not. The "SLIRP-RX gap" label from 1.32.0 was wrong — SLIRP RX is fine, AGNOS virtio_net TX is broken.
+
+**Working hypothesis (virtio_net TX layout bug)**: `kernel/core/virtio_net.cyr` declares `vnet_tx_desc` + `vnet_tx_avail` + `vnet_tx_used` as **separate module-global arrays**, but legacy virtio PCI requires desc/avail/used to be contiguous within the same page — device computes `avail = desc + 16*qsz` and `used = PAGE_ALIGN(desc + 16*qsz + 4 + 2*qsz + 2)`. AGNOS gives the device only `desc_pfn` via `outl(iobase+8, &vnet_tx_desc/4096)`; device reads avail.idx from `desc_addr + 4096`, a region the driver never writes to. Driver-side avail.idx increments are invisible to the device → no TX consumption. **Needs spec + Linux virtio_pci_legacy.c confirmation.**
+
+**Iron bug + QEMU bug are independent.** Same shell symptom, different driver. Fixing virtio_net unlocks QEMU as a real upper-layer test surface; iron OFFER-timeout still requires either (a1) external wire/server check OR (a2) r8169-RX-specific audit. **No driver code change until user picks (Q1) virtio_net layout fix vs (Q2) alternate-NIC driver vs (a1) iron external validation.**
+
+**Linked burns**: Attempt 96 (FALSIFIED — see entry below).
+
+**Why FIX #10 was the load-bearing-fix candidate** (FALSIFIED at Attempt 96): Attempt 94 (with bite-C blocking PHY init) had CMOS 0x5B=0x30 (TX OWN cleared = NIC processed the desc) + 0x5E=0x01 (RX DMA captured multicast byte = RX engine alive). Attempt 95 (with FIX #3 non-blocking PHY init) had 0x5B=0xb0 (TX OWN stuck = NIC never processed) + 0x5E=0x00 (no RX DMA = RX engine dead). The only behavioral change between burns was FIX #3 making the PHY restart non-blocking, which races init_rx/init_tx through the 1-3s autoneg-restart link-down window. The hypothesis was that some RTL8168 variants wedge their TX/RX engines under `CR.RE=1 / CR.TE=1 / link=down`. FIX #10 was supposed to revert "restart on every probe" → "restart only when needed". **Attempt 96 disproved this**: link was visibly UP before RX/TX init ran, FIX #10's safe-path branch fired, yet OFFER still timed out.
+
+**Expected outcome for Attempt 96 (logged here as pre-burn prediction, see Attempt 96 entry below for actual result)**:
 
 | Signal | Pre-fix (Attempt 95) | Post-fix (Attempt 96 target) | Falsification |
 |---|---|---|---|
@@ -49,9 +64,9 @@ later entry pointing back. Status is one of `FAIL` / `PASS` /
 | CMOS 0x5E (RX desc 0 byte 0) | 0x00 (no DMA) | **≥ 0x01** (any frame); ideally 0xFF (broadcast OFFER) or 0xB0 (unicast OFFER) | If 0x5E stays 0x00 with 0x5B cleared → RX engine wedged separately; investigate RxConfig + RDSAR programming order |
 | DHCP block | `DISCOVER / OFFER timeout` | **`DISCOVER / OFFER ip=… / REQUEST / ACK ip=… gw=… mask=…`** | If still OFFER timeout with 0x5E showing a real OFFER frame → parsing bug in dhcp_init OFFER loop; if 0x5E shows non-OFFER frames → LAN reachability / DHCP relay path |
 
-**Linked burns**: Attempt 96 PENDING (user-authorized timing per [[feedback_iron_burns_block_other_work]]; not auto-proposed).
+**Linked burns**: Attempt 96 (FALSIFIED 2026-05-23 — see per-attempt entry below).
 
-**Linked docs**: [`dhcp-end-to-end-audit.md` § 10](dhcp-end-to-end-audit.md) (FINDINGS #7-#10 multi-source convergent writeup); state.md § *1.32.2 cycle*.
+**Linked docs**: [`dhcp-end-to-end-audit.md` § 10](dhcp-end-to-end-audit.md) (FINDINGS #7-#10 multi-source convergent writeup — § 10.2 hypothesis FALSIFIED, next audit pending CMOS readback); state.md § *1.32.2 cycle*.
 
 ### Tracker: 1.32.1 cycle (CLOSED — fix-set insufficient on iron) {#tracker-1321-cycle}
 
@@ -2937,6 +2952,154 @@ Full second-pass read of the networking stack surfaced FOUR additional bugs. The
 - [`r8169-iron-burn-audit.md`](r8169-iron-burn-audit.md) § 10 — superseded by `dhcp-end-to-end-audit.md` § 10 for OFFER-timeout root cause.
 
 **Awaiting user direction:** 1.32.2 cycle open with FIX #7+#8+#9 landed + QEMU validated. Attempt 96 (validates FIX #7+#8+#9 against the Attempt 95 evidence base) deferred to user — no auto-proposed burn per [[feedback_iron_burns_block_other_work]].
+
+---
+
+### Attempt 96 — agnos 1.32.2 FIX #7+#8+#9+#10 iron burn 2026-05-23 → PARTIAL PASS (4-FIX bundle FALSIFIED on the OFFER-timeout symptom; BOTH branches of FIX #10 visible in boot block — autoneg-kicked AND link-up printed — so the engine-wedge hypothesis is not the root cause; PHY+ring init byte-clean; CMOS post-mortem still pending verbose readback)
+
+Photo evidence (catalogued from user top-level drop per [[feedback_top_level_photos_are_fresh_iron]]):
+- [`iron-nuc-zen-photos/attempt-96-agnos-1.32.2-r8169-link-up-rx-tx-rings-up.jpg`](iron-nuc-zen-photos/attempt-96-agnos-1.32.2-r8169-link-up-rx-tx-rings-up.jpg) — r8169 init block: PHY autoneg kicked **and** link up, RX/TX rings up.
+- [`iron-nuc-zen-photos/attempt-96-agnos-1.32.2-fix-7-8-9-10-offer-timeout-persists.jpg`](iron-nuc-zen-photos/attempt-96-agnos-1.32.2-fix-7-8-9-10-offer-timeout-persists.jpg) — boot reaches `agnos>` shell; `dhcp: DISCOVER → dhcp: OFFER timeout` (no OFFER ip line); storage trio + GPT + ext4 mount all byte-clean.
+
+**Build under test:**
+
+| Artifact | Value |
+|---|---|
+| Kernel | `agnos/build/agnos` at 605,056 B production (post-FIX-7+8+9+10) |
+| Version banner | `AGNOS shell v1.32.2` (confirmed in photo image-1) |
+| Fix-set in build | 1.32.1 FIX #1-#6 + 1.32.2 FIX #7 (IDR0..IDR5 write-back) + FIX #8 (UDP 1024B + dhcp rx[1024]) + FIX #9 (DISCOVER + REQUEST midpoint retransmit @ iter==400) + FIX #10 (PHY restart only if BMSR.LinkStatus reads down, double-read for latching-low) |
+| gnoboot | 0.4.2 (unchanged) |
+| cyrius | 6.0.1 (unchanged) |
+
+**Boot output (transcribed from photos):**
+
+r8169 init block (image-2):
+```
+xhci: device-notifications enabled
+xhci: halted; reset clean; enabled
+xhci: scratchpads ready, array=15040512
+xhci: scratchpad ready, array=15040512
+xhci: controller running, HCH=0, ERDP=15056896
+xhci: port 1 connected, FS, slot=1, VID=1452 PID=591, class=0
+xhci: port 3 connected, HS, slot=2, VID=2316 PID=4096, class=0
+hid: keyboard layer initialized
+hid: keyboard configured, boot protocol on, EP=129, polling 8-byte reports
+msc: slot 2 BBB intf=0 bulk-IN=130 bulk-OUT=1 MPS(in/out)=512/512 MaxLUN=0
+msc: slot 2 INQUIRY: vendor='General' product='USB Flash Disk' rev='1100' type=block
+msc: slot 2 TEST UNIT READY -> ready (Pass)
+msc: slot 2 READ CAPACITY: last_lba=252051455 blk=512B -> 123072 MiB
+msc: 1 mass-storage device(s) detected
+r8169: found at 4243603456
+r8169: MAC=176:65:111:12:228:37
+r8169: chip-rev byte=0x07 (Phase 2+ decodes the family)
+r8169: reset OK
+r8169: PHY autoneg kicked (link async)
+r8169: link up
+r8169: Phase 1 complete
+r8169: RX ring up (16 desc  2KB bu…)
+r8169: TX ring up (16 desc  2KB bu…)
+nvme: found at 4241489920, version=1.4.0
+…
+```
+
+Post-scheduler block (image-1):
+```
+ahci: registered as block_dev (3907029168 LBAs × 512B)
+ahci: found at 4240441344, version=1.769
+ahci: NP=1 NCS=32 ISS=3 SAM=1 SSS=0 SNCQ=1 S64A=1
+ahci: GHC=2147483648 PI=1
+ahci: port 0 DET=3 SPD=3 SIG=257 (SATA)
+ahci: port 0 initialized (CL @ 15314944, FIS @ 15319040)
+ahci: port 0 mode='WD Blue SA510 2.5 2TB' serial='24313QD00663' fw='530400WD'
+ahci: port 0 LBA0=3907029168 sectors (1907729 MiB)
+ahci: port 0 LBA0 first 8 bytes: 0 0 0 0 0 0 0 0
+ahci: port 0 mode='WD Blue SA510 2.5 2TB' serial='24313QD00663' fw='530400WD'
+ahci: port 0 LBA0=3907029168 sectors (1907729 MiB)
+ahci: registered as secondary block_dev (port 0, 3907029168 LBAs × 512B: NVMe primary)
+msc: slot 2 LBA0 first 8 bytes: 0 0 0 0 0 0 0 0
+msc: registered as tertiary block_dev (slot 2, 252051456 LBAs × 512B: NVMe primary)
+gpt: present, first=34 last=3907029134 parts=3/128 hdr-CRC-OK arr-CRC-OK
+partitions (3 active / 128 reserved):
+  [0] EFI System     LBA 2048-2099199 (1024 MiB)
+  [1] (unknown type) LBA 2099200-3898638335 (1902607 MiB)
+  [2] Linux FS agnos-fs LBA 3898638336-3907026943 (4096 MiB)
+VFS initialized
+ext2: probe matched backend=2 partition_lba=3898638336
+ext2: mounted (blocksize=4096, inode_size=256, inodes_per_group=8192)
+Heap: 15351776  15355776  15355904
+SYSCALL/SYSRET initialized
+Stack canary initialized
+Interrupts enabled
+Timer ticks before sched: 6
+Activating scheduler...
+dhcp: DISCOVER
+dhcp: OFFER timeout
+Launching kybernet...
+kybernet: starting init
+kybernet: 0 processes
+kybernet: 3500 free pages
+kybernet: launching shell
+AGNOS shell v1.32.2 (type 'help')
+agnos>
+```
+
+**The headline observation — FIX #10 visible in boot output:**
+
+Two PHY-related lines printed back-to-back: `PHY autoneg kicked (link async)` followed by `link up`. This means FIX #10's BMSR-double-read reported the link as initially DOWN at probe time (so it took the kick-autoneg branch) but autoneg completed before init_rx/init_tx executed. **By the time the RX/TX rings were programmed, the link was UP.** This was supposed to be the safe path that FIX #10 protected — yet DHCP still timed out.
+
+**The 4-FIX bundle's NIC-engine-wedge hypothesis is FALSIFIED.** If the wedge were caused by `CR.RE/CR.TE` being asserted during a link-down window, FIX #10's gate would have prevented it — but the link was visibly up during init. Either:
+- (a) The wedge mechanism is different from what the audit hypothesized (e.g., wedge happens at PHY-restart regardless of init timing, persistent for >>3s), OR
+- (b) The root cause is NOT a NIC-engine wedge at all — it's still upstream/downstream of the NIC.
+
+**CMOS post-mortem (verbose readback completed 2026-05-23 same-session):**
+
+| Slot | Value | Decode |
+|---|---|---|
+| 0x58 probe-done | 0x01 | r8169_probe completed clean |
+| 0x59 PHY outcome | **0x01 (LINK UP)** | BMSR double-read worked; autoneg completed; FIX #10 took the correct branch |
+| 0x5A TX sends | 0x02 | r8169_send fired twice — DISCOVER + FIX #9 midpoint retransmit, both reached TX path |
+| **0x5B TX desc 0 OWN** | **0x30 (CLEARED)** | NIC processed the TX descriptor and cleared OWN — frames egressed to wire |
+| 0x5C RX polls | 0xFF | poll loop saturated (>=255 invocations) |
+| 0x5D RX desc 0 OWN | 0x80 (re-armed) | driver consumed an RX frame and handed the desc back to NIC |
+| **0x5E RX desc 0 byte 0** | **0x01 (DMA visible)** | NIC DMA'd a frame into the buffer; byte = multicast bit (IPv6 multicast / LLDP / mDNS), NOT broadcast (0xFF) or unicast to our MAC (0xb0) |
+
+**This is unambiguously Branch (a) — NIC engines are healthy.** Identical signature to Attempt 94's healthy baseline. The 4-FIX bundle did NOT regress NIC engines (FIX #10 cleanly reversed the Attempt-95 wedge introduced by FIX #3) — it just didn't fix the OFFER-timeout because the root cause was never in the NIC.
+
+**Retrospective on Attempt 94 framing.** Attempt 94's entry initially noted "OFFER-timeout root cause moves UPSTREAM of NIC" and that framing was correct. The 1.32.2 cycle's audit (dhcp-end-to-end-audit.md § 10) re-framed around the FIX #3 regression because the Attempt 95 CMOS evidence (0x5B=0xb0 + 0x5E=0x00) made the NIC wedge look like the dominant signal. That was true for Attempts 95's specific failure mode, but FIXing it (FIX #10) just restored Attempt 94's evidence baseline — at which point we're back to the original upstream/downstream question.
+
+**Branch (a) splits two ways, and 0x5E=0x01 doesn't decide between them:**
+
+- **(a1) Wire/server — no DHCP OFFER ever reaches us.** No DHCP server on this segment / VLAN drop / firewall / Mikrotik-style ignore-unknown-MAC rule / IPv6-only LAN. The multicast frame captured at 0x5E suggests *something* is on the wire but says nothing about DHCP server presence. Disambiguation needs external evidence: tcpdump on a network port-mirror, AP packet capture, or a known-good Linux client booting on the same physical jack to confirm DHCP server reachability.
+- **(a2) RX-path delivery bug — OFFER arrives but our stack drops it before dhcp_init sees it.** Candidates, in roughly likely-to-unlikely order:
+  - r8169_poll's RX-ring walk skips slots / processes wrong index / advances head pointer incorrectly
+  - ethernet_recv's dispatch on ethertype (0x0800 IPv4) vs ARP (0x0806) / IPv6 (0x86DD)
+  - net_handle_udp's dst_port==68 routing to the correct listener
+  - udp_recv_from's listener lookup (FIX #8 sized the buffer to 1024 but the listener-table walk could still miss)
+  - dhcp_init's OFFER-match loop filter — xid (already verified by FIX #1), chaddr (FIX #4), msg_type=2 (DHCP OFFER). FIX #8 expanded the receive buffer; FIX #4's chaddr-validate is the only other gate.
+- Mixed (one cleared, one stuck) → split investigation per affected engine.
+
+**Storage trio + GPT + ext4 mount + scheduler + tcp_listen + kybernet + shell**: byte-clean. No regression from Attempts 90-95.
+
+**MVP gate posture:** unchanged. Closed-beta gate (boot-to-shell with typeable keyboard) **still green at Attempt 96**. Only the DHCP feature remains regressed.
+
+**Next moves — USER PIVOTED 2026-05-23: exhaust QEMU route before any further iron burns or CMOS instrumentation.**
+
+1. ✅ **CMOS readback complete** (2026-05-23). Branch (a) confirmed on iron: NIC (r8169) engines healthy, root cause upstream OR downstream of NIC.
+2. ✅ **QEMU smoke run + pcap capture 2026-05-23** (zero burns, locally reproducible). Booted current 1.32.2 kernel via `tcp-listen-smoke.sh` (virtio-net + SLIRP). Result: **DHCP fails identically to iron** (`dhcp: DISCOVER → dhcp: OFFER timeout`). Pcap capture via `-object filter-dump`: **the only frame on the wire is OVMF's IPv6 Neighbor Solicitation (DAD probe) — ZERO AGNOS-generated frames egress through virtio_net.** Despite the kernel printing `dhcp: DISCOVER`, the actual TX never reaches the SLIRP backend. This is a DIFFERENT bug from the iron OFFER-timeout: r8169 TX works on iron (CMOS 0x5A=2 + 0x5B=0x30 prove the chip processed and cleared TX descriptors), but virtio_net TX in QEMU does not. **The "SLIRP-RX gap" label from 1.32.0 was wrong** — SLIRP's RX is fine; AGNOS's virtio_net TX is broken.
+3. **Working hypothesis for virtio_net TX bug**: `kernel/core/virtio_net.cyr` declares `vnet_tx_desc` + `vnet_tx_avail` + `vnet_tx_used` as **separate module-global arrays**, but the **legacy virtio PCI spec requires desc/avail/used to be contiguous within the same page** — the device computes `avail = desc + 16*qsz` and `used = PAGE_ALIGN(desc + 16*qsz + 4 + 2*qsz + 2)`. AGNOS gives the device only `desc_pfn` via `outl(iobase+8, &vnet_tx_desc/4096)`; the device then reads avail.idx from `desc_addr + 4096` (a region the driver never writes to). Driver-side avail.idx increments are invisible to the device → device never picks up TX descriptors → no frame egresses. Same shape likely applies to RX queue 1. **Needs confirmation against virtio spec + Linux `drivers/virtio/virtio_pci_legacy.c` + `virtio_ring.c`**.
+4. **QEMU bug ≠ iron bug** — they are two independent failures that happen to surface the same shell-level symptom (`dhcp: OFFER timeout`):
+   - QEMU: virtio_net TX never delivers frames; SLIRP never sees DISCOVER; no OFFER possible.
+   - Iron: r8169 TX delivers frames (CMOS-proven); OFFER-timeout root cause is still either wire/server (a1) or RX-path-upper-layer (a2-RX).
+5. **Three forward paths now** (user to pick):
+   - **(Q1) Fix virtio_net TX layout first** — once QEMU egresses real DISCOVERs, SLIRP will reply with OFFER, and we'll see whether AGNOS's upper-layer RX correctly delivers the OFFER to dhcp_init. If yes → upper RX is fine, iron bug must be r8169 RX or wire/server. If no → upper RX bug confirmed locally, fixable without iron.
+   - **(Q2) Write a minimal e1000 or modern-virtio driver** — bypass legacy-virtio layout question entirely. More work; only justified if (Q1) layout fix turns out non-trivial.
+   - **(a1-still-valid) External iron-side DHCP validation** — independent of QEMU; user-side action (Linux laptop on same jack / tcpdump from router / DHCP server lease log). The original branch (a1) plan still applies for the iron-side bug — but is now lower priority since (Q1) is cheaper and shares the upper-layer RX-path question.
+6. **Hold ALL driver code changes** until user picks (Q1) vs (Q2) vs (a1). [[feedback_per_action_consent]] applies — virtio_net.cyr edit needs explicit OK.
+
+**Cross-references:**
+- [`dhcp-end-to-end-audit.md` § 10](dhcp-end-to-end-audit.md) — FIX #7-#10 multi-source convergent writeup that drove this burn.
+- Attempt 95 entry above — `0x5B=0xb0` + `0x5E=0x00` baseline that the 4-FIX bundle was supposed to reverse.
+- Attempt 94 entry — `0x5B=0x30` + `0x5E=0x01` healthy baseline to compare Attempt 96 readback against.
 
 ---
 

@@ -7,7 +7,7 @@
 >
 > **Last Updated**: 2026-05-22 (post-1.31.6 close + 1.31.7 open drift sweep)
 
-See also: [First-Party Standards — Own the Stack](../../development/planning/first-party-standards.md#own-the-stack) | [Science Crate Specs](../../development/guides/science-crate-specs.md)
+See also: [First-Party Standards — Own the Stack](../../development/first-party/first-party-standards.md#own-the-stack) | [Science Crate Specs](../../development/guides/science-crate-specs.md)
 
 ---
 

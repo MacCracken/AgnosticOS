@@ -45,9 +45,9 @@ Multi-source convergent reference documents written before each major kernel tou
 | Document | Description |
 |----------|-------------|
 | [planning/shared-crates.md](planning/shared-crates.md) | Shared crate registry — full (incl. pre-1.0); refresh from state.md drift list |
-| [planning/first-party-standards.md](planning/first-party-standards.md) | Standards for all AGNOS projects |
-| [planning/first-party-documentation.md](planning/first-party-documentation.md) | Doc-tree standards (companion to first-party-standards.md) |
-| [planning/example_claude.md](planning/example_claude.md) | CLAUDE.md template for new projects |
+| [first-party/first-party-standards.md](first-party/first-party-standards.md) | Standards for all AGNOS projects |
+| [first-party/first-party-documentation.md](first-party/first-party-documentation.md) | Doc-tree standards (companion to first-party-standards.md) |
+| [first-party/example_claude.md](first-party/example_claude.md) | CLAUDE.md template for new projects |
 | [planning/roadmap.md](planning/roadmap.md) | Consumer application roadmap (forward planning, pre-v1) |
 
 ## Guides

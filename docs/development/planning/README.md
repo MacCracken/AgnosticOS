@@ -4,7 +4,7 @@
 >
 > Volatile state stays in [`../state.md`](../state.md). Crate registries: [`shared-crates.md`](shared-crates.md) (full, incl. pre-1.0) and [`../../applications/libs/README.md`](../../applications/libs/README.md) (v1.0+ stable).
 >
-> **Last Updated**: 2026-05-21 — `usb-hid-keyboard-driver.md` archived (shipped + iron-validated through MVP gate); kernel-scope row repointed to archive
+> **Last Updated**: 2026-05-23 — added `usb-hardening.md` (beta-phase USB defensive stack — pre-descriptor validation, class-policy enforcement, in-kernel per-device authorization via aegis, behavioral sandboxing via kavach/phylax, IOMMU DMA isolation; cross-cuts xhci + aegis + kavach + libro + phylax)
 
 ---
 
@@ -25,9 +25,7 @@ Live kernel-scope planning + multi-source prior-art audits now live one director
 | [roadmap.md](roadmap.md) | Application & phase roadmap (Phases 1–24, MVP gates, ship cadence) |
 | [shared-crates.md](shared-crates.md) | Full crate registry (incl. pre-1.0 — live versions per `state.md`) |
 | [foundation-structure.md](foundation-structure.md) | Phase 23 governance layer (mission-locked, contributor-protecting structure) |
-| [first-party-standards.md](first-party-standards.md) | Code conventions (Cyrius-first; Rust-era archive separate) |
-| [first-party-documentation.md](first-party-documentation.md) | Doc conventions (CLAUDE.md / doc-health pattern / README shape) |
-| [example_claude.md](example_claude.md) | Template — CLAUDE.md scaffold for new repos |
+| ➜ moved to [`../first-party/`](../first-party/) (2026-05-23) | first-party-standards.md, first-party-documentation.md, example_claude.md — split out as a dedicated standards-documentation folder so new examples (e.g. `doc-health.example.md`) can land there cleanly |
 
 ---
 
