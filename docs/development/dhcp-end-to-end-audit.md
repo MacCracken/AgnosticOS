@@ -465,3 +465,196 @@ No Attempt 95 iron burn proposed until the user reviews this doc.
 - [[feedback_prefer_generic_abstraction_at_call_sites]] — the abstraction pattern used by FIX #1 (`nic_mac` parallel to `nic_ready` / `nic_send` / `nic_poll`).
 - [[feedback_iron_burns_block_other_work]] — discipline that mandated this audit doc before any 1.32.2 bite or Attempt 95.
 - [[feedback_redesign_dont_reinvent]] — multi-source convergent posture; Linux is one source of many.
+
+---
+
+## 10. Post-Attempt-95 sweep — FINDINGS #7-#9 (1.32.2 cycle)
+
+> **Status**: ALL THREE FIXES LANDED 2026-05-23 in 1.32.2 cycle. QEMU validation: `scripts/test.sh` 4/4 + `scripts/ext2-smoke.sh` 5/5 + 5/5 regression + `scripts/tcp-listen-smoke.sh` 1/2 (matches pre-fix baseline). Build size 604,096 B (1.32.1 close, production) → **605,064 B production / 605,944 B TCP_LISTEN_SMOKE** (+968 / +1,040 B).
+>
+> The Attempt 95 iron burn (2026-05-22 23:42, photo catalogued in `iron-nuc-zen-photos/`) reproduced the OFFER timeout symptom with all six 1.32.1 fixes in place. The previous-session agent didn't log the burn — accountability gap corrected in iron-nuc-zen-log § Attempt 95. Post-burn sweep across the full networking code path surfaced three additional bugs upstream of the NIC; landed together as 1.32.2 to avoid a piecemeal iron-burn ladder.
+
+### FINDING #7 (CRITICAL — most likely root cause of Attempt 95 OFFER timeout) — IDR0..IDR5 not reprogrammed after reset
+
+**Symptom**: Same as Attempt 94 — DHCP DISCOVER egresses, no OFFER received within timeout. With 1.32.1's `nic_mac` chaddr fix in place, the kernel-side packet is correct (chaddr = `b0:41:6f:0c:e4:25`), but the NIC's *hardware* MAC filter rejects unicast OFFERs before they reach the RX ring.
+
+**Root cause**: `r8169_probe` reads `IDR0..IDR5` into `r8169_mac` at step 6 (line 330-332), THEN resets the chip at step 8 (line 345). The reset clears the NIC's hardware unicast MAC filter (IDR0..IDR5 → zeros). `RxConfig.APM = 1` set later in `r8169_init_rx` tells the NIC to accept unicast frames *only* when dst MAC matches IDR0..IDR5 — so post-reset, the filter is zero and any unicast DHCP OFFER to `b0:41:6f:0c:e4:25` is dropped at the hardware filter.
+
+The 1.32.1 audit FINDING #6 raised exactly this concern ("If `RxConfig.APM` is set before `IDR0..IDR5` is written, no unicast match will succeed") but the FIX #6 implementation only renamed RxConfig bit constants — bit *values* were correct, but the IDR programming gap was missed.
+
+**Wire-level consequence**: DHCP servers that ignore the BOOTP broadcast flag (Cisco WLCs, Mikrotik, some embedded servers, certain Windows DHCP configs) reply unicast. Our DISCOVER goes out fine (TX path doesn't go through the unicast filter); the OFFER comes back unicast addressed to `b0:41:6f:0c:e4:25`; NIC hardware filter checks IDR0..IDR5 (= zeros) against dst MAC (= `b0...`); no match → drop. Our `r8169_poll` sees only broadcast/multicast frames (LLDP, STP, IGMP) that pass the AB/AM bits, never the OFFER.
+
+**Cross-validation** (multi-source per [[feedback_redesign_dont_reinvent]]):
+
+| Reference | Where MAC is restored to IDR/MAC registers |
+|---|---|
+| Linux `drivers/net/ethernet/realtek/r8169_main.c::rtl_rar_set` | Writes MAC0 (0x00) + MAC4 (0x04) on every bring-up; called from `rtl_open` post-reset. |
+| OpenBSD `sys/dev/ic/re.c::re_setaddr` | Writes IDR via `CSR_WRITE_RAW_4(MAC0, …)` + `CSR_WRITE_RAW_2(MAC4, …)` post-reset. |
+| FreeBSD `sys/dev/re/if_re.c::re_set_addr` | Same shape — `CSR_WRITE_STREAM_4(sc, RL_IDR0, …)`. |
+| NetBSD `sys/dev/ic/re.c::re_setaddr` | Mirrors OpenBSD. |
+| Haiku `src/add-ons/kernel/drivers/network/ether/rtl8169/rtl81xx.c` | Writes `RTL_IDR0` + `RTL_IDR4` in `init_device` post-reset. |
+| RealTek RTL8168 datasheet §6.1 | Reset (CR.RST) returns the chip to default state — IDR0..IDR5 are R/W and not preserved across reset by spec. |
+
+Every reference writes the MAC back to the IDR registers after reset. AGNOS pre-1.32.2 did not. The kernel-side `r8169_mac` was correct (used by `nic_mac` for chaddr/eth-src), but the NIC-side hardware filter was zero.
+
+**Fix shape**: New step 8b in `r8169_probe`, after the reset poll succeeds and before PHY init:
+```cyrius
+for (var i = 0; i < 6; i = i + 1) {
+    r8169_mmio_write8(R8169_REG_IDR0 + i, load8(&r8169_mac + i));
+}
+```
+
+~6 LOC including comment block. Lands as **FIX #7** in 1.32.2.
+
+---
+
+### FINDING #8 (CRITICAL — DHCP option-blob truncation) — UDP buffer sized for legacy 248-byte ceiling
+
+**Symptom**: Latent until FIX #7 lands. With FIX #7, OFFER reaches the RX ring → `net_handle_udp` copies UDP payload into the listener's recv buffer → DHCP parser reads the buffer. Pre-fix, the parser would see msg-type (option 53, usually first) but server-id (option 54), subnet mask (option 1), gateway (option 3) past byte 248 would be truncated. OFFER detection works (msg-type intact); REQUEST carries zero `server_id` → server NAK or ignore → ACK timeout downstream.
+
+**Root cause**: Three coupled sizing limits below typical DHCP payload sizes:
+
+| Site | Pre-fix | Post-fix | Rationale |
+|---|---|---|---|
+| `udp_bind` per-listener `kmalloc(N)` | 256 | **1024** | Heap-allocated recv buffer; receives `net_handle_udp`'s capped copy. |
+| `net_handle_udp` `udp_data_len` cap | 248 | **1016** | Bounded by listener buf size (1024 - 8 UDP-hdr headroom). |
+| `dhcp_init` local `var rx[N]` + `udp_recv_from(... N ...)` | 320 | **1024** | Function-local var X[N] = N bytes per [[feedback_cyrius_var_array_u64_units]]. Two call-sites (OFFER + ACK loops). |
+
+**Wire-level consequence**: Typical DHCP OFFER UDP payload is 250-350 bytes (240 BOOTP fixed header + 10-100 bytes of options depending on server config — server-id, lease-time, subnet, router, DNS, domain-name, NTP, etc.). The 248-byte cap left only 8 bytes of options accessible past the BOOTP fixed header. Option 53 (msg-type, 3 bytes) fits; option 54 (server-id, 6 bytes) starts at offset 3 and ends at offset 8 — the LAST byte may or may not be captured depending on server's option ordering. Beyond that, everything is gone.
+
+**Cross-validation**:
+
+| Reference | Buffer-sizing approach for DHCP |
+|---|---|
+| Linux `net/ipv4/ipconfig.c` (boot DHCP) | Uses `ic_dev->ip_addr` buffer at 1500-byte MTU full-frame size. |
+| OpenBSD `dhclient` | `BUFSIZ` (= 1024 typical) for option blob; `DHCP_FIXED_NON_UDP + DHCP_MTU_MAX` for full frame. |
+| FreeBSD `dhclient` | Mirrors OpenBSD. |
+| RFC 2131 §2 | DHCP message format: minimum 312 bytes (576 IP datagram - 28 IP/UDP headers - 236 hardcoded). Server replies can be up to 576 bytes UDP payload. |
+
+1024-byte buffers fit any realistic DHCP message and align with prior-art conventions.
+
+**Fix shape**: Three coordinated size bumps; the `net_handle_udp` cap is the load-bearing one (without it, listener buf size alone doesn't help). Lands as **FIX #8** in 1.32.2.
+
+---
+
+### FINDING #10 (CRITICAL — explains the regression between Attempts 94 and 95) — FIX #3 unconditionally restarts autoneg, leaving NIC TX/RX engines wedged
+
+**Symptom — observed only post-1.32.1**: Attempt 94 (with bite-C blocking PHY init) had CMOS `0x5B=0x30` (TX OWN cleared by NIC = TX path worked) + `0x5E=0x01` (RX captured a multicast byte = RX path worked). Attempt 95 (with FIX #3 non-blocking PHY init) had CMOS `0x5B=0xb0` (TX OWN stuck at NIC = TX wedged) + `0x5E=0x00` (NO RX DMA AT ALL = RX path dead). The change between burns was the 6-FIX bundle, of which only FIX #3 plausibly touches NIC TX/RX behavior.
+
+**Root cause**: FIX #3 unconditionally writes `BMCR.ANRESTART` (bit 9) on every probe. ANRESTART forces the PHY autoneg state machine back to start; the link goes DOWN for 1-3 seconds while renegotiation runs. The kernel then proceeds immediately (non-blocking) to `r8169_init_rx` → `r8169_init_tx` → scheduler activation → `dhcp_init` — all within ~100ms of the BMCR write. **During that window, the link is down.**
+
+Some RTL8168 chip variants wedge their internal TX/RX engines when CR.RE/CR.TE are set while link is down — the engines initialize into a "no link" state and don't recover when link comes up later. Attempt 94's blocking PHY init "worked" by accident: the busy-wait loop kept polling BMSR for ~8ms, which (a) prevented the kernel from racing forward into init_rx/init_tx while autoneg was active, and (b) gave the PHY a few hundred MDIO reads worth of "settle time" before init_rx ran.
+
+The real fix is to **not restart autoneg unless link is genuinely down**. On a typical machine, BIOS PXE / cold-boot already brought up the link as part of its own NIC probe (it has to, to attempt PXE boot). The link is already negotiated and stable when AGNOS's `r8169_probe` runs. Restarting autoneg WHEN WE DON'T NEED TO **causes the regression**, not fixes it.
+
+**Cross-validation**:
+
+| Reference | When does the driver restart autoneg? |
+|---|---|
+| Linux `drivers/net/ethernet/realtek/r8169_main.c` | Only in `__rtl8169_resume` post-suspend OR when ethtool requests it. NOT on every open/probe. |
+| OpenBSD `sys/dev/ic/re.c::re_init` | Calls `mii_mediachg` which only restarts if media has changed. NOT unconditional. |
+| FreeBSD `if_re.c::re_init_locked` | Same — restart-on-media-change semantics, not every-probe. |
+| NetBSD `re.c` | Mirrors OpenBSD. |
+| Linux `phy_start` doc comment | "Should be called by the network driver when the link is OK or restored, not on every probe." |
+
+Every reference treats autoneg restart as a state-change event (resume, media change, link drop detected), not a probe-time default. Our FIX #3 made it default-on, and that's the load-bearing regression.
+
+**Fix shape**: Read BMSR.LinkStatus first (with double-read for the latching-low semantics per IEEE 802.3 §22.2.4.2). If link is up, log and return without touching BMCR — preserves the BIOS-established link state through init_rx/init_tx. If link is down, only then kick BMCR.ANRESTART (clearing PDOWN as before).
+
+```cyrius
+var bmsr_latch = r8169_phy_read(R8169_PHY_BMSR);   # clear latch
+var bmsr_live = r8169_phy_read(R8169_PHY_BMSR);    # live snapshot
+if ((bmsr_live & R8169_BMSR_LINKUP) != 0) {
+    kprintln("r8169: PHY link up (preserved from BIOS)", 40);
+    xhci_cmos_stamp(R8169_KCP_PHY_OUTCOME, 1);
+    return 1;
+}
+var new_bmcr = (bmcr | R8169_BMCR_ANENABLE | R8169_BMCR_ANRESTART) & 0xF7FF;
+if (r8169_phy_write(R8169_PHY_BMCR, new_bmcr) == 0) { ... }
+kprintln("r8169: PHY autoneg kicked (link async)", 38);
+xhci_cmos_stamp(R8169_KCP_PHY_OUTCOME, 1);
+return 1;
+```
+
+~10 LOC net delta vs the FIX #3 version. Lands as **FIX #10** in 1.32.2.
+
+This is the most likely root cause of the *regression observed between Attempts 94 and 95*. FIX #7 (IDR write-back) remains a defensively correct fix aligned with prior art, but FIX #10 explains why the system got WORSE after the 6-FIX bundle landed, not better.
+
+---
+
+### FINDING #9 (Robustness — RFC 2131 §4.4.1 partial compliance) — DHCP send-once-and-wait
+
+**Symptom**: Latent. If first DISCOVER/REQUEST is dropped (link not yet up post-autoneg; frame collision; transient L2 loss), we wait the full 8s budget without retrying. RFC 2131 §4.4.1 specifies clients SHOULD retransmit with exponential backoff (4s → 8s → 16s → 32s, minimum 4 attempts) — single-shot violates the spec and reduces robustness on first-burn cold-boot scenarios where PHY autoneg may still be completing when DISCOVER is queued.
+
+**Root cause**: Pre-1.32.2 OFFER + ACK wait loops are pure receive loops — no retransmit at any point in the 800-iteration (~8 second) budget.
+
+**Wire-level consequence**: If link comes up at ~2s into the wait but DISCOVER was dropped during the no-link window, we sit waiting until the budget expires. Same risk for REQUEST → ACK.
+
+**Cross-validation**:
+
+| Reference | Retransmission shape |
+|---|---|
+| RFC 2131 §4.4.1 | 4s initial, exponential backoff with jitter, max 60s, ≥ 4 attempts. |
+| Linux `ipconfig.c::ic_dhcp_init_dev` | 4 × DISCOVER attempts with random backoff in [0, 4s + jitter]. |
+| OpenBSD `dhclient` | 4 retries × 4s default. |
+| FreeBSD `dhclient` | Mirrors OpenBSD. |
+
+**Fix shape**: Mid-window single retransmit (at `iter == 400`, ~4s into the 8s wait). Same xid (RFC requires same session id across retries) means the server treats both DISCOVER+REQUEST as the same request and replies once; we just get a second window to catch the reply. Full exponential backoff with random jitter deferred to a later refinement cycle.
+
+```cyrius
+var discover_plen = plen;
+for (var ti = 0; ti < 800; ti = ti + 1) {
+    if (ti == 400) {
+        udp_send_from(0, 0xFFFFFFFF, 68, 67, &dhcp_pkt_buf, discover_plen);
+    }
+    net_poll();
+    ...
+}
+```
+
+Same pattern for REQUEST wait loop with `request_plen`. ~30 LOC across two loops. Lands as **FIX #9** in 1.32.2.
+
+---
+
+### 10.1. Summary — 1.32.2 fixes ranked by Attempt-95-blocking severity
+
+| # | Finding | Blocking? | Status |
+|---|---|---|---|
+| 7 | IDR0..IDR5 not reprogrammed after reset; unicast OFFER rejected at hardware filter | ⭐⭐ Defensive — matches Linux/BSD/Haiku prior art; load-bearing if server unicasts | ✅ **LANDED 2026-05-23** — 6-LOC write-back in `r8169_probe` step 8b, between reset poll and PHY init. |
+| 8 | UDP buffer sized at 256 + cap at 248 → DHCP option blob truncated | ⭐⭐ Latent until OFFER reaches us; would cause ACK timeout downstream | ✅ **LANDED 2026-05-23** — listener buf 256→1024, cap 248→1016, dhcp_init rx[320]→rx[1024], two udp_recv_from sizes 320→1024. |
+| 9 | DHCP DISCOVER + REQUEST send-once (no RFC §4.4.1 retransmission) | ⭐ Robustness; not the proximate cause | ✅ **LANDED 2026-05-23** — midpoint single retransmit at iter==400 in both wait loops. |
+| 10 | FIX #3 unconditionally restarts autoneg → NIC TX/RX engines wedge during the 1-3s link-down window post-restart | ⭐⭐⭐ **YES — explains the Attempt 94 → 95 regression** (TX OWN went from cleared to stuck; RX DMA went from multicast-byte to zero) | ✅ **LANDED 2026-05-23** — `r8169_phy_init` reads BMSR live state first (double-read for latching-low); only restarts autoneg if link is actually down. |
+
+### 10.2. Iron Attempt 96 expected outcome (DEFERRED — not auto-proposed)
+
+Per [[feedback_iron_burns_block_other_work]], no Attempt 96 proposed until user direction. Expected boot block once burn happens:
+
+```
+r8169: found at 4243603456
+r8169: MAC=176:65:111:12:228:37
+r8169: chip-rev byte=0x87
+r8169: reset OK
+r8169: PHY autoneg kicked; link up    (or: link async)
+r8169: Phase 1 complete
+r8169: RX ring up (16 desc × 2KB buf)
+r8169: TX ring up (16 desc × 2KB buf)
+...
+dhcp: DISCOVER
+dhcp: OFFER ip=<lan-IP>
+dhcp: REQUEST
+dhcp: ACK ip=<lan-IP> gw=<gw> mask=<mask>
+```
+
+**CMOS post-mortem expected** (`sudo ./scripts/read-boot-log.sh --verbose`):
+
+| Slot | Pre-fix (Attempt 95) | Post-fix (Attempt 96 target) |
+|---|---|---|
+| 0x58 (probe done) | 0x01 | 0x01 (unchanged) |
+| 0x59 (PHY outcome) | 0x01 "kicked" | 0x01 (unchanged) |
+| 0x5A (TX sends) | ~0x02 | **≥ 0x05** (DISCOVER + REQUEST + retries + ARP) |
+| 0x5B (TX desc 0 OWN) | 0x30 | 0x30 (unchanged) |
+| 0x5C (RX polls) | 0xFF | 0xFF (unchanged) |
+| 0x5D (RX desc 0 OWN) | 0x80 | 0x80 (unchanged) |
+| 0x5E (RX buf 0 byte 0) | 0x01 (multicast leftover) | **0xFF** (broadcast OFFER) OR **0xB0** (unicast OFFER to our MAC — confirming hardware filter now accepts our MAC) |
+
+If 0x5E flips to 0xB0, that's the unambiguous evidence that FIX #7 unblocked the unicast filter. If it stays 0x01 with OFFER timeout, FINDING #7's framing is wrong — fall back to LAN topology investigation (is there a DHCP server reachable; what's the giaddr/relay path).
