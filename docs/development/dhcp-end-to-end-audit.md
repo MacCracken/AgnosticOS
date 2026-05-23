@@ -393,7 +393,7 @@ All six fixes landed same-day as audit (2026-05-22), in the existing 1.32.1 cycl
 
 Total: ~177 LOC including comments; build size +312 B production / +584 B TCP_LISTEN_SMOKE. `scripts/test.sh` 4/4 + `scripts/ext2-smoke.sh` 5/5 + 5/5 regression cross-check — zero regression vs Attempt 94 baseline.
 
-**Iron Attempt 95 PENDING** — target outcome: full DHCP cycle on archaemenid (`DISCOVER` → `OFFER ip=<lan-IP>` → `REQUEST` → `ACK ip=<lan-IP>`). New r8169 boot block now reads: `found at … / MAC=… / chip-rev byte=… / reset OK / PHY autoneg kicked; link up | PHY autoneg kicked (link async) / Phase 1 complete / RX ring up / TX ring up`. CMOS post-mortem expected:
+**Iron Attempt 95 DEFERRED** — 1.32.1 was tagged by user at HEAD without burning per *"tag was going to happen regardless of result"* (cycle close shape: audit-driven repair, iron-validation deferred). Attempt 95 stays as the natural first-burn target for whatever cycle opens next; the rubric below stays valid. Target outcome: full DHCP cycle on archaemenid (`DISCOVER` → `OFFER ip=<lan-IP>` → `REQUEST` → `ACK ip=<lan-IP>`). New r8169 boot block now reads: `found at … / MAC=… / chip-rev byte=… / reset OK / PHY autoneg kicked; link up | PHY autoneg kicked (link async) / Phase 1 complete / RX ring up / TX ring up`. CMOS post-mortem expected:
 
 | Slot | Pre-fix (Attempt 94) | Post-fix (Attempt 95 target) |
 |---|---|---|
