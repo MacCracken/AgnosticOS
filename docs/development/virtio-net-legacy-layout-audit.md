@@ -312,3 +312,28 @@ Final file likely **~190 LOC** vs the current 148.
 ## Closeout
 
 Hypothesis **confirmed**. The split-array layout is the root cause of the zero-egress symptom. Three independent prior-art sources (Linux, OpenBSD, FreeBSD) converge on the contiguous-block formula `desc | avail | pad-to-4096 | used` per queue, and the legacy virtio PCI transport gives the device only the desc-base PFN — leaving no mechanism by which AGNOS could communicate its separate avail/used addresses even if it wanted to. Fix shape is a structured rewrite of the declarations + init path (~+40 LOC net), no language-feature dependencies. RX descriptor-slot-rotation is a closely-coupled secondary bug worth folding into the same cycle. Feature-mask discipline (drop MRG_RXBUF) is a recommended companion fix to avoid the 10-vs-12-byte header trap.
+
+---
+
+## Post-implementation update (2026-05-23 evening)
+
+The layout rewrite + feature-mask + RX-slot-rotation fixes landed in `agnos/kernel/core/virtio_net.cyr` (148 → 174 LOC). **A third bug surfaced during implementation that the audit missed**: the driver was not enabling PCI bus-master on its device, so even with the spec-correct layout the device could not DMA from the descriptor pages (writes to BAR0 I/O ports work without bus-master; descriptor reads from system RAM do not). One-line fix: `pci_enable_bus_master(PciDev_slot(&pci_devs + idx * 32));` after BAR0 capture in `virtio_net_init`. Matches the existing `nvme` / `ahci` / `virtio_blk` pattern.
+
+**QEMU validation status — STILL FAILS.** After layout + bus-master fixes:
+- Build clean, no regression in `scripts/test.sh` (4/4 PASS) or `scripts/ext2-smoke.sh` (5/5 PASS).
+- `tcp-listen-smoke.sh` boots the kernel under QEMU virtio-net-pci + SLIRP; kernel reaches shell.
+- Driver-side instrumentation confirms `vnet_tx_base = 0x17B000` (page-aligned), `vnet_tx_qsz = 256`, layout offsets match spec exactly.
+- QEMU `-trace virtio_*` confirms the doorbell write **does** reach the device (`virtio_queue_notify vdev=<net> n=0`), and the device is at `status=7` (legacy DRIVER_OK).
+- **But no `virtio_net_handle_tx` event fires, and the pcap (via `-object filter-dump`) captures zero AGNOS-generated frames** — only OVMF's IPv6 NS (86 B) appears.
+
+The device receives the notification but its TX handler doesn't run. Layout is spec-correct, status is DRIVER_OK, bus-master is on, doorbells arrive. The remaining gap is unidentified.
+
+**Candidate next investigations** (each ~half day, none autocoded):
+1. **Cyrius-side memory ordering** — verify `store16(avail.idx, ...)` writes commit to memory before the subsequent `outw(notify, 0)` reaches the device. On x86 with TSO this should be guaranteed, but if Cyrius emits non-temporal stores or has an optimizer reorder, the device could see `avail.idx == 0` at notify time.
+2. **Compare against modern virtio-blk wire trace** — virtio-blk works end-to-end (ESP reads succeed). Capture and diff the I/O port sequence virtio-blk produces vs what virtio-net produces. If there's an extra register write virtio-blk does that virtio-net doesn't, we have a candidate.
+3. **Write a minimal modern virtio-net driver (device id 0x1041)** — bypass the legacy/transitional question entirely. Modern uses PCI capability list + MMIO + 64-bit addresses, mirroring the working virtio-blk shape. Larger change (~400 LOC) but the structural pattern is already in `virtio_blk.cyr` to copy.
+4. **Switch QEMU device to `e1000`** — write a small e1000 driver. Intel spec is well-documented and the device has no legacy/modern ambiguity. ~300 LOC.
+
+The audit's verdict stands: the original code's layout was wrong. **But fixing the layout alone is not sufficient to make QEMU virtio-net work**, so an additional investigation cycle is needed.
+
+**Iron-side relevance**: r8169 on archaemenid uses a completely separate driver and CMOS-proves its TX engines work (`0x5B=0x30`). The iron OFFER-timeout is independent of this virtio-net work — confirmed by the QEMU-iron evidence pair (different drivers, same shell symptom, different root causes). Iron-side (a1) external DHCP validation is still the right next move for iron.
