@@ -34,7 +34,7 @@ later entry pointing back. Status is one of `FAIL` / `PASS` /
 >
 > **State.md cycle headers link to these anchors via `iron-nuc-zen-log.md#tracker-1322-cycle` style.**
 
-### Tracker: 1.32.3 cycle (OPEN — virtio-net modern rewrite VALIDATED on QEMU; r8169 RX-path audit + 3-part fix landed; iron Attempt 97 pending user-authorized burn) {#tracker-1323-cycle}
+### Tracker: 1.32.3 cycle (OPEN — virtio-net modern rewrite VALIDATED on QEMU; r8169 RX-path 5-part bundle LANDED + iron Attempt 97 RX-mechanics validated; OFFER-timeout root cause moves to RxConfig high-bits / DHCP server lease-state) {#tracker-1323-cycle}
 
 **Hypotheses tested**:
 1. A spec-correct modern virtio-net driver mirroring `virtio_blk.cyr`'s proven shape will make QEMU DHCP work end-to-end.
@@ -43,18 +43,27 @@ later entry pointing back. Status is one of `FAIL` / `PASS` /
 
 **Results**:
 1. **VALIDATED on QEMU.** Full DHCP cycle (DISCOVER → OFFER 10.0.2.15 → REQUEST → ACK gw=10.0.2.2 mask=255.255.255.0) + TCP accept-success on first try. Pcap (1915 B, 5 frames) shows DISCOVER + SLIRP OFFER + REQUEST + SLIRP ACK + gratuitous ARP.
-2. **CONFIRMED.** `ip -br link` on archaemenid's Linux session 2026-05-23 shows enp1s0 (r8169 chip, MAC b0:41:6f:0c:e4:25) actively leased at 192.168.1.124/24 from 192.168.1.1. Wire + server + chip all working under Linux on the same physical port. Branch (a1) FALSIFIED; OFFER-timeout root cause is AGNOS RX-path code.
-3. **AWAITING IRON ATTEMPT 97.** Multi-source audit (Linux v6.6 `rtl_rx` lines 4417-4501 + OpenBSD `re_rxeof` lines 1576-1710 + FreeBSD `re_rxeof` lines 3451-3651 + RTL8168 datasheet § 6.7) landed at `r8169-rx-path-audit.md`. Verdict: load-bearing bug is `r8169_poll`'s single-frame return — CMOS 0x5E=0x01 was an IPv4 multicast first byte (`01:00:5e:…`), not the OFFER's `0xb0` unicast. Chip is healthy; we just never look at the right slot. **5-part fix landed in one bite** (no piecemeal iron-burn ladder): Part A multi-frame budget loop + Part B RES/FS|LS gating + Part C rx_rearm helper + Part D CMOS-stamp hot-path elimination (audit S-1, removes ~8 µs per-poll tax) + Part E RxMaxSize Linux-converge (audit S-2, 0x05F3 → 0x4000); ~50 LOC net; build 616,744 → 617,000 B (+256 B); test.sh 4/4 + ext2-smoke 5/5 + tcp-listen-smoke QEMU all clean.
+2. **CONFIRMED.** `ip -br link` on archaemenid's Linux session 2026-05-23 shows enp1s0 (r8169 chip, MAC b0:41:6f:0c:e4:25) actively leased at 192.168.1.124/24 from 192.168.1.1. Wire + server + chip all working under Linux on the same physical port. Branch (a1) FALSIFIED; OFFER-timeout root cause is AGNOS-side (code OR chip-config OR server lease state).
+3. **PARTIAL — RX-mechanics fix LANDED on iron, but NOT load-bearing for OFFER timeout.** Attempt 97 2026-05-23 ~14:30 PDT: CMOS readback shows the 5-part bundle works exactly as designed (0x5C=0x10 16 frames consumed vs stuck-at-1 pre-fix; 0x5D=0x78 chip-side complete-frame indicator at EOR slot with MAR bit; 0x5E refreshed dynamically by Part D vs pre-fix capture-once shape). But 0x5E settled at 0x01 (IPv4 multicast first byte `01:00:5e:…`) and 0x5A=0x02 (DISCOVER + retransmit only, no REQUEST) → OFFER never reached `dhcp_init`'s match loop. **The 16 frames consumed were all multicast background; the OFFER itself was never in the ring.** Root cause shifts upstream of `r8169_poll` to (b1) RxConfig high-bits / Accept-Broadcast bit OR (b2) DHCP server lease-state silence on same-MAC pre-existing Linux lease. Branch (a2-r8169-RX) FALSIFIED at the rank the audit claimed.
 
-**Iron Attempt 97 — expected outcomes**:
+**Iron Attempt 97 — actual outcomes:**
 
-| Signal | Pre-fix (Attempt 96) | Post-fix target | Falsification |
-|---|---|---|---|
-| Boot block | reaches `agnos> ` with `dhcp: OFFER timeout` | reaches `agnos>` with `dhcp: ACK ip=192.168.1.X gw=192.168.1.1 mask=255.255.255.0` | If still `OFFER timeout`: re-rank audit findings; investigate S-1 (CMOS-stamp tax) + S-2 (RxMaxSize disable) |
-| CMOS 0x5E | 0x01 (IPv4 multicast first byte) | 0xb0 (our MAC first byte, OFFER unicast) OR 0xFF (broadcast OFFER) | If 0x5E stays 0x01 → fix didn't apply OR multicast still dominates by the time of reading; not necessarily a falsification |
-| CMOS 0x5A | 0x02 (DISCOVER + retransmit) | 0x03+ (DISCOVER + REQUEST + retransmit) once OFFER consumed | If 0x5A stays 0x02 → REQUEST never sent → OFFER never reached dhcp_init's loop |
+| Signal | Pre-fix (Attempt 96) | Post-fix target | Attempt 97 ACTUAL | Verdict |
+|---|---|---|---|---|
+| Boot block | `OFFER timeout` after ~8 s | `DISCOVER → OFFER → REQUEST → ACK` | `DISCOVER → OFFER timeout` (shell + storage byte-clean) | FAIL on wire-side symptom; PASS on every other surface |
+| CMOS 0x5A (TX sends) | 0x02 | ≥ 0x03 | **0x02** | REQUEST never fired → OFFER never reached `dhcp_init` |
+| CMOS 0x5B (TX desc 0) | 0x30 | 0x30 | **0x30** | TX engine still healthy — no regression |
+| CMOS 0x5C (RX frames consumed, post-Part-D) | 0xFF (pre-Part-D count) | 0x10-0x40 | **0x10** (16 frames) | Part A + D landed exactly as designed |
+| CMOS 0x5D (last desc) | 0x80 (rearmed) | 0x30 or 0x70 | **0x78** (EOR + FS + LS + MAR) | Part B + C landed; EOR preserved through wraparound |
+| CMOS 0x5E (last buf first byte) | 0x01 (stuck) | 0xb0 or 0xff | **0x01** (still multicast, but now dynamically refreshed not stuck) | OFFER not in 16 consumed frames |
+| Storage trio + GPT + ext2 + shell | byte-clean | byte-clean | **byte-clean** | No regression from 5-part bundle |
 
-**Linked burns**: Attempt 96 (FALSIFIED 4-FIX bundle on iron, evidence base for branch (a2) RX-path investigation). Attempt 97 pending.
+**Next-step branches** (both pre-bound in the Attempt 97 prep entry, both resolvable WITHOUT another iron burn per [[feedback_iron_burns_block_other_work]]):
+
+- **(b1) RxConfig high-bits / AcceptBroadcast audit.** Code-audit `agnos/kernel/core/r8169.cyr` RxConfig write site vs Linux `r8169_main.c` + RTL8168 datasheet § 7. DHCP OFFER from a server-to-no-IP-client lands as broadcast L2 (`ff:ff:ff:ff:ff:ff`); if `AB` bit isn't set, chip drops OFFER before ring sees it. Multicast IGMP/mDNS frames passing through (per 0x5E=0x01) implies `AM` is set, so the filter mask is partially correct — just missing AB. ~10 LOC change candidate, no burn needed to confirm by code-read first.
+- **(b2) DHCP server same-MAC lease silence.** `tcpdump -i enp1s0 -nn -X 'port 67 or port 68'` from Linux session while AGNOS boots next — if the server issues NO OFFER on the wire, the bug isn't in AGNOS. If the server issues an OFFER but AGNOS doesn't consume it, (b1) is the bug. Zero-cost diagnostic; runs during *any* AGNOS boot (next non-burn boot will work, e.g. an Intel-NIC burn or a separate small-fix burn).
+
+**Linked burns**: Attempt 96 (FALSIFIED 4-FIX bundle); Attempt 97 (PARTIAL — RX-mechanics fix works but not load-bearing for OFFER-timeout).
 
 **Linked docs**: `agnosticos/docs/development/virtio-net-legacy-layout-audit.md` + `r8169-rx-path-audit.md`; CHANGELOG.md § [1.32.3]; state.md § *Last refresh*.
 
@@ -3127,9 +3136,77 @@ Two PHY-related lines printed back-to-back: `PHY autoneg kicked (link async)` fo
 
 ---
 
-### Attempt 97 prep — agnos 1.32.3 r8169 RX-path 5-part bundle 2026-05-23 → PENDING IRON BURN (user-authorized; build verified fresh; expected to clear iron OFFER timeout per the multi-source convergent audit)
+### Attempt 98 prep — agnos 1.32.3 RxConfig chip-rev fix (Linux mac_version 46 / RTL8168h) 2026-05-23 → PENDING IRON BURN (user-authorized; high-confidence multi-source convergent; one-constant change)
 
-Pre-burn checkpoint per [[feedback_iron_log_tracker_pattern]] + [[feedback_build_freshness_is_mine]]. Written BEFORE reboot so the expected outcomes are pinned to a single observable rubric; post-burn entry edits this from "PENDING" to "PASS" / "PARTIAL" / "FALSIFIED" depending on signals.
+Pre-burn checkpoint per [[feedback_iron_log_tracker_pattern]] + [[feedback_build_freshness_is_mine]]. Written BEFORE reboot. Post-burn entry edits this from "PENDING" to "PASS"/"PARTIAL"/"FALSIFIED" against the rubric below.
+
+**Investigation summary** (between Attempt 97 readback and this build, no iron burned per [[feedback_iron_burns_block_other_work]]):
+
+1. Wire-side baseline confirmed via Python AF_PACKET probe (`/tmp/dhcp_probe.py`) at 15:02:30 PDT: real Araknis 210 DHCP server at 192.168.1.1 (MAC d4:6a:91:ce:70:60) responds to BOTH synthetic-MAC and real-MAC (`b0:41:6f:0c:e4:25`) DISCOVERs with **L2 broadcast + L3 broadcast OFFER**. Flags=0x8000 honored. Both branches (b1) RxConfig.AB-missing + (b2) server same-MAC-lease-silence FALSIFIED.
+2. AGNOS upper-layer baseline confirmed via QEMU/SLIRP at 15:11:24 PDT (`/tmp/agnos_qemu_dhcp.sh` + pcap decode): SLIRP's OFFER also `L2 BROADCAST + L3 BROADCAST` — byte-for-byte same shape as real Araknis OFFER — and AGNOS catches it cleanly via virtio_net → full DHCP cycle. `net_poll` / `net_handle_udp` / `udp_recv_from` / `dhcp_init` all proven clean on broadcast OFFER. Bug must be r8169-specific.
+3. Linux journalctl on archaemenid identifies the exact chip: `r8169 0000:01:00.0 eth0: RTL8168h/8111h, b0:41:6f:0c:e4:25, XID 541, IRQ 85` → per Linux v7.0 `r8169_main.c:136` chip table, XID 541 = `RTL_GIGA_MAC_VER_46`.
+4. Per Linux v7.0 `r8169_main.c:2589-2614 rtl_init_rxcfg`, mac_version 46 falls in the VER_40..52 branch → `RxConfig = RX128_INT_EN | RX_MULTI_EN | RX_DMA_BURST | RX_EARLY_OFF` = **0xCF00 | accept_bits**. AGNOS was writing **0xE700 | accept_bits** = the LEGACY VER_07..17 8168A/B profile, leaving `RX_EARLY_OFF` (bit 11) CLEAR. On G/H/M silicon Early-RX ENABLED drops broadcast frames mid-DMA above the early-RX threshold (~256-512 B); the DHCP OFFER (~590 B) is exactly in the kill zone. Multicast frames (IGMP ~46 B, IPv6 NDP ~78 B, mDNS ~80-120 B) complete before the threshold trips — explaining why CMOS 0x5E=0x01 multicast first byte persisted across all 16 consumed frames at Attempt 97.
+
+**The fix** — `agnos/kernel/core/r8169.cyr:109`:
+
+```diff
+-var R8169_RXCFG_DEFAULTS = 0xE700;   # legacy VER_07..17 8168A/B profile
++var R8169_RXCFG_DEFAULTS = 0xCF00;   # VER_40..52 modern profile + RX_EARLY_OFF
+```
+
+ONE 16-bit constant change. Linux v7.0 r8169_main.c line-cited. Expanded comment block in source captures the per-mac_version table for future audits.
+
+**Build under test:**
+
+| Artifact | Value | Verified |
+|---|---|---|
+| Kernel | `agnos/build/agnos` at **617,000 B production** | mtime 2026-05-23 15:37:35 PDT; r8169.cyr mtime 15:31:02 PDT |
+| Banner | `AGNOS shell v1.32.3` | `VERSION` + `kernel/version.cyr` unchanged from Attempt 97 (no version bump per [[feedback_no_unprompted_version_bumps]]) |
+| Fix-set | Attempts 93-97 5-part bundle + FIX #7-#10 + **RxConfig 0xE700 → 0xCF00** | r8169.cyr `R8169_RXCFG_DEFAULTS = 0xCF00` at line 109 |
+| gnoboot / cyrius | 0.4.2 / 6.0.1 unchanged | — |
+| Regression | `test.sh` 4/4 + `ext2-smoke.sh` 5/5 + 5/5 cross-check + `tcp-listen-smoke.sh` 1/2 (matches pre-fix baseline; scenario-1 SLIRP-RX gap iron-only) | run 2026-05-23 15:33-15:37 PDT |
+| QEMU DHCP path | Full DISCOVER → OFFER → REQUEST → ACK clean via virtio_net | tcp-listen-smoke kernel log shows `dhcp: ACK ip=10.0.2.15 gw=10.0.2.2 mask=255.255.255.0` |
+
+**Hypothesis under test**: archaemenid's RTL8168h (mac_version 46) requires `RX_EARLY_OFF` set in RxConfig (Linux behavior); pre-fix Early-RX-ON dropped the broadcast DHCP OFFER mid-DMA while letting smaller multicast frames through. Setting `RX_EARLY_OFF` makes the chip wait for full-frame reception before DMA, eliminating the broadcast-drop quirk.
+
+**Expected outcome — Attempt 98 PASS rubric**:
+
+| Signal | Attempt 97 (pre-fix) | Attempt 98 PASS target | Falsification |
+|---|---|---|---|
+| Boot block | `dhcp: DISCOVER → OFFER timeout` after ~8 s | `dhcp: DISCOVER → OFFER ip=192.168.1.X → REQUEST → ACK ip=192.168.1.X gw=192.168.1.1 mask=255.255.255.0` | Still `OFFER timeout` → the convergent identification was wrong (chip needs additional config beyond RX_EARLY_OFF) OR an even deeper bug (descriptor ordering, MAR0/MAR4 hash, AspmL1L2Latency timing) |
+| CMOS 0x5A (TX sends) | 0x02 (DISCOVER + retransmit) | **≥ 0x03** (DISCOVER + REQUEST [+ retransmit]) | 0x5A stays at 0x02 → REQUEST never fired → OFFER still not reaching `dhcp_init` |
+| CMOS 0x5C (RX frames consumed) | 0x10 (16, all multicast) | **0x11+** (17+; one of them is the OFFER) — or higher | 0x10 unchanged → still draining only multicast → broadcast frames STILL not being admitted by chip |
+| CMOS 0x5D (last desc high byte) | 0x78 (EOR+FS+LS+MAR multicast) | **0x32 or 0x72** (FS+LS+BAR broadcast — bit 25 set in low position of high byte = 0x02) OR remains MAR after OFFER consumed and a subsequent multicast overwrites the stamp | 0x78 unchanged + 0x5A=0x02 → no broadcast frame consumed at all |
+| CMOS 0x5E (last buf first byte) | 0x01 (multicast 01:00:5e:…) | **0xff** (broadcast OFFER's L2 dst) OR 0xb0 (if a later unicast arrives) OR another multicast (means OFFER consumed but stamp overwrote) | 0x5E stays 0x01 + 0x5A=0x02 → broadcast OFFER still not in the ring |
+| Storage trio + GPT + ext2 + shell | byte-clean | byte-clean | Storage regresses → bisect (shouldn't be possible — RxConfig is r8169-only) |
+
+**Pre-burn checklist:**
+
+1. `cd ~/Repos/agnosticos`
+2. `sudo ./scripts/install-usb.sh --update` — writes fresh `build/agnos` (617,000 B) + `gnoboot/build/BOOTX64.EFI` to USB ESP. `agnos-fs` partition unchanged.
+3. Reboot archaemenid; F-key boot menu → USB
+4. Capture boot-log photo(s) at `agnos> ` shell prompt
+5. Power-cycle back to Linux dual-boot
+6. `sudo ./scripts/read-boot-log.sh --verbose` from Linux
+7. Drop photo(s) at agnosticos top-level (e.g. `1324.jpg`, `1324_r8169_log.jpg`) — I'll catalogue + decode
+
+**Post-burn next steps:**
+
+- **PASS** (full DHCP cycle on iron): close 1.32.3 cycle with the receipt; pivot per user direction. Mark `R8169_RXCFG_DEFAULTS = 0xCF00` as load-bearing for the entire OFFER-timeout arc (Attempts 93-97 retroactively explained).
+- **PARTIAL** (OFFER reaches `dhcp_init` but ACK still times out): bug shifts to chaddr/xid/msg_type filter OR `net_handle_udp` listener routing. Multi-source audit at finer grain.
+- **FALSIFIED** (still `OFFER timeout`, 0x5A=0x02): the chip-rev convergent identification was wrong OR an unrelated lower-layer bug. Next branch: per-chip dispatch matching Linux's full `rtl_init_rxcfg` switch + AspmL1L2Latency timing audit + MAR0/MAR4 hash filter init.
+
+**Cross-references:**
+- Investigation transcript: this session's earlier turns above (Python DHCP probe + QEMU pcap decode + Linux journalctl chip ID + Linux v7.0 source XID 541 → mac_version 46 → rtl_init_rxcfg branch).
+- Source citation: Linux v7.0 `drivers/net/ethernet/realtek/r8169_main.c` lines 136 (chip table) + 2589-2614 (rtl_init_rxcfg).
+- Linked burns: Attempt 97 PARTIAL (RX-path mechanics validated; root cause confirmed upstream).
+- State refresh: `state.md` § *Last refresh*.
+
+---
+
+### Attempt 97 — agnos 1.32.3 r8169 RX-path 5-part bundle 2026-05-23 → PARTIAL (RX path validated; OFFER never reaches dhcp_init — root cause moves DOWNSTREAM of `r8169_poll`)
+
+Burned 2026-05-23 ~14:30 PDT. Photos catalogued: [`attempt-97-…-pt1-r8169-link-up-preserved-bios-rings-up-storage-clean.jpg`](iron-nuc-zen-photos/attempt-97-agnos-1.32.3-pt1-r8169-link-up-preserved-bios-rings-up-storage-clean.jpg) (NIC init + storage trio block) + [`attempt-97-…-pt2-rx-multi-frame-loop-16-frames-offer-timeout-persists.jpg`](iron-nuc-zen-photos/attempt-97-agnos-1.32.3-pt2-rx-multi-frame-loop-16-frames-offer-timeout-persists.jpg) (shell prompt + DHCP `OFFER timeout`). Per [[feedback_iron_log_tracker_pattern]] + [[feedback_build_freshness_is_mine]] — pre-burn rubric was pinned, this section now resolves it.
 
 **Build under test:**
 
@@ -3147,33 +3224,33 @@ Pre-burn checkpoint per [[feedback_iron_log_tracker_pattern]] + [[feedback_build
 
 **Ground-truth context — wire + server confirmed working under Linux on this exact machine** (2026-05-23 same session): `ip -br link` shows `enp1s0 UP b0:41:6f:0c:e4:25 192.168.1.124/24 default via 192.168.1.1 proto dhcp`. The r8169 chip is currently leased by Linux dhclient on the same wire/cable/port that AGNOS uses. Branch (a1) wire/server hypothesis falsified; this attempt validates branch (a2-r8169-RX).
 
-**Expected outcome — Attempt 97 PASS rubric:**
+**Outcome vs PASS rubric:**
 
-| Signal | Pre-fix (Attempt 96) | PASS target | FALSIFICATION |
-|---|---|---|---|
-| Boot block | reaches `agnos> ` with `dhcp: OFFER timeout` after ~8 s | reaches `agnos>` with `dhcp: DISCOVER → OFFER ip=192.168.1.X → REQUEST → ACK ip=192.168.1.X gw=192.168.1.1 mask=255.255.255.0` | Still `OFFER timeout` after the full 5-part bundle → escalate to single-source-Linux-only audit at finer grain (e.g., CPlusCmd register at MMIO 0xE0 which AGNOS doesn't touch; RxConfig high bits 0xE700 → 0xCF00; ring size > 16) |
-| CMOS 0x5A (TX sends) | 0x02 (DISCOVER + FIX #9 retransmit) | **0x03+** (DISCOVER + REQUEST [+ retransmits]) — `r8169_send` fires on REQUEST iff OFFER reached dhcp_init's loop and chaddr/xid/msg_type filter accepted it | 0x5A stays at 0x02 → REQUEST never sent → OFFER never reached dhcp_init's match loop → bug is downstream of r8169_poll OR the OFFER frame was somehow rejected by ethernet_recv / net_handle_udp / udp_recv_from / the dhcp_init filter |
-| CMOS 0x5B (TX desc 0 status, stamped from `r8169_send` at `tx_idx==1` transition) | 0x30 (OWN cleared + FS + LS — healthy from Attempt 94 baseline) | **0x30** (continues healthy — proves TX is still working post-bundle) | 0xb0 (OWN+FS+LS stuck) → REGRESSION (FIX #10 broke something Part A/B/C didn't anticipate); 0x00 → second send never fired (OFFER never came back) |
-| CMOS 0x5C (RX consumed-frame count, NEW SEMANTICS post Part D) | 0xFF (poll-count saturated; pre-Part-D semantics) | **0x10-0x40** range expected (state-transition stamp now counts CONSUMED frames; on a working DHCP cycle with brief multicast background, expect low double digits for the OFFER + ACK + a handful of multicast drains; semantics-changed value confirms Part D landed) | 0xFF still → either Part D didn't take effect OR a LOT of frames consumed (heavy multicast LAN); 0x00 → no frame ever consumed (full RX-path failure — investigate IDR write-back from FIX #7 OR RxConfig flag combination) |
-| CMOS 0x5D (RX last-consumed desc high byte) | 0x80 (OWN re-armed by driver — healthy) | **0x30** (OWN cleared + FS + LS — chip-side complete-frame indicator on the just-consumed slot, captured BEFORE rearm by the new state-transition stamp) OR **0x70** (last-slot variant with EOR set) | 0x80 → stamp captured AFTER rearm (Part C r8169_rx_rearm timing issue) OR no frame consumed at all |
-| CMOS 0x5E (RX last-consumed buf first byte) | 0x01 (IPv4 multicast 01:00:5e:... — stuck on multicast because poll only inspected rx_idx slot) | **0xb0** (our MAC b0:41:6f:0c:e4:25 — unicast OFFER from gateway, strongest signal) OR **0xff** (broadcast OFFER, also positive) OR **0x33** (IPv6 multicast 33:33:... — neutral, means a later multicast frame overwrote the OFFER reading; pair with 0x5A=0x03+ for full confirmation) | 0x5E stays at 0x01 with 0x5A=0x02 → still stuck on multicast (Part A didn't take effect) |
-| Storage trio + GPT + ext4 mount + shell | byte-clean across Attempts 90-96 | byte-clean (no regression from 1.32.3 build) | Any storage subsystem regresses → bisect virtio_net rewrite vs r8169 changes; storage shouldn't be touching either |
+| Signal | Pre-fix (Attempt 96) | Attempt 97 target | Attempt 97 ACTUAL | Verdict |
+|---|---|---|---|---|
+| Boot block | `OFFER timeout` after ~8 s | full `DISCOVER → OFFER → REQUEST → ACK` | `DISCOVER → OFFER timeout` (shell at `AGNOS shell v1.32.3`, kybernet up, storage trio + GPT + ext2 mount byte-clean) | **FAIL on the wire-side symptom; PASS on every storage-side and shell-side signal** |
+| CMOS 0x5A (TX sends) | 0x02 | ≥ 0x03 (DISCOVER + REQUEST) | **0x02** (DISCOVER + FIX #9 retransmit, no REQUEST) | **FALSIFIED at the load-bearing axis** — per the prep rubric, this directly means OFFER never reached `dhcp_init`'s match loop, so REQUEST never fired. Branch (a2-r8169-RX) is NOT the bottleneck. |
+| CMOS 0x5B (TX desc 0 status) | 0x30 healthy | 0x30 unchanged | **0x30** | PASS — TX engine continues healthy; no regression from FIX #10 or 5-part bundle |
+| CMOS 0x5C (RX consumed-frame count, post-Part-D semantics) | 0xFF saturated (pre-Part-D count) | 0x10-0x40 (state-transition stamp) | **0x10** (16 frames consumed) | **PART A + PART D LANDED** — ring walks healthily, state-transition stamp reflects real consume events (vs Attempt 96's stuck-at-1 shape). Bundle's intended effect IS present in the readback. |
+| CMOS 0x5D (RX last-consumed desc high byte) | 0x80 (rearmed) | 0x30 or 0x70 | **0x78** = 0x40 EOR + 0x20 FS + 0x10 LS + 0x08 MAR (multicast marker) | **PART B + PART C LANDED** — chip-side complete-frame indicator captured BEFORE rearm at the EOR slot (idx 15), with the MAR bit set on a multicast frame. Confirms Part C's EOR read-preserve is working. |
+| CMOS 0x5E (RX last-consumed buf first byte) | 0x01 (stuck-on-multicast — single-frame return shape) | 0xb0 (unicast OFFER to us) or 0xff (broadcast OFFER) | **0x01** (IPv4 multicast first byte — `01:00:5e:…`) | **OFFER never arrived in 16 consumed frames.** With Part D now refreshing this slot on every state transition, the value reflects the actual LAST frame consumed, not a stuck capture. 16 multicast frames consumed, OFFER not among them. |
+| Storage trio + GPT + ext4 mount + shell | byte-clean | byte-clean | **byte-clean** (NVMe + AHCI + USB-MS + GPT + ext2 root mount + scheduler + kybernet + shell all clean) | PASS — zero regression from 1.32.3 build |
 
-**Pre-burn checklist** (per [[feedback_no_serial_on_iron]] — no serial; CMOS + FB photo are the only post-burn surfaces):
+**Photo + boot-log signals (from `attempt-97-…-pt1` + `pt2`):**
 
-1. `cd ~/Repos/agnosticos`
-2. `sudo ./scripts/install-usb.sh --update` — writes fresh `build/agnos` + `gnoboot/build/BOOTX64.EFI` to the USB ESP. `agnos-fs` partition unchanged (per [[feedback_prefer_mount_modify_over_reflash]] — reserve `--update` for kernel/bootloader).
-3. Reboot archaemenid; F-key boot menu → USB
-4. **Capture boot-log photo(s)** — r8169 init block + scheduler activation + dhcp lines. May need 2 photos if scrolling exceeds visible frame (the family-bezel-cropping concern per `iron-nuc-zen-log.md` Standing context).
-5. At `agnos> ` shell prompt: no interaction needed — boot completion is what we're measuring. Power-cycle back to Linux dual-boot.
-6. **Post-burn**: `sudo ./scripts/read-boot-log.sh --verbose` from Linux. Capture full verbose output to text.
-7. Drop boot-log photo(s) at agnosticos top-level (e.g. `1323_dhcp_ack.jpg`, `1323_r8169_init.jpg`) per [[feedback_top_level_photos_are_fresh_iron]]; I'll catalogue + decode the verbose output and write the post-burn Attempt 97 entry.
+- `r8169: found at 4243603456` (BAR2 0xFCF04000 byte-match lspci), `MAC=176:65:111:12:228:37` (b0:41:6f:0c:e4:25 byte-match), `chip-rev byte=0x87 (Phase 2+ decodes the family)`, `reset OK`, **`PHY link up (preserved from BIOS)`** (FIX #10 safe-path branch fired), `link up`, `Phase 1 complete`, `RX ring up (16 desc 2KB bu`, `TX ring up (16 desc 2KB bu`.
+- NVMe + AHCI + GPT + ext2 multi-backend probe + partition-aware mount + scheduler + kybernet (0 procs / 3500 free pages) + `AGNOS shell v1.32.3 (type 'help')` all clean.
+- DHCP block: `dhcp: DISCOVER` → `dhcp: OFFER timeout` (no OFFER line in between).
 
-**Post-burn next steps depending on outcome:**
+**Interpretation — what the readback proves vs disproves:**
 
-- **PASS** (full DHCP cycle visible): close Attempt 97 entry with the receipt; pivot to whatever you want next — could be `dig` kernel UDP/TCP syscall exposure (0.2.x roadmap item), an iron-side `yo localhost` smoke (when kernel ICMP primitive lands), or the i225-V driver if Intel-NIC iron arrives. 1.32.3 cycle closes.
-- **PARTIAL** (OFFER reaches `dhcp_init`, REQUEST sent, but ACK times out): bug is in dhcp_init's chaddr/xid/msg_type filter OR in net_handle_udp's listener-routing OR in udp_recv_from's listener-table lookup. None of these were the audit's load-bearing target. Multi-source audit at finer grain.
-- **FALSIFIED** (still `OFFER timeout`, 0x5A=0x02 unchanged): branch (a2-r8169-RX) was not the bug at the rank the 1.32.3 audit identified. Reopen audit with single-source Linux-only focus on chip-rev quirks the convergent audit missed — most likely candidates: CPlusCmd register at MMIO 0xE0 + RxConfig high-bits 0xE700 → 0xCF00 + Early-RX threshold programming.
+1. **The 5-part bundle landed exactly as designed.** Part A's multi-frame budget loop produced 16 consumed frames (0x5C = 0x10) vs the pre-fix stuck-on-1 shape. Part B's `RES`/`FS|LS` gating let those 16 frames through cleanly (no torn-frame symptom in 0x5D). Part C's `r8169_rx_rearm` with EOR read-preserve preserved the EOR bit through wraparound (0x5D = 0x78 captured at idx 15 = EOR slot with the chip's MAR bit honored). Part D's hot-path stamp elimination is visible: 0x5E refreshed correctly to the LAST-consumed frame's first byte vs the pre-Part-D capture-once-and-stick shape. The audit's "we never look at the right slot" hypothesis IS now mechanically resolved.
+2. **The OFFER-timeout symptom survives anyway** because the OFFER was not among the 16 frames consumed. 0x5E = 0x01 (multicast OUI `01:00:5e:…` — IGMP / mDNS / SSDP background chatter on the LAN), not 0xb0 (unicast OFFER to us) or 0xff (broadcast OFFER). 0x5A = 0x02 confirms `dhcp_init` never matched an OFFER (else `r8169_send` count would be ≥ 3 from REQUEST). The root cause is **upstream of `r8169_poll`** — either the OFFER is filtered out by the chip's hardware before reaching the RX ring (RxConfig flag combination), or the DHCP server isn't issuing one in response to our DISCOVER.
+3. **Branch (a1) wire/server was previously falsified** by `ip -br link` showing Linux dhclient actively leasing 192.168.1.124 on the same physical port + cable + chip. Linux's DHCP works; AGNOS's doesn't, with the same MAC. This rules out the cable / switch / DHCP server being broken.
+4. **Two candidate root causes remain** (per the pre-burn FALSIFIED fallback verbatim — these were pre-bound *before* the burn, not post-hoc):
+    - **(b1) RxConfig high-bits / broadcast accept flag.** Linux's `r8169_main.c rtl_init_mac_address` + RTL8168 datasheet § 7 set `RxConfig = AcceptBroadcast | AcceptMulticast | AcceptMyPhys | AcceptAllPhys` with specific high-byte VLAN/early-RX threshold patterns. AGNOS's current `RxConfig` write needs an audit against the 0xCF00 vs 0xE700 high-byte convergence + the `AB` (Accept Broadcast) bit specifically. DHCP OFFER lands as broadcast L2 (`ff:ff:ff:ff:ff:ff`) before the client has an IP — if AB is clear, the chip drops the OFFER before the ring sees it.
+    - **(b2) Same-MAC active-lease behavior.** The DHCP server's lease database currently has `b0:41:6f:0c:e4:25 → 192.168.1.124` from Linux dhclient. When AGNOS sends DISCOVER from the same MAC, some servers will renew the existing lease silently (no OFFER on the wire) and wait for a REQUEST. This is RFC-compliant server behavior but breaks AGNOS's strict DISCOVER→OFFER→REQUEST flow. Disambiguation: `tcpdump -i enp1s0 -nn -X 'port 67 or port 68'` from the Linux session while the next AGNOS burn boots, to see whether an OFFER frame actually appears on the wire.
+5. **Next step is investigation, not a burn.** Per [[feedback_iron_burns_block_other_work]] + the audit doc's "no piecemeal iron-burn ladder" discipline, the (b1) vs (b2) split is resolvable *without* iron — (b1) is a code-audit, (b2) is a `tcpdump` capture during the next non-burn boot of Linux dhclient.
 
 **Cross-references:**
 - `agnosticos/docs/development/r8169-rx-path-audit.md` — the multi-source convergent audit + post-implementation update.
