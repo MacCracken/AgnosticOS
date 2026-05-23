@@ -2658,6 +2658,129 @@ agnos>
 
 ---
 
+### Attempt 94 — agnos 1.32.1 PHY init + CMOS discriminator instrumentation iron burn 2026-05-22 → PARTIAL PASS (r8169 **NOT** the cause of `OFFER timeout` — bite-B CMOS readback falsifies H7 + H8 directly; bite C's `r8169_phy_init` autoneg-completion poll has a BMSR-latching-low false-negative bug; OFFER-timeout root cause moves UPSTREAM of the NIC — DHCP server reachability OR client-side `udp_recv_from` / OFFER-match in `net.cyr`)
+
+First iron burn of agnos 1.32.1. Bites B (CMOS-bank discriminator stamps at slots 0x58-0x5F, ~50 LOC in `r8169.cyr` + ~30 LOC in `read-boot-log.cyr`) and C (`r8169_phy_init` MDIO + autoneg poll, ~85 LOC in `r8169.cyr`, claimed OpenBSD-converged) landed in commit `b12e25a` ("audit, instrumentation, and attempted fix"; 1.32.0 → 1.32.1 version bump in the same commit). Build size 601,392 → 603,784 B (`TCP_LISTEN_SMOKE=1`, +2,392 B, ~80 LOC effective). Audit doc bite A (§ 10.1-10.8 of [`r8169-iron-burn-audit.md`](r8169-iron-burn-audit.md)) also landed in the same commit. `scripts/test.sh` 4/4 PASS pre-burn.
+
+**Initial framing (now superseded):** the first draft of this entry (this morning's write-up immediately after the FB photo landed, before the CMOS readback) characterized the burn as "H1/H7/H8 not yet disambiguated" and treated the 0x5C-0x5F slots as the missing-evidence layer. The user ran `sudo ./scripts/read-boot-log.sh --verbose` ~30 min later; the readback **disambiguates the audit § 10 hypothesis surface directly** and the framing reversed. r8169 is functional; the audit pointed at the wrong layer; OFFER-timeout root cause is upstream of the NIC. Receipts below.
+
+**Build under test:** agnos **1.32.1** (build `603,784 B` with `TCP_LISTEN_SMOKE=1`; cyrius 6.0.1 toolchain unchanged). gnoboot 0.4.2 unchanged. NVMe + AHCI carves byte-identical to Attempts 91/92/93.
+
+**Verbatim chain on iron (tail crop — `msc:` block through shell prompt):**
+
+```
+msc: registered as tertiary block_dev (slot 2, 252051456 LBAs x 512B)
+msc: slot 2 LBA0 first 8 bytes: 0 0 0 0 0 0 0 0
+gpt: present, first=34 last=3907029134 parts=3/128 hdr-CRC-OK arr-CRC-...
+partitions (3 active / 128 reserved):
+  [0] EFI System  LBA 2048-2099199 (1024 MiB)
+  [1] (unknown type) LBA 2099200-3898638335 (1902607 MiB)
+  [2] Linux FS agnos-fs LBA 3898638336-3907026943 (4096 MiB)
+VFS initialized
+ext2: probe matched backend=2 partition_lba=3898638336
+ext2: mounted (blocksize=4096, inode_size=256, inodes_per_group=8192)
+Heap: 16416736 16420736 16420864
+SYSCALL/SYSRET initialized
+Stack canary initialized
+Interrupts enabled
+Timer ticks before sched: 6
+Activating scheduler...
+dhcp: DISCOVER
+dhcp: OFFER timeout
+tcp_listen smoke: start
+tcp_listen(8080) lid=0
+tcp_listen smoke: no connection within timeout
+tcp_listen smoke: done
+Launching kybernet...
+kybernet: starting init
+kybernet: 0 processes
+kybernet: 3500 free pages
+kybernet: launching shell
+AGNOS shell v1.32.1 (type 'help')
+agnos>
+```
+
+**What this confirms on iron:**
+
+- ✅ **bites B+C build is the one burned**: shell banner `v1.32.1` (vs `v1.32.0` at Attempts 92/93) — proves the post-bite-B+C kernel ran on iron, not a stale-stick image. (The wrong-photo upload at first paste — `1321_Issue_Still.jpg`, showing `v1.32.0` — was an Attempt 93 photo from the user's phone gallery; the corrected upload `1321_logs_proper.jpg` is the real Attempt 94 still.)
+- ✅ **Storage trio + GPT + ext4 mount + scheduler + DHCP-gate-fix + tcp_listen + kybernet + shell all byte-clean.** No regression from Attempts 91/92/93. Same `partition_lba=3898638336` / `blocksize=4096` / `inode_size=256` / `inodes_per_group=8192` ext4 mount on the NVMe `agnos-fs` p3 carve.
+- ✅ **DHCP gate fix still holding** — `dhcp: DISCOVER` line still egresses through the r8169 path post-PHY-init. That re-validates the `vnet_active != 0 || nic_ready() != 0` predicate from the Attempt 92 → 93 same-day fix at `main.cyr:655`.
+- ✅ **r8169 is FUNCTIONAL on archaemenid.** Bite-B CMOS readback (next section) carries direct evidence that TX descriptors get consumed and RX DMA captures real bytes from the wire. The audit § 10 H1/H7/H8 framing pointed at the wrong layer.
+
+**CMOS 0x58-0x5F discriminator readback (bite B's reason for existing):**
+
+```
+CMOS[0x58] r8169 probe-done sentinel            = 0x01   ← probe ran to completion
+CMOS[0x59] r8169 phy_init outcome enum          = 0x02   ← decoder says "autoneg timeout"
+CMOS[0x5A] r8169 TX send count (saturating)     = 0x02   ← r8169_send fired twice
+CMOS[0x5B] r8169 TX desc 0 high byte            = 0x30   ← FS+LS set, OWN=0 (cleared)
+CMOS[0x5C] r8169 RX poll count (saturating)     = 0xFF   ← poll loop alive, >=255 invocations
+CMOS[0x5D] r8169 RX desc 0 high byte            = 0x80   ← OWN=1 (re-armed for next packet)
+CMOS[0x5E] r8169 RX desc 0 buf first byte       = 0x01   ← non-zero, DMA captured a real byte
+CMOS[0x5F] r8169 reserved                       = 0x5A   ← uninitialized noise (expected)
+```
+
+Hypothesis verdicts per the bite-B decoder + audit § 10 cross-walk:
+
+| Hypothesis | Pre-burn rank (audit § 10) | Bite-B evidence | Verdict |
+|---|---|---|---|
+| **H8 — RX OWN stuck / RX never wrote** | downstream of H1 (§ 10.4) | 0x5E = 0x01 (non-zero). The bite-B decoder line at `read-boot-log.cyr:492` reads literally: *"Non-zero = DMA visible at some point (H8 falsified; OWN=1 at 0x5D = re-armed)."* RX ring is being walked (0x5C saturated at 0xFF), and DMA put a real byte into RX desc 0's buffer. OWN=1 at 0x5D = ring re-armed after read, not "never written." | **❌ FALSIFIED on iron.** |
+| **H7 — TX OWN stuck** | downstream of H1 (§ 10.3) | 0x5B = 0x30 → high nibble 0x3 in the status word's top byte = FS (bit 29) + LS (bit 28) set, OWN (bit 31) cleared. The decoder's H7-fires patterns are 0x80 (OWN only) or 0xB0 (OWN+FS+LS = wrote-but-never-cleared); neither present. NIC consumed the descriptor and gave it back. 0x5A = 2 TX sends → DHCP DISCOVER sent + at least one retry. | **❌ FALSIFIED on iron.** |
+| **H1 — PHY not configured / no link** | TOP candidate (§ 10.2) | 0x59 = 2 decodes as "autoneg timeout" — *but* this is contradicted by every other slot: TX worked (0x5A=2, 0x5B=0x30), RX DMA captured a real byte (0x5E=0x01), poll loop saturated (0x5C=0xFF). A truly down-link PHY would have **none** of those signals. The "autoneg timeout" enum is a **false negative from bite C's polling logic**, not a PHY failure. Real link is up. | **❌ Surface signal is a bite-C bug** (see § *Bite C BMSR-latching-low diagnosis* below). |
+
+**Bite C BMSR-latching-low diagnosis (the actual bug bite C introduced):**
+
+IEEE 802.3 §22.2.4.2 defines BMSR (PHY register 0x01) **bit 2 (Link Status) as latching-low** — once link drops, the bit stays 0 even after link comes back, until the host reads BMSR and the read latches the new live value. The standard double-read pattern: read once to clear the latch, read again to get the actual current link state. **Linux `r8169_phy_config` + OpenBSD `re_phy_init` + FreeBSD `re_miibus_readreg` all read BMSR twice for this reason.**
+
+Bite C's `r8169_phy_init` (claimed OpenBSD-converged) appears to read BMSR ONCE per poll iteration. On a cold-boot PHY that's been powered-down through the BIOS handoff, BMSR bit 2 starts latched-low; the first 300 reads inside the 3-second autoneg-poll loop all return 0 because they're sampling the latched stale state, not the live state. The 301st read (after `r8169_phy_init` already gave up and stamped 0x59=2) would have returned 1 — and clearly does, since by the time DHCP DISCOVER goes out a few hundred ms later, the link is functional enough to egress frames and receive DMA.
+
+This needs to be confirmed against the actual `r8169.cyr:186-263` source against the OpenBSD `re_phy_init` reference shape — line-by-line, in the next-cycle audit. Provisional fix shape: double-read BMSR in the poll loop, OR extend timeout from 300 × 10ms to 500 × 10ms (Linux uses 5s), OR (best) consume `MII_BMSR` per Linux's `genphy_update_link` pattern — read BMSR, discard, read BMSR again, mask bit 2.
+
+**Where the OFFER timeout actually lives — moved upstream of the NIC:**
+
+With r8169 confirmed functional and bite C's PHY-init outcome enum invalidated as a signal, the `dhcp: OFFER timeout` failure mode has to be one of:
+
+1. **No DHCP server reachable on archaemenid's current LAN segment.** Simplest hypothesis. Need user confirmation: is the cable plugged into a managed switch with DHCP relay / router with DHCP server, or into a dumb hub / direct PC link?
+2. **OFFER arrives at the NIC but `udp_recv_from` doesn't match it.** The DHCP client opens a UDP listener on port 68 (`udp_bind(68)` per bite F semantics) and waits for the server reply on (src_port=67, dst_port=68). Possible mismatches: (a) listener bound to wrong port; (b) source-port matching too strict (some servers reply from port 67, some from ephemeral); (c) BOOTP `xid` mismatch in the OFFER parser (we generate an `xid` in DISCOVER and require the same `xid` on OFFER per RFC 2131 §4.1).
+3. **OFFER arrives but the BOOTP magic-cookie / msg-type parse fails.** Standard `99.130.83.99` cookie at byte offset 236 + option 53 = 2 (OFFER). If our parser walks options from the wrong offset, the OFFER gets silently dropped.
+4. **OFFER arrives but `net.cyr` IP demux drops it.** With `net_ip = 0.0.0.0` pre-lease, broadcast OFFERs (255.255.255.255 → 255.255.255.255 with the client MAC in BOOTP `chaddr`) must be accepted; if our IP-ingress filter requires `dst_ip == net_ip`, the OFFER never reaches the UDP layer.
+5. **DHCP client retransmit / timeout interaction.** RFC 2131 §4.4.1 requires exponential backoff (DISCOVER every 4s / 8s / 16s …); our `dhcp_init` timeout window may be shorter than the server's response latency on a cold archaemenid boot.
+
+End-to-end audit landing as a separate doc — `dhcp-end-to-end-audit.md` — per user direction + [[feedback_iron_burns_block_other_work]] + [[feedback_redesign_dont_reinvent]]. Multi-source convergent against Linux `net/ipv4/ipconfig.c`, OpenBSD `dhclient`, Haiku, and RFC 2131. Will trace every wire-touching line from `dhcp_init` through `r8169_send` and back through `r8169_poll` + ingress demux + `udp_recv_from`.
+
+**Status against rubric:**
+
+- **Full PASS:** ❌ — DHCP cycle not complete (`OFFER timeout` persists).
+- **bites-B+C-build-on-iron verification PASS:** ✅ — shell banner `v1.32.1` baked-in string confirms the post-bump binary ran. Sweep build-freshness check (per [[feedback_build_freshness_is_mine]]) is clean.
+- **Bite B (CMOS discriminator instrumentation):** ✅ **OBJECTIVE ACHIEVED.** This is what bite B existed for. The 0x58-0x5F readback delivered direct hypothesis disambiguation: H7+H8 falsified, "H1" surface signal traced to bite-C polling-logic bug rather than PHY failure. **Bite B was the most valuable instrumentation work of the cycle — it caught the audit pointing at the wrong layer.**
+- **Bite C (PHY init):** ⚠️ **CARRY-FORWARD with bug.** Code is in the boot chain (probe-done sentinel = 1 → `r8169_phy_init` was reached + ran to completion), but the autoneg-completion poll has a BMSR-latching-low false-negative. Fix shape known (double-read BMSR), needs source diff vs OpenBSD `re_phy_init` to confirm exact divergence point. Not blocking on functional grounds (link is up regardless of the print).
+- **r8169 functional verification:** ✅ — TX took the descriptor, RX captured DMA, poll loop ran continuously. NIC works.
+- **OFFER timeout disambiguation:** ⚠️ — pending end-to-end DHCP audit doc + LAN-side reachability confirmation from user.
+- **Storage trio + GPT + ext4 mount + scheduler + DHCP gate + tcp_listen + kybernet + shell:** ✅ no-regression byte-clean.
+
+**MVP gate posture:** unchanged. Closed beta gates on kernel + kybernet + agnoshi typeable on iron — green since Attempt 68 / 1.30.9 and still green at Attempt 94 (shell prompt reached, byte-clean).
+
+**Photo:**
+
+- [`iron-nuc-zen-photos/attempt-94-agnos-1.32.1-phy-init-instrumentation-offer-timeout-persists.jpg`](iron-nuc-zen-photos/attempt-94-agnos-1.32.1-phy-init-instrumentation-offer-timeout-persists.jpg) — boot-tail crop starting at `msc: registered as tertiary block_dev` (slot 2 / WD Blue SA510 SATA — wait, that's the AHCI port-0 string, this msc line is the USB-MS tertiary registration); GPT enumeration (3 partitions, EFI / unknown-type / Linux FS agnos-fs); ext4 mount; SYSCALL/SYSRET + stack canary + interrupts + scheduler activation; `dhcp: DISCOVER` → `dhcp: OFFER timeout`; tcp_listen smoke (start/listen/no-connection/done); kybernet (init / 0 procs / 3500 free pages / launching shell); `AGNOS shell v1.32.1` → `agnos>` prompt.
+
+**Sources:**
+
+- Photo above.
+- agnos `kernel/core/r8169.cyr:186-263` (bite C `r8169_phy_read` / `r8169_phy_write` / `r8169_phy_init` MDIO helpers + autoneg poll, OpenBSD `re_phy_init`-converged).
+- agnos `kernel/core/r8169.cyr:273+ 363+ 452+ 556+` (bite B CMOS stamp sites — probe-done sentinel + PHY outcome enum + TX / RX counters + descriptor high bytes + RX buf 0 first byte).
+- agnosticos `scripts/src/read-boot-log.cyr:249-262, 469-497` (bite B decoder labels for slots 0x58-0x5F — currently in `--verbose` path only).
+- [`r8169-iron-burn-audit.md`](r8169-iron-burn-audit.md) § 10.1-10.8 (bite A audit extension — Attempt 92+93 evidence re-rank + multi-source convergent line-by-line vs current code + per-hypothesis corrective-patch shape + CMOS slot range plan).
+- Attempt 93 entry above (pre-burn discriminator + audit § 10 reachability state).
+
+**Awaiting user direction:** before proposing Attempt 95 or any code, the **end-to-end DHCP wiring audit** lands as a separate doc (`dhcp-end-to-end-audit.md`) — every wire-touching line from `dhcp_init` build → UDP/IP egress → ethernet frame → `nic_send` → `r8169_send` → wire, then back through `r8169_poll` → ingress demux → UDP demux → `udp_recv_from` → DHCP OFFER parser → option-blob walk. Multi-source convergent vs Linux `net/ipv4/ipconfig.c` / OpenBSD `dhclient` / Haiku / RFC 2131. Bite C BMSR-latching-low source diff folded into the same doc. Per [[feedback_iron_burns_block_other_work]] no new burn proposed until audit lands and user reviews.
+
+**Post-audit follow-through (2026-05-22 same-day):** user direction *"fix all the issues please"* → six fixes from [`dhcp-end-to-end-audit.md`](dhcp-end-to-end-audit.md) landed IN the 1.32.1 cycle window (no version bump per [[feedback_no_unprompted_version_bumps]] + user note *"all still in 1.32.1 cycle work, most likely close after burn either way"*). FIX #1 `nic_mac()` backend-agnostic MAC accessor + 7 net.cyr egress sites threaded; FIX #2 `net_init(0,0,0)` on iron path; FIX #3 `r8169_phy_init` non-blocking kick; FIX #4 OFFER+ACK chaddr validation per RFC 2131 §4.1.1; FIX #5 timeout 200→800 iter; FIX #6 RxConfig named-constant + datasheet citation. Build 603,784 → 604,096 B prod / 604,904 B TCP_LISTEN_SMOKE. `scripts/test.sh` 4/4 + `ext2-smoke.sh` 5/5 + 5/5 regression cross-check + `tcp-listen-smoke.sh` 1/2 (matches pre-fix baseline — scenario 1 is iron-only SLIRP-RX gap). **Attempt 95 PENDING IRON BURN** — closes 1.32.1.
+
+**Related debt surfaced this burn:** `scripts/src/read-boot-log.cyr` default-mode preamble + body still display the **agnos 1.30.12 / Attempt 77 prep** sweep (true-font swap; xhci silent-absorb slots 0x77 / 0x78 / 0x79 / 0x81 / 0x84 / 0x86 / 0x87) — three minor cycles + nine attempts stale. The new r8169 0x58-0x5F discriminator block is hidden behind `--verbose`, exactly where it's least likely to be checked first. Per [[feedback_script_preambles_are_forward_looking]] this is the canonical "script preamble written before the burn it labels" trap. Refactor: swap the default-mode current-sweep block to the r8169 NIC post-mortem and demote the xhci silent-absorb summary to the verbose path. Out-of-scope this turn; offered separately.
+
+---
+
 ## Conventions for future entries
 
 - One H3 (`### Attempt N — date HH:MM TZ → STATUS`) per attempt.
