@@ -34,7 +34,31 @@ later entry pointing back. Status is one of `FAIL` / `PASS` /
 >
 > **State.md cycle headers link to these anchors via `iron-nuc-zen-log.md#tracker-1322-cycle` style.**
 
-### Tracker: 1.32.2 cycle (OPEN — Attempt 96 FALSIFIED the 4-FIX bundle; iron CMOS proves r8169 NIC engines healthy; QEMU pcap exposes a SEPARATE bug: virtio_net TX never reaches the wire — virtio legacy layout suspected; two independent bugs surface same shell-level symptom) {#tracker-1322-cycle}
+### Tracker: 1.32.3 cycle (OPEN — virtio-net modern rewrite VALIDATED on QEMU; r8169 RX-path audit + 3-part fix landed; iron Attempt 97 pending user-authorized burn) {#tracker-1323-cycle}
+
+**Hypotheses tested**:
+1. A spec-correct modern virtio-net driver mirroring `virtio_blk.cyr`'s proven shape will make QEMU DHCP work end-to-end.
+2. The iron r8169 OFFER-timeout (Attempts 93-96) is a code bug in AGNOS's RX path, not a wire/server problem.
+3. The load-bearing AGNOS-side bug is `r8169_poll` returning after a single descriptor check.
+
+**Results**:
+1. **VALIDATED on QEMU.** Full DHCP cycle (DISCOVER → OFFER 10.0.2.15 → REQUEST → ACK gw=10.0.2.2 mask=255.255.255.0) + TCP accept-success on first try. Pcap (1915 B, 5 frames) shows DISCOVER + SLIRP OFFER + REQUEST + SLIRP ACK + gratuitous ARP.
+2. **CONFIRMED.** `ip -br link` on archaemenid's Linux session 2026-05-23 shows enp1s0 (r8169 chip, MAC b0:41:6f:0c:e4:25) actively leased at 192.168.1.124/24 from 192.168.1.1. Wire + server + chip all working under Linux on the same physical port. Branch (a1) FALSIFIED; OFFER-timeout root cause is AGNOS RX-path code.
+3. **AWAITING IRON ATTEMPT 97.** Multi-source audit (Linux v6.6 `rtl_rx` lines 4417-4501 + OpenBSD `re_rxeof` lines 1576-1710 + FreeBSD `re_rxeof` lines 3451-3651 + RTL8168 datasheet § 6.7) landed at `r8169-rx-path-audit.md`. Verdict: load-bearing bug is `r8169_poll`'s single-frame return — CMOS 0x5E=0x01 was an IPv4 multicast first byte (`01:00:5e:…`), not the OFFER's `0xb0` unicast. Chip is healthy; we just never look at the right slot. **5-part fix landed in one bite** (no piecemeal iron-burn ladder): Part A multi-frame budget loop + Part B RES/FS|LS gating + Part C rx_rearm helper + Part D CMOS-stamp hot-path elimination (audit S-1, removes ~8 µs per-poll tax) + Part E RxMaxSize Linux-converge (audit S-2, 0x05F3 → 0x4000); ~50 LOC net; build 616,744 → 617,000 B (+256 B); test.sh 4/4 + ext2-smoke 5/5 + tcp-listen-smoke QEMU all clean.
+
+**Iron Attempt 97 — expected outcomes**:
+
+| Signal | Pre-fix (Attempt 96) | Post-fix target | Falsification |
+|---|---|---|---|
+| Boot block | reaches `agnos> ` with `dhcp: OFFER timeout` | reaches `agnos>` with `dhcp: ACK ip=192.168.1.X gw=192.168.1.1 mask=255.255.255.0` | If still `OFFER timeout`: re-rank audit findings; investigate S-1 (CMOS-stamp tax) + S-2 (RxMaxSize disable) |
+| CMOS 0x5E | 0x01 (IPv4 multicast first byte) | 0xb0 (our MAC first byte, OFFER unicast) OR 0xFF (broadcast OFFER) | If 0x5E stays 0x01 → fix didn't apply OR multicast still dominates by the time of reading; not necessarily a falsification |
+| CMOS 0x5A | 0x02 (DISCOVER + retransmit) | 0x03+ (DISCOVER + REQUEST + retransmit) once OFFER consumed | If 0x5A stays 0x02 → REQUEST never sent → OFFER never reached dhcp_init's loop |
+
+**Linked burns**: Attempt 96 (FALSIFIED 4-FIX bundle on iron, evidence base for branch (a2) RX-path investigation). Attempt 97 pending.
+
+**Linked docs**: `agnosticos/docs/development/virtio-net-legacy-layout-audit.md` + `r8169-rx-path-audit.md`; CHANGELOG.md § [1.32.3]; state.md § *Last refresh*.
+
+### Tracker: 1.32.2 cycle (CLOSED — 4-FIX bundle insufficient on iron; pivoted to QEMU which exposed virtio_net as independent bug — see 1.32.3 tracker above for closure) {#tracker-1322-cycle}
 
 **Hypothesis tested**: **FIX #10** (`r8169_phy_init` reads BMSR.LinkStatus first; only kicks `BMCR.ANRESTART` if link is actually down) is the load-bearing fix for the Attempt 94 → 95 NIC engine regression. Supporting FIXes #7 (IDR0..IDR5 write-back), #8 (UDP buffer 1024-byte sizing), and #9 (DHCP midpoint retransmit) round out the upstream/downstream gaps surfaced by the full-stack sweep.
 
