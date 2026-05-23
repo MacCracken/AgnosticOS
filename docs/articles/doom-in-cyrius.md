@@ -85,6 +85,18 @@ The numbers above are the April 8–13 cut. Refreshed 2026-05-09.
 
 ---
 
+**Extension — 2026-05-22**. Two more weeks past the 2026-05-09 refresh; both the compiler and the kernel kept moving while DOOM stayed parked at the 5.7.48 cluster.
+
+**Cyrius v6.0.1.** v5.x closed at v5.11.69 on 2026-05-19 ("what the language IS" arc — typed-simd ABI, REAL TYPE SYSTEM, struct-byval ABI, three completed compiler arcs in v5.10.x alone). v6.0.0 opened same-day with the cyrc → cybs and cc5 → cycc rename ceremony and the "what the language GAINS" arc (RISC-V rv64, PIE, closures, Class-B FFI, bare-metal target). v6.0.1 fixed a UEFI-emit `fncallN` regression caught within hours of the 6.0.0 cut.
+
+**AGNOS kernel iron-validated.** The MVP gate (kernel + kybernet + agnoshi typeable on iron) fell at Attempt 68 on 2026-05-18 — the cause was a Cyrius gvar-init-order issue in two lines of kernel banner code, surfaced after 38 burns of chasing a phantom xHCI issue (the lesson is captured in `kernel.cyml/the_mvp_gate_at_attempt_68`). Twenty-five iron burns later (Attempt 93 / v1.32.0), the MVP gate is still green. The 1.31.x storage cycle landed NVMe + AHCI/SATA + USB Mass Storage + ext2/ext4 read-only including 64BIT support; iron debuts on archaemenid's NVMe (Crucial P3 2 TB), SATA (WD Blue SA510 2 TB), USB MS (Silicon Motion stick). The 1.32.x networking cycle is in flight — Attempt 93 verified the DHCP gate predicate fix on iron (`dhcp: DISCOVER` egresses through the r8169 path for the first time).
+
+**For DOOM specifically — the pin graduated.** cyrius-doom is at **v0.27.3 on cycc 6.0.1** as of 2026-05-21. The 5.7.48 hold cluster mentioned in the 2026-05-09 paragraph above is closed; doom rolled through v5.9.x catchup + v5.10.x type-system work + v5.11.x stdlib annotation arc + v6.0.x cycle-open onto the current pin. v0.27.2 retrofit the public-fn surface with `: i64` annotations to clear the v5.10.x REAL TYPE SYSTEM call-site type checking gate. v0.27.3 added `Result<T, E>` adoption at the WAD IO/parse boundary — `enum WadError` with six variants, `wad_read_lump_r(idx)` Result-returning parallel to the sentinel-returning original, `?` propagation operator + exhaustive `match` at the main-loop boundary. **First use of v5.8.x sum types in doom's own code.** The fold pattern that grew sandhi/vani/niyama into the stdlib is now applied inside cyrius-doom's own typed-error vocabulary.
+
+**What's left before sprint 3.** The pin-graduation work isn't the bottleneck anymore — type-system adoption is. The compiler-optimization arc (O1-O6) is still pending the full-frame benchmark re-run on the post-arc compiler, and the typed-error rollout has more boundaries to convert (lump-table walk, sector/linedef parse, palette load). After that — and only after — does sprint 3's Black Book v1.0 audit gate open. The kernel that DOOM will eventually run on is now real on real silicon (the MVP gate + storage trio + networking arc above), so the "userland-only Cyrius binary → run under kybernet on iron-booted AGNOS" path is no longer platform-work; it's port-work, gated on cyrius-doom finishing its own sprint 3.
+
+---
+
 ## Related
 
 - [Building a Sovereign Compiler with Claude](sovereign-compiler-vs-brute-force.md) — how Cyrius got here

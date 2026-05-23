@@ -420,38 +420,41 @@ fn r8169_poll(buf, maxlen) {
 
 ### §10.5 — Discriminator instrumentation (bite B — CMOS-bank stamps)
 
-Per [[feedback_no_serial_on_iron]] + [[feedback_no_instrumentation_means_no_instrumentation]] (CMOS extended bank is the only iron-readable channel for non-`kprintln` state), the smallest discriminator set:
+Per [[feedback_no_serial_on_iron]] + [[feedback_no_instrumentation_means_no_instrumentation]] (CMOS extended bank is the only iron-readable channel for non-`kprintln` state). **Slot range pre-allocation check** (per [[project_archaemenid_cmos_map]] virgin scratch is 0x50-0x7F): grep over current kernel sources shows xhci_port.cyr + xhci.cyr already occupy 0x50, 0x52-0x57, 0x60-0x6F, 0x70-0x87. The **virgin gap is 0x58-0x5F** (8 contiguous slots between xhci's port-state range and xhci's USBLEGSUP/CCS range). r8169 takes 0x58-0x5F:
 
 | CMOS slot | Stamp condition | Decodes which hypothesis |
 |-----------|-----------------|--------------------------|
-| 0x60 | written = 1 at end of `r8169_probe()` after reset OK | sanity (probe completed) |
-| 0x61 | written = phy-init outcome: 0 = no PHY init done (current state), 1 = link up, 2 = autoneg timeout, 3 = PHY init code reached but BMCR write timed out | **H1 discriminator (after bite C's PHY init lands)** |
-| 0x62 | written = `r8169_send` invocation count (high byte; capped at 255 = many sends) | TX-side activity counter |
-| 0x63 | written = TX desc 0 OWN bit at moment of read-boot-log post-mortem: 0 = NIC cleared it (TX succeeded at least once), 1 = still NIC-owned (H7 fires) | **H7 discriminator** |
-| 0x64 | written = `r8169_poll` invocation count (high byte; capped at 255) | RX-side activity counter |
-| 0x65 | written = RX desc 0 OWN bit at post-mortem read: 0 = NIC wrote it (H8 falsified), 1 = NIC never wrote (H8 fires) | **H8 discriminator** |
-| 0x66 | written = first 8 bytes of RX desc 0 buffer (high byte of length field) — proves whether DMA happened even if OWN walking is wrong | H8 secondary (DMA happened-but-bit-stuck case) |
+| 0x58 | written = 1 at end of `r8169_probe()` after reset OK | sanity (probe completed; ground-truth that r8169 path ran at all) |
+| 0x59 | phy-init outcome enum: 0 = not attempted; 1 = link up (BMSR bit 2 = 1); 2 = autoneg timeout (BMSR bit 2 never set within poll budget); 3 = BMCR-write timeout (PHYAR bit 31 never cleared); 4 = BMSR-read timeout (PHYAR bit 31 never set on read direction); 0xFF = pre-init sentinel | **H1 discriminator (after bite C's PHY init lands)** |
+| 0x5A | `r8169_send` invocation count (saturating byte counter, 0xFF = ≥255 calls) | TX-side activity counter — proves how many times we tried to send |
+| 0x5B | TX desc 0 high status byte (bits 24-31) at first successful `r8169_send` return; post-mortem read shows whether NIC cleared OWN: 0x80 = OWN=1 still set (H7 fires), 0x00 = NIC processed (TX path works) | **H7 discriminator** |
+| 0x5C | `r8169_poll` invocation count (saturating byte counter, 0xFF = ≥255 calls) | RX-side activity counter — proves polling actually ran |
+| 0x5D | RX desc 0 high status byte (bits 24-31) at every poll; post-mortem read shows whether NIC ever wrote: 0x80 = OWN=1 still (H8 fires — never DMA'd), 0x00 = NIC wrote (H8 falsified) | **H8 discriminator** |
+| 0x5E | first byte of RX desc 0's buffer (low byte at buf_addr) — proves DMA happened even if OWN walking is wrong (Ethernet dest MAC byte 0 should be 0xFF for broadcast, 0xB0 for our MAC unicast, or 0x33 for IPv6 multicast — non-zero = DMA visible) | H8 secondary (DMA-happened-but-bit-stuck case) |
+| 0x5F | reserved | future r8169 stamps |
 
-Stamps written in two places:
-- After `r8169_probe()` returns: stamps 0x60 + 0x61.
-- Inside `r8169_send`: increment counter at 0x62; on first invocation after build, also stamp current TX desc state at 0x63.
-- Inside `r8169_poll`: increment counter at 0x64; on first OWN=0 transition stamp 0x65; opportunistically stamp 0x66 on first DMA-detect.
+Stamps written in three places:
+- After `r8169_probe()` returns success: stamp 0x58 (probe-done) + 0x59 set to 0 if PHY-init code not yet present, or to the phy-init outcome if bite C lands.
+- Inside `r8169_send` on entry: increment counter at 0x5A (saturating); on every call also re-stamp TX desc 0 high byte at 0x5B (last-known TX desc 0 state).
+- Inside `r8169_poll` on entry: increment counter at 0x5C (saturating); re-stamp RX desc 0 high byte at 0x5D and buf first-byte at 0x5E (last-known RX state).
 
-Read path: after iron burn, `scripts/read-boot-log.sh` already reads CMOS extended bank — extend with parse rules for 0x60-0x66.
+Re-using the existing `xhci_cmos_stamp(slot, val)` primitive defined at `kernel/arch/x86_64/usb/xhci_port.cyr:61-70` — the name is xhci-prefixed but the function body is a fully generic two-byte CMOS write (handles both the standard 0x70/0x71 channel for slot < 0x80 and the extended 0x72/0x73 channel for slot ≥ 0x80). Including `xhci_port.cyr` precedes `r8169.cyr` in `kernel/agnos.cyr` (lines 81 → 94), so the symbol is in scope at compile time. (Renaming to `cmos_stamp` is a deferred cross-cutting cleanup; not 1.32.1 scope.)
 
-**Estimated LOC**: ~30-60 LOC across `r8169.cyr` (six stamp sites) + ~5 LOC CMOS helper extension if `kcp_write` shape already covers the slot range.
+Read path: `scripts/read-boot-log.sh` already iterates CMOS extended bank — extend the slot decode table with 0x58-0x5F per the meanings above.
+
+**Estimated LOC**: ~30-60 LOC across `r8169.cyr` (~3-4 stamp sites total — `r8169_probe`, `r8169_send`, `r8169_poll`) + ~10 LOC in `read-boot-log.sh` for the slot decode.
 
 ### §10.6 — Corrective-patch shape per hypothesis (bite C)
 
 Order by probability + smallest-fix-first:
 
-1. **H1 fix (primary candidate)**: port BSD-converged minimum PHY init per § 10.2. Adds `r8169_phy_read` / `r8169_phy_write` MDIO helpers + `r8169_phy_init` call hooked into `r8169_probe()` after reset OK. **~80 LOC.** Discriminator: stamp 0x61 transitions from 2 (current "no PHY init done") to 0 = success → 1 = link up. Iron Attempt 94 outcome on success: `r8169: link up` prints between reset OK and Phase 1 complete; DHCP cycle completes (`DISCOVER` → `OFFER ip=…` → `REQUEST` → `ACK ip=…`).
+1. **H1 fix (primary candidate)**: port BSD-converged minimum PHY init per § 10.2. Adds `r8169_phy_read` / `r8169_phy_write` MDIO helpers + `r8169_phy_init` call hooked into `r8169_probe()` after reset OK. **~80 LOC.** Discriminator: **stamp 0x59 transitions from 0 ("not attempted") → 1 ("link up") on success** (or 2 = autoneg timeout, 3 = BMCR-write timeout, 4 = BMSR-read timeout on failure). Iron Attempt 94 outcome on success: `r8169: link up` prints between reset OK and Phase 1 complete; DHCP cycle completes (`DISCOVER` → `OFFER ip=…` → `REQUEST` → `ACK ip=…`).
 
-2. **H7 fix (only if discriminator stamp 0x63 = 1 after H1 fix lands)**: TX completion is genuinely stuck. Most likely culprits in order: (a) TPPoll write-width mismatch — currently `store8` to 0x38; verify against datasheet that this register is byte-writable vs requires `store16` / `store32`. (b) TX descriptor's buf_addr DMA mapping — verify the physical address survives translation. (c) NIC's TX TFA/TFD limits (TxConfig bits 10:8 = max DMA burst) — already programmed 0x03000700 = burst=7 (unlimited). **~10-30 LOC** depending on which culprit fires.
+2. **H7 fix (only if discriminator stamp 0x5B = 0x80 after H1 fix lands — TX desc 0 OWN never cleared)**: TX completion is genuinely stuck. Most likely culprits in order: (a) TPPoll write-width mismatch — currently `store8` to 0x38; verify against datasheet that this register is byte-writable vs requires `store16` / `store32`. (b) TX descriptor's buf_addr DMA mapping — verify the physical address survives translation. (c) NIC's TX TFA/TFD limits (TxConfig bits 10:8 = max DMA burst) — already programmed 0x03000700 = burst=7 (unlimited). **~10-30 LOC** depending on which culprit fires.
 
-3. **H8 fix (only if discriminator stamp 0x65 = 1 after H1 fix lands)**: RX completion is genuinely stuck. Same shape as H7 fix but RX-side. Most likely culprits in order: (a) RxConfig `0xE700 | AB | AM | APM` — verify the four `RxConfig` bits 6:8 (RX FIFO threshold) and 12:8 (MAX_DMA_burst); currently magic constant 0xE700. (b) RDSAR write-width — currently `store32` to 0xE4/0xE8 as 32-bit halves; verify against Linux's `rtl_set_rx_descriptor_base`. **~10-30 LOC.**
+3. **H8 fix (only if discriminator stamp 0x5D = 0x80 after H1 fix lands — RX desc 0 OWN never cleared AND stamp 0x5E = 0x00, meaning no DMA visible)**: RX completion is genuinely stuck. Same shape as H7 fix but RX-side. Most likely culprits in order: (a) RxConfig `0xE700 | AB | AM | APM` — verify the four `RxConfig` bits 6:8 (RX FIFO threshold) and 12:8 (MAX_DMA_burst); currently magic constant 0xE700. (b) RDSAR write-width — currently `store32` to 0xE4/0xE8 as 32-bit halves; verify against Linux's `rtl_set_rx_descriptor_base`. **~10-30 LOC.**
 
-If all three discriminators (0x61=success, 0x63=0, 0x65=0) and DHCP **still** times out: escalate to H5 (bus master not enabled correctly) or a deeper datasheet read of section 6.7 (RX/TX state machine semantics on this specific chip rev byte 0x87).
+If all three discriminators (0x59=1 PHY linked, 0x5B=0x00 TX cleared, 0x5D=0x00 RX written) and DHCP **still** times out: escalate to H5 (bus master not enabled correctly) or a deeper datasheet read of section 6.7 (RX/TX state machine semantics on this specific chip rev byte 0x87).
 
 ### §10.7 — Cycle ordering for 1.32.1
 

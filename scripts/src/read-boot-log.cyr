@@ -236,22 +236,30 @@ fn main(): i64 {
     var cr4hi  = cmos_read(84);  # 0x54  CR4 byte 2 (bits 16-23), Attempt-18+ diag (post-cr3-switch)
     var cr4pre = cmos_read(85);  # 0x55  CR4 byte 2 (bits 16-23), Attempt-19+ diag (pre-stac)
     # Repair (J), Attempt 23+: PMM-allocation byte-2 stamps from proc_create_address_space.
-    # Slots 0x56..0x5B = AS1 call's 6 pmm_alloc results (kernel PML4/PDPT/PD + KPTI user PML4/PDPT/PD).
-    # Slots 0x5C..0x61 = AS2 call's 6 pmm_alloc results, same order.
-    # Each slot = (phys_addr >> 16) & 0xFF. 0x00 = page < 0x10000 (kernel-PT range, smoking gun);
+    # Slots 0x56-0x57 = AS1 call's first 2 pmm_alloc results (kernel PML4 + PDPT) — STILL ACTIVE.
+    # Slots 0x58-0x5F = REPURPOSED 2026-05-22 for r8169 NIC post-mortem
+    #   (agnos 1.32.1 bite B — see r8169-iron-burn-audit.md § 10.5).
+    # Slots 0x5C-0x61 (former AS2 #1-#6) all retired — 0x5C-0x5F now r8169,
+    #   0x60 reused by xhci PORTPMSC (Repair R8), 0x61 unclaimed scratch.
+    # Each AS1 slot = (phys_addr >> 16) & 0xFF. 0x00 = page < 0x10000 (kernel-PT range, smoking gun);
     # 0x20+ = page >= 0x200000 (safe, above PMM's 2 MB watermark).
     var as1_pml4 = cmos_read(86);  # 0x56
     var as1_pdpt = cmos_read(87);  # 0x57
-    var as1_pd   = cmos_read(88);  # 0x58
-    var as1_upml4 = cmos_read(89);  # 0x59
-    var as1_updpt = cmos_read(90);  # 0x5A
-    var as1_upd  = cmos_read(91);  # 0x5B
-    var as2_pml4 = cmos_read(92);  # 0x5C
-    var as2_pdpt = cmos_read(93);  # 0x5D
-    var as2_pd   = cmos_read(94);  # 0x5E
-    var as2_upml4 = cmos_read(95);  # 0x5F
-    var as2_updpt = cmos_read(96);  # 0x60
-    var as2_upd  = cmos_read(97);  # 0x61
+
+    # r8169 diagnostic slots (1.32.1 bite B — Attempt 94+).
+    var r8169_probe_done   = cmos_read(88);   # 0x58  1 = r8169_probe completed
+    var r8169_phy_outcome  = cmos_read(89);   # 0x59  0=not attempted, 1=link up,
+                                              #        2=autoneg timeout, 3=BMCR-write
+                                              #        timeout, 4=BMSR-read timeout
+    var r8169_tx_count     = cmos_read(90);   # 0x5A  saturating TX send count
+    var r8169_tx_desc0_own = cmos_read(91);   # 0x5B  TX desc 0 high byte; 0x80 = OWN
+                                              #        stuck (H7), 0x00 = NIC processed
+    var r8169_rx_count     = cmos_read(92);   # 0x5C  saturating RX poll count
+    var r8169_rx_desc0_own = cmos_read(93);   # 0x5D  RX desc 0 high byte; 0x80 = OWN
+                                              #        re-armed, 0x00 = packet awaiting
+    var r8169_rx_buf0_byte = cmos_read(94);   # 0x5E  first byte of RX desc 0 buffer
+                                              #        (non-zero = DMA visible)
+    var r8169_slot5f       = cmos_read(95);   # 0x5F  reserved for r8169 future
     # Slots 0x62-0x6F + 0x60: xhci post-mortem (Attempt 36+, R10 expanded
     # the range 2026-05-16). Repurposed from the retired Repair-K/N mem-iso
     # block. Stamped by:
@@ -447,26 +455,44 @@ fn main(): i64 {
     println("    [0x55]=0x00 with kcp pinned at 0x18 = dump never reached (pre-21 cp_fb hang).");
     syscall(1, 1, "\n", 1);
 
-    # Repair (J), Attempt 23+: dump the 12 PMM-allocation stamps and interpret them.
+    # Repair (J), Attempt 23+: AS1 PMM-allocation stamps (slots 0x56-0x57 STILL ACTIVE).
+    # The 0x58-0x5B AS1 #3-#6 + 0x5C-0x5F AS2 #1-#4 slots were repurposed
+    # 2026-05-22 for r8169 NIC post-mortem (see r8169 block below).
     print_cmos_line("CMOS[0x56] AS1 pmm_alloc #1 (new_pml4 byte 2)  = ", as1_pml4);
     print_cmos_line("CMOS[0x57] AS1 pmm_alloc #2 (new_pdpt byte 2)  = ", as1_pdpt);
-    print_cmos_line("CMOS[0x58] AS1 pmm_alloc #3 (new_pd   byte 2)  = ", as1_pd);
-    print_cmos_line("CMOS[0x59] AS1 pmm_alloc #4 (u_pml4   byte 2)  = ", as1_upml4);
-    print_cmos_line("CMOS[0x5A] AS1 pmm_alloc #5 (u_pdpt   byte 2)  = ", as1_updpt);
-    print_cmos_line("CMOS[0x5B] AS1 pmm_alloc #6 (u_pd     byte 2)  = ", as1_upd);
-    print_cmos_line("CMOS[0x5C] AS2 pmm_alloc #1 (new_pml4 byte 2)  = ", as2_pml4);
-    print_cmos_line("CMOS[0x5D] AS2 pmm_alloc #2 (new_pdpt byte 2)  = ", as2_pdpt);
-    print_cmos_line("CMOS[0x5E] AS2 pmm_alloc #3 (new_pd   byte 2)  = ", as2_pd);
-    print_cmos_line("CMOS[0x5F] AS2 pmm_alloc #4 (u_pml4   byte 2)  = ", as2_upml4);
-    # NOTE: CMOS[0x60] is reused by R8 (xhci PORTPMSC of failed port) —
-    # decoded below in the xHCI block. The legacy AS2 print is intentionally
-    # omitted here to avoid two captions for the same byte.
-    print_cmos_line("CMOS[0x61] AS2 pmm_alloc #6 (u_pd     byte 2)  = ", as2_upd);
     println("  Repair (J) PMM scan: byte 2 of each pmm_alloc result.");
     println("    0x00            = page in [0x0000..0xFFFF] — KERNEL-PT RANGE, smoking gun.");
     println("    0x01..0x1F      = page in [0x010000..0x1FFFFF] — below 2 MB watermark, also bad.");
     println("    0x20..0xFF      = page >= 0x200000 — safe (above kernel reservation).");
-    println("    Any slot in [0x56..0x61] reading < 0x20 with kcp >= 0x18 = PMM bug confirmed.");
+    println("    AS1 #1+#2 (slots 0x56-0x57) reading < 0x20 with kcp >= 0x18 = PMM bug confirmed.");
+    println("");
+    println("agnos 1.32.1 bite B — r8169 NIC post-mortem (slots 0x58-0x5F):");
+    print_cmos_line("CMOS[0x58] r8169 probe-done sentinel            = ", r8169_probe_done);
+    println("    1 = r8169_probe completed (chip present + reset OK + phy_init reached).");
+    println("    0 = either no r8169 chip OR probe bailed out early (FB log will say which).");
+    print_cmos_line("CMOS[0x59] r8169 phy_init outcome enum          = ", r8169_phy_outcome);
+    println("    0 = not attempted (chip absent OR probe failed before phy_init).");
+    println("    1 = LINK UP — autonegotiation completed, PHY ready (H1 fix worked).");
+    println("    2 = autoneg timeout — BMSR.LinkStatus never set within 300 polls (H1 fires).");
+    println("    3 = BMCR-write timeout — PHYAR flag never cleared (MDIO write broken).");
+    println("    4 = BMSR-read timeout — PHYAR flag never set on read (MDIO read broken).");
+    print_cmos_line("CMOS[0x5A] r8169 TX send count (saturating)     = ", r8169_tx_count);
+    println("    Number of r8169_send invocations (0xFF = >=255). Expect >=1 if DHCP DISCOVER built.");
+    print_cmos_line("CMOS[0x5B] r8169 TX desc 0 high byte (post-mortem)= ", r8169_tx_desc0_own);
+    println("    0x80 = OWN=1 still set (H7 fires: NIC never processed the TX frame).");
+    println("    0x00 = NIC cleared OWN (TX path works, frame egressed to wire).");
+    println("    0xB0 = OWN+FS+LS — wrote-but-never-cleared (H7 partial; check 0x59 for link state).");
+    print_cmos_line("CMOS[0x5C] r8169 RX poll count (saturating)     = ", r8169_rx_count);
+    println("    Number of r8169_poll invocations (0xFF = >=255). Expect 0xFF for a long-running boot.");
+    print_cmos_line("CMOS[0x5D] r8169 RX desc 0 high byte (post-mortem)= ", r8169_rx_desc0_own);
+    println("    0x80 = OWN=1 still set — either never wrote (H8 fires) OR re-armed after read.");
+    println("    0x00 = packet awaiting (NIC wrote, driver hasn't reaped yet — transient).");
+    println("    Disambiguate via 0x5E (RX buf 0 first byte).");
+    print_cmos_line("CMOS[0x5E] r8169 RX desc 0 buf first byte       = ", r8169_rx_buf0_byte);
+    println("    Non-zero = DMA visible at some point (H8 falsified; OWN=1 at 0x5D = re-armed).");
+    println("    0x00     = no DMA ever happened (H8 fires).");
+    println("    0xFF/broadcast/0x33 = sane Ethernet dest MAC byte — DMA captured a real frame.");
+    print_cmos_line("CMOS[0x5F] r8169 reserved                       = ", r8169_slot5f);
     println("    AS1 stamps clean + AS2 stamps clean + kcp=0x68 = PMM ruled out; triage PML4 stamps below.");
     syscall(1, 1, "\n", 1);
 

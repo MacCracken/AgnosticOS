@@ -1,6 +1,6 @@
 # Entity vs Skynet: AI Alignment, Rendered in DOOM
 
-> **Status**: Held outline. Thesis captured; article promotes when **SY orchestrates a live Entity vs Skynet simulation on a generated WAD from real infrastructure, with side-by-side replay video**. Triage 2026-05-06: hold (substantive outline, explicit shippable trigger, glue-code work pending the post-beta wave). Last verified 2026-05-06.
+> **Status**: Held outline. Thesis captured; article promotes when **SY orchestrates a live Entity vs Skynet simulation on a generated WAD from real infrastructure, with side-by-side replay video**. Triage 2026-05-06: hold (substantive outline, explicit shippable trigger, glue-code work pending the post-beta wave). Last verified 2026-05-22 — held-outline status unchanged; body version cells in § 7 + § 9 are pinned to 2026-05-06 article-write date (kernel + cyrius have continued moving through the storage/networking/sovereign-UEFI/v6.0.x arcs since); current state in [`development/state.md`](../development/state.md).
 >
 > Two differently-configured AI agents, one DOOM environment generated from real infrastructure. Same substrate, same threats, radically different dispositions. The AI alignment debate rendered at 320×200 with a body count. The most watchable empirical demonstration of compositional personality ever attempted.
 
@@ -189,7 +189,7 @@ This article is about an outline and a thesis, not a shipped demonstration.
 - Side-by-side replay rendering (two frames synchronized)
 - Configuration UI for Entity vs Skynet selection (SY frontend — personalities already in the registry)
 
-**Estimated**: post-AGNOS v1.0 beta. Post–Cyrius v5.10.x (bare-metal + RISC-V; the v5.6.x optimization arc shipped through v5.8.x; bare-metal slipped from v5.8.0 → v5.10.x as foldin work compounded). After the core platform ships and the flock begins arriving. The alignment demo is the **second wave** — the content that lands after the stack is established, specifically designed to capture researcher and public attention simultaneously.
+**Estimated**: post-AGNOS v1.0 beta. Post–Cyrius v6.x platform-expansion (bare-metal + RISC-V rv64 + PIE + closures + Class-B FFI; v5.x ran the "what the language IS" arc, v6.x runs "what it gains" — bare-metal slipped from v5.8.0 → v5.10.x → v5.11.x → v6.x as foldin and type-system work compounded). After the core platform ships and the flock begins arriving. The alignment demo is the **second wave** — the content that lands after the stack is established, specifically designed to capture researcher and public attention simultaneously.
 
 ---
 

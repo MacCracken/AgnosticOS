@@ -126,6 +126,22 @@ For the philosophy: [AGNOS — Philosophy & Intention](../philosophy.md).
 
 **The sticker plan**: still on for August 2026 (DEF CON / Black Hat). Budget and quantities unchanged from the body unless updated here. The QR-on-sticker proof-of-concept (print → scan → bootstrap → verify) is a queued audit — turning the claim into shippable receipt before the conference window opens.
 
+### Extension 2026-05-22 — kernel on iron, storage + networking with the receipts
+
+The 2026-05-06 footer was about the compiler and the stdlib growing. The 16 days since landed the part the article was always about: **the kernel runs on real silicon, reads real filesystems, and is in flight on real networking.**
+
+- **MVP gate hit on iron 2026-05-18 (Attempt 68 / agnos 1.30.9).** Archaemenid (a Beelink SER, AMD Zen-class NUC) — kernel boots, kybernet launches agnoshi, user types `help` into a real keyboard at a real shell prompt rendered on a real framebuffer. The MVP-gate-blocker turned out to be a Cyrius gvar-init-order issue in two lines of kernel banner code (sound design choice — kernel program body runs before gvar initializers for boot determinism — but it meant a top-level `var _AGNOS_VERSION = "1.32.0"` read empty for the duration of the program body). The receipt is in [`kernel.cyml/the_mvp_gate_at_attempt_68`](https://github.com/MacCracken/vidya/blob/main/content/cyrius/field_notes/kernel.cyml). MVP gate has stayed green across the 25 iron burns since.
+
+- **Storage trio iron-validated (1.31.x cycle, Attempts 80-91).** NVMe on Crucial P3 2 TB. SATA/AHCI on WD Blue SA510 2 TB. USB Mass Storage on Silicon Motion stick (the eight-bug Phase 2.8 repair stack was the hardest debut — five attempts, four falsifications, then one bundled fix for all eight). ext2/ext4 read-only including 64BIT support via Phase 5 BGDT-stride code. **Attempt 90 was the first end-to-end real-filesystem read on iron**: `agnos> ls /` returned `./ ../ lost+found/ hello.txt` byte-exact from real Linux ext4 dirent table written by `mkfs.ext4` on archaemenid's NVMe. Attempt 91 added `agnos> cat hello.txt` returning the user's seed content byte-exact. The full storage-cycle receipt is in [`kernel.cyml/the_storage_trio_iron_debut`](https://github.com/MacCracken/vidya/blob/main/content/cyrius/field_notes/kernel.cyml).
+
+- **Networking in flight (1.32.x cycle, Attempts 92-93).** TCP server primitives (`tcp_listen` / `tcp_bind` / `tcp_accept` + passive-open SYN handler) + UDP server primitives (`udp_bind` / `udp_recv_from`) + DHCP client (RFC 2131) + first real NIC driver (r8169 Phases 1-4 + 5 for PHY init, in flight at this writing). Attempt 92 lit r8169 Phase 1-4 byte-clean on iron but DHCP was silent — root cause was a gate predicate in `kernel/core/main.cyr` keyed on the virtio-net flag only; not a driver bug. The gate fix landed same-day; Attempt 93 verified that `dhcp: DISCOVER` egresses through the r8169 path for the first time on real LAN-attached silicon.
+
+- **Cyrius compiler at v6.0.x.** v5.x closed at v5.11.69 on 2026-05-19 ("what the language IS" — typed-simd ABI, REAL TYPE SYSTEM, struct-byval ABI shipped through v5.10.x). v6.0.0 opened same-day with the cyrc → cybs + cc5 → cycc rename ceremony, opening the "what the language gains" arc (RISC-V rv64, PIE, closures, Class-B FFI, bare-metal target). The 29 KB seed → self-hosting compiler → kernel that mounts real filesystems on real silicon path is now end-to-end iron-validated.
+
+**The Dandelion Core claim is no longer hypothetical.** Every layer between the SD card and the typed shell prompt has the receipts. The sticker plan is unchanged. The bootstrap that fits behind a QR code now runs on the metal the QR's reader was printed for.
+
+The kernel size has grown from the 248 KB in the body (April 2026) to ~603 KB at 1.32.1 in flight (May 2026) — the growth is feature surface (storage trio, filesystem, networking), not bloat. Per the AGNOS kernel-growth rule (`project_agnos_kernel_growth_rules`), the kernel grows organically per native workload, never to chase Linux ABIs. Three iron-validated subsystem cycles later, the rule holds.
+
 ---
 
 *Robert 'Cyrius' B. MacCracken*

@@ -1,6 +1,6 @@
 # Why Do LLMs Need Gigacenters? They Don't.
 
-> **Status**: Held outline. Thesis captured; article promotes when the **murti + seema distributed-inference demo** ships with benchmarked results. Triage 2026-05-06: hold (not stub-demote, not promote — receipts don't exist yet, but the thesis is durable enough to keep on file). Last verified 2026-05-06.
+> **Status**: Held outline. Thesis captured; article promotes when the **murti + seema distributed-inference demo** ships with benchmarked results. Triage 2026-05-06: hold (not stub-demote, not promote — receipts don't exist yet, but the thesis is durable enough to keep on file). Last verified 2026-05-22 — held-outline status unchanged; body figures (kernel size, version, boot time) in § 2 + § 3 are pinned to article-write date. Kernel has since grown organically through the iron-validated storage trio (NVMe + AHCI + USB MS), filesystem (ext2 / ext4 read-only + 64BIT), and networking (TCP/UDP server primitives + DHCP + first real NIC driver) arcs — feature surface, not bloat. The thesis ("every byte the model doesn't load is compute freed for actual thinking") works identically at the larger size; current state in [`development/state.md`](../development/state.md).
 >
 > The assumption that inference requires datacenter-scale hardware is an infrastructure argument, not a math argument. A distributed network of sovereign nodes on commodity hardware can match or exceed centralized compute. Bitcoin proved the model works. AGNOS is the substrate that makes it work for inference.
 
