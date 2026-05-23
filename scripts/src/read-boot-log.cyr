@@ -383,8 +383,8 @@ fn main(): i64 {
     if (verbose_mode == 0) {
         println("");
         println("=== AGNOS current-sweep boot log ===");
-        println("agnos 1.32.2 cycle — Attempt 96 FALSIFIED the 4-FIX bundle (FIX #7 IDR write-back + #8 UDP/DHCP buf 1024B + #9 DISCOVER/REQUEST midpoint retransmit + #10 PHY-restart-only-if-down). PHY came up + RX/TX rings up cleanly on iron, but `dhcp: OFFER timeout` persists. Engine-wedge hypothesis disproved. NEXT STEP IS THIS COMMAND WITH --verbose to read CMOS 0x58-0x5F and pick branch (a) engines healthy / root cause upstream of NIC vs (b) wedge via different mechanism than hypothesized.");
-        println("Reference: docs/development/iron-nuc-zen-log.md § Attempt 96 + dhcp-end-to-end-audit.md § 10");
+        println("agnos 1.32.3 cycle — r8169 RX-path 5-part bundle (audit-driven, multi-source convergent Linux+OpenBSD+FreeBSD): Part A multi-frame budget loop in r8169_poll; Part B RES (0x00200000) + FS|LS (0x30000000) gating; Part C r8169_rx_rearm helper with EOR read-preserve; Part D CMOS-stamp hot-path elimination (stamps fire only on state transitions now); Part E RxMaxSize Linux-converge (0x05F3 -> 0x4000). Expected on Attempt 97: dhcp: DISCOVER -> OFFER ip=192.168.1.X -> REQUEST -> ACK gw=192.168.1.1 mask=255.255.255.0.");
+        println("Reference: docs/development/iron-nuc-zen-log.md § Tracker 1.32.3 + r8169-rx-path-audit.md");
         println("");
         println("Boot reached:");
         print_str("  kernel  checkpoint = "); print_hexb(kcp);
@@ -444,10 +444,10 @@ fn main(): i64 {
         println(" bytes/scanline");
         println("");
         println("");
-        println("Sweep symptom: r8169 link up + RX/TX rings up; `dhcp: DISCOVER` egresses; `dhcp: OFFER timeout` instead of OFFER-ACK roundtrip. Identical to Attempts 93/94/95/96.");
-        println("Burn under test: agnos 1.32.2 — FIX #7 IDR0..IDR5 write-back + FIX #8 UDP/DHCP buf 1024B + FIX #9 midpoint retransmit + FIX #10 PHY-restart-only-if-down. FALSIFIED at Attempt 96; engine-wedge hypothesis disproved.");
-        println("Audit doc:     docs/development/iron-nuc-zen-log.md § Attempt 96 + dhcp-end-to-end-audit.md § 10");
-        println("Verbose log:   ./scripts/read-boot-log.sh --verbose    (full CMOS r8169 slots 0x58-0x5F + xHCI MVP-era slots — required to disambiguate branch (a) vs (b) above)");
+        println("Sweep symptom under test: r8169 OFFER-timeout on iron despite chip-engines-healthy CMOS evidence (Attempt 96: 0x5B=0x30 TX cleared, 0x5E=0x01 RX DMA visible). Wire + DHCP server independently confirmed working (Linux dhclient on same enp1s0 chip leases from 192.168.1.1).");
+        println("Burn under test: agnos 1.32.3 — r8169 RX-path 5-part bundle (Parts A+B+C+D+E above). Bug = r8169_poll's pre-fix single-frame return — live-LAN multicast kept refilling whatever slot rx_idx pointed at while OFFER sat one slot over.");
+        println("Audit doc:     docs/development/r8169-rx-path-audit.md + iron-nuc-zen-log.md § Tracker 1.32.3");
+        println("Verbose log:   ./scripts/read-boot-log.sh --verbose    (full CMOS r8169 slots 0x58-0x5F with refreshed state-transition semantics)");
         return 0;
     }
 
@@ -477,34 +477,40 @@ fn main(): i64 {
     println("    0x20..0xFF      = page >= 0x200000 — safe (above kernel reservation).");
     println("    AS1 #1+#2 (slots 0x56-0x57) reading < 0x20 with kcp >= 0x18 = PMM bug confirmed.");
     println("");
-    println("agnos 1.32.1 bite B — r8169 NIC post-mortem (slots 0x58-0x5F):");
+    println("agnos 1.32.3 r8169 NIC post-mortem (slots 0x58-0x5F — STATE-TRANSITION semantics, refreshed at audit Part D):");
     print_cmos_line("CMOS[0x58] r8169 probe-done sentinel            = ", r8169_probe_done);
     println("    1 = r8169_probe completed (chip present + reset OK + phy_init reached).");
     println("    0 = either no r8169 chip OR probe bailed out early (FB log will say which).");
     print_cmos_line("CMOS[0x59] r8169 phy_init outcome enum          = ", r8169_phy_outcome);
     println("    0 = not attempted (chip absent OR probe failed before phy_init).");
-    println("    1 = LINK UP — autonegotiation completed, PHY ready (H1 fix worked).");
-    println("    2 = autoneg timeout — BMSR.LinkStatus never set within 300 polls (H1 fires).");
+    println("    1 = LINK UP — autonegotiation completed, PHY ready.");
+    println("    2 = autoneg timeout — BMSR.LinkStatus never set within 300 polls.");
     println("    3 = BMCR-write timeout — PHYAR flag never cleared (MDIO write broken).");
     println("    4 = BMSR-read timeout — PHYAR flag never set on read (MDIO read broken).");
     print_cmos_line("CMOS[0x5A] r8169 TX send count (saturating)     = ", r8169_tx_count);
-    println("    Number of r8169_send invocations (0xFF = >=255). Expect >=1 if DHCP DISCOVER built.");
-    print_cmos_line("CMOS[0x5B] r8169 TX desc 0 high byte (post-mortem)= ", r8169_tx_desc0_own);
-    println("    0x80 = OWN=1 still set (H7 fires: NIC never processed the TX frame).");
-    println("    0x00 = NIC cleared OWN (TX path works, frame egressed to wire).");
-    println("    0xB0 = OWN+FS+LS — wrote-but-never-cleared (H7 partial; check 0x59 for link state).");
-    print_cmos_line("CMOS[0x5C] r8169 RX poll count (saturating)     = ", r8169_rx_count);
-    println("    Number of r8169_poll invocations (0xFF = >=255). Expect 0xFF for a long-running boot.");
-    print_cmos_line("CMOS[0x5D] r8169 RX desc 0 high byte (post-mortem)= ", r8169_rx_desc0_own);
-    println("    0x80 = OWN=1 still set — either never wrote (H8 fires) OR re-armed after read.");
-    println("    0x00 = packet awaiting (NIC wrote, driver hasn't reaped yet — transient).");
-    println("    Disambiguate via 0x5E (RX buf 0 first byte).");
-    print_cmos_line("CMOS[0x5E] r8169 RX desc 0 buf first byte       = ", r8169_rx_buf0_byte);
-    println("    Non-zero = DMA visible at some point (H8 falsified; OWN=1 at 0x5D = re-armed).");
-    println("    0x00     = no DMA ever happened (H8 fires).");
-    println("    0xFF/broadcast/0x33 = sane Ethernet dest MAC byte — DMA captured a real frame.");
+    println("    Number of r8169_send invocations (0xFF = >=255). Expect >=3 on a working DHCP cycle (DISCOVER + REQUEST + retransmit). Expect 2 if OFFER timeout (DISCOVER + FIX #9 retransmit only).");
+    print_cmos_line("CMOS[0x5B] r8169 TX desc 0 high byte (1.32.3: stamped from r8169_send at tx_idx==1 transition) = ", r8169_tx_desc0_own);
+    println("    0x30 = OWN cleared + FS + LS — NIC processed our descriptor, frame egressed to wire (healthy).");
+    println("    0xB0 = OWN+FS+LS — our write went in but NIC never cleared OWN (TX wedge).");
+    println("    0x00 = stamp never reached (no second send fired) OR pre-1.32.3 binary.");
+    print_cmos_line("CMOS[0x5C] r8169 RX consumed-frame count        = ", r8169_rx_count);
+    println("    1.32.3 semantics CHANGE: was 'poll invocations', now 'frames consumed by r8169_poll' (state-transition stamp per audit Part D).");
+    println("    Expected on a working DHCP cycle: low double digits (the multicast + ARP + OFFER frames consumed during the DHCP wait window).");
+    println("    0xFF = >=255 frames consumed (heavy multicast LAN); 0x00 = no frames ever consumed (RxConfig filter rejecting OR ring fully NIC-owned).");
+    print_cmos_line("CMOS[0x5D] r8169 RX last-consumed desc high byte = ", r8169_rx_desc0_own);
+    println("    1.32.3 semantics CHANGE: stamps status of the descriptor we JUST consumed, not desc 0 at poll-entry.");
+    println("    Expected: 0x30 (OWN-cleared + FS + LS) on every successful consume; chip writes both FS+LS for single-segment frames per RTL § 6.7.");
+    println("    0x70 = OWN-cleared + EOR + FS + LS (last-slot consumption, idx==15); also healthy.");
+    println("    0x00 = no successful consume ever happened (paired with 0x5C=0x00 = full RX-path failure).");
+    print_cmos_line("CMOS[0x5E] r8169 RX last-consumed buf first byte = ", r8169_rx_buf0_byte);
+    println("    1.32.3 semantics CHANGE: stamps first byte of the LAST consumed frame's buffer, not desc 0's buffer perpetually.");
+    println("    0xB0 = our MAC first byte (b0:41:6f:0c:e4:25) — UNICAST OFFER from DHCP server addressed to us. Strongest signal that OFFER reached us.");
+    println("    0xFF = broadcast (ff:ff:ff:ff:ff:ff) — broadcast OFFER OR our own loopback'd DISCOVER seen in promisc... but we're not promisc, so OFFER.");
+    println("    0x01 = IPv4 multicast (01:00:5e:...) — IGMP / mDNS / SSDP. Pre-1.32.3 this byte was 'stuck' here; post-fix it should refresh to OFFER's 0xB0 within one poll cycle of OFFER arrival.");
+    println("    0x33 = IPv6 multicast (33:33:...) — IPv6 NDP / MLD. Same story as 0x01.");
+    println("    0x00 = no frame ever consumed.");
     print_cmos_line("CMOS[0x5F] r8169 reserved                       = ", r8169_slot5f);
-    println("    AS1 stamps clean + AS2 stamps clean + kcp=0x68 = PMM ruled out; triage PML4 stamps below.");
+    println("    Reserved for future r8169 diagnostic. Currently unwritten (BIOS-noise byte).");
     syscall(1, 1, "\n", 1);
 
     # --- xHCI post-mortem (Attempt 36+) ---------------------------------
