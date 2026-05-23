@@ -3127,6 +3127,62 @@ Two PHY-related lines printed back-to-back: `PHY autoneg kicked (link async)` fo
 
 ---
 
+### Attempt 97 prep — agnos 1.32.3 r8169 RX-path 5-part bundle 2026-05-23 → PENDING IRON BURN (user-authorized; build verified fresh; expected to clear iron OFFER timeout per the multi-source convergent audit)
+
+Pre-burn checkpoint per [[feedback_iron_log_tracker_pattern]] + [[feedback_build_freshness_is_mine]]. Written BEFORE reboot so the expected outcomes are pinned to a single observable rubric; post-burn entry edits this from "PENDING" to "PASS" / "PARTIAL" / "FALSIFIED" depending on signals.
+
+**Build under test:**
+
+| Artifact | Value | Verified |
+|---|---|---|
+| Kernel | `agnos/build/agnos` at 617,000 B production | mtime 12:44:03 PDT 2026-05-23, `r8169.cyr` mtime 12:44:01 PDT — binary picks up source |
+| Version banner | `AGNOS shell v1.32.3 (type 'help')` | `VERSION` + `kernel/version.cyr` at 12:01:21, agnos commit `a065f45 "another repair bundle for rx"` |
+| Fix-set in build | 1.32.2 FIX #7-#10 carried forward + **1.32.3 r8169 RX-path 5-part bundle**: Part A multi-frame budget loop in `r8169_poll`, Part B `RES` (0x00200000) + `FS\|LS` (0x30000000) gating constants, Part C `r8169_rx_rearm` helper with EOR read-preserve mirroring Linux `rtl8169_mark_to_asic`, Part D CMOS-stamp hot-path elimination (stamps fire only on state transitions now; ~8 µs/poll tax removed), Part E `RxMaxSize` Linux-converge (0x05F3 → 0x4000) | r8169.cyr 33,932 B; net delta from 1.32.2: +256 B |
+| virtio_net | modern rewrite (1.32.3 baseline) — QEMU DHCP cycle independently validated | virtio_net.cyr 17,203 B; QEMU `tcp-listen-smoke.sh` shows full DISCOVER→OFFER→REQUEST→ACK + `tcp_accept: conn_id=1` |
+| gnoboot | 0.4.2 (unchanged) | — |
+| cyrius | 6.0.1 (unchanged) | `cyrius.cyml [package].cyrius` |
+| Regression | `scripts/test.sh` 4/4 PASS + `scripts/ext2-smoke.sh` 5/5 PASS + 5/5 regression cross-check | run 12:35 PDT post r8169 fix |
+
+**Hypothesis under test**: the AGNOS-side load-bearing bug for iron OFFER-timeout (Attempts 93-96) was `r8169_poll`'s single-frame-return shape — IPv4 multicast (`01:00:5e:...`) perpetually re-filled whatever ring slot `r8169_rx_idx` pointed at, while the OFFER landed in a later slot we never inspected. The 5-part bundle fixes this by walking the ring (Part A), skipping bad/fragmented slots (Part B), preserving EOR correctly across rearm (Part C), and removing the ~8 µs hot-path tax (Part D) that was racing frame arrival on a busy LAN. Part E (RxMaxSize) is convergent-cleanup, not load-bearing.
+
+**Ground-truth context — wire + server confirmed working under Linux on this exact machine** (2026-05-23 same session): `ip -br link` shows `enp1s0 UP b0:41:6f:0c:e4:25 192.168.1.124/24 default via 192.168.1.1 proto dhcp`. The r8169 chip is currently leased by Linux dhclient on the same wire/cable/port that AGNOS uses. Branch (a1) wire/server hypothesis falsified; this attempt validates branch (a2-r8169-RX).
+
+**Expected outcome — Attempt 97 PASS rubric:**
+
+| Signal | Pre-fix (Attempt 96) | PASS target | FALSIFICATION |
+|---|---|---|---|
+| Boot block | reaches `agnos> ` with `dhcp: OFFER timeout` after ~8 s | reaches `agnos>` with `dhcp: DISCOVER → OFFER ip=192.168.1.X → REQUEST → ACK ip=192.168.1.X gw=192.168.1.1 mask=255.255.255.0` | Still `OFFER timeout` after the full 5-part bundle → escalate to single-source-Linux-only audit at finer grain (e.g., CPlusCmd register at MMIO 0xE0 which AGNOS doesn't touch; RxConfig high bits 0xE700 → 0xCF00; ring size > 16) |
+| CMOS 0x5A (TX sends) | 0x02 (DISCOVER + FIX #9 retransmit) | **0x03+** (DISCOVER + REQUEST [+ retransmits]) — `r8169_send` fires on REQUEST iff OFFER reached dhcp_init's loop and chaddr/xid/msg_type filter accepted it | 0x5A stays at 0x02 → REQUEST never sent → OFFER never reached dhcp_init's match loop → bug is downstream of r8169_poll OR the OFFER frame was somehow rejected by ethernet_recv / net_handle_udp / udp_recv_from / the dhcp_init filter |
+| CMOS 0x5B (TX desc 0 status, stamped from `r8169_send` at `tx_idx==1` transition) | 0x30 (OWN cleared + FS + LS — healthy from Attempt 94 baseline) | **0x30** (continues healthy — proves TX is still working post-bundle) | 0xb0 (OWN+FS+LS stuck) → REGRESSION (FIX #10 broke something Part A/B/C didn't anticipate); 0x00 → second send never fired (OFFER never came back) |
+| CMOS 0x5C (RX consumed-frame count, NEW SEMANTICS post Part D) | 0xFF (poll-count saturated; pre-Part-D semantics) | **0x10-0x40** range expected (state-transition stamp now counts CONSUMED frames; on a working DHCP cycle with brief multicast background, expect low double digits for the OFFER + ACK + a handful of multicast drains; semantics-changed value confirms Part D landed) | 0xFF still → either Part D didn't take effect OR a LOT of frames consumed (heavy multicast LAN); 0x00 → no frame ever consumed (full RX-path failure — investigate IDR write-back from FIX #7 OR RxConfig flag combination) |
+| CMOS 0x5D (RX last-consumed desc high byte) | 0x80 (OWN re-armed by driver — healthy) | **0x30** (OWN cleared + FS + LS — chip-side complete-frame indicator on the just-consumed slot, captured BEFORE rearm by the new state-transition stamp) OR **0x70** (last-slot variant with EOR set) | 0x80 → stamp captured AFTER rearm (Part C r8169_rx_rearm timing issue) OR no frame consumed at all |
+| CMOS 0x5E (RX last-consumed buf first byte) | 0x01 (IPv4 multicast 01:00:5e:... — stuck on multicast because poll only inspected rx_idx slot) | **0xb0** (our MAC b0:41:6f:0c:e4:25 — unicast OFFER from gateway, strongest signal) OR **0xff** (broadcast OFFER, also positive) OR **0x33** (IPv6 multicast 33:33:... — neutral, means a later multicast frame overwrote the OFFER reading; pair with 0x5A=0x03+ for full confirmation) | 0x5E stays at 0x01 with 0x5A=0x02 → still stuck on multicast (Part A didn't take effect) |
+| Storage trio + GPT + ext4 mount + shell | byte-clean across Attempts 90-96 | byte-clean (no regression from 1.32.3 build) | Any storage subsystem regresses → bisect virtio_net rewrite vs r8169 changes; storage shouldn't be touching either |
+
+**Pre-burn checklist** (per [[feedback_no_serial_on_iron]] — no serial; CMOS + FB photo are the only post-burn surfaces):
+
+1. `cd ~/Repos/agnosticos`
+2. `sudo ./scripts/install-usb.sh --update` — writes fresh `build/agnos` + `gnoboot/build/BOOTX64.EFI` to the USB ESP. `agnos-fs` partition unchanged (per [[feedback_prefer_mount_modify_over_reflash]] — reserve `--update` for kernel/bootloader).
+3. Reboot archaemenid; F-key boot menu → USB
+4. **Capture boot-log photo(s)** — r8169 init block + scheduler activation + dhcp lines. May need 2 photos if scrolling exceeds visible frame (the family-bezel-cropping concern per `iron-nuc-zen-log.md` Standing context).
+5. At `agnos> ` shell prompt: no interaction needed — boot completion is what we're measuring. Power-cycle back to Linux dual-boot.
+6. **Post-burn**: `sudo ./scripts/read-boot-log.sh --verbose` from Linux. Capture full verbose output to text.
+7. Drop boot-log photo(s) at agnosticos top-level (e.g. `1323_dhcp_ack.jpg`, `1323_r8169_init.jpg`) per [[feedback_top_level_photos_are_fresh_iron]]; I'll catalogue + decode the verbose output and write the post-burn Attempt 97 entry.
+
+**Post-burn next steps depending on outcome:**
+
+- **PASS** (full DHCP cycle visible): close Attempt 97 entry with the receipt; pivot to whatever you want next — could be `dig` kernel UDP/TCP syscall exposure (0.2.x roadmap item), an iron-side `yo localhost` smoke (when kernel ICMP primitive lands), or the i225-V driver if Intel-NIC iron arrives. 1.32.3 cycle closes.
+- **PARTIAL** (OFFER reaches `dhcp_init`, REQUEST sent, but ACK times out): bug is in dhcp_init's chaddr/xid/msg_type filter OR in net_handle_udp's listener-routing OR in udp_recv_from's listener-table lookup. None of these were the audit's load-bearing target. Multi-source audit at finer grain.
+- **FALSIFIED** (still `OFFER timeout`, 0x5A=0x02 unchanged): branch (a2-r8169-RX) was not the bug at the rank the 1.32.3 audit identified. Reopen audit with single-source Linux-only focus on chip-rev quirks the convergent audit missed — most likely candidates: CPlusCmd register at MMIO 0xE0 + RxConfig high-bits 0xE700 → 0xCF00 + Early-RX threshold programming.
+
+**Cross-references:**
+- `agnosticos/docs/development/r8169-rx-path-audit.md` — the multi-source convergent audit + post-implementation update.
+- `agnos/CHANGELOG.md` § [1.32.3] — the full 5-part bundle receipt with line-numbered Linux/BSD source citations.
+- Attempt 96 entry above — the evidence base that drove the audit (CMOS 0x5B=0x30 healthy + 0x5E=0x01 multicast revealed the chip is healthy, we just look at the wrong slot).
+- `agnosticos/docs/development/state.md` § *Last refresh* — current cycle status.
+
+---
+
 ## Conventions for future entries
 
 - **Tracker-first**: when opening a new version cycle, write the hypothesis + expectations block in the `## Hypothesis & Expectations Tracker` section AT THE TOP of this file BEFORE the first per-attempt entry. State.md's cycle header should link to the tracker anchor (`#tracker-1NMK-cycle` slug pattern). The tracker is the predictive layer; the per-attempt entries below are the observation layer. The two together make session-restart cheap: state.md → tracker → expected vs. actual → drill into per-attempt narrative only if needed.
