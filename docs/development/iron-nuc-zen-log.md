@@ -34,7 +34,75 @@ later entry pointing back. Status is one of `FAIL` / `PASS` /
 >
 > **State.md cycle headers link to these anchors via `iron-nuc-zen-log.md#tracker-1322-cycle` style.**
 
-### Tracker: 1.32.3 cycle (OPEN — wire + QEMU + Linux-source convergent diagnostics POST-ATTEMPT-97 (NO additional burn) identified the load-bearing iron bug: chip-rev RxConfig profile mismatch; fix LANDED; Attempt 98 PENDING USER BURN) {#tracker-1323-cycle}
+### Tracker: 1.32.4 cycle (OPEN 2026-05-23 PM — 10-bundle from [`dhcp-offer-downstream-audit.md`](dhcp-offer-downstream-audit.md) closes the 1.32.3 carry-forward DHCP OFFER-downstream-of-r8169_poll residual. Items: (1) Bite 1 tcpdump user-side capture documented in next-burn prep; (2) CMOS instrumentation `[0x88..0x8B]` ethertype/proto/port stamps; (3) Fix A BOOTP `op==2` gate in OFFER matcher; (4) Fix B magic-cookie validation in OFFER matcher; (5) Fix C xid byte-order AUDITED OK no-code-change; (6) Fix D options-walker invariants AUDITED OK no-code-change; (7) listener-state stamp `[0x8C]`; (8) `DHCP_FRAME_DUMP` compile-gated 64-byte full-frame dump to `[0x90..0xCF]`; (9) `DHCP_STATIC_IP` compile-gated fallback; (10) ACK-matcher mirror of Fix A + Fix B. NO iron burn auto-proposed per [[feedback_iron_burns_block_other_work]] — user authorizes when ready. Pre-burn rubric pinned at § "Attempt 101 prep" below.) {#tracker-1324-cycle}
+
+**Hypotheses tested**:
+
+1. Of the 8 multi-source-convergent silent-drop failure modes for DHCP OFFER reception, the 2 LOAD-BEARING absent validations in AGNOS `dhcp_init` (missing BOOTP `op==2` check, missing magic-cookie validation) are sufficient to explain the Attempt 100 OFFER-timeout residual.
+2. CMOS instrumentation `[0x88..0x8B]` will disambiguate (c1) admitted broadcast was NOT DHCP (`[0x88..0x8B]` shows ARP / NetBIOS / mDNS / etc. fingerprint) vs (c2) admitted broadcast WAS DHCP but lost in matcher (`[0x88..0x8B]` shows `08, 00, 11, 44`).
+3. With Fix A + Fix B + ACK-mirror landed, if (c2) is the path AND the bug is one of the two absent validations, next iron burn should produce `dhcp: DISCOVER → OFFER ip=… → REQUEST → ACK ip=… gw=… mask=…` full cycle.
+
+**Results** (to be filled post-burn):
+1. Pending iron Attempt 101.
+2. Pending iron Attempt 101 — `[0x88..0x8B]` decoder ready in `read-boot-log.cyr`.
+3. Pending iron Attempt 101.
+
+**Iron Attempt 101 prep — agnos 1.32.4 DHCP downstream-fix + observability bundle** → PENDING USER BURN
+
+Pre-burn rubric per [[feedback_iron_log_tracker_pattern]]. Written BEFORE user authorizes burn. Post-burn entry will edit this from PENDING to PASS/PARTIAL/FALSIFIED.
+
+**Build under test (when landed)**:
+
+| Artifact | Value | Verified |
+|---|---|---|
+| Kernel | `agnos/build/agnos` at TBD B production / TBD B `TCP_LISTEN_SMOKE=1` | mtime TBD |
+| Banner | `AGNOS shell v1.32.4` | `VERSION` = 1.32.4, `kernel/version.cyr` = 1.32.4 |
+| Fix-set | 1.32.3 baseline (BSD/iPXE r8169 rewrite + Attempt 100 broadcast-admit) + 1.32.4 10-bundle | per CHANGELOG [1.32.4] |
+| gnoboot / cyrius | 0.4.2 / 6.0.1 unchanged | — |
+| Regression | `test.sh` 4/4 + `ext2-smoke.sh` 5/5 + `tcp-listen-smoke.sh` baseline-match | run pre-burn |
+
+**Expected outcome — Attempt 101 PASS rubric**:
+
+| Signal | Attempt 100 baseline | Attempt 101 PASS target | Falsification → meaning |
+|---|---|---|---|
+| Boot block | `dhcp: DISCOVER → OFFER timeout` | `dhcp: DISCOVER → OFFER ip=192.168.1.X → REQUEST → ACK ip=… gw=… mask=…` | Still `OFFER timeout` — see decision tree below |
+| `[0x5A]` TX sends | 0x03 | **≥ 0x04** (DISCOVER + REQUEST + retransmits) | 0x03 unchanged → REQUEST never fired → OFFER still not matched |
+| `[0x5E]` last RX first byte | 0xff (broadcast) | 0xff (broadcast OFFER) or 0xb0 (unicast OFFER) | — |
+| NEW `[0x88]` ethertype hi | (uninstrumented) | 0x08 | 0x08 missing → admitted broadcast was non-IP |
+| NEW `[0x89]` ethertype lo | (uninstrumented) | 0x00 | 0x06 → ARP (c1); 0xDD → IPv6 (c1) |
+| NEW `[0x8A]` IP proto | (uninstrumented) | 0x11 (UDP=17) | other → non-UDP IPv4 (c1) |
+| NEW `[0x8B]` UDP dst port lo | (uninstrumented) | 0x44 (port 68) | 0x89 NetBIOS / 0xE9 mDNS / 0x6C SSDP (c1) |
+| NEW `[0x8C]` listener.state @ first /68 frame | (uninstrumented) | 0x01 (bound) | 0x00 → listener wasn't bound → race (escape plan step 2) |
+| Storage trio + GPT + ext2 + shell | byte-clean | byte-clean | regression impossible — scope is dhcp_init only |
+
+**Decision tree after burn**:
+
+- **PASS** (full DHCP cycle): close 1.32.4 cycle. Mark the bundle as the load-bearing closure of the 1.32.x DHCP arc.
+- **PARTIAL** (OFFER matched, ACK times out): Fixes A+B were load-bearing for OFFER; ACK matcher already mirrored. If still failing, audit the ACK-specific msg_type check (option 53 == 5 = DHCPACK) or the server-id/requested-ip option emission in the REQUEST builder.
+- **FALSIFIED + `[0x88..0x8B]=08, 00, 11, 44`**: admitted broadcast WAS DHCP-to-port-68 AND Fixes A+B+mirror landed without effect. Escalate to listener-binding race (`[0x8C]` data) OR `DHCP_FRAME_DUMP=1` rebuild for next-next burn (dumps first 64 bytes of frame for byte-by-byte comparison against tcpdump capture).
+- **FALSIFIED + `[0x88..0x8B]` shows non-DHCP fingerprint**: (c1) confirmed. The chip is admitting non-DHCP broadcast (most likely ARP from switch responding to AGNOS's DISCOVER source-MAC, or Linux dhclient broadcast on same MAC). Mitigation: stop Linux dhclient during burn OR change AGNOS test MAC OR rebuild with `DHCP_STATIC_IP=1` to bypass DHCP entirely + validate downstream networking on iron.
+
+**`tcpdump` companion capture** (run during burn per [[feedback_iron_burns_block_other_work]] discipline — zero-burn observability):
+
+```sh
+# From Linux side on archaemenid, BEFORE rebooting to AGNOS USB:
+sudo tcpdump -i enp1s0 -nn -X -s 0 'port 67 or port 68' -w /tmp/dhcp-attempt-101.pcap &
+TCPDUMP_PID=$!
+# Reboot to AGNOS USB; let DHCP DISCOVER + OFFER-wait window run (~16 sec total)
+# Power-cycle back to Linux:
+sudo kill $TCPDUMP_PID
+tcpdump -nn -X -r /tmp/dhcp-attempt-101.pcap
+```
+
+Outcome decoding (independent of CMOS):
+- **OFFER frame in capture, dst MAC ff:ff:ff:ff:ff:ff or our MAC `b0:41:6f:0c:e4:25`**: wire-side OK; AGNOS dropped it. Cross-reference with `[0x88..0x8B]` to identify which gate.
+- **Only DISCOVER from AGNOS in capture**: server didn't reply OR replied unicast to a different MAC. Check server (Araknis 210) lease database vs Linux dhclient's active lease.
+
+**Linked docs**: [`dhcp-offer-downstream-audit.md`](dhcp-offer-downstream-audit.md) (this cycle's full audit + § 7 escape plan); [`dhcp-end-to-end-audit.md`](dhcp-end-to-end-audit.md) (1.32.2-era predecessor); `agnos/CHANGELOG.md` § [1.32.4].
+
+---
+
+### Tracker: 1.32.3 cycle (CLOSED 2026-05-23 PM at v1.32.3 tag — user direction *"lets cut 1.32.3 please as the return of the tcp items shows some promise and I want to hold tag then work up from there next round of fixes"*. Attempt 100 BSD/iPXE rewrite PARTIAL is the cycle-defining win: chip-level RX filter unblocked (broadcast frame ADMITTED, `[0x5E]=0xff` ≡ prep PASS target, `[0x5D]=0x72` BAR bit set, `[0x5A]=0x03` ≥ prep PASS target) — first iron evidence across the 1.32.x arc. `dhcp: OFFER timeout` residual carries forward to next-round fix cycle; gate is strictly DOWNSTREAM of `r8169_poll`. NO iron burn auto-proposed per [[feedback_iron_burns_block_other_work]] — zero-burn disambiguation (tcpdump from Linux side + `dhcp_init`/`udp_recv_from`/xid-matcher code audit) lands first.) {#tracker-1323-cycle}
 
 **Hypotheses tested**:
 1. A spec-correct modern virtio-net driver mirroring `virtio_blk.cyr`'s proven shape will make QEMU DHCP work end-to-end.
@@ -75,26 +143,20 @@ later entry pointing back. Status is one of `FAIL` / `PASS` /
 
 Source comment expanded with Linux line-cite + per-mac_version table. Build: 617,000 B production (same size — single 16-bit immediate swap, comments are stripped). `test.sh` 4/4 + `ext2-smoke.sh` 5/5 + 5/5 cross-check + `tcp-listen-smoke.sh` 1/2 (matches pre-fix baseline; QEMU DHCP cycle clean). Pre-burn rubric pinned at `## Attempts § Attempt 98 prep`.
 
-**Iron Attempt 98 — expected outcomes**:
+**Iron Attempt 98 — outcome (resolved 2026-05-23 evening from cataloguing of straggler `1323_after_fixes_failure.jpg` @ 15:56 PDT):** **FALSIFIED** — RxConfig `0xCF00` single-constant change burned at 15:56 PDT (commit `1e9d26a "burn ready"` @ 15:41, production build, no `TCP_LISTEN_SMOKE=1` so no TCP smoke lines in FB), `dhcp: OFFER timeout` persisted in boot tail. The high-confidence Linux mac_version-46 convergent hypothesis (RX_EARLY_OFF bit 11) did NOT clear the broadcast-drop. Full receipt at § Attempt 98 below.
 
-| Signal | Attempt 97 baseline | Attempt 98 PASS target | Falsification |
-|---|---|---|---|
-| Boot block | `dhcp: DISCOVER → OFFER timeout` | `dhcp: DISCOVER → OFFER ip=192.168.1.X → REQUEST → ACK ip=192.168.1.X gw=192.168.1.1 mask=255.255.255.0` | Still `OFFER timeout` → chip-rev identification was wrong OR additional bug (descriptor ordering, MAR0/MAR4 hash filter, ASPM timing) |
-| CMOS 0x5A (TX sends) | 0x02 | **≥ 0x03** (REQUEST fires) | 0x5A stays 0x02 → OFFER still not reaching `dhcp_init` |
-| CMOS 0x5C (RX frames consumed) | 0x10 (all multicast) | **≥ 0x11** with broadcast OFFER somewhere in the 17+ consumed | 0x10 unchanged → broadcast frames STILL filtered at chip |
-| CMOS 0x5D (last desc high byte) | 0x78 (EOR+FS+LS+MAR=mcast) | **may show BAR bit set** (0x32/0x72 — bit 25 of opts1 = broadcast addr received) OR stays at MAR if later frame overwrites stamp | 0x78 unchanged + 0x5A=0x02 → broadcast still rejected |
-| CMOS 0x5E (last buf first byte) | 0x01 (mcast) | **0xff** (broadcast OFFER L2 dst first byte) OR 0xb0 (unicast OFFER to our MAC if Araknis switches behavior) OR later mcast (post-OFFER consume) | 0x5E stays 0x01 + 0x5A=0x02 → no broadcast frames consumed at all |
-| Storage trio + GPT + ext2 + shell | byte-clean | byte-clean | regression impossible — RxConfig is r8169-only |
+**Iron Attempt 99 — outcome (referenced in Attempt 100 prep as "byte-identical CMOS to 97/98"):** **FALSIFIED** — agnos commit `ab913aa "more rx fixes"` @ 16:28 PDT (additional layered Linux-shape rx fixes). Burned later that afternoon. CMOS read-back byte-identical to Attempts 97/98. No photo captured at top level. Brief receipt at § Attempt 99 below.
 
-**Linked burns**: Attempt 96 (FALSIFIED 4-FIX bundle); Attempt 97 (PARTIAL — RX-mechanics fix works mechanically but root cause upstream); **Attempt 98 PENDING USER BURN — high-confidence multi-source convergent**.
+**Iron Attempt 100 — outcome (resolved 2026-05-23 evening from cataloguing of `1323_tcp_return.jpg` @ 20:10 PDT + `results.txt` CMOS readback @ 19:53 PDT):** **PARTIAL** — BSD/iPXE-shape r8169 rewrite (`TCP_LISTEN_SMOKE=1` variant 617,984 B matches prep rubric exactly, `build/agnos` mtime 19:17 PDT). CMOS readback: `[0x5A]=0x03` ≥ prep PASS target, `[0x5E]=0xff` ≡ prep PASS target (**broadcast frame ADMITTED at chip for first time across 1.32.x DHCP arc**), `[0x5D]=0x72` = EOR+FS+LS+BAR (BAR bit confirms broadcast-marked desc). **BUT** `dhcp: OFFER timeout` still in FB → broadcast admitted ≠ OFFER reaching `dhcp_init`. Either the admitted broadcast was non-DHCP (ARP / NetBIOS / mDNS) OR the OFFER was admitted but lost downstream in `udp_recv_from` / DHCP matcher / xid filter. Full receipt at § Attempt 100 below.
 
-**Linked docs**: `agnosticos/docs/development/virtio-net-legacy-layout-audit.md` + `r8169-rx-path-audit.md`; iron-nuc-zen-log.md § Attempt 98 prep; state.md § *Last refresh*.
+**Linked burns**: Attempt 96 (FALSIFIED 4-FIX bundle); Attempt 97 (PARTIAL — RX-mechanics fix works mechanically but root cause upstream); Attempt 98 (FALSIFIED single-constant RxConfig fix); Attempt 99 (FALSIFIED additional rx fixes); **Attempt 100 PARTIAL — chip-level filter unblocked, downstream-of-`r8169_poll` is now the gate**.
+
+**Linked docs**: `agnosticos/docs/development/virtio-net-legacy-layout-audit.md` + `r8169-rx-path-audit.md` + `r8169-chip-init-audit.md § BSD + iPXE convergence (2026-05-23)`; iron-nuc-zen-log.md § Attempts 98 / 99 / 100; state.md § *Last refresh*.
 
 **For a fresh agent landing here cold** (per [[feedback_read_state_at_session_start]]):
-- The fix is at `agnos/kernel/core/r8169.cyr:109` (`R8169_RXCFG_DEFAULTS = 0xCF00`).
-- The build to flash is `agnos/build/agnos` at 617,000 B mtime 2026-05-23 15:37:35 PDT, md5 `1b5e7dd70ba765cd4ad9ba56dd0f0f1d`.
-- Burn checklist: `cd ~/Repos/agnosticos && sudo ./scripts/install-usb.sh --update`, reboot archaemenid, F-key → USB, photo at `agnos>` shell, back to Linux, `sudo ./scripts/read-boot-log.sh --verbose`, drop photo(s) at agnosticos top-level (`1324.jpg` numbering).
-- Post-burn: edit § Attempt 98 prep entry into final receipt (PASS/PARTIAL/FALSIFIED) using the rubric above + the CMOS readback.
+- The currently-flashed build is `agnos/build/agnos` at 617,984 B mtime 2026-05-23 19:17 PDT = Attempt 100 BSD/iPXE rewrite (TCP_LISTEN_SMOKE=1 variant).
+- Source-of-truth Linux-clone deletions live at `agnos/kernel/core/r8169.cyr` (`r8169_hw_start_8168h_1` body, Cfg9346 envelope, `mac_ocp_*` / `ephy_*` / `eri_*` helpers all removed).
+- **No next burn auto-proposed** per [[feedback_iron_burns_block_other_work]] — Attempt 100 PARTIAL needs zero-burn disambiguation FIRST: (a) confirm the admitted broadcast IS the DHCP OFFER (vs ARP/NetBIOS/mDNS) via `tcpdump -i enp1s0 -nn -X 'port 67 or port 68'` on the Linux side while the burn happens; (b) audit `dhcp_init` xid match + chaddr compare + `udp_recv_from` listener routing for `OFFER bytes-on-ring → no dhcp_init dispatch` paths.
 
 ### Tracker: 1.32.2 cycle (CLOSED — 4-FIX bundle insufficient on iron; pivoted to QEMU which exposed virtio_net as independent bug — see 1.32.3 tracker above for closure) {#tracker-1322-cycle}
 
@@ -3165,7 +3227,9 @@ Two PHY-related lines printed back-to-back: `PHY autoneg kicked (link async)` fo
 
 ---
 
-### Attempt 98 prep — agnos 1.32.3 RxConfig chip-rev fix (Linux mac_version 46 / RTL8168h) 2026-05-23 → PENDING IRON BURN (user-authorized; high-confidence multi-source convergent; one-constant change)
+### Attempt 98 — agnos 1.32.3 RxConfig chip-rev fix (Linux mac_version 46 / RTL8168h) 2026-05-23 15:56 PDT → FALSIFIED (single-constant RxConfig `0xE700 → 0xCF00` did NOT clear OFFER timeout; high-confidence multi-source convergent hypothesis disproven on first iron burn)
+
+**Resolved 2026-05-23 evening from cataloguing of straggler `1323_after_fixes_failure.jpg` (filed as [`attempt-98-agnos-1.32.3-rxcfg-cf00-offer-timeout-persists.jpg`](iron-nuc-zen-photos/attempt-98-agnos-1.32.3-rxcfg-cf00-offer-timeout-persists.jpg)).** Burn captured at 15:56 PDT, agnos commit `1e9d26a "burn ready"` @ 15:41 PDT, kernel mtime 15:37:35 PDT. Production build (617,000 B, no `TCP_LISTEN_SMOKE=1` → no TCP smoke lines in boot tail vs Attempt 100 photo). Boot reached `AGNOS shell v1.32.3` byte-clean (storage trio + GPT + ext2 mount + scheduler + kybernet unchanged from Attempt 97); DHCP block shows `dhcp: DISCOVER → dhcp: OFFER timeout` (no OFFER line). The Linux mac_version-46 `RX_EARLY_OFF` (bit 11) one-constant hypothesis was wrong — Early-RX-OFF landing did not admit broadcast frames. Drove the Attempt 99 follow-on (`ab913aa "more rx fixes"`) and ultimately the Attempt 100 BSD/iPXE rewrite after user pushback against the Linux-clone audit lineage. No standalone CMOS readback recovered for this burn (user direction skipped the read-boot-log dump in favor of stacking the next rx-fix bundle).
 
 Pre-burn checkpoint per [[feedback_iron_log_tracker_pattern]] + [[feedback_build_freshness_is_mine]]. Written BEFORE reboot. Post-burn entry edits this from "PENDING" to "PASS"/"PARTIAL"/"FALSIFIED" against the rubric below.
 
@@ -3289,9 +3353,53 @@ Burned 2026-05-23 ~14:30 PDT. Photos catalogued: [`attempt-97-…-pt1-r8169-link
 
 ---
 
-### Attempt 100 prep — agnos 1.32.3 BSD/iPXE-shape r8169 rewrite 2026-05-23 ~19:15 PDT → PENDING USER BURN
+### Attempt 99 — agnos 1.32.3 additional rx fixes layered on RxConfig 0xCF00 2026-05-23 PM → FALSIFIED (byte-identical CMOS to Attempts 97/98 per Attempt-100-prep observation; no top-level photo captured)
 
-**Replaces** the post-Attempt-99 Linux MCU body bundle (built, never burned, then deleted at user direction). After Attempts 97/98/99 all FALSIFIED with byte-identical CMOS (chip admits multicast, drops broadcast + unicast), the user pushed back on the Linux-clone audit lineage: *"STOP REFERRING TO LINUX... THERE IS OTHER ARTS... PLAN THAT SHIT APPROPRIATELY... FIX THE WHOLE THING, NOT JUST MICRO FIX."*
+agnos commit `ab913aa "more rx fixes"` @ 16:28 PDT, layered an additional batch of Linux-shape rx-path fixes on top of Attempt 98's RxConfig `0xCF00`. Burned during the afternoon-into-evening sprint, no photo dropped at agnosticos top level (post-Attempt-100 cataloguing surfaced only the 15:56 + 20:10 stragglers). CMOS readback referenced in the Attempt-100-prep entry as "byte-identical to 97/98": chip admits multicast, drops broadcast + unicast — same fingerprint as Attempt 97 (`[0x5C]=0x10` mostly-multicast / `[0x5E]=0x01`). Drove the user direction *"STOP REFERRING TO LINUX... THERE IS OTHER ARTS... PLAN THAT SHIT APPROPRIATELY... FIX THE WHOLE THING, NOT JUST MICRO FIX,"* which retired the Linux-clone audit lineage and pivoted to the BSD/iPXE rewrite (Attempt 100).
+
+A subsequent post-Attempt-99 Linux MCU body bundle was built but never burned and then deleted at user direction (mentioned in Attempt-100-prep header). That deleted intermediate represents the *last* Linux-clone attempt against this symptom.
+
+---
+
+### Attempt 100 — agnos 1.32.3 BSD/iPXE-shape r8169 rewrite 2026-05-23 20:10 PDT → PARTIAL (chip-level RX filter UNBLOCKED — broadcast frame admitted for first time across 1.32.x DHCP arc — but `dhcp: OFFER timeout` persists in FB → gate moves DOWNSTREAM of `r8169_poll`)
+
+**Resolved 2026-05-23 evening from cataloguing of `1323_tcp_return.jpg` (filed as [`attempt-100-agnos-1.32.3-bsd-ipxe-rewrite-broadcast-admitted-offer-still-times-out.jpg`](iron-nuc-zen-photos/attempt-100-agnos-1.32.3-bsd-ipxe-rewrite-broadcast-admitted-offer-still-times-out.jpg)) + CMOS readback at [`attempt-100-cmos-readback.txt`](iron-nuc-zen-photos/attempt-100-cmos-readback.txt).** Build under test = the `TCP_LISTEN_SMOKE=1` 617,984 B variant from the prep rubric (exact size match; `build/agnos` mtime 19:17 PDT, `r8169.cyr` mtime 19:14:38 PDT, commit `547a6b0 "bundled work for gated"` @ 18:22 PDT followed by `976fea8 "formate"` @ 18:36 + uncommitted edits squashed into `4d0384f "rewrite"` @ 19:31 post-burn).
+
+**Outcome vs prep rubric** (CMOS at `iron-nuc-zen-photos/attempt-100-cmos-readback.txt` slots 0x58-0x5F):
+
+| Slot | 97/98/99 baseline | Prep PASS target | Attempt 100 ACTUAL | Verdict |
+|------|-------------------|------------------|--------------------|---------|
+| 0x58 (r8169 probe-done) | 0x01 | 0x01 | **0x01** | probe completed |
+| 0x59 (phy_init outcome) | 0x01 | 0x01 | **0x01** | LINK UP — autoneg completed |
+| 0x5A (TX send count) | 0x02 | **≥ 0x03** | **0x03** | ≥ target — DISCOVER + ≥2 retransmits (or DISCOVER + REQUEST + retransmit if OFFER matched) |
+| 0x5B (TX desc 0 status) | 0x30 | 0x30 | **0x30** | NIC processed our descriptors (TX engine healthy) |
+| 0x5C (RX frames consumed) | 0x10 | similar/higher | **0x10** | 16 frames consumed (Part A loop intact post-rewrite) |
+| 0x5D (last desc high byte) | 0x78 (EOR+FS+LS+MAR=mcast) | 0x32/0x72 (BAR bit set) | **0x72** = EOR + FS + LS + BAR | **BAR bit (broadcast accept) SET** for first time — chip flagged the last-consumed desc as broadcast |
+| 0x5E (last buf first byte) | 0x01 (mcast `01:00:5e:…`) | **0xff** (bcast) or 0xb0 (ucast to us) | **0xff** | **≡ prep PASS target — chip ADMITTED a broadcast frame** (`ff:ff:ff:ff:ff:ff`) |
+
+**FB outcome (photo, lower crop)**: `dhcp: DISCOVER` → `dhcp: OFFER timeout` → **`tcp_listen smoke: start` / `tcp_listen(8080) lid=0` / `tcp_listen smoke: no connection within timeout` / `tcp_listen smoke: done`** → `Launching kybernet...` → `kybernet: starting init` → `kybernet: 0 processes` → `kybernet: 3500 free pages` → `kybernet: launching shell` → `AGNOS shell v1.32.3 (type 'help')` → `agnos> ` prompt. Storage trio + GPT + ext2 mount byte-clean (see [`attempt-100-cmos-readback.txt`](iron-nuc-zen-photos/attempt-100-cmos-readback.txt) for the full xhci / page-walk / scratchpad / DNCTRL / event-drain context too — none of those subsystems regressed).
+
+**Interpretation — what the readback proves vs disproves:**
+
+1. **The BSD/iPXE rewrite is the load-bearing chip-level RX filter fix.** `0x5E=0xff` + `0x5D` BAR-bit-set is the first iron evidence that the chip will admit a broadcast frame at all. Attempts 97/98/99 all stuck at `0x5E=0x01` multicast-only. The four-source convergent (iPXE / FreeBSD / OpenBSD / NetBSD) RxConfig `0xEF00` (8168G_PLUS with EARLYOFFV2) + RXDV-gate clear + deferred `CR=TE|RE` after rxmode landed exactly as designed.
+2. **But OFFER-timeout persists in FB**, so the gate is now strictly DOWNSTREAM of `r8169_poll`. Two candidate root causes:
+    - **(c1) Admitted broadcast wasn't the DHCP OFFER.** It could be ARP request from the switch, NetBIOS name announcement, mDNS query, SSDP, or a Linux dhclient broadcast (since the same MAC has an active lease on Linux). The chip admitted *a* broadcast, not necessarily *the* OFFER. Disambiguation: `tcpdump -i enp1s0 -nn -X 'port 67 or port 68'` on the Linux side while the next burn happens; this reveals whether an OFFER appears on the wire at all.
+    - **(c2) OFFER was admitted but lost in AGNOS's `udp_recv_from` / `dhcp_init` matcher.** Possible failure modes: xid mismatch (DISCOVER's xid not preserved in OFFER matcher), chaddr-compare bug (Attempts 95-96 FIX #4 area), `net_handle_udp` listener routing, port 67 vs 68 filter inversion. Code audit, not iron.
+3. **0x5A=0x03 is interesting.** If OFFER was matched, this would be DISCOVER + REQUEST + retransmit. If OFFER was NOT matched, this is DISCOVER + 2 retransmits (FIX #9). Without a third boot-tail FB line distinguishing DISCOVER-retransmit from REQUEST emission (kybernet's TCP smoke might also have triggered the third send), we can't tell from the readback alone whether `dhcp_init` got far enough to emit REQUEST. The (c1) vs (c2) split decides it.
+
+**Cross-references:**
+- Photo: [`attempt-100-agnos-1.32.3-bsd-ipxe-rewrite-broadcast-admitted-offer-still-times-out.jpg`](iron-nuc-zen-photos/attempt-100-agnos-1.32.3-bsd-ipxe-rewrite-broadcast-admitted-offer-still-times-out.jpg)
+- CMOS readback: [`attempt-100-cmos-readback.txt`](iron-nuc-zen-photos/attempt-100-cmos-readback.txt)
+- Audit doc: [`r8169-chip-init-audit.md § BSD + iPXE convergence (2026-05-23)`](r8169-chip-init-audit.md) — four-source citation matrix.
+- Plan: `agnosticos/.claude/plans/humming-churning-waffle.md` (drove the rewrite).
+- Predecessor: Attempt 99 (FALSIFIED additional rx fixes) — last Linux-clone-lineage attempt.
+- Successor: NO burn auto-proposed per [[feedback_iron_burns_block_other_work]]; zero-burn disambiguation `tcpdump` capture + `dhcp_init`/`udp_recv_from` audit FIRST.
+
+---
+
+### Attempt 100 prep — agnos 1.32.3 BSD/iPXE-shape r8169 rewrite 2026-05-23 ~19:15 PDT → resolved above (PARTIAL)
+
+**Pre-burn rubric retained for traceability; outcome resolved above.** Replaces the post-Attempt-99 Linux MCU body bundle (built, never burned, then deleted at user direction). After Attempts 97/98/99 all FALSIFIED with byte-identical CMOS (chip admits multicast, drops broadcast + unicast), the user pushed back on the Linux-clone audit lineage: *"STOP REFERRING TO LINUX... THERE IS OTHER ARTS... PLAN THAT SHIT APPROPRIATELY... FIX THE WHOLE THING, NOT JUST MICRO FIX."*
 
 **Multi-source research** (three parallel agents, this session):
 

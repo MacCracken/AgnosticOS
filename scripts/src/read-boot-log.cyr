@@ -344,13 +344,23 @@ fn main(): i64 {
     var xh_ccsent  = cmos_read(134);  # 0x86 — Repair (CC) extended-CMOS bank sentinel (0xCC = 0x72/0x73 pair live)
     var xh_ddsent  = cmos_read(135);  # 0x87 — Repair (DD) event-ring drain sentinel (0xDD = site executed)
 
-    # CMOS extended-bank slots 0x88-0x8F (MTRR effective-type audit +
-    # PCI BAR readback) were removed at agnos 1.30.12 along with the
-    # underlying fb_audit_mtrr / fb_audit_pci_bar / fb_mtrr_install_wc
-    # functions (Attempt 74 falsified the MTRR-pinning hypothesis;
-    # Attempt 76 MVP-gated Quiet Boot via the font-density fix, with
-    # the MTRR-install wrmsr removed as the suspected lockup source).
-    # Decoder coverage retired in step.
+    # CMOS extended-bank slots 0x88-0x8C — REPURPOSED 2026-05-23 (agnos
+    # 1.32.4) for DHCP-OFFER-downstream-of-r8169_poll observability. Per
+    # agnosticos/docs/development/dhcp-offer-downstream-audit.md § 5
+    # Bite 2: these stamps fingerprint the LAST-CONSUMED frame at
+    # net_poll + first UDP/68 delivery at net_handle_udp, disambiguating
+    # (c1) admitted broadcast was NOT DHCP vs (c2) admitted broadcast
+    # WAS DHCP but lost downstream in dhcp_init matcher.
+    var dhcp_eth_hi    = cmos_read(136);  # 0x88 — last frame ethertype hi byte (offset +12); 0x08 = IPv4 or ARP, 0xDD = IPv6
+    var dhcp_eth_lo    = cmos_read(137);  # 0x89 — last frame ethertype lo byte (offset +13); 0x00 IPv4, 0x06 ARP, 0xDD IPv6
+    var dhcp_ip_proto  = cmos_read(138);  # 0x8A — IP proto (if IPv4) at offset +14+IHL; 0x11=UDP, 0x01=ICMP, 0x06=TCP, 0x02=IGMP
+    var dhcp_udp_dport = cmos_read(139);  # 0x8B — UDP dst port lo byte (if UDP) at offset +14+IHL+3; 0x44=68 (DHCP), 0x89=137 NetBIOS, 0xE9=5353 mDNS, 0x6C=1900 SSDP
+    var dhcp_listen_st = cmos_read(140);  # 0x8C — DHCP listener.state at first UDP/68 frame; 0x01 = bound, 0x00 = race or no listener
+
+    # CMOS extended-bank slots 0x8D-0x8F still retired (former MTRR/PCI audit slots)
+    # CMOS extended-bank slots 0x90-0xCF reserved for DHCP_FRAME_DUMP=1 builds
+    # (64-byte mirror of first UDP/68 frame post-DISCOVER, for byte-by-byte
+    # comparison against tcpdump capture — engage only if Fixes A+B falsify).
 
     # FB geometry post-mortem (extended-bank 0x90-0x9F, written by
     # agnos/kernel/arch/x86_64/fb_console.cyr::fb_console_init). On iron
@@ -557,8 +567,19 @@ fn main(): i64 {
     print_cmos_line("CMOS[0x85] xhci HCSPARAMS2 byte 2 raw (AA aud) = ", xh_hcsp2b2);
     print_cmos_line("CMOS[0x86] xhci extended-CMOS sentinel (CC)    = ", xh_ccsent);
     print_cmos_line("CMOS[0x87] xhci event-drain sentinel (DD)      = ", xh_ddsent);
-    # CMOS[0x88..0x8F] retired at agnos 1.30.12 (MTRR audit + PCI BAR audit
-    # functions deleted from kernel/arch/x86_64/fb_console.cyr).
+    # 1.32.4 DHCP-OFFER-downstream observability — see audit doc for full decode tables.
+    print_cmos_line("CMOS[0x88] dhcp last-frame ethertype hi        = ", dhcp_eth_hi);
+    print_cmos_line("CMOS[0x89] dhcp last-frame ethertype lo        = ", dhcp_eth_lo);
+    print_cmos_line("CMOS[0x8A] dhcp last-frame IP proto (if IPv4)  = ", dhcp_ip_proto);
+    print_cmos_line("CMOS[0x8B] dhcp last-frame UDP dport lo (if UDP)= ", dhcp_udp_dport);
+    print_cmos_line("CMOS[0x8C] dhcp listener.state at first /68    = ", dhcp_listen_st);
+    println("  DHCP downstream fingerprint cheat-sheet (1.32.4 Attempt 101+):");
+    println("    [0x88,0x89] = 0x08,0x00 → IPv4 (continue to [0x8A]); 0x08,0x06 → ARP (c1 confirmed); 0xDD,0xDD → IPv6 (c1)");
+    println("    [0x8A] = 0x11 → UDP (continue to [0x8B]); 0x01 → ICMP; 0x06 → TCP; 0x02 → IGMP (c1)");
+    println("    [0x8B] = 0x44 → port 68 = DHCP-bound (c2 case); 0x89 = NetBIOS; 0xE9 = mDNS; 0x6C = SSDP (c1)");
+    println("    [0x8C] = 0x01 → listener bound (rules out race); 0x00 → race or no listener (escape-plan step 2)");
+    println("    Combined: [0x88..0x8B]=08,00,11,44 + [0x8C]=01 + OFFER timeout = (c2) AGNOS dropped a real DHCP frame");
+    println("    Combined: [0x88..0x8B]=non-DHCP fingerprint + OFFER timeout = (c1) admitted broadcast was NOT DHCP");
 
     # USBLEGSUP outcome decoder.
     if (xh_usbleg == 0) { println("  USBLEGSUP: n/a (no xECP chain) — controller does not advertise extended caps."); }
