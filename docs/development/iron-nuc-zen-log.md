@@ -42,24 +42,27 @@ later entry pointing back. Status is one of `FAIL` / `PASS` /
 2. CMOS instrumentation `[0x88..0x8B]` will disambiguate (c1) admitted broadcast was NOT DHCP (`[0x88..0x8B]` shows ARP / NetBIOS / mDNS / etc. fingerprint) vs (c2) admitted broadcast WAS DHCP but lost in matcher (`[0x88..0x8B]` shows `08, 00, 11, 44`).
 3. With Fix A + Fix B + ACK-mirror landed, if (c2) is the path AND the bug is one of the two absent validations, next iron burn should produce `dhcp: DISCOVER → OFFER ip=… → REQUEST → ACK ip=… gw=… mask=…` full cycle.
 
-**Results** (to be filled post-burn):
-1. Pending iron Attempt 101.
-2. Pending iron Attempt 101 — `[0x88..0x8B]` decoder ready in `read-boot-log.cyr`.
-3. Pending iron Attempt 101.
+**Results** (post-Attempt-101):
 
-**Iron Attempt 101 prep — agnos 1.32.4 DHCP downstream-fix + observability bundle** → PENDING USER BURN
+1. **NOT TESTED.** Late commit `08a05f7 "arp request fire"` (2026-05-23 22:15 PDT) pivoted main.cyr from `dhcp_init()` to a STATIC-IP + ARP-probe DHCP-bypass test BEFORE the burn fired. So the 10-bundle's DHCP-matcher fixes never ran on iron at Attempt 101 — the boot path branched into the ARP test instead. The hypothesis remains untested; queued for a later burn where DHCP is re-enabled.
+2. **NOT TESTED for DHCP fingerprint.** Same reason — `dhcp_init` was bypassed. `[0x88..0x8B]` instrumentation is in the build but didn't latch DHCP frames because none were sent or expected.
+3. **OUTRUN.** With Attempt 101's ARP-probe pivot, the load-bearing question changed: does the wire work AT ALL? Answer: NO. ARP-to-gateway timed out → bug is at L1/L2/L3 (NIC TX/RX wire path), strictly BELOW DHCP. The 10-bundle's downstream-of-r8169_poll fixes (Fix A BOOTP `op==2`, Fix B magic-cookie, ACK-mirror) are still landed but were never the load-bearing gate for the OFFER timeout symptom.
 
-Pre-burn rubric per [[feedback_iron_log_tracker_pattern]]. Written BEFORE user authorizes burn. Post-burn entry will edit this from PENDING to PASS/PARTIAL/FALSIFIED.
+**New hypothesis from Attempt 101** (added post-burn): the chip's broadcast-admit at Attempt 100 was non-DHCP traffic (most likely incidental LAN broadcast — switch ARP, NetBIOS, mDNS), NOT a DHCP OFFER. Our TX frames may be reaching the wire but no peer replies (because we're sending from a duplicate-MAC source with an active Linux dhclient lease → switch may suppress / discard / loop); OR our TX frames are NOT reaching the wire at all despite descriptor OWN getting cleared by the NIC; OR the chip is receiving the gateway's unicast ARP reply but dropping it before our `r8169_poll` slot inspection. Disambiguation: `tcpdump -i enp1s0 -nn -e arp` from the Linux session while Attempt 102 burns — if our ARP request appears on the wire, TX is fine and the failure is RX-side; if it doesn't appear, TX wire-egress is broken even though descriptor OWN clears.
 
-**Build under test (when landed)**:
+**Iron Attempt 101 — agnos 1.32.4 STATIC-IP + ARP-probe DHCP-bypass** → PARTIAL FALSIFIED (wire failed; bug is below DHCP)
+
+**Resolved 2026-05-23 ~22:27 PDT** — burn fired late evening; photo at agnosticos top level `1324_ARP.jpg` catalogued as [`attempt-101-agnos-1.32.4-arp-timeout-bug-below-dhcp.jpg`](iron-nuc-zen-photos/attempt-101-agnos-1.32.4-arp-timeout-bug-below-dhcp.jpg). Rubric below retained for traceability; mid-day commit pivot makes most rubric rows inapplicable (DHCP never ran). Outcome summary above; full attempt body at § Attempt 101 below.
+
+**Build under test**:
 
 | Artifact | Value | Verified |
 |---|---|---|
-| Kernel | `agnos/build/agnos` at TBD B production / TBD B `TCP_LISTEN_SMOKE=1` | mtime TBD |
-| Banner | `AGNOS shell v1.32.4` | `VERSION` = 1.32.4, `kernel/version.cyr` = 1.32.4 |
-| Fix-set | 1.32.3 baseline (BSD/iPXE r8169 rewrite + Attempt 100 broadcast-admit) + 1.32.4 10-bundle | per CHANGELOG [1.32.4] |
+| Kernel | `agnos/build/agnos` ≈ 617,192 B production (commit `08a05f7` net deletion offset by ARP-probe additions; ±few hundred B vs Attempt 100 baseline) | post-burn |
+| Banner | `AGNOS shell v1.32.4` | `VERSION` = 1.32.4, `kernel/version.cyr` = 1.32.4 — both bumped in commit `43630fc` 2026-05-23 20:59 PDT |
+| Fix-set | 1.32.3 baseline (BSD/iPXE r8169 rewrite + Attempt 100 broadcast-admit) + 1.32.4 10-bundle + late `arp request fire` pivot (commit `08a05f7` @ 22:15 PDT replaces `dhcp_init()` with STATIC-IP + ARP-probe) + r8169 CMOS-stamp removal | per CHANGELOG [1.32.4] + `git show 08a05f7` |
 | gnoboot / cyrius | 0.4.2 / 6.0.1 unchanged | — |
-| Regression | `test.sh` 4/4 + `ext2-smoke.sh` 5/5 + `tcp-listen-smoke.sh` baseline-match | run pre-burn |
+| Regression | `test.sh` 4/4 + `ext2-smoke.sh` 5/5 + `tcp-listen-smoke.sh` baseline-match | n/a pre-burn (mid-burn pivot) |
 
 **Expected outcome — Attempt 101 PASS rubric**:
 
@@ -3460,6 +3463,77 @@ dhcp: ACK gw=192.168.1.1 mask=255.255.255.0
 - `agnosticos/docs/development/r8169-chip-init-audit.md § BSD + iPXE convergence (2026-05-23)` — four-source citation matrix + memory follow-up.
 - `agnos/kernel/core/r8169.cyr` lines 437-440 (deletion marker), 763-780 (probe iPXE shape), 1019-1045 (init_tx tail iPXE shape).
 - `agnosticos/.claude/plans/humming-churning-waffle.md` — the plan that drove this rewrite.
+
+---
+
+### Attempt 101 — agnos 1.32.4 STATIC-IP + ARP-probe DHCP-bypass 2026-05-23 ~22:27 PDT → PARTIAL FALSIFIED (wire failed; ARP-to-gateway times out; bug is BELOW DHCP at L1/L2/L3)
+
+**Photo**: [`attempt-101-agnos-1.32.4-arp-timeout-bug-below-dhcp.jpg`](iron-nuc-zen-photos/attempt-101-agnos-1.32.4-arp-timeout-bug-below-dhcp.jpg) (filed from agnosticos top-level `1324_ARP.jpg`).
+
+**Cycle context**: 1.32.4 opened earlier the same day with commit `43630fc "fixes and instrumentations"` (2026-05-23 20:59 PDT) landing the 10-bundle from [`dhcp-offer-downstream-audit.md`](dhcp-offer-downstream-audit.md). Then commit `08a05f7 "arp request fire"` (2026-05-23 22:15 PDT) pivoted the iron-test path before the burn fired: instead of running `dhcp_init()`, the boot installs a STATIC IP + emits a raw ARP-to-gateway and gates a L1/L2/L3 PASS/FAIL verdict on receipt of the reply. The pivot was explicitly to disambiguate Attempt 100's two open questions: (c1) was the admitted broadcast actually the OFFER, or (c2) was it admitted but lost in the matcher. ARP bypass answers both at once.
+
+**Diagnostic code (commit `08a05f7`, `agnos/kernel/core/main.cyr:669-700`)**:
+
+```cyrius
+if (vnet_active != 0 || nic_ready() != 0) {
+    net_init(ip4(192,168,1,222), ip4(192,168,1,1), ip4(255,255,255,0));
+    kprintln("net: STATIC ip=192.168.1.222 gw=192.168.1.1", ...);
+    arp_request(net_gateway);
+    var arp_start = timer_ticks;
+    var arp_got = 0;
+    while ((timer_ticks - arp_start) < 500) {
+        net_poll();
+        if (arp_pending_ip == 0) { arp_got = 1; break; }
+        arch_wait();
+    }
+    if (arp_got == 1) {
+        kprintln("net: L1/L2/L3 PROVEN — wire works, DHCP is the only broken layer", ...);
+    } else {
+        kprintln("arp: TIMEOUT — gateway did not reply within ~5s", ...);
+        kprintln("net: L1/L2/L3 FAILED — bug is BELOW DHCP (NIC/eth/IP/UDP)", ...);
+    }
+}
+```
+
+**FB outcome (photo, lower crop)**:
+
+```
+net: STATIC ip=192.168.1.222 gw=192.168.1.1
+arp: request → 192.168.1.1
+arp: TIMEOUT — gateway did not reply within ~5s
+net: L1/L2/L3 FAILED — bug is BELOW DHCP (NIC/eth/IP/UDP)
+Launching kybernet...
+kybernet: starting init
+kybernet: 0 processes
+kybernet: 3501 free pages
+kybernet: launching shell
+AGNOS shell v1.32.4 (type 'help')
+agnos>
+```
+
+Storage trio + GPT + ext2 mount byte-clean above (AHCI WD Blue, MSC tertiary, NVMe primary, GPT 3 active / 128 reserved, ext2 mounted blocksize=4096 inode_size=256 inodes_per_group=8192, VFS init, heap, SYSCALL/SYSRET, stack canary, interrupts, `Timer ticks before sched: 6`, `Activating scheduler...`). **No regression** in any subsystem below networking.
+
+**Interpretation — what the readback proves vs disproves**:
+
+1. **Attempt 100's (c2) is FALSIFIED.** "OFFER was admitted but lost in `udp_recv_from` / `dhcp_init` matcher" cannot explain ARP-to-gateway timing out. ARP runs entirely below UDP/DHCP — directly on the eth+arp_handle path. If ARP fails, DHCP fixes (Attempt 100's tracker hypothesis + the 1.32.4 10-bundle) are not the load-bearing gate.
+
+2. **Attempt 100's (c1) is REFINED.** "Admitted broadcast wasn't the DHCP OFFER" is consistent with Attempt 101: the chip admitted *a* broadcast at Attempt 100 but it was incidental LAN traffic (switch ARP, NetBIOS, mDNS, Linux dhclient broadcast on same MAC), not a peer-replying-to-us frame. Attempt 101's ARP-to-gateway should generate a directed broadcast → directed unicast reply pair; the unicast reply never arrived.
+
+3. **New load-bearing question (replacing (c1)/(c2))**: which side of the wire is broken?
+    - **TX wire-egress.** Our ARP request descriptor is written + TPPoll-kicked + NIC clears OWN bit. But does the chip actually clock the bits onto the cable? At Attempt 100 the same path "sent" DHCP DISCOVERs (CMOS `[0x5A]=0x03`) but we have zero evidence those frames egressed the PHY. A `tcpdump -i enp1s0 -nn -e arp` from the Linux session during Attempt 102 will resolve this byte-exactly: if our ARP request appears, TX is fine; if not, TX wire-egress is broken despite descriptor consumption.
+    - **RX of unicast reply.** If the chip does send our ARP request, the gateway replies with a unicast frame to our MAC (`b0:41:6f:0c:e4:25`). Attempt 100's CMOS showed BAR bit set (broadcast accept), but APM (Accept Physical Match — unicast) was supposed to be set in the same RxConfig write — was it? `R8169_RXCFG_APM` is OR'd in (`r8169.cyr:678`), but the chip-rev silent-drop pattern documented in Linux's RTL8168H erratum suggests APM may behave erratically; MAR-all-1s is the documented workaround and it IS applied. Verifying APM took effect requires either reading RxConfig back post-write OR observing inbound unicast frames in the CMOS slot 0x5E.
+    - **Duplicate-MAC suppression by switch.** Linux dhclient holds an active lease on the same MAC. Some L2 switches dedupe same-MAC ARP storms or block secondary devices presenting the same source MAC. The Araknis 210 behavior is unknown. Mitigation: stop Linux dhclient before next burn, OR change AGNOS test source MAC, OR test ARP to a different IP (Linux box itself instead of gateway).
+
+**Cross-references**:
+- Catalog: [`iron-nuc-zen-photos/README.md`](iron-nuc-zen-photos/README.md) entry `attempt-101-agnos-1.32.4-arp-timeout-bug-below-dhcp.jpg`.
+- Tracker outcome: § Tracker: 1.32.4 cycle Results section above.
+- Diagnostic code: `agnos/kernel/core/main.cyr:669-700` (commit `08a05f7`).
+- TX path under suspicion: `agnos/kernel/core/r8169.cyr:696-725` (`r8169_send`) — descriptor write + TPPoll kick.
+- RX path under suspicion: `agnos/kernel/core/r8169.cyr:555-614` (`r8169_poll`) — multi-frame budget loop.
+- ARP send/recv: `agnos/kernel/core/net.cyr:85-110` (`arp_request`), `:501-549` (`net_handle_arp`).
+- 1.32.4 10-bundle still landed but never exercised at Attempt 101: [`dhcp-offer-downstream-audit.md`](dhcp-offer-downstream-audit.md).
+- Predecessor: Attempt 100 PARTIAL (broadcast admit; OFFER timeout).
+- Successor: NO burn auto-proposed per [[feedback_iron_burns_block_other_work]]. Zero-burn observability `tcpdump -i enp1s0 -nn -e arp -s 0` from the Linux session is the next disambiguation, paired with a possible Linux-side `arping` from the gateway IP toward the AGNOS test IP to probe the RX-of-unicast side independently.
 
 ---
 

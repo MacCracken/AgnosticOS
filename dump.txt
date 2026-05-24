@@ -1,0 +1,84 @@
+09:20:08.635033 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.106 tell 192.168.1.1, length 46
+09:20:08.718580 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.101 tell 192.168.1.1, length 46
+09:20:08.740634 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.108 tell 192.168.1.1, length 46
+09:20:08.898581 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.110 tell 192.168.1.1, length 46
+09:20:08.922874 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.104 tell 192.168.1.1, length 46
+09:20:09.606383 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.104 tell 192.168.1.1, length 46
+09:20:10.136489 78:bd:bc:f8:0d:af > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.1 tell 192.168.1.108, length 46
+09:20:10.634386 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.104 tell 192.168.1.1, length 46
+09:20:11.271192 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.107 tell 192.168.1.1, length 46
+09:20:11.354945 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.117 tell 192.168.1.1, length 46
+09:20:11.858369 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.117 tell 192.168.1.1, length 46
+09:20:12.159936 78:bd:bc:f8:0d:af > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.1 tell 192.168.1.108, length 46
+09:20:12.658432 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.117 tell 192.168.1.1, length 46
+09:20:13.315082 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.152 tell 192.168.1.1, length 46
+09:20:13.906388 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.152 tell 192.168.1.1, length 46
+09:20:14.183836 78:bd:bc:f8:0d:af > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.1 tell 192.168.1.108, length 46
+09:20:14.682394 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.152 tell 192.168.1.1, length 46
+09:20:15.366780 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.116 tell 192.168.1.1, length 46
+09:20:15.954397 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.116 tell 192.168.1.1, length 46
+09:20:16.208447 78:bd:bc:f8:0d:af > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.1 tell 192.168.1.108, length 46
+09:20:16.706409 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.116 tell 192.168.1.1, length 46
+09:20:17.414791 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.115 tell 192.168.1.1, length 46
+09:20:17.523002 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.104 tell 192.168.1.1, length 46
+09:20:18.210441 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.104 tell 192.168.1.1, length 46
+09:20:18.236503 78:bd:bc:f8:0d:af > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.1 tell 192.168.1.108, length 46
+09:20:18.351070 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.138 tell 192.168.1.1, length 46
+09:20:19.026417 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.138 tell 192.168.1.1, length 46
+09:20:19.642461 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.138 tell 192.168.1.1, length 46
+09:20:20.260469 78:bd:bc:f8:0d:af > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.1 tell 192.168.1.108, length 46
+09:20:20.279140 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.136 tell 192.168.1.1, length 46
+09:20:20.778405 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.136 tell 192.168.1.1, length 46
+09:20:21.282488 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.136 tell 192.168.1.1, length 46
+09:20:21.915491 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.114 tell 192.168.1.1, length 46
+09:20:22.308970 78:bd:bc:f8:0d:af > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.1 tell 192.168.1.108, length 46
+09:20:22.806459 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.114 tell 192.168.1.1, length 46
+09:20:23.330437 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.114 tell 192.168.1.1, length 46
+09:20:23.380234 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.115 (ff:ff:ff:ff:ff:ff) tell 192.168.1.1, length 46
+09:20:23.452727 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.128 (ff:ff:ff:ff:ff:ff) tell 192.168.1.1, length 46
+09:20:23.452758 b0:41:6f:0c:e4:25 > d4:6a:91:ce:70:60, ethertype ARP (0x0806), length 42: Reply 192.168.1.128 is-at b0:41:6f:0c:e4:25, length 28
+09:20:23.472799 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.108 (ff:ff:ff:ff:ff:ff) tell 192.168.1.1, length 46
+09:20:23.544696 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.112 (ff:ff:ff:ff:ff:ff) tell 192.168.1.1, length 46
+09:20:23.617017 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.109 (ff:ff:ff:ff:ff:ff) tell 192.168.1.1, length 46
+09:20:23.725096 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.113 (ff:ff:ff:ff:ff:ff) tell 192.168.1.1, length 46
+09:20:23.796655 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 169.254.243.9 (ff:ff:ff:ff:ff:ff) tell 192.168.1.1, length 46
+09:20:23.869133 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 169.254.58.193 (ff:ff:ff:ff:ff:ff) tell 192.168.1.1, length 46
+09:20:23.941020 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.132 (ff:ff:ff:ff:ff:ff) tell 192.168.1.1, length 46
+09:20:24.013478 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.121 (ff:ff:ff:ff:ff:ff) tell 192.168.1.1, length 46
+09:20:24.101840 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.102 (ff:ff:ff:ff:ff:ff) tell 192.168.1.1, length 46
+09:20:24.177261 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.106 (ff:ff:ff:ff:ff:ff) tell 192.168.1.1, length 46
+09:20:24.252782 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.126 (ff:ff:ff:ff:ff:ff) tell 192.168.1.1, length 46
+09:20:24.296886 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.103 (ff:ff:ff:ff:ff:ff) tell 192.168.1.1, length 46
+09:20:24.369067 78:bd:bc:f8:0d:af > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.1 tell 192.168.1.108, length 46
+09:20:24.372505 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.107 (ff:ff:ff:ff:ff:ff) tell 192.168.1.1, length 46
+09:20:24.444639 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.127 (ff:ff:ff:ff:ff:ff) tell 192.168.1.1, length 46
+09:20:24.496792 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.10 (ff:ff:ff:ff:ff:ff) tell 192.168.1.1, length 46
+09:20:24.520866 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.100 (ff:ff:ff:ff:ff:ff) tell 192.168.1.1, length 46
+09:20:24.544674 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.104 (ff:ff:ff:ff:ff:ff) tell 192.168.1.1, length 46
+09:20:24.620363 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.124 (ff:ff:ff:ff:ff:ff) tell 192.168.1.1, length 46
+09:20:24.620395 b0:41:6f:0c:e4:25 > d4:6a:91:ce:70:60, ethertype ARP (0x0806), length 42: Reply 192.168.1.124 is-at b0:41:6f:0c:e4:25, length 28
+09:20:24.645276 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.101 (ff:ff:ff:ff:ff:ff) tell 192.168.1.1, length 46
+09:20:24.668663 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.105 (ff:ff:ff:ff:ff:ff) tell 192.168.1.1, length 46
+09:20:24.752991 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.110 (ff:ff:ff:ff:ff:ff) tell 192.168.1.1, length 46
+09:20:24.829363 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.5 (ff:ff:ff:ff:ff:ff) tell 192.168.1.1, length 46
+09:20:25.399223 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.106 tell 192.168.1.1, length 46
+09:20:25.510668 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.123 tell 192.168.1.1, length 46
+09:20:26.194673 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.123 tell 192.168.1.1, length 46
+09:20:26.393070 78:bd:bc:f8:0d:af > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.1 tell 192.168.1.108, length 46
+09:20:26.890412 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.123 tell 192.168.1.1, length 46
+09:20:27.446914 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.105 tell 192.168.1.1, length 46
+09:20:27.538627 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.108 tell 192.168.1.1, length 46
+09:20:27.755271 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.135 tell 192.168.1.1, length 46
+09:20:28.424549 78:bd:bc:f8:0d:af > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.1 tell 192.168.1.108, length 46
+09:20:28.922419 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.135 tell 192.168.1.1, length 46
+09:20:29.474491 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.135 tell 192.168.1.1, length 46
+09:20:30.111189 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.121 tell 192.168.1.1, length 46
+09:20:30.448997 78:bd:bc:f8:0d:af > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.1 tell 192.168.1.108, length 46
+09:20:30.946466 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.121 tell 192.168.1.1, length 46
+09:20:31.522438 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.121 tell 192.168.1.1, length 46
+09:20:32.159271 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.119 tell 192.168.1.1, length 46
+09:20:32.476514 78:bd:bc:f8:0d:af > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.1 tell 192.168.1.108, length 46
+09:20:32.974443 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.119 tell 192.168.1.1, length 46
+09:20:33.570470 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.119 tell 192.168.1.1, length 46
+09:20:34.206933 d4:6a:91:ce:70:60 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.1.243 tell 192.168.1.1, length 46
+
