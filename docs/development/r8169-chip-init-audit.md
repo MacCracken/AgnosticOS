@@ -1,5 +1,7 @@
 # r8169 Chip-Init Audit — VER_46 (RTL8168h) Init Sequence vs. AGNOS
 
+> **🛑 CLOSED 2026-05-24 — every chip-init / construction thread in this doc is FALSIFIED-as-irrelevant by zero-burn Linux proof.** Two Cyrius AF_PACKET probes that build AGNOS's frames **verbatim** drew real gateway replies on the wire: `dhcp-probe-raw` leased `.129`, and `arp-probe-raw` got `gateway 192.168.1.1 is at d4:6a:91:ce:70:60` — from the real MAC `b0` claiming `.222`, while Linux held an active `b0` lease. That proves AGNOS's eth/IP/UDP/DHCP/ARP **construction is wire-correct** and the gateway **replies to us**, so none of the init-sequence hypotheses below (RXDV-gate Bite A, Cfg9346/32-bit-MAC Bite B, MAR Bite C, the MCU-body bundle, the RxConfig profile guesses) can be the load-bearing bug. A fresh datasheet-level re-derivation of the RX filter/ring/poll (call order, CPlusCmd, accept-bits, MAR, RXDV clear, late CR.RE, descriptor flags) found **no structural fault**. The bug is isolated to **r8169 RX delivery on iron** — the reply reaches the PHY but not `r8169_poll`. Acted on: the LAA override (which the source-guard theory motivated, now also falsified) was **removed** so the next burn tests only the RX-ring code. Full reasoning: [`iron-nuc-zen-log.md` § Attempt 102](iron-nuc-zen-log.md). The material below is retained as historical lineage; **do not resume these threads.**
+
 **Date**: 2026-05-23 (post-Attempt-98)
 **Auditor**: Claude (Opus 4.7, 1M ctx)
 **Target**: `agnos/kernel/core/r8169.cyr` — `r8169_probe` + `r8169_init_rx` + `r8169_init_tx` end-to-end

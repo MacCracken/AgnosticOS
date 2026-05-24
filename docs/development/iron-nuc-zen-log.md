@@ -3654,6 +3654,54 @@ Storage trio + GPT + ext2 mount byte-clean above (AHCI WD Blue, MSC tertiary, NV
 
 ---
 
+### Attempt 102 — agnos 1.32.4 sovereign-MAC (LAA) override + ARP byte-pair fix 2026-05-24 → FALSIFIED (LAA build still ARP-times-out; zero-burn Linux probes then prove construction wire-correct and isolate the bug to r8169 RX delivery)
+
+**Photos** (agnosticos top-level `1324_Log_p1_again.jpeg` + `1324_arp_still_failing.jpg`, pending filing into `iron-nuc-zen-photos/`): boot-log p1 (xhci / hid / msc / r8169 / nvme / ahci) + p2 (GPT / VFS / net / arp / kybernet / shell).
+
+**Drive-swap context (user, pre-burn)**: archaemenid drives reshuffled — the AGNOS boot drive now sits in the internal **NVMe slot** (`CT2000P3SSD8`), Linux moved to the **SATA** WD Blue SA510. The log enumerated NVMe + AHCI + USB-MS + GPT + the `AGNOS-BOOT` ESP and reached shell with **zero hardcoded-drive assumptions** — the install-state migration's topology-independence is now pre-validated for free (1.31.6 `blk_mark_registered` + multi-backend probe paying off).
+
+**Build under test**: `agnos/build/agnos` 621,880 B (LAA U/L-bit override `b0→b2` at `r8169.cyr:367` + ARP byte-pair big-endian fix in `net.cyr` arp_request + outbound `route_next_hop_mac` + boot-time `tcp_connect(1.1.1.1)` test). cyrius 6.0.1 + gnoboot 0.4.2.
+
+**FB outcome (photo)**:
+
+```
+r8169: MAC=178:65:111:12:228:37          (b2:41:6f:0c:e4:25 — LAA override active)
+...
+net: STATIC ip=192.168.1.222 gw=192.168.1.1
+arp: request -> 192.168.1.1
+arp: TIMEOUT -- gateway did not reply within ~5s
+net: L1/L2 FAILED -- cannot reach gateway, skipping L3 test
+...
+AGNOS shell v1.32.4 (type 'help')
+agnos>
+```
+
+Storage trio + GPT + ext2 mount + scheduler + kybernet + shell byte-clean (no regression). The ARP byte-pair fix DID correct Attempt 101's malformed egress (`htype=0x0100 → 0x0001`), but the reply still never arrived.
+
+**Zero-burn disambiguation — two Cyrius AF_PACKET probes on the Linux session (NO additional burn)** per [[feedback_iron_burns_block_other_work]]:
+- **`arp-probe-raw enp1s0`** (NEW — `scripts/dhcp-probe/src/arp_probe_raw.cyr`): builds AGNOS's EXACT ARP frame (`eth_build` + the byte-pair ARP payload copied verbatim from `net.cyr`), sends via AF_PACKET from the real MAC `b0:41:6f:0c:e4:25` claiming `.222`, target gateway. Result: **`arp: REPLY recv -- gateway 192.168.1.1 is at d4:6a:91:ce:70:60`**. Ran WHILE Linux held an active `b0` lease on `.141`.
+- **`dhcp-probe-raw enp1s0`** (prior): same discipline for the DHCP frame — leased `.129` from the gateway.
+
+**Interpretation — the decisive cut**:
+1. **Construction PROVEN wire-correct.** AGNOS's `eth_build` / `ip_build` / `udp_build` / `dhcp_build_packet` / ARP payload are byte-identical to frames the real gateway accepts and answers. The entire TX + frame-construction audit surface is **closed**.
+2. **IP-source-guard theory FALSIFIED.** The LAA override existed to dodge a hypothesized router DAI/source-guard dropping `b0`-claiming-`.222`. The arp-probe sent exactly that — from `b0`, claiming `.222`, with Linux's `b0` lease active — and the gateway replied. No source-guard exists.
+3. **The LAA only added RX risk.** The gateway's unicast reply is addressed to `b2`, so reception depends on the `init_tx` IDR writeback actually reprogramming the chip hardware unicast filter (uncertain on VER_46 per datasheet §2.3). If it doesn't, every unicast reply to `b2` is dropped at the MAC filter — exactly this symptom.
+4. **Bug isolated to r8169 RX delivery.** Construction + TX + gateway-replies-to-us all proven on Linux ⇒ the only remaining suspect is AGNOS's r8169 RX path on iron.
+
+**RX code re-derivation (zero-burn, datasheet not comments per [[feedback_audit_re_derive_dont_validate_comments]])**: call order `probe→init_rx→init_tx` (RDSAR gets a valid ring); CPlusCmd `MULRW|RXENB|TXENB`; RxConfig accept `AB|AM|APM`=0x0E; MAR all-1s; RXDV_GATED cleared; CR.TE|RE late; descriptor OWN/EOR/FS/LS/RXERRSUM/LEN_MASK + `r8169_poll` logic all correct; x86/Zen DMA coherent. **No structural bug in the filter / ring / poll.** The one untested-and-risky variable was the LAA unicast-filter dependency.
+
+**Fix landed 2026-05-24 (LAA-override removal)**: deleted the U/L-bit flip at `r8169.cyr:367` — IDR now reverts to the EEPROM-autoloaded `b0`, guaranteed to match the hardware unicast filter with zero writeback dependency. This makes AGNOS's wire + filter identity byte-identical to the proven-working `arp-probe-raw`, so the next burn tests ONLY the r8169 RX-ring code against Linux's. Comments at `r8169.cyr:359-368` + `main.cyr:675-678` updated. Build 621,880 → **621,816 B** (−64 B). `scripts/test.sh` 4/4 PASS + `ext2-smoke.sh` 5/5. cyrius 6.0.1 + gnoboot 0.4.2 unchanged.
+
+**Next (Attempt 103, PENDING USER BURN — NOT auto-proposed)**: expected boot block shows `r8169: MAC=176:65:111:12:228:37` (b0) + `net: STATIC ip=192.168.1.222` + `arp: request -> 192.168.1.1`. **PASS** = `arp: REPLY gw_mac=212:106:145:206:112:96` (d4:6a:91:ce:70:60) → `net: L2 OK` → `tcp: connect 1.1.1.1:80` → `net: L3+TCP OK`. **If ARP still times out with the EEPROM MAC**, the bug is purely r8169.cyr RX-ring delivery (not the filter MAC) — escalate to MMIO / descriptor-DMA observability, NOT another construction/chip-init audit.
+
+**Cross-references**:
+- Probes: `scripts/dhcp-probe/src/arp_probe_raw.cyr` (NEW) + `dhcp_probe_raw.cyr`.
+- Fix: `agnos/kernel/core/r8169.cyr:359-368` (LAA removal) + `main.cyr:675-678`.
+- Predecessor: Attempt 101 PARTIAL FALSIFIED (ARP timeout, malformed frame).
+- Construction / chip-init audit threads CLOSED by Linux proof: [`r8169-chip-init-audit.md`](r8169-chip-init-audit.md).
+
+---
+
 ## Conventions for future entries
 
 - **Tracker-first**: when opening a new version cycle, write the hypothesis + expectations block in the `## Hypothesis & Expectations Tracker` section AT THE TOP of this file BEFORE the first per-attempt entry. State.md's cycle header should link to the tracker anchor (`#tracker-1NMK-cycle` slug pattern). The tracker is the predictive layer; the per-attempt entries below are the observation layer. The two together make session-restart cheap: state.md → tracker → expected vs. actual → drill into per-attempt narrative only if needed.
