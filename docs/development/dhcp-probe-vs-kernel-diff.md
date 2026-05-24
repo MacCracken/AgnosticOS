@@ -137,9 +137,95 @@ The probe is **runnable, falsifiable code**. Future hypotheses about the kernel 
 
 Example: if someone hypothesizes "the bug is UDP cksum=0", change the probe to send cksum=0 (the probe already does this in its own AGNOS-shape variant — TBD as a follow-up) and see if Araknis still ACKs. Result: yes, it does. Hypothesis falsified in 10 seconds, no kernel rebuild, no iron burn.
 
-## The escape hatch this didn't take
+## Second-tier probe — AGNOS header construction proven correct
 
-The probe still goes through Linux's kernel UDP/IP/Eth wrapper. A **second-tier probe** that builds the full frame (eth + IP + UDP + BOOTP) in Cyrius userland and injects via `AF_PACKET SOCK_RAW` would test AGNOS's `ip_build` / `udp_build` / `eth_build` directly against the wire. If that probe also succeeds, the bug locus shrinks from three suspects to two (r8169 TX or RX only). That artifact is the natural next step but is not built yet — flagged for whenever the network arc resumes.
+The AF_PACKET-injection probe (`src/dhcp_probe_raw.cyr`, build target `build/dhcp-probe-raw`) builds the full frame (eth + IP + UDP + BOOTP) in Cyrius userland using AGNOS's `eth_build` / `ip_build` / `udp_build` / `ip_checksum` / `dhcp_build_packet` functions **copied byte-for-byte verbatim** from `agnos/kernel/core/net.cyr:31-89,311-335`. Sends via `AF_PACKET SOCK_RAW` — the Linux kernel adds zero header bytes.
+
+**Run 2026-05-24**:
+
+```
+dhcp-probe-raw: iface=enp1s0
+  mac=b0:41:6f:0c:e4:25
+  ifindex=2
+  xid=0x3b891d4f
+dhcp: DISCOVER sent (291 bytes via AF_PACKET, AGNOS-shape)
+dhcp: OFFER recv
+  offered ip=192.168.1.129
+  server  id=192.168.1.1
+  subnet  =255.255.255.0
+  gateway =192.168.1.1
+dhcp: REQUEST sent
+dhcp: LEASE ACQUIRED (AGNOS-shape wire) ip=192.168.1.129 via server=192.168.1.1
+====> AGNOS eth_build/ip_build/udp_build PROVEN wire-correct.
+```
+
+What this proves additionally:
+
+- AGNOS `eth_build` — wire-correct (dst/src MAC ordering, ethertype BE)
+- AGNOS `ip_build` — wire-correct (version+IHL, total_len, TTL, proto, checksum, src/dst BE byte order)
+- AGNOS `ip_checksum` — wire-correct (one's complement RFC 791)
+- AGNOS `udp_build` — wire-correct (sport/dport/len BE, cksum=0 accepted)
+- AGNOS `dhcp_build_packet` — wire-correct (already established by first probe)
+- Sending IP src=0.0.0.0 (RFC 2131 compliant for pre-lease) — accepted by Araknis
+- Sending UDP cksum=0 (RFC 768 IPv4-legal) — accepted by Araknis
+- Sending IP ID=0 — accepted by Araknis
+- Linux r8169 driver TX path delivers these AGNOS-shape bytes onto the wire byte-faithfully
+
+## Final bug locus
+
+After both probes pass and given QEMU + virtio_net DHCP cycle works in the kernel (validates `net_poll` dispatch + `net_handle_udp` + `udp_recv_from` end-to-end), the bug locus is **definitively bounded to the AGNOS r8169 driver**. Specifically:
+
+### 1. r8169 TX wire-egress
+`r8169_send` consumes the descriptor (`OWN` clears, `TPPoll` kicks), but the PHY does not actually clock the bits onto the cable. Mechanism candidates (multi-source convergent — `r8169-iron-burn-audit.md` + Linux/BSD/iPXE prior art):
+
+- TX descriptor `cmdstat` packing missing `FS|LS` for single-fragment packet
+- `RTL_W8(TPPoll, NPQ)` not actually kicking the right queue
+- Cfg9346 lock racing TX-engine enable
+- ASPM / CLKREQ leaving PCIe in L1 during TX
+- TX FIFO threshold buffering frame indefinitely
+
+### 2. r8169 RX delivery
+Chip receives OFFER frame; `r8169_poll` never reads it. Mechanism candidates:
+
+- RX ring pointer not advancing past chip's write pointer
+- RX descriptor OWN bit polling mis-mapped (wrong byte/bit)
+- EOR (End-Of-Ring) wraparound losing the slot
+- `r8169_rx_rearm` re-arming before CPU consumes
+- DMA write going to a phys address we don't `load64()` from (page-aligned phys vs virt mismatch, or > 4GB phys without 64-bit DMA capability bit)
+
+The `net_poll` dispatch path is exonerated by the existing QEMU full-DHCP-cycle pass (virtio_net + same net.cyr code → full DISCOVER/OFFER/REQUEST/ACK works).
+
+## Discriminating TX vs RX without further code work
+
+The clean discriminator is **external wire capture**: while AGNOS burns on archaemenid, run `tcpdump -i <iface> -nn -e -X 'arp or (udp port 67 or udp port 68)'` from another machine on the same LAN. (A laptop, tablet, anything that can sniff the broadcast domain.)
+
+- If AGNOS's DISCOVER appears on the wire **and** Araknis's OFFER also appears → bug is **r8169 RX** (AGNOS sees neither)
+- If AGNOS's DISCOVER does not appear at all → bug is **r8169 TX** (frame never leaves chip)
+- If DISCOVER appears but no OFFER → bug is in Araknis (or duplicate-MAC suppression — but we falsified that earlier today)
+
+One iron burn, one external capture, definitive bisection. No more in-kernel instrumentation needed.
+
+## Files retired by this artifact (final)
+
+- `dhcp-end-to-end-audit.md` — six-FIX wiring set; FIX#1 (nic_mac vs vnet_mac) is correct (use non-zero chaddr) but the other five were shots in the dark; superseded.
+- `dhcp-offer-downstream-audit.md` — 10-item bundle; items 3,4,5,6,10 (op==2 / cookie / xid / option walker / ACK matcher) **all proven non-load-bearing** by the probe; items 1,2,7,8,9 were instrumentation/static-fallback. Superseded.
+- `dhcp-and-outbound-l3-audit-2026-05-24.md` — route helper + outbound TCP test; route helper is structurally correct (probe doesn't exercise it because Linux kernel handles routing); the ARP timeout the doc was written to explain has the same root cause as the OFFER timeout — r8169 RX. Superseded.
+
+## Reproducing
+
+```sh
+cd /home/macro/Repos/agnosticos/scripts/dhcp-probe
+
+# POSIX kernel-wrapped probe (validates DHCP protocol logic):
+cyrius build src/dhcp_probe.cyr build/dhcp-probe
+sudo ./build/dhcp-probe enp1s0
+
+# AGNOS-shape AF_PACKET probe (validates AGNOS header construction):
+cyrius build src/dhcp_probe_raw.cyr build/dhcp-probe-raw
+sudo ./build/dhcp-probe-raw enp1s0
+```
+
+Both coexist with running `systemd-networkd` / `dhclient`. POSIX variant requires `SO_REUSEADDR` (already enabled in source) to share port 68. AF_PACKET variant requires `CAP_NET_RAW`. Gateway allocates next available LAN slot (~.128–.130; Linux already holds .124).
 
 ## Files retired by this artifact
 
