@@ -25,6 +25,46 @@
 
 **The chip-rev RxConfig fix (`0xE700 → 0xCF00`) was a real bug — but it was not load-bearing for the OFFER-timeout symptom.** Attempt 98's CMOS is byte-identical to Attempt 97 because the missing surface is upstream: **AGNOS skips Linux's `rtl_hw_start_8168h_1` body entirely**, and skips most of the surrounding `rtl_hw_start` envelope. The chip is operating in a partially-initialized state where the BIOS-PXE residue is what's letting multicast through. Broadcast (DHCP OFFER) and unicast-to-us are filtered at the chip before reaching the ring.
 
+---
+
+## Post-Attempt-99 update (2026-05-23 ~18:10 PDT)
+
+**Items 1–5 + item 8 landed; Attempt 99 burned; CMOS byte-identical to Attempts 97/98** (photo: `1323_after_fixes_failure.jpg` at agnosticos top level). The 5-item minimum-viable bundle (RXDV disable + Cfg9346-wrapped 32-bit MAC writes + packet-filter reset + MAR all-1s + RxConfig RMW after CR.RE) did NOT clear OFFER timeout. Hypothesis: the load-bearing surface is the **per-VER_46 chip-MCU init body** (item 10) + the **init-order envelope** (item 8 was only partial — Linux writes CR=TE|RE in ONE write, AGNOS pre-fix split it across init_rx + init_tx).
+
+**Bundle LANDED 2026-05-23 ~18:10 PDT** for Iron Attempt 100:
+
+| # | Bite | Code site | Notes |
+|---|------|-----------|-------|
+| 6 | CPlusCmd PCIMulRW set | `r8169_probe` (in Cfg9346-unlock window) | Linux line 4102 |
+| 7 | DLLPR PFM_EN clear + DLLPR TX_10M_PS_EN clear + MISC_1 PFM_D3COLD_EN clear | `r8169_hw_start_8168h_1` steps 10/11/12 | Linux lines 3580/3581/3583 |
+| 9 | RDSAR + TNPDS HI before LO | `r8169_init_rx` + `r8169_init_tx` | Linux line 2805-2808 chip-rev quirk |
+| 10 | Full `rtl_hw_start_8168h_1` body — EPHY init (6-entry table) + FIFO size + pause thresholds + ASPM entry latency + ERI 0xDC/0x5F0/0xC0/0xB8/0x1B0 writes + DLLPR/MISC_1 power-save clears + PCIe L2/L3 disable + 4 mac_ocp_modify + 4 mac_ocp_write | `r8169_hw_start_8168h_1` (new function) | Linux lines 3550-3607. Skips rg_saw_cnt read at line 3589 (paged-PHY access not yet ported; not load-bearing for OFFER) |
+| 11 | ASPM/CLKREQ disable before EPHY access | `r8169_aspm_clkreq_disable` (new helper) | Linux line 4101. Walks PCI cap 0x10 (PCIe Express), clears LNKCTL CLKREQ_EN bit 8 + ASPM bits 0-1 |
+| 8 (full) | Init-order restructure to Linux-exact: CR=TE\|RE single write → RxConfig profile → TxConfig → RxConfig RMW accept bits — ALL post-enable | `r8169_init_tx` tail (replaces split CR.RE in init_rx + CR.TE in init_tx) | Linux lines 4124-4128 |
+
+New helpers landed (~125 LOC of helpers, ~80 LOC of `r8169_hw_start_8168h_1`, ~45 LOC of probe envelope changes, ~30 LOC of init_rx/init_tx restructure):
+- `r8169_eri_set_bits(addr, bits)` / `r8169_eri_clear_bits(addr, bits)` — RMW shorthands matching Linux lines 1086-1098
+- `r8169_mac_ocp_write(reg, data)` / `r8169_mac_ocp_read(reg)` / `r8169_mac_ocp_modify(reg, mask, set)` — chip-MCU bus via OCPDR @0xB0 (no completion polling required — distinct from GPHY_OCP @0xB8 which gates on flag bit 31)
+- `r8169_ephy_write(reg, val)` / `r8169_ephy_read(reg)` / `r8169_ephy_modify(reg, mask, bits)` — Ethernet-PHY internal register access via EPHYAR @0x80 (5-bit register address, 16-bit data, completion-flag polling on bit 31)
+- `r8169_aspm_clkreq_disable()` — walks PCI Express cap (ID 0x10), clears CLKREQ_EN + ASPM L0s/L1
+- `r8169_pcie_state_l2l3_disable()` — clears Config3.Rdy_to_L23
+
+Build: 617,000 → **622,616 B** production / **623,408 B** with `TCP_LISTEN_SMOKE=1`. `scripts/test.sh` 4/4 PASS + `ext2-smoke.sh` 5/5 PASS + 5/5 regression cross-check + `tcp-listen-smoke.sh` 1/2 (matches pre-fix baseline; scenario-1 iron-only SLIRP-RX gap). md5 `e613735f1a4294e0b2047a52acbff373`.
+
+**Falsification rubric for Attempt 100** (CMOS readback after burn):
+
+| Slot | Pre-bundle (Attempts 97/98/99) | Attempt 100 PASS target | Falsification |
+|------|--------------------------------|--------------------------|---------------|
+| 0x5A (TX send count) | 0x02 (DISCOVER + retransmit) | 0x03+ (DISCOVER + REQUEST + maybe retransmit) | 0x02 = OFFER never reached `dhcp_init` |
+| 0x5E (last RX consumed first byte) | 0x01 (`01:00:5e:…` multicast) | 0xFF (broadcast OFFER) OR 0xB0 (unicast OFFER to our MAC) | 0x01 = chip still dropping broadcast/unicast |
+| 0x5C (RX consumed-frame count) | 0x10 (16 multicast in idle window) | Similar or higher count, but with a non-multicast frame in 0x5E | n/a — 0x5C alone doesn't disambiguate |
+
+If 0x5E still reads 0x01 with the bundle landed, the chip-MCU init body is NOT load-bearing for this silicon's broadcast filter. Next steps in that case (NOT auto-burned per `feedback_iron_burns_block_other_work`):
+1. Read PCIe LNKCTL post-disable to confirm ASPM/CLKREQ actually got cleared (cap-walk may be wrong)
+2. Read MISC register post-RXDV-clear to confirm bit 19 actually cleared (current code reads back AFTER the chip-init body — could verify by re-reading from probe tail)
+3. Consider porting EEE timer setup (`rtl_set_eee_txidle_timer` at Linux line 4104) — currently skipped
+4. Consider porting `rtl_init_rxcfg`'s rxcfg accept_bits compile-time variant which uses `RX_DMA_BURST=7` differently per chip-rev branch
+
 The bundle of misses that explain the multicast-only RX symptom (ranked by load-bearing probability):
 
 | # | Linux site | AGNOS site | Effect |
