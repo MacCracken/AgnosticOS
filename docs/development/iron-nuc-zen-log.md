@@ -105,6 +105,107 @@ Outcome decoding (independent of CMOS):
 
 ---
 
+#### Attempt 102 prep — agnos 1.32.4 outbound-L3 routing + 1.1.1.1 TCP test → PENDING USER BURN
+
+**Date scaffolded**: 2026-05-24 AM (post-Attempt-101 reshape). NO burn auto-proposed per [[feedback_iron_burns_block_other_work]]. User authorizes when ready.
+
+**Driving audit**: [`dhcp-and-outbound-l3-audit-2026-05-24.md`](dhcp-and-outbound-l3-audit-2026-05-24.md) — consolidated DHCP review against RFCs + multi-source prior art (Linux / lwIP / iPXE / *BSD / U-Boot / Plan 9), identifies the outbound L3 next-hop-MAC gap as the fresh finding, lays out the test ladder.
+
+**Code edits landed pre-burn** (all in `agnos/kernel/core/`; no version bump per [[feedback_no_unprompted_version_bumps]] — 1.32.4 cycle stays OPEN):
+
+| File | Change |
+|---|---|
+| `main.cyr:679, 696, 698, 699` | Print byte-length fixes: UTF-8 `→`/`—` replaced with ASCII `->`/`--`; byte counts re-verified ASCII-only. (Cosmetic root cause of "arp request is going to 192.168.1" misread at Attempt 101 — the print truncated the final `.1`.) |
+| `net.cyr:11-16` | New globals `net_gateway_mac[8]` + `net_gateway_mac_valid` — persistent gateway-MAC slot independent of `arp_cache_*`. |
+| `net.cyr:85-110` | New `route_next_hop_mac(dst_ip, out_mac)` helper. Convergent shape: `(dst & mask) == (my_ip & mask)` ⇒ on-LAN; else use gateway MAC. |
+| `net.cyr:138-156` | `udp_send` consults route helper (skipped for `0xFFFFFFFF` broadcast — DHCP `udp_send_from` path unchanged). |
+| `net.cyr:766-775` | `tcp_send_pkt` consults route helper. |
+| `main.cyr:687-715` | On ARP REPLY: cache MAC → `net_gateway_mac`, then `tcp_connect(ip4(1,1,1,1), 80, 49152)` with PASS/FAIL prints. |
+| `scripts/build.sh:97` | `TCP_LISTEN_SMOKE` already opt-in via env var; production build does not define. No edit needed for "comment out inbound TCP" — just don't pass `TCP_LISTEN_SMOKE=1`. |
+
+**Build verified**: `agnos/build/agnos` = **621,640 B** (`scripts/build.sh`, x86_64). Multiboot2 ELF64 OK. cyrius pin 6.0.1 unchanged.
+
+**New hypothesis (Attempt 102)**: with `route_next_hop_mac` resolving off-LAN destinations through the cached gateway MAC, a TCP SYN to 1.1.1.1:80 will reach Cloudflare iff (a) ARP-to-gateway succeeds AND (b) r8169 TX wire-egress works for unicast frames addressed to a real peer MAC (not just broadcast) AND (c) r8169 RX admits a unicast frame addressed to our MAC. SYN+ACK back proves all three layers in one round-trip. Strictly more proof than ICMP echo.
+
+**Expected outcome — Attempt 102 PASS rubric** (boot-block lines, in order, with ASCII-only prints):
+
+| Line | Attempt 101 actual | Attempt 102 PASS target | Falsification → meaning |
+|---|---|---|---|
+| `net: STATIC ip=192.168.1.222 gw=192.168.1.1` | present | present | regression impossible |
+| `arp: request -> 192.168.1.1` | `arp: request   192.168.1` (truncated) | **`arp: request -> 192.168.1.1`** (full) | print-fix verification |
+| `arp: REPLY gw_mac=…` or `arp: TIMEOUT …` | TIMEOUT | **REPLY gw_mac=…** | TIMEOUT still ⇒ L1/L2 gate (chip-side); same as Attempt 101 — fall through to threads (T1)-(T3) below |
+| `net: L2 OK -- gateway MAC cached` | (absent) | present iff ARP REPLY | gates the L3 test below |
+| `tcp: connect 1.1.1.1:80` | (absent) | present | only fires after L2 OK |
+| `net: L3+TCP OK -- outbound TCP handshake established` | (absent) | **present** | full stack proven; closes 1.32.4 |
+| `net: L3+TCP FAIL -- SYN sent but no SYN+ACK` | (absent) | absent | TX-or-RX-of-unicast specific gate — see threads (T4)-(T6) |
+| Storage trio + GPT + ext2 + shell | byte-clean | byte-clean | regression impossible |
+
+**Companion zero-burn capture** (run during burn from the archaemenid Linux session — per [[feedback_iron_burns_block_other_work]] discipline, zero-burn observability earns the burn):
+
+```sh
+# From Linux side, BEFORE reboot to AGNOS USB:
+sudo tcpdump -i enp1s0 -nn -e -s 0 'arp or host 1.1.1.1' -w /tmp/atmp-102.pcap &
+TPID=$!
+# Reboot to AGNOS USB; let ARP probe + TCP attempt run (~10 sec)
+# Power-cycle back to Linux:
+sudo kill $TPID
+tcpdump -nn -e -r /tmp/atmp-102.pcap
+```
+
+What the capture decides (independent of FB output):
+
+| Capture content | Reading |
+|---|---|
+| AGNOS ARP request **AND** gateway reply visible | Both wire-side; if FB says TIMEOUT, AGNOS RX-of-unicast is dropping. → thread (T2) |
+| AGNOS ARP request visible **but no gateway reply** | Switch / dup-MAC suppression OR gateway too slow to reply. → thread (T3) |
+| No AGNOS ARP request visible | TX wire-egress broken — chip clears OWN but bits never hit cable. → thread (T1) |
+| AGNOS TCP SYN to 1.1.1.1 visible AND SYN+ACK visible | Full outbound works; if FB says FAIL, our TCP RX state machine dropped the SYN+ACK. → thread (T5) |
+| AGNOS SYN visible but no SYN+ACK | Gateway forwarding broken (unlikely) OR Cloudflare dropped it (unlikely). Re-run vs 8.8.8.8. → thread (T6) |
+| No AGNOS SYN visible | `tcp_send_pkt` TX path or `route_next_hop_mac` not resolving. → thread (T4) |
+
+---
+
+#### Threads to pull if Attempt 102 is still blocked
+
+**Pre-bound diagnostic branches, ordered by zero-burn-feasibility first then iron-cost. Each is a code-read or instrumentation pass — none invented post-facto.**
+
+**(T1) TX wire-egress broken despite descriptor OWN clearing.** If tcpdump shows no AGNOS frames at all (ARP or TCP), the chip is consuming descriptors without clocking bits onto the cable. Audit anchors:
+- `agnos/kernel/core/r8169.cyr` — verify `R8169_TX_DESC_FS|LS` flags set, frame length matches, `TPPoll` NPQ kick at +0x38 fires after each descriptor (not batched).
+- Multi-source: Linux `rtl8169_start_xmit` (descriptor flags + `RTL_W8(tp, TxPoll, NPQ)`), iPXE `realtek_transmit`, FreeBSD `re_encap`. Convergent on the desc-then-TPPoll-then-doorbell-write shape.
+- Falsification: temporarily set `R8169_RXCFG.AcceptAllPhys = 1` ("promisc-style" bit) so the chip RXes its own TX (loopback witness). Code-read only — no instrumentation.
+
+**(T2) RX of unicast reply dropped despite gateway transmitting.** If tcpdump shows the gateway reply on the wire but FB says TIMEOUT. APM (Accept Physical Match) bit is OR'd into RxConfig per BSD/iPXE rewrite but the RTL8168H erratum (documented in Linux's `rtl_rx_fifo_overflow` workaround) hints APM can behave erratically. Workaround already applied (MAR = all-1s — multicast hash accepts all). If still dropping, audit anchors:
+- `r8169.cyr` — verify RxConfig writes go BEFORE `CR=TE|RE` (per `RTKQ_TXRXEN_LATER` NetBSD discipline — already applied at Attempt 100 rewrite).
+- Cross-check: Haiku `RealtekDriver::_InitReceive`, OpenBSD `re_rxeof` — independent third + fourth references.
+- Falsification: temporarily widen accept mask further (`AcceptErr` + `AcceptRunt` for diagnosis) to see if frames arrive at all under any filter.
+
+**(T3) Duplicate-MAC suppression by switch.** Linux dhclient still holds active lease on `b0:41:6f:0c:e4:25 → 192.168.1.124`. Araknis 210 may dedupe / loop / discard our frames. Mitigations (all zero-burn-prep, one of them landed pre-burn):
+- Stop Linux dhclient on archaemenid before next burn: `sudo systemctl stop systemd-networkd dhcpcd 2>/dev/null; sudo ip addr flush dev enp1s0`.
+- OR change AGNOS test source MAC by writing to `r8169_mac[]` after probe (Cyrius edit, ~3 LOC).
+- OR ARP a different on-LAN host (e.g., the Linux box itself by static IP) to eliminate gateway-side variables.
+
+**(T4) `route_next_hop_mac` returns -1 silently.** If FB shows `tcp: connect 1.1.1.1:80` followed by `L3+TCP FAIL` AND tcpdump shows no SYN at all, the route helper may be falling through to broadcast MAC OR `tcp_send_pkt` may be sending before the MAC slot populates. Audit anchors:
+- `net.cyr:85-110` `route_next_hop_mac` — verify `net_gateway_mac_valid == 1` IS read AFTER the ARP REPLY branch in `main.cyr` (sequencing).
+- `net.cyr:766-775` `tcp_send_pkt` — verify default `dst_mac[8] = 0xFF×6` AFTER `route_next_hop_mac` failure ≠ silent corruption.
+- Zero-burn: add CMOS stamp at slots `[0xD0..0xD5]` for gateway MAC bytes when valid latches; verify post-burn the slot matches the FB-printed MAC.
+
+**(T5) TCP state machine drops SYN+ACK.** If tcpdump shows SYN out AND SYN+ACK back AND FB says FAIL. Audit anchors:
+- `net.cyr:996-1014` SYN_SENT branch — verify `ack - our_seq == 0` after wrap (already validated for QEMU SLIRP; iron path may expose timing-window).
+- `net.cyr:760-795` `tcp_connect` 200-iter wait window — at ~125 ms per iter typical for iron timer, 200 iter = ~25 s but actual is timer-tick-bound (HLT-driven). Verify the wait window doesn't terminate before SYN+ACK lands.
+- Cross-check: lwIP `tcp_input.c` SYN_SENT handling, FreeBSD `tcp_input` SYN_SENT case.
+
+**(T6) Gateway / Cloudflare-side drop.** If tcpdump from archaemenid's Linux side sees AGNOS's SYN but no SYN+ACK reply (and the gateway's WAN-side packet capture would confirm forward + reply if available). Extremely unlikely against Cloudflare 1.1.1.1:80 (anycast, no auth, no firewall). Mitigations:
+- Retest with 8.8.8.8:80 (Google anycast — independent confirmation).
+- Retest with the gateway's LAN IP at port 80 if the router has a web UI (192.168.1.1:80 — on-LAN, bypasses WAN entirely).
+
+**(T7) Last-resort: revert outbound test, re-enable `dhcp_init` directly.** If T1-T6 don't disambiguate, the static-IP + outbound-TCP probe has run its course. The DHCP 10-bundle from `dhcp-offer-downstream-audit.md` is still landed and never exercised — re-enabling `dhcp_init` exposes a different attack surface for the same chip-side question (broadcast OFFER reception vs unicast ARP/TCP reception). One-line flip in `main.cyr` boot block.
+
+---
+
+**Linked docs**: [`dhcp-and-outbound-l3-audit-2026-05-24.md`](dhcp-and-outbound-l3-audit-2026-05-24.md) (this prep's anchor); [`dhcp-offer-downstream-audit.md`](dhcp-offer-downstream-audit.md) (10-bundle still landed for T7); [`r8169-chip-init-audit.md`](r8169-chip-init-audit.md) (chip-init prior-art convergence for T1/T2).
+
+---
+
 ### Tracker: 1.32.3 cycle (CLOSED 2026-05-23 PM at v1.32.3 tag — user direction *"lets cut 1.32.3 please as the return of the tcp items shows some promise and I want to hold tag then work up from there next round of fixes"*. Attempt 100 BSD/iPXE rewrite PARTIAL is the cycle-defining win: chip-level RX filter unblocked (broadcast frame ADMITTED, `[0x5E]=0xff` ≡ prep PASS target, `[0x5D]=0x72` BAR bit set, `[0x5A]=0x03` ≥ prep PASS target) — first iron evidence across the 1.32.x arc. `dhcp: OFFER timeout` residual carries forward to next-round fix cycle; gate is strictly DOWNSTREAM of `r8169_poll`. NO iron burn auto-proposed per [[feedback_iron_burns_block_other_work]] — zero-burn disambiguation (tcpdump from Linux side + `dhcp_init`/`udp_recv_from`/xid-matcher code audit) lands first.) {#tracker-1323-cycle}
 
 **Hypotheses tested**:
