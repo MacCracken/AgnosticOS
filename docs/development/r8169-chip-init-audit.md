@@ -25,9 +25,11 @@
 
 **The chip-rev RxConfig fix (`0xE700 → 0xCF00`) was a real bug — but it was not load-bearing for the OFFER-timeout symptom.** Attempt 98's CMOS is byte-identical to Attempt 97 because the missing surface is upstream: **AGNOS skips Linux's `rtl_hw_start_8168h_1` body entirely**, and skips most of the surrounding `rtl_hw_start` envelope. The chip is operating in a partially-initialized state where the BIOS-PXE residue is what's letting multicast through. Broadcast (DHCP OFFER) and unicast-to-us are filtered at the chip before reaching the ring.
 
+> **⚠ 2026-05-23 PIVOT — supersedes the "MCU body is load-bearing" framing below.** Three parallel multi-source research streams falsified the assumption that the Linux `rtl_hw_start_8168h_1` body is load-bearing for BCAST/UCAST RX. See § **BSD + iPXE convergence (2026-05-23)** at the bottom of this doc for the new direction. The post-Attempt-99 "items 6/7/9/10/11" bundle is RETIRED, not next-up. AGNOS now ports the iPXE-minimal init shape with BSD 8168G_PLUS carve-outs.
+
 ---
 
-## Post-Attempt-99 update (2026-05-23 ~18:10 PDT)
+## Post-Attempt-99 update (2026-05-23 ~18:10 PDT) — SUPERSEDED by BSD/iPXE pivot
 
 **Items 1–5 + item 8 landed; Attempt 99 burned; CMOS byte-identical to Attempts 97/98** (photo: `1323_after_fixes_failure.jpg` at agnosticos top level). The 5-item minimum-viable bundle (RXDV disable + Cfg9346-wrapped 32-bit MAC writes + packet-filter reset + MAR all-1s + RxConfig RMW after CR.RE) did NOT clear OFFER timeout. Hypothesis: the load-bearing surface is the **per-VER_46 chip-MCU init body** (item 10) + the **init-order envelope** (item 8 was only partial — Linux writes CR=TE|RE in ONE write, AGNOS pre-fix split it across init_rx + init_tx).
 
@@ -242,3 +244,73 @@ The real proof is iron Attempt 99.
 ## Receipt
 
 This audit lives at `agnosticos/docs/development/r8169-chip-init-audit.md`. Cross-references: `r8169-iron-burn-audit.md` (audit doc lineage), `r8169-rx-path-audit.md` (immediate predecessor — covers the inside of `r8169_poll`), `dhcp-end-to-end-audit.md` (the wiring layer). State.md cycle entry updated separately under 1.32.4 OPEN.
+
+---
+
+## BSD + iPXE convergence (2026-05-23) — current direction, supersedes everything above
+
+After Attempt 99 closed with byte-identical CMOS to 97/98 and the Linux-MCU-body bundle was built for Attempt 100, the user pushed back on the Linux-centric audit lineage: *"STOP REFERRING TO LINUX... THERE IS OTHER ARTS... PLAN THAT SHIT APPROPRIATELY... FIX THE WHOLE THING, NOT JUST MICRO FIX."* Three parallel research agents pulled BSD + Haiku + iPXE + the Realtek datasheet. Findings:
+
+### What multi-source agreement says
+
+| Source | Init body for RTL8168H | RxConfig profile (8168G+ family) | CR vs RxConfig order |
+|--------|------------------------|-----------------------------------|----------------------|
+| **iPXE** `src/drivers/net/realtek.c` | **ZERO** MAC-OCP / EPHY / ERI writes; works for PXE/DHCP | `0xE78F` (RXFTH=7, MXDMA=7, WRAP, AB\|AM\|APM\|AAP) in ONE write | RxConfig BEFORE `CR=TE\|RE` at L1289 |
+| **FreeBSD** `sys/dev/re/if_re.c` | ZERO `rl_ephy_write`/`rl_eri_write`/`rl_mac_ocp_write` in entire driver | `RL_FLAG_8168G_PLUS` branch: `0xE700` base + `RXCFG_EARLYOFFV2(0x0800)` = `0xEF00` | RxConfig + accept BEFORE `CR=TE\|RE` |
+| **OpenBSD/NetBSD** `re.c`/`rtl8169.c` | ZERO chip-MCU body for 8168H | `0xE700`-family base + EARLYOFFV2 | NetBSD `rtl8169.c:916` carves out `RTKQ_TXRXEN_LATER` **specifically for `RTK_HWREV_8168H`** — defers `CR=TE\|RE` until after RxConfig + accept bits |
+| **RTL8111B/8168B datasheet** §2.1/§2.3/§2.9 | n/a | n/a | §2.3: `CR_RST` preserves IDR0-5 (EEPROM autoload survives reset). §2.9: Cfg9346 EEM=11 (0xC0) is for CONFIG0-5 ONLY, NOT IDR/MAR/RCR. §2.1: IDR/MAR are 4-byte-access only. |
+| **Linux 6.6.2 erratum patch** (Patrick Thompson) | n/a | n/a | RTL8168H "erroneously filter unicast eapol packets unless allmulti is enabled" → workaround `MAR0=MAR4=0xFFFFFFFF`. Mechanism likely extends to broadcast on this stepping. |
+
+**Four independent driver implementations + the chip's own datasheet say the Linux MCU body is NOT load-bearing for BCAST/UCAST RX on this chip.** The load-bearing surfaces are:
+
+1. **RxConfig profile = `0xEF00`** (BSD 8168G_PLUS family value with EARLYOFFV2), NOT Linux's `0xCF00` (FIFOTHRESH=0 + RX128_INT_EN + RX_MULTI_EN + RX_EARLY_OFF).
+2. **Single-write RxConfig with accept bits** — no profile-then-RMW. Write the FINAL RxConfig value (profile | AB|AM|APM) in one store32.
+3. **Defer `CR=TE|RE` until AFTER RxConfig** — silicon-observed latch behavior on this exact chip rev (NetBSD `RTKQ_TXRXEN_LATER` for RTK_HWREV_8168H is the explicit witness).
+
+### What landed at 1.32.3 (post-Attempt-99 reckoning)
+
+`agnos/kernel/core/r8169.cyr` rewritten to BSD/iPXE shape (~280 LOC deleted, ~30 LOC added):
+
+**Deleted** (no BSD/iPXE precedent, datasheet doesn't require):
+- `r8169_hw_start_8168h_1` (250 LOC chip-MCU body — Linux `rtl_hw_start_8168h_1` clone)
+- `r8169_mac_ocp_write`/`_read`/`_modify` + `r8169_ephy_write`/`_read`/`_modify` + `r8169_eri_write`/`_read`/`_set_bits`/`_clear_bits` + `r8169_reset_packet_filter`
+- `r8169_aspm_clkreq_disable` + `r8169_pcie_state_l2l3_disable`
+- Cfg9346 unlock/lock envelope in `r8169_probe`
+- 32-bit MAC0/MAC4 writeback (datasheet says CR_RST preserves IDR; EEPROM-autoload populated them; iPXE skips this)
+- Register constants only used by deleted code (`R8169_REG_OCPDR/EPHYAR/DLLPR/MISC_1/CONFIG3/CFG9346/ERIDR/ERIAR`, OCPAR/EPHYAR/ERIAR/DLLPR/MISC_1/CONFIG3 flag+bit defines)
+
+**Changed**:
+- `R8169_RXCFG_DEFAULTS`: `0xCF00` → `0xEF00` (BSD 8168G_PLUS family)
+- `r8169_probe` post-reset: replaced 50-LOC Cfg9346-wrapped envelope with 14-LOC iPXE-shape (CPlusCmd PCIMulRW + RXDV gate clear + MAR all-1s)
+- `r8169_init_tx` tail: RxConfig profile + accept bits in ONE write (`store32(RXCFG, 0xEF00 | AB|AM|APM)`) BEFORE `CR=TE|RE` (was: CR.RE first, then RxConfig profile, then RMW accept bits)
+
+**Build**: 622,616 B (Attempt 99) → **617,192 B** (post-pivot production) / **617,984 B** (TCP_LISTEN_SMOKE=1). `scripts/test.sh` 4/4 PASS + `ext2-smoke.sh` 5/5 + 5/5 regression cross-check + `tcp-listen-smoke.sh` 1/2 (matches baseline; scenario-1 SLIRP-RX gap iron-only). Full DHCP cycle completes on QEMU virtio_net.
+
+### Falsification rubric for Iron Attempt 100 (BSD/iPXE-shape build)
+
+| Slot | 97/98/99 baseline | Attempt 100 PASS | Falsification |
+|------|-------------------|------------------|---------------|
+| 0x5A (TX send count) | 0x02 | **0x03+** (DISCOVER + REQUEST + retransmit) | 0x02 = OFFER still not in `dhcp_init` |
+| 0x5C (RX consumed) | 0x10 (16 mcast in idle window) | Similar or higher | n/a alone |
+| 0x5E (last RX first byte) | 0x01 (mcast only) | **0xFF** (broadcast OFFER) or **0xB0** (unicast to our MAC) | 0x01 = chip still dropping bcast/ucast |
+
+**On PASS**, expected FB lines:
+```
+dhcp: DISCOVER
+dhcp: OFFER ip=192.168.1.X
+dhcp: REQUEST
+dhcp: ACK gw=192.168.1.1 mask=255.255.255.0
+```
+
+**On FALSIFICATION (0x5E still 0x01)**: the escalation is **NOT** to the Linux MCU body. Zero-burn diagnostics first, run from the current Linux session on archaemenid:
+
+- (a) PCIe LNKCTL post-CPlusCmd state — confirm ASPM/CLKREQ state via `setpci -s 01:00.0 CAP_EXP+10.W`
+- (b) Set `RxConfig.AAP` (0x01 = AcceptAllPhys / full promiscuous) for one burn — if broadcast appears, the validator gates on something more specific than the accept-bits
+- (c) Read MISC register post-RXDV-clear via the existing probe — confirm bit 19 actually cleared
+- (d) PCI Command register check — confirm bus-master is engaged on this BAR
+
+### Memory follow-up
+
+The original "post-burn close" follow-up to `feedback_redesign_dont_reinvent` (prefer Linux for chips Linux supports per-revision) is **WRONG and should not be written**. The opposite is true: for chips with active BSD ports + iPXE coverage, BSD/iPXE shapes are often more reliable than Linux clones because they're spec-derived rather than empirically-accreted. The correct refinement is: **when porting a per-revision Linux dispatcher, FIRST check whether iPXE + 2+ BSDs converge on a simpler shape; if they do, port the BSD/iPXE shape, NOT the Linux body.**
+
+This pivot is the new precedent.

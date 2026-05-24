@@ -3289,6 +3289,72 @@ Burned 2026-05-23 ~14:30 PDT. Photos catalogued: [`attempt-97-…-pt1-r8169-link
 
 ---
 
+### Attempt 100 prep — agnos 1.32.3 BSD/iPXE-shape r8169 rewrite 2026-05-23 ~19:15 PDT → PENDING USER BURN
+
+**Replaces** the post-Attempt-99 Linux MCU body bundle (built, never burned, then deleted at user direction). After Attempts 97/98/99 all FALSIFIED with byte-identical CMOS (chip admits multicast, drops broadcast + unicast), the user pushed back on the Linux-clone audit lineage: *"STOP REFERRING TO LINUX... THERE IS OTHER ARTS... PLAN THAT SHIT APPROPRIATELY... FIX THE WHOLE THING, NOT JUST MICRO FIX."*
+
+**Multi-source research** (three parallel agents, this session):
+
+| Source | Verdict |
+|--------|---------|
+| **iPXE** `src/drivers/net/realtek.c` | ZERO MAC-OCP/EPHY/ERI writes; ZERO Cfg9346 unlock. Init: reset → IDR read → CPlusCmd PCIMulRW → MAR all-1s → RCR (0xE78F) → CR=TE\|RE. Works on this chip family for PXE/DHCP. |
+| **FreeBSD** `sys/dev/re/if_re.c` | ZERO `rl_ephy_write`/`rl_eri_write`/`rl_mac_ocp_write` in entire driver. 8168G_PLUS branch: RXDV gate clear + RxConfig EARLYOFFV2 + deferred `CR=TE\|RE` to AFTER `re_set_rxmode`. |
+| **OpenBSD/NetBSD** `re.c`/`rtl8169.c` | Three-source BSD agreement on RxConfig base = `0xE700`-family + EARLYOFFV2(0x0800) = `0xEF00` for 8168H. NetBSD `rtl8169.c:916` carves out `RTKQ_TXRXEN_LATER` **specifically for `RTK_HWREV_8168H`** — silicon-observed deferred CR enable. |
+| **RTL8111B/8168B datasheet** | §2.3: `CR_RST` preserves IDR0-5 (EEPROM autoload survives). §2.9: Cfg9346 EEM=11 is for CONFIG0-5 ONLY (not IDR/MAR/RCR). §2.1: MAR is 4-byte-access only; post-reset undefined. |
+| **Linux 6.6.2 erratum patch** (Patrick Thompson) | RTL8168H "erroneously filter unicast eapol packets unless allmulti is enabled" — workaround `MAR0=MAR4=0xFFFFFFFF`. Mechanism likely extends to broadcast on this stepping. |
+
+**Code change** at `agnos/kernel/core/r8169.cyr` (1183 → 840 lines = **−343 LOC net**, ~280 deleted + ~30 changed):
+
+- **DELETED** `r8169_hw_start_8168h_1` body (250 LOC Linux clone) + ALL chip-MCU helpers (`r8169_mac_ocp_*`, `r8169_ephy_*`, `r8169_eri_*`, `r8169_reset_packet_filter`, `r8169_aspm_clkreq_disable`, `r8169_pcie_state_l2l3_disable`) + Cfg9346 unlock/lock envelope + 32-bit MAC writeback (EEPROM-autoloaded per datasheet §2.3) + unused register/flag constants.
+- **CHANGED** `R8169_RXCFG_DEFAULTS`: `0xCF00` (Linux VER_46) → `0xEF00` (BSD 8168G_PLUS with EARLYOFFV2).
+- **REWROTE** `r8169_probe` post-reset to 14-LOC iPXE shape: CPlusCmd PCIMulRW + RXDV gate clear + MAR all-1s. No Cfg9346 wrap.
+- **REWROTE** `r8169_init_tx` tail: write final RxConfig (profile | AB|AM|APM) in ONE store32 BEFORE `CR=TE|RE`. Was: CR.RE first, profile, then RMW accept bits.
+
+**Build under test**:
+
+| Artifact | Value |
+|---|---|
+| Kernel (production) | `agnos/build/agnos` at **617,192 B** (`scripts/build.sh`) |
+| Kernel (TCP_LISTEN_SMOKE=1) | **617,984 B** |
+| Delta from Attempt 99 build | **−5,424 B** (Linux MCU body deletion offset by no new code) |
+| `scripts/test.sh` | 4/4 PASS |
+| `scripts/ext2-smoke.sh` | 5/5 PASS + 5/5 regression cross-check |
+| `scripts/tcp-listen-smoke.sh` | 1/2 (matches baseline; scenario-1 SLIRP-RX gap iron-only) |
+| QEMU virtio_net DHCP | full DISCOVER → OFFER → REQUEST → ACK cycle completes; shell reaches `agnos>` |
+| cyrius | 6.0.1 (unchanged) |
+| gnoboot | 0.4.2 (unchanged) |
+
+**Falsification rubric** (CMOS readback after Attempt 100 burn):
+
+| Slot | 97/98/99 baseline | Attempt 100 PASS | Falsification |
+|------|-------------------|------------------|---------------|
+| 0x5A (TX send count) | 0x02 | **0x03+** (DISCOVER + REQUEST + retransmit) | 0x02 = OFFER still not in `dhcp_init` |
+| 0x5E (last RX first byte) | 0x01 (`01:00:5e:…` multicast) | **0xFF** (broadcast OFFER) OR **0xB0** (unicast to our MAC) | 0x01 = chip still dropping bcast/ucast |
+| 0x5C (RX consumed) | 0x10 | Similar or higher | n/a alone |
+
+**On PASS**, expected FB lines:
+```
+dhcp: DISCOVER
+dhcp: OFFER ip=192.168.1.X
+dhcp: REQUEST
+dhcp: ACK gw=192.168.1.1 mask=255.255.255.0
+```
+
+**On FALSIFICATION (0x5E still 0x01)** — escalation is NOT to the Linux MCU body. Zero-burn diagnostics first, run from the current Linux session on archaemenid:
+- (a) `setpci -s 01:00.0 CAP_EXP+10.W` — confirm ASPM/CLKREQ state of the live r8169
+- (b) Set `RxConfig.AAP` (0x01 = AcceptAllPhys / full promiscuous) for ONE next burn — if broadcast appears with AAP, validator gates on something more specific than accept-bits
+- (c) Re-read MISC[bit 19] from probe tail — confirm RXDV-gate clear actually committed
+- (d) `setpci -s 01:00.0 COMMAND` — confirm bus-master is engaged on this BAR
+
+**No burn auto-proposed** per [[feedback_iron_burns_block_other_work]]. User decides when Attempt 100 fires.
+
+**Cross-references:**
+- `agnosticos/docs/development/r8169-chip-init-audit.md § BSD + iPXE convergence (2026-05-23)` — four-source citation matrix + memory follow-up.
+- `agnos/kernel/core/r8169.cyr` lines 437-440 (deletion marker), 763-780 (probe iPXE shape), 1019-1045 (init_tx tail iPXE shape).
+- `agnosticos/.claude/plans/humming-churning-waffle.md` — the plan that drove this rewrite.
+
+---
+
 ## Conventions for future entries
 
 - **Tracker-first**: when opening a new version cycle, write the hypothesis + expectations block in the `## Hypothesis & Expectations Tracker` section AT THE TOP of this file BEFORE the first per-attempt entry. State.md's cycle header should link to the tracker anchor (`#tracker-1NMK-cycle` slug pattern). The tracker is the predictive layer; the per-attempt entries below are the observation layer. The two together make session-restart cheap: state.md → tracker → expected vs. actual → drill into per-attempt narrative only if needed.
