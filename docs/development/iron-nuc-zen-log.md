@@ -111,6 +111,19 @@ Outcome decoding (independent of CMOS):
 
 **Driving audit**: [`dhcp-and-outbound-l3-audit-2026-05-24.md`](dhcp-and-outbound-l3-audit-2026-05-24.md) — consolidated DHCP review against RFCs + multi-source prior art (Linux / lwIP / iPXE / *BSD / U-Boot / Plan 9), identifies the outbound L3 next-hop-MAC gap as the fresh finding, lays out the test ladder.
 
+**Zero-burn discriminators completed 2026-05-24 PM** (run from the live Linux session on archaemenid; no iron-boot of AGNOS required):
+
+| Probe | Command | Result | What it proves |
+|---|---|---|---|
+| AGNOS-shape DHCP via AF_PACKET | `sudo scripts/dhcp-probe/build/dhcp-probe-raw enp1s0` | DISCOVER (291 B) → OFFER `ip=192.168.1.129 server=192.168.1.1 subnet=255.255.255.0 gateway=192.168.1.1` → REQUEST → LEASE ACQUIRED | Wire + gateway DHCP server + AGNOS's `eth_build`/`ip_build`/`udp_build`/`dhcp_build_packet` byte-shapes are all wire-correct. Gateway issues a fresh OFFER to our MAC `b0:41:6f:0c:e4:25` *on top of* Linux dhclient's existing `.124` lease — **no strict DAI / dup-MAC suppression**. |
+| Unicast ARP from leased IP | `sudo arping -I enp1s0 -c 3 192.168.1.1` | 3/3 replies from `D4:6A:91:CE:70:60` in 0.7–1.4 ms | Gateway happily unicast-replies to ARPs from our MAC when source IP matches the DHCP-snooped binding (`.124`). |
+
+**Refined diagnosis from these probes** (replaces the original T3 "dup-MAC suppression" framing):
+
+- The Attempt 101 pcap's missing gateway reply is *not* gateway silence. The sniffer was on a non-destination switch port; modern switches don't flood unicast, so a unicast ARP reply from gateway to archaemenid's port would never reach a passive sniffer elsewhere on the LAN. The gateway probably *did* reply — and the reply either reached AGNOS and got dropped at r8169 RX, OR the gateway IP-source-guarded the ARP because our MAC was bound to `.124` (via Linux's lease) and AGNOS was claiming `.222`.
+- Of those two, **IP-source-guard** is the stronger candidate because we just confirmed the gateway DOES reply unicast to our MAC at `.124` (arping above). Same MAC + lease-aligned IP = reply; same MAC + unauthorized IP = no reply at Attempt 101. The differentiator is the IP claim, not the MAC.
+- **Sovereign-MAC fix**: AGNOS overrides byte 0 of the chip-loaded MAC at `r8169_probe` time, setting the U/L (locally-administered) bit. `b0:41:6f:0c:e4:25` → `b2:41:6f:0c:e4:25`. The gateway has zero prior snooping bindings for `b2:…`, so IP-source-guard has no slot to consult; AGNOS can claim any unused IP.
+
 **Code edits landed pre-burn** (all in `agnos/kernel/core/`; no version bump per [[feedback_no_unprompted_version_bumps]] — 1.32.4 cycle stays OPEN):
 
 | File | Change |
@@ -121,26 +134,29 @@ Outcome decoding (independent of CMOS):
 | `net.cyr:138-156` | `udp_send` consults route helper (skipped for `0xFFFFFFFF` broadcast — DHCP `udp_send_from` path unchanged). |
 | `net.cyr:766-775` | `tcp_send_pkt` consults route helper. |
 | `main.cyr:687-715` | On ARP REPLY: cache MAC → `net_gateway_mac`, then `tcp_connect(ip4(1,1,1,1), 80, 49152)` with PASS/FAIL prints. |
+| `main.cyr:675-680` *(2026-05-24 PM)* | Static IP reverted from the AM `.124` exploration back to `.222` now that the sovereign-MAC override removes the DAI/IP-source-guard binding overlap. Comment updated to cite the LAA-MAC rationale. |
+| `r8169.cyr:358-369` *(2026-05-24 PM)* | **Sovereign-MAC override** — after IDR0..5 read populates `r8169_mac[]`, set the U/L bit on byte 0 (`store8(&r8169_mac + 0, load8(&r8169_mac + 0) \| 0x02)`). Existing Cfg9346-wrapped IDR0/IDR4 writeback at line 515-516 propagates the override into the chip's hardware unicast filter. Manufactured `b0:41:6f:0c:e4:25` → locally-administered `b2:41:6f:0c:e4:25`. |
 | `scripts/build.sh:97` | `TCP_LISTEN_SMOKE` already opt-in via env var; production build does not define. No edit needed for "comment out inbound TCP" — just don't pass `TCP_LISTEN_SMOKE=1`. |
 
-**Build verified**: `agnos/build/agnos` = **621,640 B** (`scripts/build.sh`, x86_64). Multiboot2 ELF64 OK. cyrius pin 6.0.1 unchanged.
+**Build verified** *(2026-05-24 PM)*: `agnos/build/agnos` = **621,880 B** (`scripts/build.sh`, x86_64). `scripts/test.sh` 4/4 PASS. Multiboot2 ELF64 OK. cyrius pin 6.0.1 unchanged. Storage trio + GPT + ext2 + shell byte-clean (no regression — scope is networking-path-only).
 
-**New hypothesis (Attempt 102)**: with `route_next_hop_mac` resolving off-LAN destinations through the cached gateway MAC, a TCP SYN to 1.1.1.1:80 will reach Cloudflare iff (a) ARP-to-gateway succeeds AND (b) r8169 TX wire-egress works for unicast frames addressed to a real peer MAC (not just broadcast) AND (c) r8169 RX admits a unicast frame addressed to our MAC. SYN+ACK back proves all three layers in one round-trip. Strictly more proof than ICMP echo.
+**New hypothesis (Attempt 102, refined PM)**: with `route_next_hop_mac` resolving off-LAN through the cached gateway MAC AND the sovereign-MAC override making AGNOS a router-distinct device, a TCP SYN to 1.1.1.1:80 will reach Cloudflare iff (a) ARP-to-gateway succeeds (now expected — the IP-source-guard slot for `b2:…` is empty, so the gateway has no policy reason to drop our ARP) AND (b) r8169 TX wire-egress works for unicast (broadcast already proven at Attempt 101) AND (c) r8169 RX admits a unicast frame addressed to `b2:…` (the writeback at line 515-516 puts `b2:…` into the chip's APM filter — this is the load-bearing question if ARP still TIMEOUTs). SYN+ACK back proves all three layers in one round-trip.
 
 **Expected outcome — Attempt 102 PASS rubric** (boot-block lines, in order, with ASCII-only prints):
 
 | Line | Attempt 101 actual | Attempt 102 PASS target | Falsification → meaning |
 |---|---|---|---|
+| `r8169: MAC=…` | `176:65:111:12:228:37` (b0:41:6f:0c:e4:25) | **`178:65:111:12:228:37`** (b2:41:6f:0c:e4:25 — U/L bit set) | shows the LAA override landed in `r8169_mac[]`; absence/`176:…` ⇒ override stripped by a later overwrite |
 | `net: STATIC ip=192.168.1.222 gw=192.168.1.1` | present | present | regression impossible |
 | `arp: request -> 192.168.1.1` | `arp: request   192.168.1` (truncated) | **`arp: request -> 192.168.1.1`** (full) | print-fix verification |
-| `arp: REPLY gw_mac=…` or `arp: TIMEOUT …` | TIMEOUT | **REPLY gw_mac=…** | TIMEOUT still ⇒ L1/L2 gate (chip-side); same as Attempt 101 — fall through to threads (T1)-(T3) below |
+| `arp: REPLY gw_mac=212:106:145:206:112:96` or `arp: TIMEOUT …` | TIMEOUT | **REPLY gw_mac=212:106:145:206:112:96** (d4:6a:91:ce:70:60) | TIMEOUT still ⇒ MAC change wasn't the gate; bug is necessarily r8169 RX-of-unicast (T2) since wire+gateway are zero-burn-proven |
 | `net: L2 OK -- gateway MAC cached` | (absent) | present iff ARP REPLY | gates the L3 test below |
 | `tcp: connect 1.1.1.1:80` | (absent) | present | only fires after L2 OK |
 | `net: L3+TCP OK -- outbound TCP handshake established` | (absent) | **present** | full stack proven; closes 1.32.4 |
 | `net: L3+TCP FAIL -- SYN sent but no SYN+ACK` | (absent) | absent | TX-or-RX-of-unicast specific gate — see threads (T4)-(T6) |
 | Storage trio + GPT + ext2 + shell | byte-clean | byte-clean | regression impossible |
 
-**Companion zero-burn capture** (run during burn from the archaemenid Linux session — per [[feedback_iron_burns_block_other_work]] discipline, zero-burn observability earns the burn):
+**Companion zero-burn capture** *(now OPTIONAL — the 2026-05-24 PM probe + arping above already proved wire + gateway-responds-to-our-MAC, which subsumes most of what this capture would tell us. The FB readout alone disambiguates Attempt 102: REPLY ⇒ done; TIMEOUT ⇒ r8169 RX bug since wire is proven. Keep this section for future cycles that re-need it.)*:
 
 ```sh
 # From Linux side, BEFORE reboot to AGNOS USB:
