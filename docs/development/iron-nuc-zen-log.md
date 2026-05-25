@@ -34,7 +34,36 @@ later entry pointing back. Status is one of `FAIL` / `PASS` /
 >
 > **State.md cycle headers link to these anchors via `iron-nuc-zen-log.md#tracker-1322-cycle` style.**
 
-### Tracker: 1.32.5 cycle (CLOSED 2026-05-25 — cut, awaiting user tag. **Outcome: broadcast + multicast RX PROVEN on iron** — bite-7 (post-RX-enable accept-filter re-assert) broke 7 falsified burns of "RX silent" by re-asserting the accept nibble AFTER `CR.RE` (`1325_pcap_attempt_4`); the honest L2 RX self-test then SHOWED it on the FB (`rx=10 arp_in=7 arp_ans=1`), retiring the "FB lied" defect. **Stretch goal — unicast (APM-class) RX delivery — carries to the next cycle** (leading bite: restore the post-reset IDR0-5 write-back bite H removed, untried in combination with the working accept re-assert). Original framing below preserved for traceability. — **r8169 RX delivery of BROADCAST + UNICAST frames on iron**. The 1.32.4 cycle isolated the bug to "TX wire-egress OR RX-ring delivery, both inside r8169.cyr". The `1324_tcp_capture.pcapng` burn (2026-05-24 ~18:55 PDT) **closes the TX half**: AGNOS's broadcast ARP request egressed the wire byte-correct → TX PROVEN, RX is the remaining suspect. NO iron burn auto-proposed per [[feedback_iron_burns_block_other_work]]; bite agenda + Attempt 104 falsification rubric below.) {#tracker-1325-cycle}
+### Tracker: 1.32.6 cycle (OPEN 2026-05-25 — **r8169 RX delivery of UNICAST frames on iron**. 1.32.5 proved broadcast + multicast RX (bite-7 + the FB self-test); the gateway's unicast ARP reply stays unseen. **The user-confirmed "IDR0-5 write-back re-derive" FALSIFIED its own premise** — reading the code per [[feedback_audit_re_derive_dont_validate_comments]] shows the IDR0-5 write-back is ALREADY present + correct (`r8169.cyr:520-534`, Cfg9346-wrapped, == Linux `rtl_rar_set`), so it was in the burned 1.32.5 build. NO iron burn auto-proposed per [[feedback_iron_burns_block_other_work]]; bite agenda + falsification rubric below.) {#tracker-1326-cycle}
+
+**Zero-burn re-derive of the unicast accept path** (the approved "re-derive" deliverable — derived from sources/code, not from validating comments):
+
+| Layer | State in burned 1.32.5 | Verdict |
+|---|---|---|
+| IDR0-5 write-back (APM filter source) | present, Cfg9346-wrapped (`r8169.cyr:520-534`) | ✅ convergent w/ Linux `rtl_rar_set` — **NOT removed** (the "bite H removed it" narrative was STALE) |
+| Accept nibble `AAP\|AB\|AM\|APM` (`0x0F`) | set pre-`CR.RE` AND re-asserted post-`CR.RE` (bite-7, `:639-664`) | ✅ unicast (APM bit1) + promiscuous (AAP bit0) both on |
+| RXDV-gate clear + settle, MAR all-1s | present (bite-6) | ✅ convergent |
+| `net_handle_arp` reply path (`net.cyr:556-564`) | opcode big-endian; `sender_ip`/`arp_pending_ip` same byte assembly | ✅ no byte-order bug; a matching reply WOULD clear `arp_pending` |
+| ARP request elicitation (`main.cyr` wait loop) | **single request, NO retransmit** | ✗ **divergence from ALL prior-art** (Linux `neigh` / iPXE / lwIP `etharp` / *BSD all retransmit per RFC 1122 §2.3.2.1) |
+
+**Hypothesis**: with APM (correct IDR) + AAP (promiscuous) both on and broadcast proven delivering, a unicast reply to our MAC *must* be accepted by the chip — so the unseen gateway reply is most likely (a) **not reliably elicited** (single request, possible miss, no retry across the 5 s window) OR (b) a systematic unicast-specific RX drop invisible without a burn. Bite 1 (ARP-retransmit) directly tests (a) and is correct regardless; (b) → bite 2.
+
+| # | Bite | Iron? | Status |
+|---|------|-------|--------|
+| 1 | **ARP request retransmit** (RFC 1122 §2.3.2.1) — re-send the gateway ARP ~1/sec across the 5 s window while `arp_pending` holds (`main.cyr:684-713`); 4 retransmits; no per-retx print. | code → next burn | ✅ **LANDED + BUILD-VERIFIED 2026-05-25**. Build 622,408 → **622,560 B** (+152 B); `test.sh` 4/4 + `ext2-smoke.sh` 5/5; multiboot2 OK; `build/agnos` reflects HEAD. NOT auto-proposed. |
+| 2 | **Deep driver APM re-derive (multi-source)** — FreeBSD/OpenBSD/NetBSD `re_rxeof`/`re_iff` + iPXE `realtek_poll` + RTL8168h datasheet §6 + Linux VER_46 erratum; derive unicast-accept + descriptor-OWN handoff from sources first, then diff. | QUEUED | ⏳ **runs only if the bite-1 burn still times out** (per user direction "retransmit now, re-derive queued"). |
+
+**Iron falsification rubric** (bite-1 burn):
+
+| Signal | 1.32.5 self-test baseline | Bite-1 PASS target | Falsification → meaning |
+|---|---|---|---|
+| ARP outcome | `arp: gateway reply not seen` + `L2 RX ALIVE rx=10 arp_in=7 arp_ans=1` | `arp: REPLY gw_mac=…` → `net: L2 OK` | Still "not seen" with rx>0 → unicast drop is SYSTEMATIC (transient-miss ruled out) → run bite 2 |
+| L3 gate (`tcp_connect 1.1.1.1:80`) | skipped behind failed ARP | reached + PASS/FAIL print | ARP passes but L3 fails → routing/TCP issue distinct from RX |
+| Storage trio + GPT + ext2 + shell | byte-clean | byte-clean | regression impossible — scope is the `main.cyr` ARP loop only |
+
+---
+
+### Tracker: 1.32.5 cycle (CLOSED 2026-05-25 — cut, awaiting user tag. **Outcome: broadcast + multicast RX PROVEN on iron** — bite-7 (post-RX-enable accept-filter re-assert) broke 7 falsified burns of "RX silent" by re-asserting the accept nibble AFTER `CR.RE` (`1325_pcap_attempt_4`); the honest L2 RX self-test then SHOWED it on the FB (`rx=10 arp_in=7 arp_ans=1`), retiring the "FB lied" defect. **Stretch goal — unicast (APM-class) RX delivery — carries to 1.32.6** (the "restore the IDR0-5 write-back bite H removed" lead was FALSIFIED on re-derive: the write-back is already present + correct, `r8169.cyr:520-534` — see [`#tracker-1326-cycle`](#tracker-1326-cycle); 1.32.6 bite 1 is ARP-retransmit, deep APM re-derive queued). Original framing below preserved for traceability. — **r8169 RX delivery of BROADCAST + UNICAST frames on iron**. The 1.32.4 cycle isolated the bug to "TX wire-egress OR RX-ring delivery, both inside r8169.cyr". The `1324_tcp_capture.pcapng` burn (2026-05-24 ~18:55 PDT) **closes the TX half**: AGNOS's broadcast ARP request egressed the wire byte-correct → TX PROVEN, RX is the remaining suspect. NO iron burn auto-proposed per [[feedback_iron_burns_block_other_work]]; bite agenda + Attempt 104 falsification rubric below.) {#tracker-1325-cycle}
 
 **`1324_tcp_capture.pcapng` finding** (zero-burn observability per [[feedback_iron_burns_block_other_work]]; 201 packets captured 2026-05-24 ~18:55 PDT from LAN host `42:c2:df:db:ee:78` = `.121`/`.101`):
 

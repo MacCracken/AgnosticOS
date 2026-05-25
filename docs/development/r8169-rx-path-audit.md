@@ -564,3 +564,24 @@ Build: 621,816 B (Attempt 103) → **621,704 B** (−112 B). `scripts/build.sh` 
 **Ruled out (TX exercises the identical path successfully):** 64-bit DMA / >4 GB addressing / PCIDAC — RX buffers are allocated *before* TX buffers (lower physical addresses), and TX DMA works through the same `pmm_alloc`/`bufaddr_hi/lo`/ring-base scheme. The ring-index/buffer-mapping is consistent (descriptor[idx].bufaddr == `r8169_rx_bufs[idx]`, both indexed by `r8169_rx_idx`). CR-vs-RxConfig ordering — both orderings ship in production for this chip (Linux early-CR, NetBSD `RTKQ_TXRXEN_LATER` late-CR for 8168H specifically); AGNOS's late-CR is fine.
 
 Build: 621,704 B (Attempt 104) → **621,768 B** (+64 B, settle spin). `scripts/test.sh` 4/4 + `scripts/ext2-smoke.sh` 5/5. multiboot2 ELF64 OK. `build/agnos` reflects HEAD. **The next burn TESTS these — no instrumentation added.** NOT auto-proposed per [[feedback_iron_burns_block_other_work]].
+
+---
+
+## 1.32.6 addendum — broadcast PROVEN; unicast accept-path re-derive confirms convergence; ARP-retransmit is the divergence
+
+**Date**: 2026-05-25. bite-7 (post-RX-enable accept-filter re-assert) BROKE THROUGH — broadcast RX proven on iron (`1325_pcap_attempt_4`), reconfirmed on the framebuffer by the honest L2 RX self-test (`net: L2 RX ALIVE rx=10 arp_in=7 arp_ans=1`). This **falsifies the §1.32.5-closeout "fault is downstream of the accept filter (descriptor OWN/DMA/ring)" conclusion** — the ring delivers and the poll/dispatch/rearm path is healthy (it carried a real broadcast frame end-to-end and the ARP responder answered on the wire). The narrowed remaining gap is the gateway's *unicast* (APM-class) reply.
+
+**The 1.32.6 lead — "restore the IDR0-5 write-back bite H removed" — was FALSIFIED on re-derive.** Reading the code (not the narrative, per [[feedback_audit_re_derive_dont_validate_comments]]): the IDR0-5 write-back is **already present + correct**, Cfg9346-wrapped at `r8169.cyr:520-534`, matching Linux `rtl_rar_set`. It was re-added during the bite-6/7 `init_tx` restructure, so it was in the burned 1.32.5 build. Restoring it is a no-op.
+
+**Full zero-burn re-derive of the unicast accept path** — every layer is convergent:
+
+| Layer | State | Verdict |
+|---|---|---|
+| IDR0-5 write-back (APM source) | present, Cfg9346-wrapped (`:520-534`) | == Linux `rtl_rar_set` |
+| Accept nibble `AAP\|AB\|AM\|APM` (`0x0F`) | pre-CR.RE + re-asserted post-CR.RE (bite-7, `:639-664`) | APM (unicast) + AAP (promisc) both on |
+| RXDV-gate clear + settle, MAR all-1s | present (bite-6, `:556-602`) | convergent |
+| `net_handle_arp` reply (`net.cyr:556-564`) | opcode big-endian; `sender_ip`/`arp_pending_ip` same byte order | no byte-order bug; reply would clear pending |
+
+With APM (correct IDR) + AAP (promiscuous) both on and broadcast proven delivering, a unicast reply to our MAC *must* be chip-accepted. **The one divergence from all prior-art: AGNOS sent exactly ONE ARP request and never retransmitted** (Linux `neigh`, iPXE, lwIP `etharp`, *BSD all retransmit per RFC 1122 §2.3.2.1; a missed/un-elicited first reply is never re-offered).
+
+**1.32.6 bite 1 (LANDED)**: ARP request retransmit ~1/sec across the 5 s window (`main.cyr:684-713`). Correct regardless + a clean discriminator — next burn `arp: REPLY` → transient/elicitation miss; still timeout → systematic unicast drop ⇒ **bite 2 (deep driver APM re-derive, multi-source) queued** per user direction. Build 622,408 → **622,560 B**. Full rubric: [`iron-nuc-zen-log.md#tracker-1326-cycle`](iron-nuc-zen-log.md#tracker-1326-cycle).
