@@ -68,8 +68,9 @@ later entry pointing back. Status is one of `FAIL` / `PASS` /
 |---|------|-------|--------|
 | 1 | **Multi-source RX-accept + descriptor-ownership re-derivation** — FreeBSD/OpenBSD/NetBSD `re_rxeof`/`re_set_rxmode`/`re_iff` + iPXE `realtek.c`/`.h` + Linux VER_46 erratum + RTL8168h descriptor layout. Constrained by *multicast-passes + TX-proven*. | zero-burn | ✅ **LANDED 2026-05-24** — receipt appended to [`r8169-rx-path-audit.md` § 1.32.5 addendum](r8169-rx-path-audit.md). **Load-bearing finding**: AGNOS set `accept = AB\|AM\|APM = 0x0E` (no AAP). iPXE `realtek_open` sets **AAP unconditionally** (RCR low-nibble `0x0F`); the H-stepping L2 filter is known-quirky (Linux VER_46 erratum). IDR / MAR / RxConfig-profile / late-CR confirmed already-convergent — NOT reopened. |
 | 2 | **Land convergent RX fix** as driver code in `r8169.cyr`. | code | ✅ **LANDED + BUILD-VERIFIED 2026-05-24** — (1) **AAP added** (`:577` region) → `accept = AAP\|AB\|AM\|APM`, RxConfig `0xEF0F`; (2) **unconditional FS\|LS discard gate REMOVED** from `r8169_poll` (`:636` region) — BSD `re_rxeof` gate it behind `RL_FLAG_JUMBOV2` only, iPXE checks OWN+RES only; free-to-stack, not expected load-bearing. Build **621,704 B** (−112 B vs Attempt 103); `test.sh` 4/4 + `ext2-smoke.sh` 5/5 + `tcp-listen-smoke` 1/2 (baseline match); shell banner v1.32.5; multiboot2 ELF64 OK. |
-| 3 | **Iron Attempt 104** — stacked burn: unicast (ARP) + broadcast (DHCP/canary) RX validation. | Attempt 104 | ⏳ **BUILD-READY, PENDING USER BURN** (not auto-proposed per [[feedback_iron_burns_block_other_work]]). `build/agnos` = 621,704 B reflects HEAD. STATIC-IP + ARP probe path retained → primary signal is `arp: reply <- 192.168.1.1 is-at d4:6a:91:ce:70:60`. AAP is a BISECTOR: if ARP still times out, the fault is DOWNSTREAM of the L2 filter (descriptor OWN/DMA/ring), not the accept mask. |
-| 4 | **Cycle-close sweep** + Attempt 104 transcript. | doc-roll | ⏳ pending burn outcome |
+| 3 | **Iron Attempt 104** — stacked burn: unicast (ARP) + broadcast (DHCP/canary) RX validation. | Attempt 104 | ⚠️ **BURNED 2026-05-24 ~19:58 PDT → FALSIFIED** — `arp: TIMEOUT` / `L1/L2 FAILED`, shell v1.32.5 reached clean. The AAP bisector fired its falsification branch: accept-mask EXONERATED, fault is DOWNSTREAM (descriptor OWN/DMA/ring). Second-machine `1325_pcap_test.pcapng` **RE-PROVES TX** (`b0 > ff:ff:ff who-has .1 tell .222` at 19:58:36, byte-identical to 1324) but capture host `42:c2` is a regular switched port → can't see the gateway's unicast reply (wrong-vantage). See § Attempt 104 body. |
+| 4 | **Cycle-close sweep** + Attempt 104 transcript. | doc-roll | ⏳ Attempt 104 transcript LANDED. |
+| 5 | **RxMaxSize field-overflow fix** — `r8169.cyr:557` RMS `0x4000` → `0x05F3`. | code → next burn | ✅ **LANDED + BUILD-VERIFIED 2026-05-24 20:41**. Post-Attempt-104 full-path re-audit (probe order / init_rx / bring-up envelope / poll / rearm / dispatch all confirmed prior-art-correct) surfaced ONE divergence: RxMaxSize (0xDA) is a 13-14 bit field on the 8168; `0x4000` sets bit 14 OUTSIDE it → reads as RMS=0 → "max RX packet size 0" → **NIC rejects all inbound frames; TX never consults RMS** ⇒ matches the exact iron signature (TX egresses per 1324/1325, RX silent). NO prior-art driver writes `0x4000` (Linux `RX_BUF_SIZE=0x05F3`, FreeBSD = buffer length). Malformed value was introduced at Attempt 97 while the FS\|LS gate + wrong RxConfig profile were still masking it; those are now fixed, so it surfaces as a live load-bearing candidate. Build **621,704 B** (constant swap, no size change), `test.sh` 4/4 + `ext2-smoke.sh` 5/5, multiboot2 OK, `build/agnos` reflects HEAD. This is a genuine behavioral fix (not instrumentation) — the next burn TESTS it, doesn't gather logs. |
 
 ---
 
@@ -3773,6 +3774,46 @@ The `r8169: MAC=176:65:111:12:228:37` (b0) line scrolled off the top of the FB; 
 - Predecessor: Attempt 102 FALSIFIED (LAA `b2` build; Linux probes isolated bug to RX delivery).
 - Construction / chip-init audit threads CLOSED: [`r8169-chip-init-audit.md`](r8169-chip-init-audit.md).
 - RX ring / poll code under the spotlight: `agnos/kernel/core/r8169.cyr` (`r8169_init_rx`, `r8169_poll`, descriptor OWN/EOR/FS/LS handling, RDSAR/TPPoll MMIO).
+
+---
+
+### Attempt 104 — agnos 1.32.5 AAP RxConfig (`0xEF0F`) + FS|LS discard-gate removal 2026-05-24 ~19:58 PDT → FALSIFIED (ARP still times out; AAP bisector falsified → fault is DOWNSTREAM of the L2 accept filter, in descriptor OWN/DMA/ring delivery)
+
+**Photo**: [`attempt-104-agnos-1.32.5-aap-rxcfg-arp-timeout-rx-downstream-of-l2-filter.jpg`](iron-nuc-zen-photos/attempt-104-agnos-1.32.5-aap-rxcfg-arp-timeout-rx-downstream-of-l2-filter.jpg) (boot-tail: GPT `present` 2 active / 128 reserved — `[0] EFI System AGNOS-BOOT` LBA 2048-524287 255 MiB / `[1] Linux FS agnos-fs` LBA 524288-52953087 25600 MiB → VFS → `ext2: probe matched backend=2 partition_lba=524288` → `ext2: mounted (blocksize=4096, inode_size=256, inodes_per_g…)` → Heap → SYSCALL/SYSRET → stack canary → interrupts → `Timer ticks before sched: 6` → `Activating scheduler...` → `net: STATIC ip=192.168.1.222 gw=192.168.1.1` → `arp: request -> 192.168.1.1` → `arp: TIMEOUT -- gateway did not reply within ~5s` → `net: L1/L2 FAILED -- cannot reach gateway, skipping L3 test` → kybernet (`starting init`, `0 processes`, `3511 free pages`, `launching shell`) → `AGNOS shell v1.32.5 (type 'help')` → `agnos>`). Filed from agnosticos top-level `1325_Log.jpg` (iPhone, file mtime 2026-05-24 20:08 PDT). **Companion pcap**: `1325_pcap_test.pcapng` (top-level, sibling of `1324_tcp_capture.pcapng` — second-machine capture, see § Wire evidence below).
+
+**Build under test**: `agnos/build/agnos` 621,704 B (`scripts/build.sh`, x86_64), −112 B vs Attempt 103. r8169 RX changes: (1) **AAP added** → `accept = AAP|AB|AM|APM`, RxConfig `0xEF0F`; (2) **unconditional `FS|LS` discard gate removed** from `r8169_poll`. cyrius 6.0.1 + gnoboot 0.4.2 unchanged. `scripts/test.sh` 4/4 + `ext2-smoke.sh` 5/5 + `tcp-listen-smoke` 1/2 (baseline) pre-burn.
+
+**FB outcome (photo)**:
+
+```
+net: STATIC ip=192.168.1.222 gw=192.168.1.1
+arp: request -> 192.168.1.1
+arp: TIMEOUT -- gateway did not reply within ~5s
+net: L1/L2 FAILED -- cannot reach gateway, skipping L3 test
+...
+AGNOS shell v1.32.5 (type 'help')
+agnos>
+```
+
+**Wire evidence — `1325_pcap_test.pcapng`** (second-machine capture from LAN host `42:c2:df:db:ee:78`, 19:54:37 → 20:02:03 PDT; spans archaemenid-under-Linux SSH session → reboot → AGNOS boot). This is the second-machine `tcpdump` the Attempt 103 escalation called for:
+
+| Observation | Evidence | Conclusion |
+|---|---|---|
+| AGNOS ARP request on the wire | `19:58:36.654340 b0:41:6f:0c:e4:25 > ff:ff:ff:ff:ff:ff Request who-has 192.168.1.1 tell 192.168.1.222` (the sole AGNOS-era b0 frame; all earlier b0 traffic is the Linux SSH/ARP session ending ~19:57:37) | **TX RE-PROVEN at the AAP build** — byte-identical shape to the 1324 finding. The `0xEF0F` + FS\|LS-gate-removal changes did NOT regress TX. |
+| Gateway unicast reply absent from capture | zero `d4:6a:91:ce:70:60 > b0:…` frames; zero frames to/from b0 after 19:58:36 | **NOT evidence of no-reply.** Capture host is a regular switched port, NOT a SPAN/mirror — every ARP reply in the whole capture has `42:c2` as one party (8 distinct reply MAC-pairs, all involving the capture host); no third-party unicast ever floods to it. A unicast reply to b0 is switched straight to AGNOS's port. Same Attempt-101 wrong-vantage trap — this capture cannot see the RX half. |
+
+**Verdict — exactly the Attempt 104 rubric's bisector-falsification branch**: *"AAP is a BISECTOR: if ARP still times out, the fault is DOWNSTREAM of the L2 filter (descriptor OWN/DMA/ring), not the accept mask."*
+
+1. **L2 accept-mask layer EXONERATED.** AAP (`0x10`, accept-all-physical/promiscuous) on top of already-set AB+AM+APM, with the FS|LS discard gate removed, STILL does not deliver the gateway's unicast reply up to `r8169_poll`. The entire accept-mask hypothesis family (h1 accept-bit write, h2 APM-vs-zeroed-IDR, AAP promiscuous catch-all) is now falsified by construction.
+2. **TX doubly-proven** (1324 + 1325) — no further TX-confirmation burns.
+3. **Residual suspect is singular**: r8169 RX **descriptor OWN-bit / DMA / ring-delivery** path — the chip RX-DMAs the frame into a ring buffer but `r8169_poll` never sees a cleared OWN bit (or reads a stale descriptor). This is the layer below the L2 filter. Multicast-passes (CMOS `[0x5E]=0x01`, Attempts 97-103) vs broadcast+unicast-drop is consistent with a descriptor/ring-rearm asymmetry, not a filter-mask gap.
+
+**Escalation (NOT auto-proposed per [[feedback_iron_burns_block_other_work]])**: MMIO / descriptor-DMA observability on the RX ring — CMOS-stamp the post-poll descriptor OWN/status words and RDSAR/CmdReg state, OR re-derive `r8169_init_rx` ring setup + `r8169_poll` OWN-handling multi-source ([[feedback_audit_re_derive_dont_validate_comments]]: derive from FreeBSD/OpenBSD/NetBSD `re_rxeof` + iPXE + RTL8168h datasheet first, do NOT validate existing comments). A TRUE SPAN/mirror port (managed switch) would still be needed to byte-confirm the gateway's unicast reply lands on AGNOS's port — `42:c2` is not it.
+
+**Cross-references**:
+- Predecessor: Attempt 103 FALSIFIED (EEPROM `b0`; filter MAC exonerated, bug isolated to r8169 RX delivery).
+- RX ring / poll code under the spotlight: `agnos/kernel/core/r8169.cyr` (`r8169_init_rx`, `r8169_poll`, descriptor OWN/EOR/FS/LS, RDSAR/TPPoll MMIO).
+- Audit receipt: [`r8169-rx-path-audit.md`](r8169-rx-path-audit.md) (§ 1.32.5 addendum landed the AAP fix; needs a post-Attempt-104 closing note that AAP was falsified).
 
 ---
 
