@@ -3656,7 +3656,7 @@ Storage trio + GPT + ext2 mount byte-clean above (AHCI WD Blue, MSC tertiary, NV
 
 ### Attempt 102 — agnos 1.32.4 sovereign-MAC (LAA) override + ARP byte-pair fix 2026-05-24 → FALSIFIED (LAA build still ARP-times-out; zero-burn Linux probes then prove construction wire-correct and isolate the bug to r8169 RX delivery)
 
-**Photos** (agnosticos top-level `1324_Log_p1_again.jpeg` + `1324_arp_still_failing.jpg`, pending filing into `iron-nuc-zen-photos/`): boot-log p1 (xhci / hid / msc / r8169 / nvme / ahci) + p2 (GPT / VFS / net / arp / kybernet / shell).
+**Photos**: [`attempt-102-agnos-1.32.4-pt1-laa-mac-b2-r8169-nvme-ahci-up.jpg`](iron-nuc-zen-photos/attempt-102-agnos-1.32.4-pt1-laa-mac-b2-r8169-nvme-ahci-up.jpg) (p1: xhci / hid / msc / r8169 MAC=`b2` / nvme `CT2000P3SSD8` post drive-swap / ahci) + [`attempt-102-agnos-1.32.4-pt2-arp-timeout-laa-build-isolated-to-rx.jpg`](iron-nuc-zen-photos/attempt-102-agnos-1.32.4-pt2-arp-timeout-laa-build-isolated-to-rx.jpg) (p2: GPT / VFS / net STATIC .222 / arp TIMEOUT / L1/L2 FAILED / kybernet / shell). Filed from agnosticos top-level `1324_Log_p1_again.jpeg` + `1324_arp_still_failing.jpg`; companion `arp-capture-agnos-attempt.pcapng` deleted (ambient-LAN scratch capture, no AGNOS frame, subsumed by the probes).
 
 **Drive-swap context (user, pre-burn)**: archaemenid drives reshuffled — the AGNOS boot drive now sits in the internal **NVMe slot** (`CT2000P3SSD8`), Linux moved to the **SATA** WD Blue SA510. The log enumerated NVMe + AHCI + USB-MS + GPT + the `AGNOS-BOOT` ESP and reached shell with **zero hardcoded-drive assumptions** — the install-state migration's topology-independence is now pre-validated for free (1.31.6 `blk_mark_registered` + multi-backend probe paying off).
 
