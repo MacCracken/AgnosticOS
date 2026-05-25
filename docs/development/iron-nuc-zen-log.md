@@ -3852,6 +3852,38 @@ agnos>
 
 ---
 
+### agnos 1.32.5 — post-RX-enable accept-filter re-assert (bite-7) 2026-05-25 ~01:18 PDT → 🎯 BREAKTHROUGH / PARTIAL (broadcast RX PROVEN on iron for the first time in the entire arc — AGNOS received a broadcast ARP and egressed a correct unicast reply; gateway-unicast reply still not seen, so the boot self-test still printed its failed-gateway verdict)
+
+**No photo** (user: FB "result was the same as before" — `arp: TIMEOUT` / `net: L1/L2 FAILED`). **But the FB verdict was lying** — the wire below shows AGNOS's RX alive and its ARP responder answering during the exact window the gateway gate timed out. This burn is what motivated the honest-self-test fix landed the same session (below). Evidence this round is the wire capture, not the FB.
+
+**Build under test**: `build/agnos` **621,896 B** (HEAD `c0a9f4b "Landed: post-RX-enable accept-filter re-assert"`), bite-7 — read-modify-write the RxConfig accept nibble (`AAP\|AB\|AM\|APM`) AFTER `CR.RE`, mirroring OpenBSD `re_iff` / Linux `rtl_set_rx_mode` / iPXE (all program the accept filter at/after RX-enable; AGNOS had only ever written it pre-enable). `r8169.cyr:639-664`. cyrius 6.0.1 + gnoboot 0.4.2 unchanged. `test.sh` 4/4 + `ext2-smoke.sh` 5/5, multiboot2 OK.
+
+**Wire evidence — `1325_pcap_attempt_4.pcapng`** (capture host `42:c2:df:db:ee:78` = `.121`, 428 frames, 01:18:37 → 01:19:xx PDT). Same on-segment-prober vantage as `_3`: `.121` actively probed AGNOS, so AGNOS's reply lands at the capturer by construction.
+
+| Observation | Evidence | Conclusion |
+|---|---|---|
+| AGNOS ARP request on the wire | `01:18:55.984768 b0:41:6f:0c:e4:25 > ff:ff:ff:ff:ff:ff Request who-has 192.168.1.1 tell 192.168.1.222` | **TX still proven** (now 5× across the arc). |
+| `.121` broadcast-probed AGNOS | `who-has 192.168.1.222 tell 192.168.1.121` ×8 (01:18:52 → 01:18:57) | broadcast frames each demanding an ARP reply from AGNOS. |
+| **AGNOS ANSWERED** | `01:18:57.527723 b0:41:6f:0c:e4:25 > 42:c2:df:db:ee:78 Reply 192.168.1.222 is-at b0:41:6f:0c:e4:25` | **DECISIVE — broadcast RX PROVEN.** For AGNOS to emit this, the full inbound chain ran: r8169 RX → `r8169_poll` → `net_poll` → `net_handle_arp` matched `target_ip == net_ip` (`net.cyr:566`) → reply TX (`net.cyr:592`). **First inbound frame acted upon on iron in the entire arc.** |
+| Gateway's unicast reply to AGNOS | not visible (unicast `d4:6a…→b0:41…` switched straight to AGNOS's port, never flooded to `.121`); boot printed TIMEOUT | unicast-class (APM) RX delivery **still unconfirmed**. |
+
+**Verdict — bite-7 (post-RX-enable accept-filter re-assert) is the BREAKTHROUGH.** The `_3` reckoning's contradiction #1 — *"AAP set but still dropping; is the RxConfig write even landing? clobbered after CR.RE?"* — is **resolved**: the accept nibble was being ignored when written only pre-`CR.RE`. Re-asserting it AFTER `CR.RE` (the BSD/Linux/iPXE convergent ordering, the lone untried convergent lever the `_3` ladder reckoning named) made broadcast RX deliver. **This FALSIFIES the Attempt-104 / bite-6 framing "bug is DOWNSTREAM in descriptor OWN/DMA/ring delivery" — the ring delivers, and the poll/dispatch/rearm path is healthy: it carried a real frame end-to-end and the responder answered on the wire.**
+
+**Remaining gap (narrowed, NOT closed):** the boot self-test still printed its failed verdict because its sole gate is the gateway's *unicast* ARP reply (`main.cyr:686-721`), which is (a) invisible at this vantage and (b) a different L2 accept class — APM (accept-physical-match) — than the broadcast (AB) that now demonstrably works. Open question for the next burn: **does unicast-class RX deliver?** Broadcast working does not guarantee it. The bug has moved from "RX is dead / ring broken" to "broadcast delivers; gateway-unicast pending."
+
+> **The FB lied for 4 days.** During the exact 5 s the gateway-ARP gate timed out, the *same* `net_poll()` loop (`main.cyr:687`) received `.121`'s broadcast and AGNOS answered it on the wire — yet the screen reported flat `net: L1/L2 FAILED`. A partial-RX-working NIC read identically to a dead one. That is the diagnostic defect this burn exposed.
+
+**Landed same session — honest L2 RX self-test** (build-verified, NOT yet burned): the boot net probe (`main.cyr:684-721`) now counts frames `net_poll()` delivered + ARP replies the responder TX'd (`net_arp_replies_sent`, `net.cyr:592`) during the gateway-probe wait, and prints `net: L2 RX ALIVE rx=N arp_in=M arp_ans=K -- gateway unicast reply pending` (or `net: L2 RX SILENT -- 0 frames in ~5s` when truly dead) instead of the flat `net: L1/L2 FAILED`. Build **622,408 B** (+512 B), `test.sh` 4/4 + `ext2-smoke.sh` 5/5, multiboot2 OK. **The next burn will SHOW the breakthrough on the FB without needing a pcap.** NOT auto-proposed per [[feedback_iron_burns_block_other_work]].
+
+**Cross-references**:
+- Predecessor: bite-6 (RXDV-gate settle + CPlusCmd) FALSIFIED (`1325_pcap_attempt_3`, RX-drop proven directly); the `_3` ladder reckoning named the pre-vs-post-enable accept-nibble timing as the lone untried convergent lever — bite-7 pulled it and it landed.
+- RX path: `agnos/kernel/core/r8169.cyr` accept-nibble re-assert post-`CR.RE` (`r8169.cyr:639-664`).
+- ARP responder that proved delivery: `agnos/kernel/core/net.cyr:545-595` (`net_arp_replies_sent` counter added at `:592`).
+- Honest self-test: `agnos/kernel/core/main.cyr:684-721`.
+- Next discriminator for unicast-class RX: an ICMP echo responder would turn `.121`'s unsolicited unicast pings into a definitive unicast-RX test (future `yo`); or watch the honest verdict's `arp_ans` climb on the FB while the gateway gate still waits.
+
+---
+
 ## Conventions for future entries
 
 - **Tracker-first**: when opening a new version cycle, write the hypothesis + expectations block in the `## Hypothesis & Expectations Tracker` section AT THE TOP of this file BEFORE the first per-attempt entry. State.md's cycle header should link to the tracker anchor (`#tracker-1NMK-cycle` slug pattern). The tracker is the predictive layer; the per-attempt entries below are the observation layer. The two together make session-restart cheap: state.md → tracker → expected vs. actual → drill into per-attempt narrative only if needed.

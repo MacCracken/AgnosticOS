@@ -3,7 +3,7 @@
 > **A**rtificial **G**eneral **N**etwork **O**perating **S**ystem
 
 [![License](https://img.shields.io/badge/license-GPLv3-blue)](LICENSE)
-[![Kernel](https://img.shields.io/badge/kernel-AGNOS%201.31.4-orange)](https://github.com/MacCracken/agnos)
+[![Kernel](https://img.shields.io/badge/kernel-AGNOS%201.32.5-orange)](https://github.com/MacCracken/agnos)
 [![Language](https://img.shields.io/badge/Cyrius-6.0.1-red)](https://github.com/MacCracken/cyrius)
 [![Status](https://img.shields.io/badge/status-pre--beta-yellow)](docs/development/roadmap.md)
 
@@ -99,7 +99,7 @@ All ship as `.agnos-agent` marketplace bundles:
 | LFS base recipes (421 base + 90 bazaar) | Done |
 | Security stack (kavach, sigil, libro, aegis at v1.0+) | Done |
 | 19+ consumer apps with MCP integration | Done |
-| **Self-hosting (AGNOS builds AGNOS)** | **Primary closed-beta blocker — gated on Cyrius v5.12.x bare-metal target (slipped from v5.10.x → v5.11.x → v5.12.x)** |
+| **Self-hosting (AGNOS builds AGNOS)** | **Public-beta scope — not a closed-beta gate.** Kernel already builds + boots against current Cyrius; the bare-metal toolchain target lands in Cyrius **v6.0.x** but does not gate the MVP (per roadmap §MVP — the earlier "closed-beta blocker" framing was pre-monolith-extraction residue, corrected 2026-05-12) |
 | Closed-beta tester cohort (5–15 trusted testers) | Pending closed-beta cut |
 | Third-party security audit | Public-beta gate |
 | Community testing program (formal enrollment) | Public-beta gate |

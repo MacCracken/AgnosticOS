@@ -117,7 +117,7 @@ Phase 13A items 1–3 (boot → shell on hardware) ──→ CLOSED BETA (MVP)
 
 **Gate philosophy**: closed beta is the honest "the kernel + init + shell stack runs on real iron, and humans other than the founder have sat at the prompt over a sustained selective program" milestone. Self-hosting, audit, and broad community testing are deliberately deferred to public beta — a cleaner, smaller line that ships when ready. The MVP entry proves the *base* OS is real; the summer-long program proves it's *durable* across diverse hardware and use; sovereignty of the rest of the userland against the AGNOS-kernel ABI is the next milestone.
 
-**Cadence dependency**: opening gate is **toolchain-independent** — the kernel already builds and boots against the current Cyrius (5.10.44 pin). The dependency reduces to *agnosticos-side work* (install.cyr Stage-4 cut + first hardware boot session). The earlier framing that gated MVP on Cyrius v5.12.x bare-metal target was conceptual residue from pre-monolith-extraction days; corrected 2026-05-12. Opening slips by week, not by month. **The summer-long program then runs independently of Cyrius cycles** — it's hardware-and-cohort-paced, not toolchain-paced. Cyrius work continues in parallel (v5.11.x stdlib annotation arc active; v5.12.x bare-metal formalization queued) but does not gate the MVP ship.
+**Cadence dependency**: opening gate is **toolchain-independent** — the kernel already builds and boots against the current Cyrius (6.0.1 pin). The dependency reduces to *agnosticos-side work* (install.cyr Stage-4 cut + first hardware boot session). The earlier framing that gated MVP on the Cyrius v6.0.x bare-metal target was conceptual residue from pre-monolith-extraction days; corrected 2026-05-12. Opening slips by week, not by month. **The summer-long program then runs independently of Cyrius cycles** — it's hardware-and-cohort-paced, not toolchain-paced. Cyrius work continues in parallel (v6.0.x active — bare-metal target + RISC-V rv64 among its gains) but does not gate the MVP ship.
 
 ### Public Beta — Q4 2026
 
@@ -202,9 +202,9 @@ Full milestone history lives in `cyrius/CLAUDE.md` + `cyrius/CHANGELOG.md`. Live
 | Phase O4a/b/c regalloc — Poletto-Sarkar linear-scan picker | **Done** — v5.8.x (O4b explicit) |
 | Phase O5 / O6 (NOP harvest with jump+fixup, codebuf compaction) | **Done** — O5/O6 audit closed in v5.9.x |
 | v5.10.x — typed-simd ABI (11 phases), REAL TYPE SYSTEM (5 phases), struct-byval ABI (3 phases) | **Done** (v5.10.x closed 2026-05-11 at 5.10.50) |
-| v5.11.x — stdlib annotation arc + consumer-issue closeout (kavach P1 sandbox syscall wrappers landed v5.11.0) | **Active** (opened 2026-05-11) |
-| RISC-V rv64 codegen | Queued — **v5.12.x** (slipped 7+ from v5.7.0) |
-| Bare-metal / AGNOS kernel target | Queued — **v5.12.x** (slip path v5.8.0 → v5.10.x → v5.11.x → v5.12.x; v5.10.x typed-simd + REAL TYPE SYSTEM + struct-byval ABI form substrate prereq, v5.11.x stdlib annotation is the remaining prereq) |
+| v5.11.x — stdlib annotation arc + consumer-issue closeout (kavach P1 sandbox syscall wrappers landed v5.11.0) | **Done** (v5.11.x closed at 5.11.69, 2026-05-19; final 5.x minor) |
+| RISC-V rv64 codegen | In **v6.0.x** active cycle (slipped 7+ from v5.7.0 through the never-opened v5.12.x) |
+| Bare-metal / AGNOS kernel target | In **v6.0.x** active cycle (slip path v5.8.0 → v5.10.x → v5.11.x → the never-opened v5.12.x → **v6.0.x**; v5.10.x typed-simd + REAL TYPE SYSTEM + struct-byval ABI substrate and v5.11.x stdlib annotation prereqs both closed) |
 
 ### Cyrius Ports — Dependency Chain to Boot
 
@@ -290,7 +290,7 @@ That's it. No package builds, no recipe sweeps, no self-host loop. Those come af
 - (b) **First hardware boot session** — kernel + kybernet + agnoshi reaching a shell on real iron (Pi 4 or AMD NUC)
 - (c) **Non-founder tester** sits at the prompt
 
-**NOT a gate**: Cyrius v5.12.x bare-metal target. Earlier framing carried this as a dependency — that was conceptual residue from when Cyrius and agnos lived in the same repo (pre-2026-04-01 monolith extraction). The kernel already boots end-to-end in QEMU as a multiboot1 ELF — bare-metal compilation works *now*, via ad-hoc bare-metal mode in agnos. v5.12.x formalizes the toolchain side (ELF no-libc target format, interrupt-handler emit conventions, kernel-mode syscall stubs stripped) — useful for cleaner future kernel work, but **not required for the MVP to ship**. Language and kernel are separately-releasable subsystems; coupling MVP to a language-side cleanup is the residue-pattern of when they were one project.
+**NOT a gate**: the Cyrius v6.0.x bare-metal target. Earlier framing carried this as a dependency — that was conceptual residue from when Cyrius and agnos lived in the same repo (pre-2026-04-01 monolith extraction). The kernel already boots end-to-end in QEMU as a multiboot1 ELF — bare-metal compilation works *now*, via ad-hoc bare-metal mode in agnos. v6.0.x formalizes the toolchain side (ELF no-libc target format, interrupt-handler emit conventions, kernel-mode syscall stubs stripped) — useful for cleaner future kernel work, but **not required for the MVP to ship**. Language and kernel are separately-releasable subsystems; coupling MVP to a language-side cleanup is the residue-pattern of when they were one project.
 
 ### P0 — Other Active Blockers
 
@@ -428,8 +428,8 @@ Self-hosting LFS-style work moves from "Phase 13A future" to "Public Beta scope"
 ### Phase 13B — Arch-Neutral Boot Pipeline
 
 **Gate**: v5.6.x optimization arc closed through v5.8.x; O5/O6 audit closed in v5.9.x.
-**Precedes**: Cyrius v5.12.x RISC-V rv64 + bare-metal — this work lands *during* v5.11.x stdlib annotation arc so v5.12.x opens clean.
-**Rationale**: Cyrius sequencing settled to v5.6.x (optimization arc) → v5.7.x (sandhi-fold + cyrius-ts) → v5.8.x (audit closeout + language vocabulary + stdlib foldins) → v5.9.x (catchup + O5/O6 close) → v5.10.x (typed-simd ABI + REAL TYPE SYSTEM + struct-byval ABI — three completed arcs in 5 days) → **v5.11.x (stdlib annotation arc + consumer-issue closeout)** → **v5.12.x (RISC-V + bare-metal)**. Agnos already did the multi-arch split at v1.1.0 (`kernel/arch/x86_64/`, `kernel/arch/aarch64/`, `kernel/core/`, `kernel/user/`). The gap is that everything downstream of boot still carries x86_64/aarch64-shaped assumptions. Neutralizing during v5.11.x means v5.12.x RISC-V + bare-metal slot in as "add a target," not "rewrite the pipeline."
+**Precedes**: Cyrius v6.0.x RISC-V rv64 + bare-metal — this neutralization landed *during* the v5.11.x stdlib annotation arc so v6.0.x opened clean.
+**Rationale**: Cyrius sequencing settled to v5.6.x (optimization arc) → v5.7.x (sandhi-fold + cyrius-ts) → v5.8.x (audit closeout + language vocabulary + stdlib foldins) → v5.9.x (catchup + O5/O6 close) → v5.10.x (typed-simd ABI + REAL TYPE SYSTEM + struct-byval ABI — three completed arcs in 5 days) → **v5.11.x (stdlib annotation arc + consumer-issue closeout, closed at 5.11.69)** → **v6.0.x (RISC-V + bare-metal — active)**. Agnos already did the multi-arch split at v1.1.0 (`kernel/arch/x86_64/`, `kernel/arch/aarch64/`, `kernel/core/`, `kernel/user/`). The gap is that everything downstream of boot still carries x86_64/aarch64-shaped assumptions. Neutralizing during v5.11.x meant v6.0.x RISC-V + bare-metal slot in as "add a target," not "rewrite the pipeline."
 
 **Genesis-repo items (owned here):**
 
@@ -445,7 +445,7 @@ Self-hosting LFS-style work moves from "Phase 13A future" to "Public Beta scope"
 - **Should-touch (build/packaging)**: ark, nous, zugot, agnova, takumi
 - **May-touch**: phylax, shakti, ai-hwaccel, seema
 
-**Target**: complete during Cyrius v5.11.x stdlib annotation arc, before v5.12.x opens RISC-V + bare-metal. The optimization-arc baselines re-baselined across v5.6.x → v5.10.x; O5/O6 audit closed in v5.9.x.
+**Target**: complete during the Cyrius v5.11.x stdlib annotation arc, before v6.0.x opened RISC-V + bare-metal. The optimization-arc baselines re-baselined across v5.6.x → v5.10.x; O5/O6 audit closed in v5.9.x.
 
 ### Phase 13C — Community & Documentation
 

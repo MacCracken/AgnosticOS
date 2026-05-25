@@ -6,7 +6,21 @@ type: state
 
 # Documentation Health — agnosticos
 
-> **Last refresh**: 2026-05-22 (Stage 20 batch — article-tier + vidya field_notes sweep, post-1.32.x networking + storage-trio + MVP-gate iron-validation; seven touchpoints + two new field_notes entries):
+> **Last refresh**: 2026-05-25 (root-version staleness sweep — README kernel badge + roadmap Cyrius-version drift; four touchpoints):
+>
+> **T1** `README.md` kernel badge `1.31.4 → 1.32.5` (agnos VERSION single-source-of-truth).
+>
+> **T2** `README.md:102` self-hosting status cell — was "Primary closed-beta blocker — gated on Cyrius **v5.12.x** bare-metal"; reframed to **public-beta scope / not a closed-beta gate** per roadmap §MVP + [[project_agnos_mvp_boot_to_shell]] (self-hosting = public beta) with the never-opened v5.12.x → **v6.0.x** correction.
+>
+> **T3** `docs/development/roadmap.md` body — ~7 `Cyrius v5.12.x` → `v6.0.x` refs (RISC-V rv64 + bare-metal target are in the **active v6.0.x** cycle; v5.12.x never opened, folded into v6.0.x per [[project_cyrius_5x_6x_boundary]]). Touched lines 120 (+ `5.10.44 pin → 6.0.1` in that one sentence), 205 (v5.11.x `Active → Done`, closed at 5.11.69), 206, 207, 293, 431, 432, 448. **Deliberately left frozen**: the self-disclaimed top-matter snapshot (lines 24/27, "kernel 1.29.0 / Cyrius v5.11.24") — the header already says to ignore it and defer to `state.md`.
+>
+> **Noted, not fixed this pass** (out of stated scope — staged for a later version-currency pass): the roadmap body's other scattered historical per-cycle pins/quotes were not chased; the doc explicitly defers live state to `state.md`.
+>
+> **T4** breakthrough doc-roll (separate, same session): agnos `CHANGELOG.md` + `state.md` + `iron-nuc-zen-log.md` captured the bite-7 broadcast-RX-proven iron result + honest L2 RX self-test; all 5 burn pcaps moved top-level → `docs/development/iron-nuc-zen-photos/`.
+>
+> Prior refresh entry (kept for traceability):
+>
+> **Prior**: 2026-05-22 (Stage 20 batch — article-tier + vidya field_notes sweep, post-1.32.x networking + storage-trio + MVP-gate iron-validation; seven touchpoints + two new field_notes entries):
 > 
 > **T1** held-outline mechanical drift on `articles/entity-vs-skynet-doom.md` — "Last verified" date 2026-05-06 → 2026-05-22; § 7 body version-cell pinning note added pointing at state.md; line 192 v5.10.x bare-metal reference → v6.x platform-expansion (project_cyrius_5x_6x_boundary). Body figures kept intact (held-outline status — promotes only when SY/WAD demo lands).
 >
