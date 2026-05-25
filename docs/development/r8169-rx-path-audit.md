@@ -522,3 +522,23 @@ The "discard + continue" inner loop could in principle starve the caller — if 
 - `[[feedback_redesign_dont_reinvent]]` — multi-source convergent prior art (Linux + OpenBSD + FreeBSD all triangulated above)
 - `[[feedback_driver_code_is_the_bite]]` — fix Parts A/B/C are pre-iron code work, not "PENDING IRON"
 - `[[feedback_no_instrumentation_means_no_instrumentation]]` — secondary finding S-1 (CMOS-stamp tax) tracks for future sweep, no instrumentation added in fix
+
+---
+
+## 1.32.5 addendum — RX accept-filter re-derivation (broadcast+unicast drop; multicast passes)
+
+**Date**: 2026-05-24. **Driver**: re-derived from MULTIPLE independent sources (FreeBSD `re_rxeof`/`re_set_rxmode`, OpenBSD `re_rxeof`/`re_iff`, NetBSD `rtl8169.c`, iPXE `realtek.c`/`realtek.h`, Linux VER_46 erratum) per [[feedback_audit_re_derive_dont_validate_comments]] — derived from sources first, then diffed against `r8169.cyr`, NOT validated against existing comments.
+
+**Symptom (post-1324 pcap)**: TX PROVEN on iron (broadcast ARP request egressed the wire byte-correct). RX delivers MULTICAST only (Attempts 97–103, CMOS `[0x5E]=0x01` = `01:00:5e`); never broadcast (DHCP OFFER) or unicast (gateway ARP reply). Since 2 KB RX buffers exceed the 1500 MTU, every *accepted* frame is single-descriptor — so the class-selective drop is at the chip's **L2 accept filter** (before the ring), not in `r8169_poll`.
+
+**Already-convergent in the current build (do NOT reopen)**: IDR0-5 32-bit Cfg9346-wrapped writeback (`r8169.cyr:519-528`) matches FreeBSD/OpenBSD/Linux; MAR0/MAR4 = all-1s (`:571-572`) is the Linux VER_46 allmulti erratum workaround AND iPXE's open default; RxConfig profile `0xEF00` matches FreeBSD 8168G_PLUS; late CR.TE|RE (`:589`) matches NetBSD `RTKQ_TXRXEN_LATER` (carved out *specifically* for `RTK_HWREV_8168H`). RxConfig accept bits land (multicast proves the store32 took).
+
+**Load-bearing finding**: AGNOS set `accept = AB|AM|APM = 0x0E` — no **AAP** (accept-all-physical / promiscuous, bit 0). **iPXE `realtek_open` sets AAP UNCONDITIONALLY** (RCR low-nibble `AAP|APM|AM|AB = 0x0F`); iPXE is the pure-poll from-scratch DMA-ring analog running this chip family promiscuous-by-default for PXE/DHCP — the same workload class as AGNOS bring-up. The BSDs gate ALLPHYS behind `IFF_PROMISC`; AAP-by-default is the iPXE bring-up convention. On the RTL8168H stepping the per-address+broadcast accept path is known-quirky (Linux VER_46 erratum: "filters unicast eapol unless allmulti enabled"); **AAP bypasses the L2 accept filter entirely**, so the broadcast OFFER + unicast ARP reply reach the ring regardless of the stepping quirk.
+
+**AAP is also a BISECTOR**: if RX still drops with AAP set, the fault is DOWNSTREAM of the accept filter (descriptor OWN handoff / DMA addresses / RBLEN / CPlusCmd / poll delivery), not the mask — cleaving the remaining hypothesis space for the next cycle.
+
+**1.32.5 changes landed in `r8169.cyr`**:
+1. **AAP added** (`:577` region) — `accept = AAP|AB|AM|APM` → RxConfig `0xEF0F`. Primary, iPXE-convergent.
+2. **FS|LS discard gate removed** from `r8169_poll` (`:636` region) — FreeBSD/OpenBSD `re_rxeof` gate the SOF|EOF requirement behind `RL_FLAG_JUMBOV2` ONLY; iPXE checks OWN+RES only. For non-jumbo single-descriptor frames the gate never fires for legit traffic; removing it matches all non-Linux prior art and is free to stack (covers the case where AAP delivers a frame the old gate would have rejected). Secondary; not expected load-bearing.
+
+Build: 621,816 B (Attempt 103) → **621,704 B** (−112 B). `scripts/build.sh` x86_64 OK, multiboot2 ELF64. Iron Attempt 104 validates per the rubric at [`iron-nuc-zen-log.md#tracker-1325-cycle`](iron-nuc-zen-log.md#tracker-1325-cycle). NOT auto-proposed per [[feedback_iron_burns_block_other_work]].
