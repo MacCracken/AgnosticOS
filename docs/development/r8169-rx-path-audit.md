@@ -542,3 +542,25 @@ The "discard + continue" inner loop could in principle starve the caller — if 
 2. **FS|LS discard gate removed** from `r8169_poll` (`:636` region) — FreeBSD/OpenBSD `re_rxeof` gate the SOF|EOF requirement behind `RL_FLAG_JUMBOV2` ONLY; iPXE checks OWN+RES only. For non-jumbo single-descriptor frames the gate never fires for legit traffic; removing it matches all non-Linux prior art and is free to stack (covers the case where AAP delivers a frame the old gate would have rejected). Secondary; not expected load-bearing.
 
 Build: 621,816 B (Attempt 103) → **621,704 B** (−112 B). `scripts/build.sh` x86_64 OK, multiboot2 ELF64. Iron Attempt 104 validates per the rubric at [`iron-nuc-zen-log.md#tracker-1325-cycle`](iron-nuc-zen-log.md#tracker-1325-cycle). NOT auto-proposed per [[feedback_iron_burns_block_other_work]].
+
+---
+
+## 1.32.5 closeout addendum — AAP + RxMaxSize FALSIFIED; RX-engine bring-up (RXDV-settle + CPlusCmd) derived
+
+**Date**: 2026-05-25. Both 1.32.5-addendum candidates above burned and were falsified; this section records the closure and the next convergent fix, re-derived multi-source per [[feedback_audit_re_derive_dont_validate_comments]].
+
+**AAP (Attempt 104, `1325_pcap_test.pcapng`) → FALSIFIED.** Promiscuous accept-all still delivered nothing; the bisector branch fired ⇒ the **L2 accept filter is exonerated**, fault is downstream of it.
+
+**RxMaxSize `0x4000`→`0x05F3` (`1325_pcap_attempt_2.pcapng`, 2026-05-24 23:42) → FALSIFIED.** "No change" on iron. The hypothesis ("bit-14 overflow → RMS=0 → all frames rejected") is **internally inconsistent** with the multicast-passing evidence of Attempts 97–99: if RMS read as 0 and rejected all frames, multicast couldn't have passed either. `0x05F3` is the correct value (admits 1518-byte frames) and is retained, but RMS is **not** the blocker. **RMS candidate CLOSED.**
+
+**Two parallel research agents re-derived the 8168H (mac_version 46 / XID 541) RX-engine bring-up** from Linux `r8169_main.c`, FreeBSD `if_re.c` + `if_rlreg.h`, OpenBSD/NetBSD `re.c`/`rtl8169.c`, U-Boot `rtl8169.c`, iPXE `realtek.c`, OSDev RTL8168H threads + RTL8169 wiki. Findings:
+
+1. **Bite H's deletion of the Linux ephy/ERI/MAC-OCP/firmware clone is CONFIRMED CORRECT — do NOT reopen.** FreeBSD, OpenBSD *and* NetBSD all carry an explicit `8168H/8111H` hwrev and drive it to working RX with **zero** ephy/ERI/OCP/firmware writes (generic PHY-wake only). The Linux H-specific block (`rtl_hw_start_8168h_1`: ephy SerDes tuning, ERI 0x5f0/0xc0/0xb8/0xdc EEE/ASPM/jumbo, `rtl8168h_2_hw_phy_config` firmware) is **not** RX-datapath load-bearing.
+
+2. **The ONE RX-datapath-load-bearing step buried in Linux's H block is `rtl_disable_rxdvgate()`** — clear `RXDV_GATED_EN` (MISC 0xF0 bit 19) **then `fsleep(2000)` (~2 ms settle)**. Every driver supporting this stepping does the clear (Linux explicit; OpenBSD `RL_FLAG_RXDV_GATED`; FreeBSD "disable RXDV gate"; U-Boot — *specifically commented for "DHCP failures after kernel reboots"*, the archaemenid warm-boot signature). **AGNOS already cleared the bit but skipped the settle**, enabling `CR.RE` µs later → RX validator opens after RX starts → RX silent while TX (never consults the gate) egresses fine = the exact iron signature. **FIX**: ~4–8 ms non-posted-MMIO spin between the clear and CR.RE (`r8169.cyr:546` region); 100 Hz timer is too coarse for ms granularity, so spin like `r8169_reset`.
+
+3. **CPlusCmd (0xE0) bits [1:0] are INTT, not "C+ RX/TX enable", on the gigabit 8168.** Linux `CPCMD_MASK`/`INTT_MASK = GENMASK(1,0)` = interrupt-moderation timer select; FreeBSD sets `RL_CPLUSCMD_RXENB|TXENB` ONLY on the `!MACSTAT` (legacy 8139C+) branch, which the 8168H (MACSTAT) is not. AGNOS's `0x000B` set INTT=3 under a false "load-bearing" comment — the exact "nine-burn CPlusCmd trap." Inert under `IMR=0` (pure poll) so unlikely to be the blocker, but corrected to `0x0008` (PCIMulRW only) to stop muddying the hypothesis space. RX/TX are gated solely by `CR.RE|CR.TE`.
+
+**Ruled out (TX exercises the identical path successfully):** 64-bit DMA / >4 GB addressing / PCIDAC — RX buffers are allocated *before* TX buffers (lower physical addresses), and TX DMA works through the same `pmm_alloc`/`bufaddr_hi/lo`/ring-base scheme. The ring-index/buffer-mapping is consistent (descriptor[idx].bufaddr == `r8169_rx_bufs[idx]`, both indexed by `r8169_rx_idx`). CR-vs-RxConfig ordering — both orderings ship in production for this chip (Linux early-CR, NetBSD `RTKQ_TXRXEN_LATER` late-CR for 8168H specifically); AGNOS's late-CR is fine.
+
+Build: 621,704 B (Attempt 104) → **621,768 B** (+64 B, settle spin). `scripts/test.sh` 4/4 + `scripts/ext2-smoke.sh` 5/5. multiboot2 ELF64 OK. `build/agnos` reflects HEAD. **The next burn TESTS these — no instrumentation added.** NOT auto-proposed per [[feedback_iron_burns_block_other_work]].
