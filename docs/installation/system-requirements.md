@@ -98,8 +98,8 @@ Minimal footprint for embedded devices — fleet management, OTA updates, teleme
 | ARM64 (AArch64) | Full support | Cyrius cross-compiler + native Pi self-host byte-identical (v5.3.15+) |
 | Apple Silicon (Mach-O) | Compiler toolchain only | Cyrius self-hosts byte-identically on M-series (v5.3.13); AGNOS kernel targets Linux ABI |
 | Windows PE32+ | Compiler toolchain only | Cyrius native self-host byte-identical on real Windows 11 (v5.5.10) |
-| RISC-V (rv64) | Queued | Cyrius **v5.12.x** (slipped from v5.7 → v5.10 → v5.11 → v5.12 as foldin + type-system work compounded) |
-| Bare-metal (no host OS) | Queued | Cyrius **v5.12.x** (paired with rv64 for the closed-beta self-hosting gate) |
+| RISC-V (rv64) | Queued | Cyrius **v6.0.x** (rv64 backend + bare-metal target live in the active v6.0.x cycle; the never-opened v5.12.x slot folded in here) |
+| Bare-metal (no host OS) | Queued | Cyrius **v6.0.x** (paired with rv64; public-beta self-hosting scope, not a closed-beta gate) |
 | x86 (32-bit) | Not supported | No kernel configs, no recipes |
 | ARM (32-bit) | Not supported | Out of scope |
 
@@ -125,7 +125,7 @@ AGNOS uses **two kernels** depending on profile — the AGNOS kernel is primary;
 
 ### AGNOS Kernel (sovereign, primary)
 
-- **Version**: 1.30.5 — ~365KB, Cyrius-native, 35+ subsystems, 26 syscalls, iron-validated on NUC AMD 2026-05-15 (live in [`development/state.md`](../development/state.md))
+- **Version**: Cyrius-native, 40+ subsystems, 26 syscalls, iron-validated on NUC AMD (current version + size in [`development/state.md`](../development/state.md))
 - **Repo**: `MacCracken/agnos`
 - **Multi-arch split** (v1.1.0): `kernel/arch/x86_64/`, `kernel/arch/aarch64/`, `kernel/core/`, `kernel/user/`
 - **Boot**: multiboot1; boots in QEMU via `make boot-test` from the genesis repo

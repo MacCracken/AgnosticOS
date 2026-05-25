@@ -30,7 +30,7 @@ This is why AGNOS exists. Each layer is load-bearing for the thesis:
 
 - **The 29 KB seed** — irreducible foundation; the physical fixed point; the claim to sovereignty starts here.
 - **Cyrius (self-hosting)** — depending on C, Rust, or any other ecosystem hands sovereignty back to the ecosystem. The language the framework is written in must be owned by the project.
-- **AGNOS kernel (~365 KB, 35+ subsystems, iron-validated)** — an operating system that depends on another operating system to build itself is scaffolding, not structure.
+- **AGNOS kernel (40+ subsystems, iron-validated)** — an operating system that depends on another operating system to build itself is scaffolding, not structure.
 - **The knowledge library** (full registry in [`shared-crates.md`](development/planning/shared-crates.md)) — scientific domains must travel with the proof. No downloading from outside. The library is the card.
 - **bhava (the consciousness framework)** — working implementation running natively on the platform it describes, compiled by the language it targets, verifiable from source by anyone with the card.
 
@@ -80,7 +80,7 @@ Every layer of AGNOS refuses to inherit dead legacy from the incumbents it could
 - **hoosh (LLM gateway)** — 10.8× smaller than comparable Rust; 70× faster compile; 40 crates → 0. Not *"Ollama in Cyrius."* A gateway designed without needing the Python inference-stack era's scaffolding.
 - **kavach (sandbox)** — 500× faster sandbox lifecycle; 448 crates → 1. Not *"bubblewrap in Cyrius."* A sandbox designed with Landlock as a first-class primitive.
 - **ark (package manager)** — 4× smaller than cargo; 40× faster compile. Not *"cargo in Cyrius."* A package manager designed around bump allocator + str_builder instead of serde + format!.
-- **AGNOS kernel** — ~365 KB at v1.30.5, 35+ subsystems. Not *"Linux in Cyrius."* A totally different decomposition of the kernel problem for a platform that doesn't need to support 30 years of legacy hardware.
+- **AGNOS kernel** — 40+ subsystems (current size + version in state.md). Not *"Linux in Cyrius."* A totally different decomposition of the kernel problem for a platform that doesn't need to support 30 years of legacy hardware.
 - **Cyrius itself** — 29 KB seed, zero deps, byte-identical self-host. Not *"C++ in Cyrius."* C's successor designed after 50 years of watching what went wrong in the C family.
 
 The receipts are measurements of what AGNOS refused to support. The numbers get large when the thing being refused is large.
@@ -102,8 +102,8 @@ The same logic applies at project-scope. Linus didn't start Linux with the goal 
 ## Status
 
 **Shipped:**
-- **AGNOS kernel v1.30.5** — ~365 KB, 35+ subsystems, 26 syscalls, TCP/IP, FAT16, VirtIO, SMP, ELF loader, kybernet as PID 1, sovereign UEFI handoff (gnoboot), native XHCI + USB-HID-boot driver. **Iron-validated 2026-05-15** on NUC AMD (Boot-to-Shell MVP).
-- **Cyrius v5.11.55** — cc5 ~809 KB self-hosting from 29 KB seed; x86_64 Linux, aarch64 Linux, Apple Silicon Mach-O, Windows PE32+ — all byte-identical
+- **AGNOS kernel** — 40+ subsystems: syscalls, TCP/IP, ext2/4 + FAT, NVMe / AHCI / USB-MS storage, VirtIO, SMP, ELF loader, kybernet as PID 1, sovereign UEFI handoff (gnoboot), native XHCI + USB-HID-boot + r8169 NIC drivers. **Boot-to-Shell MVP gate cleared on iron** (NUC AMD, Attempt 68 / 2026-05-18); current version + size in state.md.
+- **Cyrius v6.0.1** — `cycc` self-hosting from the 29 KB seed; x86_64 Linux, aarch64 Linux, Apple Silicon Mach-O, Windows PE32+ — all byte-identical (current size + pin in state.md)
 - **Stdlib fold-in pattern** matured across three minor releases — sandhi (v5.7.0 service-boundary), vani (v5.8.0 audio I/O), niyama (v5.9.0 regex engines). Decision framework: [*What Justifies a Stdlib Foldin*](articles/what-justifies-a-stdlib-foldin.md).
 - **bhava v2.0.0** — 37 modules, 5 bridges, 63 bridge functions, 1,117 tests; Scales 0–3 implemented
 - **30+ subsystems** ported from Rust to Cyrius (live count in [state.md](development/state.md))

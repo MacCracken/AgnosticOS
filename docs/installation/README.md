@@ -9,7 +9,7 @@
 ## What Works Today
 
 - **Sovereign boot pipeline** — `scripts/boot.cyr` (Cyrius, ~67KB compiled) launches the AGNOS kernel in QEMU.
-- **AGNOS kernel** — v1.30.5, ~365KB, 35+ subsystems, 26 syscalls, Cyrius-native. Boots to shell on iron (NUC AMD, validated 2026-05-15).
+- **AGNOS kernel** — Cyrius-native, 40+ subsystems, 26 syscalls. Boots to shell on iron (NUC AMD); current version + size in [`development/state.md`](../development/state.md).
 - **Component verification** — `make iso-check` walks every downstream repo and confirms the artifacts an ISO would need are present and current.
 - **Per-subsystem builds** — every subsystem (kybernet, ark, nous, sigil, libro, agnoshi, …) builds standalone from its own repo via `cyrius build`.
 
@@ -122,7 +122,7 @@ Phase 13B (Arch-Neutral Boot Pipeline) is being neutralized during Cyrius v5.9.x
 | Symptom | Cause / Fix |
 |---------|-------------|
 | `cyrius: command not found` | Toolchain not on PATH. Check `~/.cyrius/bin/` or install from cyrius release tarball. |
-| `cyrius build` fails with missing stdlib | Running `cc5` directly; always use `cyrius build` (auto-prepends includes). |
+| `cyrius build` fails with missing stdlib | Running `cycc` directly; always use `cyrius build` (auto-prepends includes). |
 | `make boot-test` hangs on black screen | QEMU serial not wired; check with `qemu-system-x86_64 --version` ≥ 7.0. |
 | `make iso-check` reports a stale artifact | Sibling repo hasn't been rebuilt. `cd ../<repo> && cyrius build …` then retry. |
 

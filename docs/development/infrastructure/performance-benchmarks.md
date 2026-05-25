@@ -2,7 +2,7 @@
 
 > **Last Updated**: 2026-03-07
 >
-> **Fossil notice (2026-04-14):** These benchmarks are from the Rust era. Cyrius port receipts (with comparative benchmarks) live in each repo's `docs/benchmarks-rust-v-cyrius.md`. See the port receipts in memory/MEMORY.md for the summary ratios.
+> **Fossil notice (2026-04-14, links flagged 2026-05-25):** These benchmarks are from the Rust era. Cyrius port receipts (with comparative benchmarks) live in each repo's `docs/benchmarks-rust-v-cyrius.md`. See the port receipts in memory/MEMORY.md for the summary ratios. **All `userland/…` file paths below are dead by design** — the monolith was extracted into standalone repos on 2026-04-01; the links are historical and intentionally not repointed.
 
 ## Overview
 

@@ -1,6 +1,8 @@
 # AGNOS Orchestration Roadmap — Path to k8s-equivalent
 
-> **Status**: Active | **Last Updated**: 2026-03-21
+> **Status**: Vision / forward-looking | **Last Updated**: 2026-03-21
+>
+> **Pre-extraction note (2026-05-25):** this doc predates the 2026-04-01 monolith extraction; `userland/…` paths below now live in standalone repos (e.g. `daimon`, `hoosh`, `agnosys`). Treated as a vision map, not a current file index.
 >
 > Mapping AGNOS subsystems to Kubernetes equivalents.
 > We're not building k8s — we're building something better: an AI-native orchestration

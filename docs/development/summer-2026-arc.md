@@ -248,7 +248,7 @@ Flashing pipeline + testing ────────── Beat 3 (D3 — must)
 | v5.6.x → v5.7.x → v5.8.x → v5.9.x | All shipped (closed 2026-05-08); collectively delivered sandhi-fold + vani-fold + niyama-fold + 30+ Cyrius ports + multi-platform byte-identical builds |
 | v5.10.x REAL TYPE SYSTEM | In flight — type-system arc strengthens the "last FFI bridge closing" Beat 2 narrative (call-site type checking for cstring / Result / Option / Tagged) |
 | v5.11.x TS testing + bug sweep | Carry-forward consolidation cycle |
-| v5.12.x bare-metal + RISC-V rv64 | **Closed-beta blocker.** Self-hosting "AGNOS builds AGNOS" gate. Reservation slipped twice (v5.10 → v5.11 → v5.12). |
+| v6.0.x bare-metal + RISC-V rv64 | **Public-beta scope** — self-hosting "AGNOS builds AGNOS" is NOT a closed-beta gate (per roadmap §MVP). Reservation folded from the never-opened v5.12.x into the active v6.0.x cycle. |
 | August DEF CON | Beat 3 is already planned per existing memory |
 
 No new work is introduced by the arc that wasn't already queued. The arc is a **timing discipline** across existing items, not new scope.

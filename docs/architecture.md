@@ -351,7 +351,7 @@ gnoboot (sovereign UEFI bootloader, Path-C handoff)
 | Layer | Technology | Notes |
 |-------|-----------|-------|
 | Kernel | Cyrius (AGNOS-native) | 35+ subsystems, 26 syscalls. Live size + version: [`development/state.md`](development/state.md) |
-| Compiler | Cyrius (cc5) | self-hosting from 29KB seed, 42+ stdlib modules. Live version + cc5 size: [`development/state.md`](development/state.md) |
+| Compiler | Cyrius (cycc) | self-hosting from 29KB seed, 42+ stdlib modules. Live version + size: [`development/state.md`](development/state.md) |
 | Bootloader | gnoboot | sovereign UEFI bootloader (PE32+ EFI Application). Replaces GRUB as of v1.30.0 Path-C. |
 | User space | Cyrius | All ported subsystems compile with `cyrius build` |
 | Host bootstrap | Linux kernel configs | For building cross-compiler on existing host only |

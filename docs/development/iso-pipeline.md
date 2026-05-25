@@ -32,9 +32,9 @@ Locate (or build) every artifact needed for the rootfs:
 
 | Component | Source | Artifact |
 |-----------|--------|----------|
-| AGNOS kernel | `../agnos/build/agnos` | ELF binary (~365KB at v1.30.5) |
+| AGNOS kernel | `../agnos/build/agnos` | ELF binary (current size + version in state.md) |
 | kybernet (PID 1) | `../kybernet/build/kybernet` | ELF binary (~486KB) |
-| Cyrius toolchain | `../cyrius/build/cc5` | Compiler binary (~809KB at v5.11.24+) |
+| Cyrius toolchain | `../cyrius/build/cycc` | Self-hosting compiler (current size + version in state.md) |
 | ark (package manager) | `../ark/build/ark` | Binary |
 | nous (resolver) | `../nous/build/nous` | Binary |
 | takumi (build system) | `../takumi/` | Build tool (pending Cyrius port) |
@@ -60,14 +60,14 @@ Build a cross-toolchain so the ISO's packages are host-independent.
 
 The Rust-era pipeline followed LFS Ch. 5–6: binutils pass 1 → GCC pass 1 →
 Linux headers → glibc → libstdc++ → binutils pass 2 → GCC pass 2. This
-produced `x86_64-agnos-linux-gnu-gcc` under `$LFS/tools/`.
+produced `x86_64-agnos-linux-gnu-gcc` under `$LFS/tools/`. <!-- cruft-swept 2026-05-25: cc5→cycc, v5.12.x→v6.0.x, sizes→state.md -->
 
-**Cyrius-era question**: Does the Cyrius toolchain (`cc5`) replace GCC for
+**Cyrius-era question**: Does the Cyrius toolchain (`cycc`) replace GCC for
 AGNOS-native packages, or do we still need GCC for the base system (glibc,
 coreutils, etc.)? Current answer: **both**. Base system packages (glibc,
 coreutils, bash, etc.) are C projects built with GCC from zugot recipes.
-AGNOS-native components (kernel, kybernet, ark, etc.) are built with cc5
-(Cyrius v5.10.24; cc5 → `cyc` rename queued for v6.0).
+AGNOS-native components (kernel, kybernet, ark, etc.) are built with `cycc`
+(the self-hosting compiler, renamed from cc5 at Cyrius v6.0.0; current pin in state.md).
 The cross-toolchain bootstrap remains necessary for the C layer.
 
 ### Stage 2 — Build Base System
@@ -96,7 +96,7 @@ Install the AGNOS-native binaries into the rootfs. This replaces the old
 /usr/bin/ark                   ← Package manager
 /usr/bin/nous                  ← Resolver
 /usr/bin/cyrius                ← Compiler
-/usr/bin/cc5                   ← Compiler backend
+/usr/bin/cycc                  ← Compiler backend
 /usr/bin/daimon                ← Agent orchestrator
 /usr/bin/hoosh                 ← LLM gateway
 /usr/bin/agnoshi               ← AI shell
@@ -150,7 +150,7 @@ Status verified 2026-05-09. Several previously-pending blockers have shipped —
 | **phylax** | ✅ Shipped v1.1.0 (Cyrius-native) | Threat detection available |
 | **Cyrius multi-platform** | ✅ Shipped v5.5.x (byte-identical builds across x86_64 Linux / aarch64 Linux on real Pi / Apple Silicon Mach-O / Windows PE32+) | Multi-arch ISO unblocked at the toolchain layer |
 | **sankoch** | ✅ Shipped v2.2.4 | Compression for squashfs/initramfs available |
-| **Bare-metal AGNOS target** (Cyrius v5.12.x) | Reservation slipped from v5.10 → v5.11 → v5.12 | Self-hosting ISO (Phase 2) gated on this. v5.10.x = type-system arc; v5.11.x = TS testing + bug sweep; v5.12.x = bare-metal + RISC-V rv64 |
+| **Bare-metal AGNOS target** (Cyrius v6.0.x) | Folded from the never-opened v5.12.x slot into the active v6.0.x cycle | Self-hosting ISO (Phase 2) gated on this. v6.0.x carries bare-metal + RISC-V rv64 (+ PIE, closures, Class-B FFI) |
 
 ---
 
@@ -177,7 +177,7 @@ Scope: x86_64, minimal profile (headless), host-built toolchain assumed.
 
 Scope: the ISO can rebuild itself from source.
 
-1. Include Cyrius toolchain + cc5 in the rootfs
+1. Include Cyrius toolchain + cycc in the rootfs
 2. Include zugot recipes in `/usr/src/agnos/`
 3. Include source for all AGNOS-native components
 4. `selfhost-validate --phase all` passes inside the booted ISO
@@ -192,7 +192,7 @@ Blocked on aethersafha Cyrius port. Desktop recipes exist in `zugot/desktop/`.
 
 Scope: aarch64, RISC-V.
 
-aarch64 multi-platform codegen shipped at Cyrius v5.5.x (byte-identical Linux + Apple Silicon Mach-O). RISC-V rv64 backend reserved for Cyrius v5.12.x — that's the gate for full RISC-V ISO. aarch64 ISO can begin earlier.
+aarch64 multi-platform codegen shipped at Cyrius v5.5.x (byte-identical Linux + Apple Silicon Mach-O). RISC-V rv64 backend reserved for Cyrius v6.0.x — that's the gate for full RISC-V ISO. aarch64 ISO can begin earlier.
 
 ---
 
