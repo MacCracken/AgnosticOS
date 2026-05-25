@@ -50,8 +50,8 @@ later entry pointing back. Status is one of `FAIL` / `PASS` /
 
 | # | Bite | Iron? | Status |
 |---|------|-------|--------|
-| 1 | **ARP request retransmit** (RFC 1122 §2.3.2.1) — re-send the gateway ARP ~1/sec across the 5 s window while `arp_pending` holds (`main.cyr:684-713`); 4 retransmits; no per-retx print. | code → next burn | ✅ **LANDED + BUILD-VERIFIED 2026-05-25**. Build 622,408 → **622,560 B** (+152 B); `test.sh` 4/4 + `ext2-smoke.sh` 5/5; multiboot2 OK; `build/agnos` reflects HEAD. NOT auto-proposed. |
-| 2 | **Deep driver APM re-derive (multi-source)** — FreeBSD/OpenBSD/NetBSD `re_rxeof`/`re_iff` + iPXE `realtek_poll` + RTL8168h datasheet §6 + Linux VER_46 erratum; derive unicast-accept + descriptor-OWN handoff from sources first, then diff. | QUEUED | ⏳ **runs only if the bite-1 burn still times out** (per user direction "retransmit now, re-derive queued"). |
+| 1 | **ARP request retransmit** (RFC 1122 §2.3.2.1) — re-send the gateway ARP ~1/sec across the 5 s window while `arp_pending` holds (`main.cyr:684-713`); 4 retransmits; no per-retx print. | code → next burn | ✅ **BURNED 2026-05-25 → `1326_LX2_Still_No_Gate.jpg`**. FB: `net: L2 RX ALIVE rx=15 arp_in=11 arp_ans=2 -- gateway unicast reply pending`. Retransmit egressed (`arp_ans=2`), ring delivered 11 broadcast ARP, **gateway unicast reply STILL unseen** → rubric's SYSTEMATIC branch fired (transient-miss RULED OUT) → bite 2 unblocked. Shell v1.32.6 byte-clean, no regression. |
+| 2 | **Deep driver APM re-derive (multi-source)** — FreeBSD/OpenBSD/NetBSD `re_rxeof`/`re_iff` + iPXE `realtek_poll` + RTL8168h datasheet §6 + Linux VER_46 erratum; derive unicast-accept + descriptor-OWN handoff from sources first, then diff. | code → next burn | ✅ **LANDED + BUILD-VERIFIED 2026-05-25** (bite-1 systematic branch unblocked it). 3 parallel re-derives (BSD triangle / iPXE+Haiku+U-Boot / Linux+datasheet+erratum-git) converged; reconciled vs actual code → two protocol fixes: **(1) IDR write-back reordered to Linux `rtl_rar_set` (high-half MAC4 first + `rtl_pci_commit` readback, then MAC0 + readback)** — low-word write latches the 6-byte filter so high bytes must be resident first; readback blocks posted-write reorder from torn-latching the unicast filter (torn filter drops gateway unicast while bcast/mcast pass — exact signature). **(2) Post-`CR.RE` RxConfig: RMW → one clean full write** of `RXCFG_DEFAULTS\|accept` + commit (Linux `05212ba8132b`: RxConfig writes while RX-disabled are dropped → pre-enable write was no-op; RMW may never have landed the profile word). Reframe: `MAR=all-1s` passes bcast via the mcast hash so bcast/mcast delivery does NOT prove the accept nibble engages; Linux force-allmulti VER_46 patch `efa5f1311c49` was REVERTED `6a26310273c3` (correct-init VER_46 RXes unicast w/o allmulti) → init-protocol bug, not a missing workaround. + stale CPlusCmd comment fixed. Build 622,560 → **622,544 B** (−16 B); `test.sh` 4/4 + `ext2-smoke.sh` 5/5; multiboot2 OK; `build/agnos` reflects working tree. NOT auto-proposed per [[feedback_iron_burns_block_other_work]]. |
 
 **Iron falsification rubric** (bite-1 burn):
 
@@ -60,6 +60,14 @@ later entry pointing back. Status is one of `FAIL` / `PASS` /
 | ARP outcome | `arp: gateway reply not seen` + `L2 RX ALIVE rx=10 arp_in=7 arp_ans=1` | `arp: REPLY gw_mac=…` → `net: L2 OK` | Still "not seen" with rx>0 → unicast drop is SYSTEMATIC (transient-miss ruled out) → run bite 2 |
 | L3 gate (`tcp_connect 1.1.1.1:80`) | skipped behind failed ARP | reached + PASS/FAIL print | ARP passes but L3 fails → routing/TCP issue distinct from RX |
 | Storage trio + GPT + ext2 + shell | byte-clean | byte-clean | regression impossible — scope is the `main.cyr` ARP loop only |
+
+**Iron falsification rubric** (bite-2 burn — `rtl_rar_set` order + post-enable clean RxConfig write):
+
+| Signal | LX2 (bite-1) baseline | Bite-2 PASS target | Falsification → meaning |
+|---|---|---|---|
+| ARP outcome | `L2 RX ALIVE rx=15 arp_in=11 arp_ans=2 -- gateway unicast reply pending` | `arp: REPLY gw_mac=d4:6a:91:…` → `net: L2 OK -- gateway MAC cached` | Still `reply pending` with rx>0 → unicast drop is BELOW the accept+IDR-filter layer (rar_set order/flush NOT load-bearing) → next escape is the hw tally-counter `rx_ucasts` readback (reg `0x28`) to localize whether unicast frames reach the MAC at all — **instrumentation, deferred** per [[feedback_no_instrumentation_means_no_instrumentation]] until convergent behavioral levers exhausted |
+| L3 gate (`tcp_connect 1.1.1.1:80`) | skipped behind failed ARP | reached + PASS/FAIL print | ARP passes but L3 fails → routing/TCP issue distinct from RX |
+| Storage trio + GPT + ext2 + shell | byte-clean | byte-clean | regression impossible — scope is the `r8169.cyr` IDR + RxConfig write protocol only |
 
 ---
 
