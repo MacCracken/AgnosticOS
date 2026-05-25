@@ -1,211 +1,34 @@
-CMOS[0x53] gnoboot magic    = 0x02  (decimal 2)
-CMOS[0x52] gnoboot checkpt  = 0x01  (decimal 1)
-CMOS[0x51] kernel  magic    = 0xab  (decimal 171)
-CMOS[0x50] kernel  checkpt  = 0x15  (decimal 21)
-CMOS[0x54] CR4 byte 2 (post first cr3_load(as1))   = 0x02  (decimal 2)
-CMOS[0x55] CR4 byte 2 (pre-stac, post kcp=0x60)    = 0x02  (decimal 2)
-  byte 2 bit map (LSB-first): FSGSBASE PCIDE OSXSAVE - SMEP SMAP PKE -
-  SMEP = 0x10, SMAP = 0x20. Post-Attempt-20 baseline (Repair F landed):
-    [0x54] expected 0x30 once kcp >= 0x18.
-    [0x55] expected 0x30 once kcp >= 0x60 (Attempt 21+) or >= 0x1B (pre-21).
-    Either field 0x00 with kcp at/past its site = CR4 cleared downstream.
-    [0x55]=0x00 with kcp pinned at 0x18 = dump never reached (pre-21 cp_fb hang).
+arp-snoop-check: iface=enp1s0
+  src mac        = b0:41:6f:0c:e4:25
+  src ip (stir)  = 192.168.1.222
+  arp_pending_ip = 192.168.1.1   (simulated; = AGNOS net_gateway)
 
-CMOS[0x56] AS1 pmm_alloc #1 (new_pml4 byte 2)  = 0x02  (decimal 2)
-CMOS[0x57] AS1 pmm_alloc #2 (new_pdpt byte 2)  = 0xe6  (decimal 230)
-  Repair (J) PMM scan: byte 2 of each pmm_alloc result.
-    0x00            = page in [0x0000..0xFFFF] — KERNEL-PT RANGE, smoking gun.
-    0x01..0x1F      = page in [0x010000..0x1FFFFF] — below 2 MB watermark, also bad.
-    0x20..0xFF      = page >= 0x200000 — safe (above kernel reservation).
-    AS1 #1+#2 (slots 0x56-0x57) reading < 0x20 with kcp >= 0x18 = PMM bug confirmed.
+stir: who-has 192.168.1.1 sent; capturing ~15 s of ARP...
 
-agnos 1.32.3 r8169 NIC post-mortem (slots 0x58-0x5F — STATE-TRANSITION semantics, refreshed at audit Part D):
-CMOS[0x58] r8169 probe-done sentinel            = 0x01  (decimal 1)
-    1 = r8169_probe completed (chip present + reset OK + phy_init reached).
-    0 = either no r8169 chip OR probe bailed out early (FB log will say which).
-CMOS[0x59] r8169 phy_init outcome enum          = 0x01  (decimal 1)
-    0 = not attempted (chip absent OR probe failed before phy_init).
-    1 = LINK UP — autonegotiation completed, PHY ready.
-    2 = autoneg timeout — BMSR.LinkStatus never set within 300 polls.
-    3 = BMCR-write timeout — PHYAR flag never cleared (MDIO write broken).
-    4 = BMSR-read timeout — PHYAR flag never set on read (MDIO read broken).
-CMOS[0x5A] r8169 TX send count (saturating)     = 0x03  (decimal 3)
-    Number of r8169_send invocations (0xFF = >=255). Expect >=3 on a working DHCP cycle (DISCOVER + REQUEST + retransmit). Expect 2 if OFFER timeout (DISCOVER + FIX #9 retransmit only).
-CMOS[0x5B] r8169 TX desc 0 high byte (1.32.3: stamped from r8169_send at tx_idx==1 transition) = 0x30  (decimal 48)
-    0x30 = OWN cleared + FS + LS — NIC processed our descriptor, frame egressed to wire (healthy).
-    0xB0 = OWN+FS+LS — our write went in but NIC never cleared OWN (TX wedge).
-    0x00 = stamp never reached (no second send fired) OR pre-1.32.3 binary.
-CMOS[0x5C] r8169 RX consumed-frame count        = 0x10  (decimal 16)
-    1.32.3 semantics CHANGE: was 'poll invocations', now 'frames consumed by r8169_poll' (state-transition stamp per audit Part D).
-    Expected on a working DHCP cycle: low double digits (the multicast + ARP + OFFER frames consumed during the DHCP wait window).
-    0xFF = >=255 frames consumed (heavy multicast LAN); 0x00 = no frames ever consumed (RxConfig filter rejecting OR ring fully NIC-owned).
-CMOS[0x5D] r8169 RX last-consumed desc high byte = 0x72  (decimal 114)
-    1.32.3 semantics CHANGE: stamps status of the descriptor we JUST consumed, not desc 0 at poll-entry.
-    Expected: 0x30 (OWN-cleared + FS + LS) on every successful consume; chip writes both FS+LS for single-segment frames per RTL § 6.7.
-    0x70 = OWN-cleared + EOR + FS + LS (last-slot consumption, idx==15); also healthy.
-    0x00 = no successful consume ever happened (paired with 0x5C=0x00 = full RX-path failure).
-CMOS[0x5E] r8169 RX last-consumed buf first byte = 0xff  (decimal 255)
-    1.32.3 semantics CHANGE: stamps first byte of the LAST consumed frame's buffer, not desc 0's buffer perpetually.
-    0xB0 = our MAC first byte (b0:41:6f:0c:e4:25) — UNICAST OFFER from DHCP server addressed to us. Strongest signal that OFFER reached us.
-    0xFF = broadcast (ff:ff:ff:ff:ff:ff) — broadcast OFFER OR our own loopback'd DISCOVER seen in promisc... but we're not promisc, so OFFER.
-    0x01 = IPv4 multicast (01:00:5e:...) — IGMP / mDNS / SSDP. Pre-1.32.3 this byte was 'stuck' here; post-fix it should refresh to OFFER's 0xB0 within one poll cycle of OFFER arrival.
-    0x33 = IPv6 multicast (33:33:...) — IPv6 NDP / MLD. Same story as 0x01.
-    0x00 = no frame ever consumed.
-CMOS[0x5F] r8169 reserved                       = 0x5a  (decimal 90)
-    Reserved for future r8169 diagnostic. Currently unwritten (BIOS-noise byte).
+  REPLY   sender=192.168.1.1 mac=d4:6a:91:ce:70:60  dst=unicast
+  REPLY   sender=192.168.1.1 mac=d4:6a:91:ce:70:60  dst=unicast
+  REPLY   sender=192.168.1.1 mac=d4:6a:91:ce:70:60  dst=unicast
+  request sender=192.168.1.1 mac=d4:6a:91:ce:70:60  dst=BCAST
+  request sender=192.168.1.1 mac=d4:6a:91:ce:70:60  dst=BCAST
+  request sender=192.168.1.1 mac=d4:6a:91:ce:70:60  dst=BCAST
+  REPLY   sender=192.168.1.1 mac=d4:6a:91:ce:70:60  dst=unicast
+  request sender=192.168.1.1 mac=d4:6a:91:ce:70:60  dst=BCAST
+  request sender=192.168.1.1 mac=d4:6a:91:ce:70:60  dst=BCAST
+  request sender=192.168.1.1 mac=d4:6a:91:ce:70:60  dst=BCAST
+  REPLY   sender=192.168.1.1 mac=d4:6a:91:ce:70:60  dst=unicast
+  request sender=192.168.1.1 mac=d4:6a:91:ce:70:60  dst=BCAST
+  request sender=192.168.1.1 mac=d4:6a:91:ce:70:60  dst=BCAST
+  request sender=192.168.1.1 mac=d4:6a:91:ce:70:60  dst=BCAST
+  request sender=192.168.1.1 mac=d4:6a:91:ce:70:60  dst=BCAST
 
-CMOS[0x62] xhci USBLEGSUP outcome      = 0x01  (decimal 1)
-CMOS[0x63] xhci port CCS bitmap        = 0x05  (decimal 5)
-CMOS[0x64] xhci port reset-OK bitmap   = 0x05  (decimal 5)
-CMOS[0x65] xhci proto ports 1+2 (hi|lo)= 0x22  (decimal 34)
-CMOS[0x66] xhci proto ports 3+4 (hi|lo)= 0x22  (decimal 34)
-CMOS[0x67] xhci proto ports 5+6 (hi|lo)= 0x33  (decimal 51)
-CMOS[0x68] xhci xECP cap walk count    = 0x05  (decimal 5)
-CMOS[0x69] xhci xECP cap-ID bitmap     = 0x03  (decimal 3)
-CMOS[0x6A] xhci 1st SupProto rev|count = 0x24  (decimal 36)
-CMOS[0x6B] xhci PORTSC.PP=1 bitmap     = 0x3f  (decimal 63)
-CMOS[0x6C] xhci PSC change-byte (R4)   = 0x00  (decimal 0)
-CMOS[0x6D] xhci PLS pre-PR (R10)       = 0x07  (decimal 7)
-CMOS[0x6E] xhci HCCPARAMS1 lo (R7)     = 0xe5  (decimal 229)
-CMOS[0x6F] xhci HCCPARAMS2 lo (R7)     = 0x3f  (decimal 63)
-CMOS[0x60] xhci PORTPMSC of failed port (R8) = 0x00  (decimal 0)
-CMOS[0x70] xhci PR retry count (T)           = 0x00  (decimal 0)
-CMOS[0x71] MTRR_DEF_TYPE MSR 0x2FF byte0 (V) = 0x00  (decimal 0)
-CMOS[0x72] PAT MSR 0x277 byte0 (PA0) (V)     = 0x06  (decimal 6)
-CMOS[0x73] xhci BAR PDE low byte (X')        = 0x9b  (decimal 155)
-CMOS[0x74] xhci BAR PML4E low byte (V'')     = 0x07  (decimal 7)
-CMOS[0x75] xhci BAR PDPTE low byte (V'')     = 0x03  (decimal 3)
-CMOS[0x76] xhci BAR PDE  via walk (V'')      = 0x9b  (decimal 155)
-CMOS[0x77] xhci USBSTS byte0 reset-fail (W)  = 0x00  (decimal 0)
-CMOS[0x78] xhci USBSTS byte1 reset-fail (W)  = 0x00  (decimal 0)
-CMOS[0x79] xhci USBCMD byte0 reset-fail (W)  = 0x0d  (decimal 13)
-CMOS[0x7A] xhci unclassified xECP cap IDs (W)= 0x22  (decimal 34)
-CMOS[0x7B] xhci 2nd SupProto rev|count (b')  = 0x31  (decimal 49)
-CMOS[0x7C] xhci 2nd SupProto port_off  (b')  = 0x05  (decimal 5)
-CMOS[0x7D] xhci 3rd SupProto rev|count (b')  = 0x31  (decimal 49)
-CMOS[0x7E] xhci 3rd SupProto port_off  (b')  = 0x06  (decimal 6)
-CMOS[0x7F] xhci Repair-Z timing-delay sentinel = 0xaa  (decimal 170)
-CMOS[0x80] xhci MaxScratchpadBufs (AA)         = 0x02  (decimal 2)
-CMOS[0x81] xhci 0x80-range sentinel (AA)       = 0xaa  (decimal 170)
-CMOS[0x82] xhci HCSPARAMS2 byte 3 raw (AA)     = 0x14  (decimal 20)
-CMOS[0x83] xhci sp_array phys byte 2 (AA 1.30.4) = 0x3c  (decimal 60)
-CMOS[0x84] xhci DNCTRL-write sentinel (BB)     = 0xbb  (decimal 187)
-CMOS[0x85] xhci HCSPARAMS2 byte 2 raw (AA aud) = 0x00  (decimal 0)
-CMOS[0x86] xhci extended-CMOS sentinel (CC)    = 0x5a  (decimal 90)
-CMOS[0x87] xhci event-drain sentinel (DD)      = 0xa5  (decimal 165)
-CMOS[0x88] dhcp last-frame ethertype hi        = 0x18  (decimal 24)
-CMOS[0x89] dhcp last-frame ethertype lo        = 0xf0  (decimal 240)
-CMOS[0x8A] dhcp last-frame IP proto (if IPv4)  = 0x44  (decimal 68)
-CMOS[0x8B] dhcp last-frame UDP dport lo (if UDP)= 0xcc  (decimal 204)
-CMOS[0x8C] dhcp listener.state at first /68    = 0x00  (decimal 0)
-  DHCP downstream fingerprint cheat-sheet (1.32.4 Attempt 101+):
-    [0x88,0x89] = 0x08,0x00 → IPv4 (continue to [0x8A]); 0x08,0x06 → ARP (c1 confirmed); 0xDD,0xDD → IPv6 (c1)
-    [0x8A] = 0x11 → UDP (continue to [0x8B]); 0x01 → ICMP; 0x06 → TCP; 0x02 → IGMP (c1)
-    [0x8B] = 0x44 → port 68 = DHCP-bound (c2 case); 0x89 = NetBIOS; 0xE9 = mDNS; 0x6C = SSDP (c1)
-    [0x8C] = 0x01 → listener bound (rules out race); 0x00 → race or no listener (escape-plan step 2)
-    Combined: [0x88..0x8B]=08,00,11,44 + [0x8C]=01 + OFFER timeout = (c2) AGNOS dropped a real DHCP frame
-    Combined: [0x88..0x8B]=non-DHCP fingerprint + OFFER timeout = (c1) admitted broadcast was NOT DHCP
-  USBLEGSUP: already OS-owned — BIOS bit 16 was already clear; claim is structurally a no-op.
-  CCS    (CMOS[0x63]): ports connected = 1 3
-  Reset  (CMOS[0x64]): ports reset OK   = 1 3
-  PP=1  (CMOS[0x6B]): ports powered    =  1 2 3 4 5 6
-  Proto  per port: p1=USB2 p2=USB2 p3=USB2 p4=USB2 p5=USB3 p6=USB3 
-  xECP   (CMOS[0x68/0x69]): walked 5 caps; USBLEGSUP=yes SupProto=yes
-  1stSupProto (CMOS[0x6A]): rev_major=2 port_count=4
-  PSCchg (CMOS[0x6C]): bits set         = <none>
-  PLS    (CMOS[0x6D]): pre-PR state         =  Polling (good — PR honore
-  HCCP1  (CMOS[0x6E]): bits set         = AC64 CSZ LHRC LTC NSS
-  HCCP2  (CMOS[0x6F]): bits set         = U3C CMC FSC CTC LEC CIC
-  PORTPMSC of failing port (CMOS[0x60], R8) low byte = 0x00  (decimal 0)
-  Interpretation cheat-sheet:
-    USBLEGSUP=already-OS + reset-OK bitmap empty = SMI not the gating issue; suspect xECP misclassification, paired-port USB2-on-USB3-phys mapping, BAR cache-attribute (see PA0 row), or controller-side disable.
-    CCS-bitmap empty + PP bitmap full = port power asserted but no devices attached (or detected); physically re-verify the device on at least one port.
-    CCS-bitmap empty + PP bitmap empty + HCCP1 PPC=1 = controller refused PORTSC.PP writes (controller-level port disable upstream).
-    CCS-bitmap empty + PP bitmap partial = asymmetric port-power state; correlate the missing PP bits with which physical port the device is in.
-    CCS-bitmap empty + PP NOT in CMOS (slot 0x6B = 0x00) on a kcp >= 0x32 boot = xhci_ports_power_on never ran; check if the build predates the PP-assert phase.
-    proto=0 (unknown) on a CCS=1 port = xECP walk did not classify it; check xECP cap inventory above — SupProto=no would explain.
-    SupProto=yes + port_count != all-physical-ports = some ports outside the SupProto coverage; check if more SupProto caps exist (cap walk count > 2).
-    PSCchg=<none> on a CCS=1 + reset=<none> boot = PR write absorbed silently — controller did NOT enter reset state. Cross-check CMOS[0x6D] PLS, [0x70] PR retry, and [0x71/0x72] cache attributes. If PLS=Polling + [0x70]=0x03 + PA0=WB, the BAR is WB-cached and writes coalesce in L1/L2 (post-Repair-X this should not occur — verify vmm_remap_uc_2mb landed in the binary).
-    PR retry [0x70]=0x00 + reset=<none> = first PR write engaged the controller (PR/PRC/PED bit set at timeout) but failed downstream — read PSCchg + PLS for the failure mode.
-    PR retry [0x70]=0x01 or 0x02 + reset=<none> = silent-absorb on early writes then controller engaged on retry N; silicon is non-deterministic on first PR write. Read PSCchg for the post-engagement state.
-    PR retry [0x70]=0x03 + reset=<none> = 3 consecutive silent-absorbs; retry pattern is not the unblock. Suspect BAR cache attribute (PA0 row below).
-    PR retry [0x70]=0x01..0x02 + reset≠<none> = retry succeeded; non-determinism present but recoverable.
-    PLS=Polling (7) + reset=<none> = PLS gate ran clean (spec-compliant precondition); see PSCchg + PR retry rows for downstream failure mode.
-    PLS=U0 (0) on connected port + reset returned 1 (success path) = port arrived at Enabled state on its own; xhci_port_reset short-circuited. Enable Slot is next gate.
-    PLS top-nibble 0xE on connected port = settle wait expired without PLS reaching Polling; physical link / cable / device-side issue or controller-side soft-disable.
-    PLS top-nibble 0xF on connected port = PLS arrived at U0 mid-settle; treated as success.
-    HCCP1 PPC bit (0x08) — read it, do NOT assume. PPC=0 means PORTSC.PP is hardwired-on per port and xhci_ports_power_on() is a structural no-op on that silicon. PPC=1 means SW PP-assert is required.
-    HCCP1 LWS-preservation: AGNOS PORTSC RMW must zero bit 16 (LWS) at PR-write time. If LWS=1 leaks through, xHCI 1.2 §5.4.8.3 makes the write both a strobed PLS update and PR=1 simultaneously (undefined). Linux's xhci_port_state_to_neutral always zeroes LWS unless explicitly writing PLS.
-    HCCP2 LEC=1 = Large ESIT supported; informational. CIC=1 = Configuration Information Capability; informational. CTC=1 = Compliance Transition Capability.
-    PORTPMSC low byte = USB2 PMSC: bit 0 = L1_HW (RW); bits 4:7 = HIRD/BESL; etc. Non-zero on a reset-fail boot indicates the controller is exposing USB2 PM state — uncommon but possible quirk surface.
-    PSCchg=CSC only on a CCS=1 + reset=<none> boot = device-attach was observed but no reset progress. PR write taken, controller did not transition. Likely needs a longer wait or port-state precondition not met.
-    PSCchg=PRC (with or without CSC) on a CCS=1 + reset=<none> boot = reset DID complete (PRC fired) but PED never followed; controller's reset-to-Enabled transition failed silicon-side. Suspect signal/link issue.
-    PSCchg=PEC on a reset=<none> boot = port enable-state changed without a clean reset. Likely a soft-disable cascade.
-    PSCchg=OCC = over-current event during reset — physical/power fault.
-    MTRR_DEF_TYPE [0x71]: bits 0-7 = default mem-type (0=UC, 1=WC, 4=WT, 5=WP, 6=WB); bit 10 = FE (fixed-range enable); bit 11 = E (global MTRR enable). AGNOS kernel does NOT touch MSR 0x2FF, so this is firmware-programmed. Typical PC firmware: 0x0C = E|FE|WB (variable-range MTRRs may override to UC for MMIO holes). 0x00 = MTRRs disabled (caching governed by PAT alone).
-    PA0 [0x72]: PAT entry 0 byte (0=UC, 1=WC, 4=WT, 5=WP, 6=WB, 7=UC-). 2MB-page PDEs with flag 0x83 (P|W|PS) select PAT index 0 → this byte IS the default mapping's effective memory type unless a variable-range MTRR overrides it. Firmware-default PAT MSR 0x0007040600070406 → PA0=0x06 (WB). Repair (X) remaps the xHCI BAR to PA3=UC via vmm_remap_uc_2mb (flag 0x9B), so the BAR's effective type should be UC regardless of PA0 — if PORTSC silent-absorb survives on a build that includes vmm_remap_uc_2mb, the remap didn't take effect (verify with X' PDE re-stamp).
-    PA0=0x00 (UC) + reset=<none> = PAT entry 0 already UC. Cache hypothesis weakens; suspect controller-side gate (HCCPARAMS3 / xECP cap not yet walked).
-    [0x71]=0x00 AND [0x72]=0x00 = rdmsr helper didn't execute; the diagnostic-stamp pair never ran. Compare build artifact size to docs/development/state.md current floor; re-burn if stale.
-    PDE [0x73]: low byte of the 2 MB PDE controlling the xHCI BAR, read back AFTER vmm_remap_uc_2mb. Bit map: 0=P, 1=R/W, 2=U/S, 3=PWT, 4=PCD, 5=A, 6=D, 7=PS. Load-bearing bits for the cache-attribute proof are PCD (bit 4) + PWT (bit 3): both set + PS=1 → PA3 → UC (Repair X took effect).
-    [0x73]=0x9B (10011011) or 0xBB (with A-bit set by the walk) = PCD|PWT|PS|R/W|P → PA3=UC. **Repair X landed in the page table.** If the silent-absorb persists with this value, F5 (BAR cache attribute) is falsified; escalate to Repair V'' (full PML4→PDPT→PD walk to surface aliasing through another mapping).
-    [0x73]=0x83 (10000011) = PS|R/W|P with PCD=PWT=0 → PA0=WB. **vmm_remap_uc_2mb is a no-op on this path** — the rewrite never reached the controlling PDE. Debug the helper: check pmm_alloc success for the shatter case, PDPT[gb_idx] re-point, CR3 reload eviction. Pre-bound Attempt 45 outcome.
-    [0x73]=0x00 = stamp never ran; xhci_probe didn't reach the X' site. Either pre-X build is on iron or earlier xhci_probe step faulted. Re-burn after confirming binary size matches Attempt 45 floor in docs/development/state.md.
-    [0x73]=other = the PDE has flags we don't model (G, NX, large-page PAT-bit-12 fold). Decode bit-by-bit from the bit map above and flag for triage.
-    PML4E [0x74] / PDPTE [0x75] / PDE-via-walk [0x76]: Repair V'' four-level walk from PML4@0x1000 for xhci_mmio_base. Same bit map as [0x73] (0=P, 1=R/W, 2=U/S, 3=PWT, 4=PCD, 5=A, 6=D, 7=PS). [0x76]=0xFF is a SENTINEL meaning PDPTE had PS=1 → BAR is mapped by a 1GB huge page; no PD level exists on this path.
-    [0x74]=0x03/0x07 AND [0x75]=0x03/0x07 (NOT 0x83) AND [0x76]=0x9B/0xBB (matches [0x73]) + reset still failed: **Row 1 — hypothesis (a) FALSIFIED.** Walk agrees with X'; UC is the only mapping for this BAR. Escalate to Burn B (Repair W) — controller-side gate (USBSTS/USBCMD/unclassified xECP caps).
-    [0x74]=0x03/0x07 AND [0x75]=0x03/0x07 AND [0x76]=0x83 (PA0=WB) + reset still failed: **Row 2 — walk and X' DISAGREE.** X' shortcut read from a different PD than the four-level walk; confirms two-mapping aliasing or shatter-PD-pointer divergence. Real fix: align X path with what the walk sees; ~10 LOC, re-burn under fixed X.
-    [0x75]=0x83 (PS bit set in PDPTE → 1GB huge page) AND [0x76]=0xFF sentinel + reset still failed: **Row 3 — shatter never ran.** vmm_remap_uc_2mb's PDPT-repoint write didn't take effect; X is a no-op. Stage Repair (Y) PDPT-repoint bisector to confirm where the rewrite went wrong.
-    [0x64]=0x05 (both connected ports reset) regardless of [0x74]/[0x75]/[0x76] values: **Row 4 — late-arriving fix.** Extremely unlikely on a read-only walk; re-burn for reproducibility, then Phase 4.
-    [0x74]=0x00 (PML4E unmapped): **Row 5 — V'' walk hit unmapped translation.** Shouldn't be possible for the BAR but stamp surfaces it. Audit pt_init coverage of MMIO range; re-burn after fix.
-    All V'' slots [0x74][0x75][0x76]=0x00 with kcp >= 0x18: V'' stamp site never executed (xhci_probe didn't reach the walk site, or earlier xhci_probe step faulted between X' and V''). Compare flashed binary to Attempt 46 floor (state.md); re-burn after confirming size match.
-    USBSTS byte0 [0x77]: bits 0-7 of USBSTS (xHCI 1.2 §5.4.2). Bit 0 = HCH (Host Controller Halted; 1 = controller halted, R/S not honored). Bit 2 = HSE (Host System Error; 1 = bus error on a system access — fatal). Bit 3 = EINT (Event Interrupt; informational, RW1C). Bit 4 = PCD (Port Change Detect; informational, RW1C). 0x00 on a reset-fail boot with R/S=1 expected = controller running, no errors signalled — silent-absorb is downstream of error bits.
-    USBSTS byte1 [0x78]: bits 8-15. Bit 0=8 SSS / bit 1=9 RSS / bit 2=10 SRE (Save/Restore Error) / bit 3=11 **CNR** / bit 4=12 **HCE**. CNR (Controller Not Ready) = 0x08: spec § says NO operational-register writes accepted while CNR=1 — **THE silent-absorb smoking gun**. HCE (Host Controller Error) = 0x10: fatal internal controller error — gate the controller into a frozen state where writes are absorbed. 0x00 = controller signals neither — silent-absorb gate is somewhere else (paired-port routing / AMD-FCH PR-timing / vendor cap).
-    [0x77]=0x00 AND [0x78]=0x00 on a kcp >= 0x32 boot = controller running clean per its own status; the gate is outside USBSTS's purview. Escalate to Burn C (Repair Z — AMD-FCH PR-write timing delay) or audit a captured vendor cap from [0x7A].
-    [0x77]=0x01 (HCH=1) with R/S claimed asserted = controller halted itself; check USBSTS HSE/HCE bits and re-read USBCMD byte 0 [0x79] for R/S state. Major regression — restart sequencing in xhci_start broke.
-    [0x78]=0x08 (CNR=1) at reset-fail-time = **gate found**: controller is rejecting operational-register writes. Investigate whether CSS / CRS / xhci_start sequencing race left CNR set, or external bus event (AER) is freezing the controller. Repair (W2) = poll CNR=0 before each PORTSC write.
-    [0x78]=0x10 (HCE=1) = controller-fatal; system was likely going to hang elsewhere too. Capture USBSTS+USBCMD on the next attempt and triage with vendor; consider gnoboot-level pre-handoff controller-reset.
-    [0x78]=0x04 (SRE=1) only = save/restore mechanism reported an error; usually informational unless we're using CSS/CRS (we aren't). Note and ignore for the silent-absorb hypothesis.
-    USBCMD byte0 [0x79]: bits 0-7 of USBCMD (§5.4.1). Bit 0 = R/S (Run/Stop). Bit 1 = HCRST (host reset; self-clears when done). Bit 2 = INTE (interrupt enable). Bit 3 = HSEE (host system error enable). Bit 7 = LHCRST. 0x01 = R/S only (expected if xhci_start ran but INTE not asserted). 0x05 = R/S|INTE (Linux-standard). 0x00 = controller stopped — fatal regression.
-    [0x79]=0x00 with kcp >= 0x32 = R/S=0 (controller stopped before reset-fail-time). Either xhci_start regressed or the controller halted itself between init and enumerate.
-    [0x79]=0x02 (HCRST=1) = host reset still in progress at PR-write time — that explains the silent-absorb; HCRST must clear before any operational write is honored. Add a CNR-or-HCRST poll to xhci_init.
-    Unclassified xECP caps [0x7A]: packed nibble-each (high = first unclassified cap ID, low = second). Spec cap IDs ≤ 0x0A fit cleanly; vendor caps (0xC0+) clip to low nibble and are surfaced only by cap_count [0x68] exceeding 2 + known-cap sum. Common IDs: 0x02 = SECOND SupProto (USB3 sibling-port table — likely on AMD FCH; first SupProto covers USB2 ports), 0x03 = xPM, 0x04 = IO Virt, 0x05 = MSI, 0x0A = USB Debug Cap (xDC).
-    [0x7A]=0x20 (high=2, low=0): first unclassified is a second SupProto cap — driver only honors first SupProto; second never had its port range walked. Audit xhci_xecp_classify_ports to handle multiple SupProto caps (this is exactly the AMD-FCH USB2/USB3 sibling case).
-    [0x7A]=0x2A (high=2, low=0xA): second SupProto + Debug Cap unclassified. Two caps the driver isn't using. Second SupProto likely covers the USB3 ports (5,6) — explains why proto map shows USB3 but reset only attempted on what classify_ports tagged from FIRST SupProto.
-    [0x7A]=0xA0 (high=0xA, low=0): first unclassified is Debug Cap only (no second SupProto). Less likely on AMD FCH but possible. Driver isn't claiming the debug cap; not the silent-absorb gate but worth surfacing.
-    [0x7A]=0x00 with cap_count [0x68] >= 3 = walk reached extra caps but classify-skip path didn't fire — either both unclassified slots stayed 0 (impossible if cap_count > 2) or the kernel build lacks Repair (W) (re-burn after size check).
-    [0x7A]=0xXY where X or Y is in [3..F]: spec-defined caps — see ID list above. Anything ≥ 0xC after clipping = vendor cap (caller should re-burn with full-byte capture if it matters).
-    Repair (b') per-cap SupProto fingerprints [0x7B..0x7E]: nibble-packed rev|count + raw port_off. 1st SupProto fingerprint stays in [0x6A]. With cap_count [0x68] = 5 and 3 unclassified caps observed in [0x7A], the AMD FCH on archaemenid exposes 3 SupProto caps total (plus USBLEGSUP + one other).
-    [0x7B]/[0x7D]: high nibble = rev_major (2 = USB2 / 3 = USB3 / 4 = USB4-SSP). Low nibble = port_count (1..F).
-    [0x7C]/[0x7E]: raw port_off (1-based). 1 = starts at port 1; 5 = USB3 bank; 6 = port 6 only.
-    Failing ports across the silent-absorb arc are 1 + 3 (USB2). If 2nd or 3rd SupProto covers any port in [1..4], that's the overlap row → per-bank PSIV / HW-LPM quirk. If neither covers [1..4], the b' data is informational and the gate is elsewhere (escalate to Repair Z timing).
-    [0x7B]=0x31 + [0x7C]=0x05 + [0x7D]=0x31 + [0x7E]=0x06: archaemenid AMD FCH shape — 2nd cap = USB3 port 5 alone, 3rd cap = USB3 port 6 alone. **NEITHER overlaps failing USB2 ports 1+3** → (b') falsified for this hardware. Behavioral repair = Z timing.
-    [0x7B]=0x32 + [0x7C]=0x05 + [0x7D]=0x22 + [0x7E]=0x01 or 0x03: 2nd cap = USB3 grouped, 3rd cap = USB2 sibling overlap with the failing ports → (b'') per-bank PSIV consumption needed.
-    All [0x7B..0x7E] = 0x00 with kcp >= 0x32: pre-b' build flashed (size != 346,376 B) OR cap walk faulted before SupProto branch.
-    Repair (Z) sentinel [0x7F]: 0xAA = Z timing-delay site executed at least once across the per-port reset loop (last-write-wins is fine). 0x00 = pre-Z binary on iron (size != 346,456 B) OR Z site faulted / regressed / DCE'd out.
-    [0x7F]=0xAA + [0x64]=0x00: Z executed but didn't break the silent-absorb → ALL behavioral hypotheses in the silent-absorb trio (F5/X/V'', b/W, b'/c/Z) exhausted. Escalation = decoupled re-evaluation, NOT another diagnostic letter.
-    [0x7F]=0xAA + [0x64] non-zero: Z is the unblock → Phase 3 closes; xhci enumeration proceeds to Address Device + control transfers.
-    Repair (AA) — HCSPARAMS2.MaxScratchpadBufs + DCBAA[0] scratchpad install [0x80..0x83]. First use of CMOS 0x80+ range (0x50-0x7F exhausted). Per xHCI 1.2 §4.20, when MaxScratchpadBufs > 0 the OS MUST allocate N page-sized buffers + a u64 pointer array, then write the array's phys into DCBAA[0] before R/S=1. Pre-AA AGNOS left DCBAA[0]=0 on a TODO comment; on AMD Renoir/Cezanne (1022:1639) this is suspected silent-absorb root cause across Attempts 32-49.
-    [0x81]=0xAA: 0x80-range slot is trustworthy (BIOS/POST didn't clobber). [0x81]!=0xAA: BIOS writes into 0x80+ region OR AA stamp site didn't run — verify build size against Attempt 50 floor in state.md before interpreting [0x80]/[0x82]/[0x83].
-    [0x80]=0x00 + [0x81]=0xAA: controller reports MaxScratchpadBufs=0 — AA is a structural no-op on this hardware; silent-absorb hypothesis (AA) FALSIFIED. Escalate to alternate hardware target or PCIe USB add-in.
-    1.30.4 stamp redesign: [0x83] now captures sp_array phys byte 2 ((>>16)&0xFF), not byte 0. Page-aligned phys is structurally &0xFF==0 (4 KB alignment) which made the Attempt 50 Row 1/Row 4 distinction broken. Byte 2 is non-zero for any phys >= 64 KB (universally true post-kernel-init on x86_64).
-    [0x80]>0x00 + [0x81]=0xAA + [0x83]=0x00 (post-1.30.4): scratchpad alloc failed (pmm_alloc returned 0) OR the alloc landed at a phys < 64 KB (impossible during normal kernel init — would indicate PMM corruption). Check Phase 2 FB for 'xhci: scratchpad array alloc failed' or 'xhci: scratchpad buf alloc failed'.
-    [0x80]>0x00 + [0x81]=0xAA + [0x83]!=0x00 + [0x64]!=0x00: **REPAIR (AA) IS THE UNBLOCK** → reset succeeded, Phase 3 enumeration runs, Phase 4/5 (HID translation + kb_buf feed) becomes the typeable-shell gate. THIS IS MVP.
-    [0x80]>0x00 + [0x81]=0xAA + [0x83]!=0x00 + [0x64]=0x00: scratchpad correctly installed but reset still absorbed — AA falsified. Cross-check Repair (BB) DNCTRL outcome below; if [0x84]=0xBB and reset still failed, gate is somewhere else (next Linux-diff targets: IMOD with INTE-on, per-port event-ring drain ordering, AMD-FCH PCI cap 1022:1639).
-    [0x82] raw byte cross-check: encodes HCSPARAMS2 bits 31:24. Per Linux HCS_MAX_SCRATCHPAD: count = (bits 25:21 << 5) | bits 31:27. [0x82]=0x00 means bits 31:27 = 0 (low 5 bits of count are 0) AND bits 25:24 = 0 (top 2 bits of bits 25:21). Combined constraint: count must be in {0, 32, 64, 96, 128, 160, 192, 224} (i.e., 32 * X where X = bits 23:21).
-    [0x85] HCSPARAMS2 byte 2 (1.30.4 audit add-on): captures raw bits 23:16. bits 23:21 = top 3 bits of HCS_MAX_SCRATCHPAD's 'bits 25:21' field. If [0x82]=0 + [0x85] top 3 bits = X, expected count = X * 32. Attempt 50 had [0x80]=0x35 (53) + [0x82]=0 — mathematically impossible (53 isn't 32*X for any integer X). [0x85] disambiguates: if [0x85]'s top 3 bits give a value consistent with [0x80], the original CMOS-capture was correct and the [0x80]/[0x82] mismatch was a Cyrius shift-emit divergence (file cyrius-side issue). If [0x85] also disagrees, capture site has a bug.
-    Repair (BB) — Device Notification Control (DNCTRL, op_reg 0x14) [0x84] (1.30.4). Audit found XHCI_OP_DNCTRL defined at xhci_regs.cyr:70 but never written anywhere — same shape as AA precedent (register known, write step skipped). Linux xhci_set_dev_notifications writes DEV_NOTE_FWAKE=0x02 unconditionally during xhci_init() before R/S=1; AGNOS now does the same. Sentinel [0x84]=0xBB proves the write site executed.
-    [0x84]=0xBB + [0x64]!=0x00: **REPAIR (BB) IS THE UNBLOCK** — DNCTRL was the silent-absorb gate; some USB2 port-link-state transitions on AMD Renoir/Cezanne gated on notification handling. Phase 3 enumeration ran. Phase 4/5 becomes the typeable-shell gate.
-    [0x84]=0xBB + [0x64]=0x00: BB executed cleanly, silent-absorb persists. BB falsified; eleventh hypothesis in the arc. Next Linux-diff targets: IMOD write with INTE-on test, per-port event-ring drain ordering, AMD-FCH-specific PCI cap.
-    [0x84]=0x00 with kcp >= 0x32: pre-BB binary on iron OR DNCTRL write site faulted. Verify build size against 1.30.4 floor before interpreting BB outcome.
-    Repair (CC) — Extended-CMOS bank sentinel [0x86] (1.30.4 post-Attempt-51). Port 0x70 bit 7 is the NMI mask; slots 0x80+ via 0x70/0x71 alias to RTC seconds/minutes/hours (bits 6:0). Attempt 51 [0x80]=0x48 / [0x82]=0x04 / [0x84]=0x19 were RTC BCD time-of-day (19:04:48 wall clock), NOT the kernel's intended bytes. [0x81]/[0x83]/[0x85] aliased to RTC alarm regs which happen to be unused scratch, preserving kernel writes and masking the bug across Attempts 50+51. xhci_cmos_stamp + cmos_read now route slots >= 0x80 through ports 0x72/0x73 (extended CMOS bank, 7-bit offset, no NMI bit). Sentinel [0x86]=0xCC verifies the AMD FCH 1022:1639 honors the extended port pair.
-    [0x86]=0xCC: extended CMOS bank live — slots 0x80..0xFF on 0x72/0x73 are now trustworthy. Re-interpret [0x80]/[0x82]/[0x84] as actual kernel writes (HCSPARAMS2.MaxScratchpadBufs / HCSPARAMS2 byte 3 / BB sentinel).
-    [0x86]=0x00 or other: extended CMOS not supported on this chipset OR sentinel site faulted. [0x80]+ remain unreliable for diagnostics; rely on FB lines until a different transport lands.
-    Repair (DD) — Event-ring drain + USBSTS.PCD clear before PR write [0x87] (post-Attempt-51). USBSTS [0x77]=0x10 across the silent-absorb arc = PCD (Port Change Detect, bit 4) set, signaling at least one Port Status Change event sitting un-acknowledged on the event ring. Linux's xhci-hub.c drains events between port operations; AGNOS only drained from EP0 doorbell completions (post-reset). Hypothesis: AMD FCH 1022:1639 gates subsequent PORTSC writes (silent-absorb) until prior change events are consumed + PCD cleared. xhci_drain_port_change_events walks event TRBs cycle-bit-match, advances ERDP with EHB bit, then writes USBSTS=0x10 to RW1C-clear PCD. FB line 'xhci: drained N events' surfaces drained count.
-    [0x87]=0xDD + [0x64]!=0x00: **REPAIR (DD) IS THE UNBLOCK** — event-ring drain + PCD clear was the silent-absorb gate. Phase 3 enumeration runs. Phase 4/5 becomes the typeable-shell gate.
-    [0x87]=0xDD + [0x64]=0x00: DD executed cleanly, silent-absorb persists. DD falsified; twelfth hypothesis in the arc. Remaining Linux-diff targets: IMOD-with-INTE write, per-slot doorbell ordering, vendor PCI cap dump. Decoupling decision remains in force — Phase 4/5 continues in parallel.
-    [0x87]=0x00 with kcp >= 0x32: pre-DD binary on iron OR drain site faulted. Verify build size against 1.30.4 DD floor (350,008 B) before interpreting outcome.
+=== VERDICT =================================================
+ARP frames examined: 24
+gateway 192.168.1.1 seen as sender: 10 broadcast, 5 unicast
+snoop FIRED: arp_pending cleared, gateway MAC = d4:6a:91:ce:70:60
+  fired from a unicast frame (oper=2)
 
-verdict: gnoboot never launched (CMOS[0x53] != 0xCD).
-  UEFI firmware rejected BOOTX64.EFI, or the boot order didn't
-  pick the AGNOS USB. Check BIOS boot menu + ESP layout.
-  (If CMOS is fresh / never written, both magics will be 0x00.)
+RESULT: CONFIRMED. The gateway's 192.168.1.1->MAC mapping rode
+  a BROADCAST ARP frame -- a frame AGNOS already receives on iron
+  (broadcast RX proven). The new snoop clears arp_pending from it
+  with ZERO unicast RX. The OLD reply-only code would have ignored
+  this broadcast frame and stayed stuck. Fix is load-bearing.
