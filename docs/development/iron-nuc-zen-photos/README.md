@@ -168,6 +168,15 @@ The closeout of the 1.32.x networking blocker. 1.32.5 had proven broadcast + mul
 
 ---
 
+## DHCP lease on iron (1.32.9) — Network arc complete 🎯
+With unicast RX proven at 1.32.7, the 1.32.3 STATIC bypass was removed and `dhcp_init()` re-enabled (STATIC `.222` kept as fallback). The hypothesis: the old `dhcp: OFFER timeout` was the *same* ring-depth unicast drop, since a DHCP server unicasts OFFER/ACK to the leaseless client's hardware MAC. Confirmed on the first burn. Per-attempt narrative + rubric: [`iron-nuc-zen-log.md#tracker-1329-cycle`](../iron-nuc-zen-log.md#tracker-1329-cycle).
+
+| Photo | Date | What it shows |
+|-------|------|---------------|
+| `1329-agnos-1.32.9-dhcp-re-enabled-discover-offer-request-ack-lease-142-gw-mac-hex-l2-ok-shell.jpg` | 2026-05-25 ~17:50 PDT | **🎯 DHCP LEASE ON IRON — agnos 1.32.9 DHCP re-enablement, every rubric row PASSED, the 1.32.x networking arc is complete.** Phone-label `1329_DHCP`. Clean storage tail (NVMe secondary block_dev → GPT 2-active `[0] EFI System AGNOS-BOOT` 255 MiB / `[1] Linux FS agnos-fs` 25600 MiB → `ext2: probe matched backend=2 partition_lba=524288` → `ext2: mounted blocksize=4096 inode_size=256` → Heap → canary → interrupts → `Timer ticks before sched: 6` → `Activating scheduler...`) then the full exchange: **`dhcp: DISCOVER` → `dhcp: OFFER ip=192.168.1.142` → `dhcp: REQUEST` → `dhcp: ACK ip=192.168.1.142 gw=192.168.1.1 mask=255.255.255.0`** → `arp: request -> gateway` → **`arp: REPLY gw_mac=d4:6a:91:ce:70:60`** (**HEX** — the bundled `kprint_byte`/`kprint_hex` logging fix confirmed in passing; 1.32.7 printed the same MAC as decimal `212:106:…`) → `net: L2 OK -- gateway MAC cached` → kybernet (`0 processes`, `3462 free pages`, `launching shell`) → **`AGNOS shell v1.32.9`**. The leased address is **`.142` — a real lease, not the `.222` static fallback** — so the server's unicast OFFER *and* ACK both reached AGNOS, exactly the physical-match class the 16-deep ring overflowed pre-1.32.7. **The 1.32.3 `OFFER timeout` WAS the ring-depth drop, not a DHCP-protocol bug** (the `net.cyr` `dhcp_init` RFC 2131 code is unchanged from 1.32.0; only the `main.cyr` call site was re-enabled). Storage trio + GPT + ext2 + shell byte-clean. **Network arc complete: L2 (1.32.6) → unicast TCP (1.32.7) → DHCP lease (1.32.9).** Next major arc: 1.33.x WRITE (demo→base). |
+
+---
+
 Anticipated photo themes for 1.30.12+ (Attempt 72 forward):
 
 - **Framebuffer refresh — before/after scroll perf fix** — bench output capturing visible refresh quality before and after the chunked block-copy rewrite of `fb_scroll_up`.
