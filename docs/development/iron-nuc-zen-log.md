@@ -102,7 +102,7 @@ later entry pointing back. Status is one of `FAIL` / `PASS` /
 
 ---
 
-### Tracker: 1.33.4 cycle — interactive-lockup root-cause (OPEN 2026-05-26 — **repurposed** from the planned uninit_bg / symlink-resolution work, which slides to 1.33.5) {#tracker-1334-lockup}
+### Tracker: 1.33.4 cycle — interactive-lockup root-cause **+ the planned ext2/ext4 FS items** (OPEN 2026-05-26 — bite 1 = lockup fix; bites 2-3 = uninit_bg materialization + symlink resolution, folded back in after the lockup detour; fsync slides to 1.33.5) {#tracker-1334-lockup}
 
 **Trigger (iron, 1.33.3):** photo `1333_issue_shown` — after a run of working `uptime`/`sync`/`ln`/`mv`/`ls` commands (tick counter climbing 336 → 912), the shell froze **mid-keystroke** on `echo hell` (the `o` never landed). Same delayed-idle lockup 1.33.2 hardened against defensively, now caught **during interactive input**, not after `bench`.
 
@@ -122,6 +122,12 @@ later entry pointing back. Status is one of `FAIL` / `PASS` /
 - Post-fix **still freezes** → the transfer ring isn't the (whole) cause; next suspects, in order: the shared event-ring ERDP/cycle handling between `hid_poll` and the boot-time synchronous `xhci_cmd.cyr` consumers; a lost-timer-EOI on `apic_eoi` (`apic.cyr:37`) under sustained load.
 
 **Note on the 1.33.2 "delayed-after-bench" report:** likely the SAME wedge by a different route — return to the shell after `bench`, keep typing/idling, the transfer ring eventually wraps. The three 1.33.2 bench/serial hardening fixes were defensible (real unbounded/unguarded spots) but did not touch this; they stay.
+
+**Bite 2 — symlink resolution (LANDED 2026-05-26).** `ext2_path_lookup` now follows symlinks (new `ext2_readlink`: fast inline / slow via the extent-aware `ext2_logical_to_physical`); absolute targets restart at root, relative continue from the link's directory, ELOOP-capped at 8. Completes the create-only symlink feature from 1.33.3. Verified by `ext2w: Wsymres resolve OK` (fast `/sl_f` + relative `/rl` both resolve to `hl_b.txt`'s inode; `/lp → lp` returns -1) on the `metadata_csum,64bit,extent` write-smoke, `e2fsck -fn` clean.
+
+**Bite 3 — uninit-group materialization (LANDED 2026-05-26).** Empirical discovery that reframed the item: a default `mkfs.ext4` does NOT set the `uninit_bg`/`GDT_CSUM` ro_compat bit (0x10, still refused — different crc16 algo), but it DOES set `INODE_UNINIT`/`BLOCK_UNINIT` **bg_flags** under metadata_csum. The real iron partition is therefore already write-enabled, and the allocators trusting un-materialized bitmaps for uninit groups was a **latent corruption risk** the single-group 67 MiB write-smoke couldn't catch. Fix: `ext2_materialize_{inode,block}_bitmap` write the correct all-free+padding bitmap (flex_bg relocates all metadata to leaders → uninit groups are genuinely empty; confirmed via dumpe2fs) + clear the flag, on first allocation into an uninit group; the block side has a `ext2_group_has_super` + in-group-metadata guard that refuses (→ allocator skips the group) rather than ever writing a wrong bitmap. Verified by the new `ext2-uninit-smoke.sh` on a ~1.1 GiB flex_bg image (8 INODE_UNINIT + 3 BLOCK_UNINIT groups): `ext2w: Wuninit materialize OK` (goal-forced block alloc into a BLOCK_UNINIT group + INODE_UNINIT materialize) + `e2fsck -fn` clean.
+
+**Cycle state:** all three bites LANDED + verified in QEMU. Regression: `test.sh` 4/4 (size ceiling 700→800 KB), `ext2-smoke` 5/5, `ext2-write-smoke` 49/0, `ext2-uninit-smoke` PASS. Production build 707,896 B. **Optional iron burn** (`echo hello` typed past the old ~600-tick freeze point on the real partition; `mv`/`ln`/`ln -s`/symlink-`cat`) is user-driven, NOT auto-proposed per [[feedback_iron_burns_block_other_work]].
 
 ---
 
