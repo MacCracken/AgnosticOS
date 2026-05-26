@@ -402,6 +402,14 @@ Originally planned as 1.31.x; storage took priority 2026-05-20 because the AMD a
 
 The boot pipeline currently flashes via `install-usb.sh` directly. ISO Stage-4 cut packages the kernel + gnoboot + userland into a distributable live image (per [`iso-stage4-plan.md`](iso-stage4-plan.md)). Was a pre-MVP gate; now becomes the *distribution* gate once the typeable shell + network + storage trio is in place.
 
+### 1.35.x — catchup tidbits (networking + device cleanup)
+
+Small, well-scoped items that accreted as deferrals during the storage (1.31.x) and networking (1.32.x) arcs. Not blockers for the WRITE arc (1.33.x) or the install cycle; they catch up the surface once the demo→base mutation work lands. Grouped here so they're not lost in per-release "Deferred" notes.
+
+- **DNS — stub resolver client** — UDP-based A-record lookup against the configured resolver (DHCP option 6 already arrives in the OFFER; grab it there). Needs **UDP ingress + bind** wired (the egress side `udp_build`/`udp_send` exists; the receive/bind path is the gap flagged in the agnos CHANGELOG and the `dig` planning entry). RFC 1035 message format (header + question + answer-section walk), recursion-desired, single-question queries. Substrate for the **`dig`** userland tool (captured in [[project_tools_stable_ideas]]) and the precondition for any name-based networking (`ark`/`nous` fetch, `hoosh` gateway hostnames). Multi-source audit-doc-first per [[feedback_redesign_dont_reinvent]] (musl `res_*` + OpenBSD `asr` + Plan 9 `ndb/dns` + RFC 1035/3596). ~200-300 LOC.
+- **Legacy virtio-net interface** — the 1.34.x cleanup bite: stand up a separate legacy-mode init path (BAR0 I/O ports + `QUEUE_PFN`) behind a runtime cap-list-absent fallback. Full analysis preserved in [`virtio-net-legacy-layout-audit.md`](virtio-net-legacy-layout-audit.md) § "Post-implementation update". Not iron-relevant (archaemenid uses r8169); QEMU-completeness only.
+- **Plug-and-play / hot-add device support** (pre-1.35.0) — USB hub topology + hot-add; also fixes the archaemenid USB-optical cold-boot quirk ([[project_archaemenid_usb_optical_pre_boot_quirk]]) and unblocks optical-via-USB-MS (SCSI MMC profile). See the "deferred to plug-and-play cycle" row in the 1.31.x table above.
+
 ### Parallel cycle work (no version pin — opportunistic)
 
 These can land in any 1.30.x patch without blocking the gate cycle:
