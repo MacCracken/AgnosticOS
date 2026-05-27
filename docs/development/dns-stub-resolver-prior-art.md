@@ -179,9 +179,30 @@ The `dns-smoke.sh` gate (QEMU + SLIRP + r8169 or virtio-net):
 
 ## 8. Out of scope (explicitly deferred)
 
-- Caching (TTL-respecting cache) — add when a consumer's query volume justifies it.
+- ~~Caching (TTL-respecting cache)~~ — **shipped at 1.35.6, see § 9.**
 - TCP fallback for `TC=1` truncated responses.
 - EDNS0 / DNSSEC.
 - AAAA / IPv6 (the framing is identical — TYPE 28, 16-byte RDATA — but AGNOS has no IPv6 stack yet).
 - Multiple-nameserver parallelism (musl-style) — single configured resolver suffices.
 - `/etc/resolv.conf`-equivalent config file — DHCP opt 6 + static fallback is the v1 source; a config surface can come with the `dig` tool / ark networking.
+
+---
+
+## 9. DNS cache (1.35.6)
+
+> **Status**: shipped at agnos 1.35.6. The 1.35.0 stub re-queried on every `dns`/`ping`/`ntp <host>` — fine functionally, wasteful for repeated lookups and the eventual `ark`-fetch (many requests to one host). A small TTL-respecting positive cache fixes that. **Note**: the two other "robustness" items often lumped here were already done at 1.35.0 — `dns_parse_answer` already walks *all* answer RRs and skips CNAME/AAAA to take the first valid A (multi-A / CNAME-chain), and `dns_resolve` already does one midpoint retransmit (musl/lwIP retry). So 1.35.6 is the cache + extracting the TTL the parser had been discarding.
+
+**Prior art.** A stub resolver classically caches *nothing* and leans on a caching nameserver (musl `res_*` does this). But AGNOS's "nameserver" is whatever DHCP opt 6 hands back (often a consumer router) over a link we'd rather not hammer, and there's no local `nscd`/`systemd-resolved`. The fitting analog is **lwIP `dns.c`** — a small fixed-size table (`DNS_TABLE_SIZE`, default 4) of name→IP entries with per-entry TTL countdown and oldest-eviction. Windows' DNS client cache and glibc `nscd` are the same idea at larger scale. Adopted shape: **fixed 8-entry positive cache, TTL from the A record (clamped), linear scan, evict-soonest-to-expire on a full insert.**
+
+**Design (`net.cyr`).**
+- Parallel module-global arrays (8 slots): `dns_cache_ip` (u64 each — the A-record IP as a network-order integer; `0` = empty slot sentinel, never a valid host IP), `dns_cache_exp` (expiry in `timer_ticks`; 100 Hz), `dns_cache_len` (name length), and a 512-byte name region (`dns_cache_names`, slot *i* at byte offset `i*64`). Names longer than 63 bytes simply aren't cached (still resolve) — covers `example.com`, `pool.ntp.org`, etc.
+- `dns_parse_answer` now also records the matched A record's TTL into a global `dns_last_ttl` (it sits 6 bytes before the RDATA — `TYPE(2) CLASS(2) TTL(4)`), which the loop had been stepping over and dropping.
+- `dns_cache_find(host,len)` — linear scan; hit requires occupied **and** `exp > timer_ticks` (not expired) **and** exact name match.
+- `dns_cache_put(host,len,ip,ttl)` — clamp TTL to **[10 s, 3600 s]** (defends against both 0-TTL thrash and multi-day pinning of a stale answer in a kernel that has no flush verb yet), pick an empty/expired slot else evict the soonest-to-expire, store.
+- `dns_resolve` checks the cache first (instant return on hit, no NIC needed) and inserts on a successful live lookup.
+
+**Why clamp + positive-only.** No negative caching (don't want to pin an NXDOMAIN that was a transient outage), and the 3600 s ceiling means even a misbehaving authoritative TTL self-heals within an hour without a manual flush. Single-threaded kernel → no locking on the table (relies on the same single-core invariant the rest of the net stack does; the future SMP arc unwinds it alongside everything else).
+
+**Validation.** `DNS_SELFTEST` / `dns-smoke.sh` extended: TTL extraction (the hand-built answer carries `ttl=256` → `dns_last_ttl == 256`), and a cache round-trip — `dns_cache_put("x",…,ip4(1,2,3,4),100)` then `dns_cache_find` returns the slot with the right IP; a put with a tiny TTL that's forced expired (`exp <= timer_ticks`) misses; an over-capacity insert evicts rather than overflows. Gate: `dns: cache PASS` (alongside the existing `dns: parse PASS`).
+
+**Still deferred:** negative caching, multi-nameserver fallback (opt 6 can list several; only the first is captured), a `dns`-verb cache-flush/`dig +trace` surface — all when a consumer asks.
