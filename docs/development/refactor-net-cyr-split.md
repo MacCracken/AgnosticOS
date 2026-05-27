@@ -1,6 +1,6 @@
 # Refactor — `net.cyr` split (agnos 1.36.x)
 
-> **Status**: in progress. **Part 1 (TCP) shipped at agnos 1.36.0**; part 2 (app-protocols) next. This is the 1.36.x refactor cycle's headline — structural cleanup ahead of the heavy big-write arcs (1.37.x+). Refactor only; the arc-close *hardening* (1.35.7) was kept deliberately separate.
+> **Status**: **COMPLETE.** Part 1 (TCP) shipped at agnos 1.36.0; part 2 (app-protocols + ingress) at 1.36.1. `net.cyr` went 2019 → 272 LOC (L2/L3 core); the stack is now 8 focused files. This was the 1.36.x refactor cycle's headline — structural cleanup ahead of the heavy big-write arcs (1.37.x+). Refactor only; the arc-close *hardening* (1.35.7) was kept deliberately separate.
 >
 > **Created**: 2026-05-27.
 
@@ -19,7 +19,7 @@ Forward references across the split are fine: `net_poll` (kept in `net.cyr`) alr
 | Part | Cut | Extract | `net.cyr` keeps |
 |---|---|---|---|
 | **1** | **1.36.0** ✅ | **TCP** — state machine + conn table, retransmit (B2), server-side listen/accept (~780 LOC, the largest + cleanest boundary) → `net_tcp.cyr` | L2/L3 core + all app-protocols (for now) |
-| **2** | 1.36.x | **App-protocols** — DHCP / DNS / NTP / ICMP / RTC → per-protocol files (`net_dhcp.cyr`, `net_dns.cyr`, `net_ntp.cyr`, `net_icmp.cyr`, `net_rtc.cyr`) | Ethernet / ARP / IPv4 / UDP transport + the `net_poll` demux + shared helpers/globals |
+| **2** | **1.36.1** ✅ | **App-protocols** — DHCP / DNS / NTP / ICMP / RTC → per-protocol files; **+ ingress/demux** (`net_handle_arp`/`net_handle_udp`, `ip_safe_payload_len`, `net_poll`, `net_recv_udp`) → `net_ingress.cyr` (it sat *below* the protocols in the original, so it became its own trailing module to keep the include order — hence the binary — identical) | Ethernet / ARP-build / IPv4 / UDP transport + the UDP listener table (272 LOC) |
 
 Each part: extract verbatim → `include` right after `net.cyr` (order preserves the byte sequence) → build, assert byte-identical sha → run the affected smokes.
 
@@ -32,3 +32,9 @@ Each part: extract verbatim → `include` right after `net.cyr` (order preserves
 - `net_tcp.cyr` created (785 LOC incl. header); `net.cyr` 2019 → 1244 LOC.
 - `agnos.cyr`: `include "core/net_tcp.cyr"` added immediately after `core/net.cyr`.
 - **Byte-identical**: baseline `637340698cbdaab4695f216ad00ae93c9e78ae2be6c95282b7470d1dad61afd3` (828,528 B) == post-split. `test.sh` 4/4, `check.sh` 11/11, `tcp-smoke` 4/4, `tcp-listen-smoke` 2/2.
+
+## Part 2 record (1.36.1)
+- Created `net_dhcp.cyr` (297), `net_icmp.cyr` (95), `net_dns.cyr` (234), `net_ntp.cyr` (74), `net_rtc.cyr` (114), `net_ingress.cyr` (179) — incl. headers; `net.cyr` 1244 → 276 LOC (272 core + footer).
+- `agnos.cyr` include order (preserves original concatenation → byte-identical): `net.cyr → net_dhcp → net_icmp → net_dns → net_ntp → net_rtc → net_ingress → net_tcp`.
+- **Byte-identical**: baseline (pre-split, at 1.36.1) `512734b3d7e1e91037c212bc2c5c8d8c41dc63bc816c732af4ad60b23871b85f` (828,528 B) == post-split. Full net smoke suite green: `dns` 3/3, `icmp` 1/1, `ntp` 1/1, `rtc` 1/1, `tcp` 4/4, `tcp-listen` 2/2; `test.sh` 4/4, `check.sh` 11/11.
+- **Final layout** (8 files): `net.cyr` (L2/L3 core) · `net_dhcp` · `net_icmp` · `net_dns` · `net_ntp` · `net_rtc` · `net_ingress` (receive/dispatch) · `net_tcp`.
