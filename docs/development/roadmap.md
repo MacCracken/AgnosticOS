@@ -1,41 +1,14 @@
 # AGNOS Development Roadmap
 
-> **Status**: Pre-Beta — Closed Beta targeting **early June 2026** | **Last Updated**: 2026-05-22 (maturity arc section added; live cycle/version state lives in [`state.md`](state.md) — refer there for current kernel / Cyrius / per-repo status, not the stale per-cycle quotes embedded in this doc's top-matter below).
+> **Status**: Pre-Beta — Closed Beta targeting **early June 2026** | **Last Updated**: 2026-05-26. This roadmap is **forward-facing** — shipped arcs live in [`state.md`](state.md) + the per-repo CHANGELOGs, not re-narrated here. Refer to state.md for current kernel / Cyrius / per-repo versions.
 >
 > 🔴 **BETA RESCOPED (2026-05-06)**: Two-stage beta. **Closed beta** targets early June 2026 — Phase 13A complete, exercised by a small private cohort of trusted testers (friend-network), no formal community-program enrollment. **Public beta** retains the original Q4 2026 window and adds the third-party security audit + community testing program. This is a deliberate compression: previously-mandatory beta gates (audit, community program) move to the public-beta gate so the closed-beta line is honest about what shipped.
 >
-> 🔴 **MVP GATE — NEXT ACTIVE WORK**: ISO Stage-4-only first cut — see
-> **[`iso-stage4-plan.md`](iso-stage4-plan.md)**. **This is the
-> closed-beta MVP gate**: pre-built kernel + kybernet + agnoshi on a live
-> image that boots to a shell on real iron. After the 2026-04-27
-> boot-pipeline updates (sigil 2.9.4 cut, agnostik reverted, scripts
-> pinned to Cyrius 5.7.21 — pin bump to 5.11.x queued). The plan has four
-> open decisions (D1–D4) that need user input before coding begins. Next
-> agent: **read the plan, then resolve D1–D4 with Robert.** MVP target:
-> shell prompt on NUC AMD (primary) or Pi 4 inside ~3 weeks. Intel hosts (Skytech) queued after AMD is proven.
+> 🟢 **MVP GATE CLEARED on iron** — Attempt 68 / agnos 1.30.9 / 2026-05-15: kernel + kybernet (PID 1) + agnoshi reach a **typeable shell** on archaemenid (NUC AMD Beelink SER). Since then the kernel shipped the storage stack (NVMe / AHCI / USB-MS / RAM-disk / GPT), the **r8169 networking stack** (iron-COMPLETE — DHCP real lease verified), and **ext2/4 + FAT-family read+write** filesystems. Current kernel + active cycle: [`state.md`](state.md).
 >
-> 🟡 **Iron-boot attempts running log**: [`iron-nuc-zen-log.md`](iron-nuc-zen-log.md) (active, post-MVP) + [`iron-nuc-zen-log-mvp.md`](iron-nuc-zen-log-mvp.md) (Attempts 1–68, capped 2026-05-19 at MVP gate). Append-only per-attempt log
-> (symptom / root cause / repair / verification). Attempt 1 (2026-05-12) FAILED on the GRUB
-> `grub_elf32_get_shnum` chain; root cause was Cyrius's `EMITELF_KERNEL`
-> emitting `e_shoff=0` ELFs; repaired in Cyrius 5.11.29 (x86 kernel),
-> 5.11.30 (aarch64 kernel), 5.11.31 (cyrld); USB refreshed via the new
-> `install-usb.sh --update` mode. Attempt 2 pending.
+> 🟡 **Iron-boot running log**: [`iron-nuc-zen-log.md`](iron-nuc-zen-log.md) (active, post-MVP) + [`iron-nuc-zen-log-mvp.md`](iron-nuc-zen-log-mvp.md) (Attempts 1–68, capped at the MVP gate). Append-only per-attempt log (symptom / root cause / repair / verification).
 >
-> **May 1 V1 release** has passed. Per [`state.md`](state.md), kernel is at **1.29.0** (past the 1.22.x predicted in the original V1 line; +3 minor bumps since the 1.26.1 May-1 cut), Cyrius is at **v5.11.24** (cut day was 2026-05-11 — same-day **24-patch burst** from v5.11.0 to v5.11.24; v5.10.x closed at .50 with three completed arcs — typed-simd ABI, REAL TYPE SYSTEM, struct-byval ABI), and **v5.12.x** now holds the **AGNOS bare-metal target + RISC-V rv64 backend** (slipped v5.8 → v5.10 → v5.11 → v5.12). V1 status itself: verify against ISO/CI receipts before re-asserting in any public copy. Biweekly cadence through August DEF CON distribution (see [Near-Term Cadence](#near-term-cadence--may-1-v1-to-def-con)).
-> **Kernel 1.29.0 active** — 26 syscalls invariant, structurally immune to CVE-2026-31431 (Copy Fail). v1.26.1 (2026-04-28, 248KB) shipped through three hardening passes from v1.22.0 (260KB); v1.27.x → v1.29.0 continued the cycle on the 5.10.44 pin. Patch-level detail in `agnos/CHANGELOG.md`.
-> **Cyrius 5.7.0 shipped** (2026-04-25) — **THE SANDHI FOLD**. `lib/sandhi.cyr` adds (vendored byte-identical from sandhi v1.0.0, 376,037 B / 9,649 lines, 469 fns); `lib/http_server.cyr` deletes; sandhi repo enters maintenance mode per [ADR 0002](https://github.com/MacCracken/sandhi/blob/main/docs/adr/0002-clean-break-fold-at-cyrius-v5-7-0.md). Cyrius-side gates 1, 2, 3, 5, 6 ✅; gate 4 (downstream sweep) is separate user-organized work — only **vidya** actually `include`s `lib/http_server.cyr`; yantra and sit have orphan pre-fold copies (cleanup-only); the originally-listed `sit-remote`/`ark-remote` don't exist. v5.6.x closed at v5.6.45 on 2026-04-25 (45 patches — new longest-minor record). v5.6.0 opened the compiler-optimization arc on 2026-04-22 (**Phase O1** v5.6.0–v5.6.4 instrumentation + FNV-1a symbol hashing; **Phase O2** v5.6.11 partial strength reduction, flag-result reuse, push/pop elim, commutative + aarch64 combine-shuttle; **regalloc** v5.6.20–v5.6.24 default-on linear-scan; **closeout** v5.6.43 sigil 2.9.3 / sankoch 2.1.0 / output_buf 2MB).
-> **Multi-platform closed.** x86_64 Linux byte-identical; aarch64 Linux byte-identical on real Pi (stdlib shakedown v5.5.18); Apple Silicon Mach-O self-host closed (v5.5.17); Windows PE32+ native self-host byte-identical on real Windows 11 (v5.5.10). NSS/PAM real-fix arc shipped v5.5.23–v5.5.27; `lib/fdlopen.cyr` landed in v5.5.x arc. **v5.7.x shipped** sandhi-fold (lib/sandhi.cyr) + cyrius-ts P1–P10 across 51 patches in 36 days. **v5.8.x shipped** (2026-05-01 → 2026-05-05, 66 patches in 4 days) as a 3-phase cycle: Phase 1 (slots 1-8) closed the v5.8.0 audit (lint/fmt cap, f64_log2 polyfill, sys_stat/fstat backfill, _SC_ARITY cross-arch gate, NI-class dupe, cc5_aarch64 packaging + cyrc_check orphan); Phase 2 (slots 9-26) handled language vocabulary (var X; diagnostic, fmt --check exit code, vidya audit at v5.8.40); Phase 3 (slots 27-65) was the **stdlib foldin sweep** (sandhi-pattern continuation, vani audio at slot 1). **v5.9.0 opened** (2026-05-06) with niyama fold-in (8th sibling distfile, 5 regex engines). **v5.9.x closed** at 5.9.43 (44 patches, 2026-05-06 → 2026-05-08, catchup + fixes — consumer rollup of pin-lag tail, optimization-debt audit O5/O6, dangling-item closeout). **v5.10.x closed** at 5.10.50 (50 patches in 5 days, 2026-05-06 → 2026-05-11): three completed arcs — **typed-simd ABI** (11 phases, value-form f64v2/f64v4 with parser-side `&IDENT → _ptr` overload routing, ABI-aware register routing; this is the substrate for future Cyrius-native codec work), **REAL TYPE SYSTEM** (5 phases, cstring/Result/Option/Tagged vocabulary + call-site type checking), **struct-byval ABI** (3 phases, cross-backend return surface). Plus 2.7× compile speedup miniarc (.40 + .41), TLS contract pin, PE premise debunk. **v5.11.0 cut 2026-05-11** — stdlib annotation arc + consumer-issue closeout cycle (kavach P1 sandbox syscall wrappers landed at .0; stdlib annotation Phase 1 queued for .1). **v5.12.x reserved**: AGNOS bare-metal target + RISC-V rv64 backend (both slipped from earlier cycles; v5.10.x typed-simd + REAL TYPE SYSTEM + struct-byval ABI form substrate prereq, v5.11.x stdlib annotation is the remaining prereq).
-> **ISO pipeline started** — Stage 0 (component verification) implemented: `make iso-check`. See `docs/development/iso-pipeline.md`.
-> **Kavach 3.0.0 shipped Cyrius-native** — 344KB (was 2.4MB Rust), 1 dep, 9 CWE fixes, sandbox lifecycle 500× faster.
-> **Sankoch 2.0.0 shipped** — lossless compression (LZ4, DEFLATE, zlib, gzip). stdlib fold pending.
-> **Abaco 2.1.0** — Miller-Rabin ~12× faster end-to-end via Cyrius hardware u64_mulmod fast-path.
-> **Bote 2.5.1** / **T-Ron 2.0.0** shipped — both out of pre-release. Bote MCP pipeline ~5µs/message.
-> **Ark 0.8.0** / **Nous 1.1.1** — package manager + resolver ported to Cyrius.
-> **Phylax 1.0.0** / **Shakti 0.2.2** — threat detection + privilege escalation ported to Cyrius.
-> **New shared crates (Apr 22–23)**: **owl** v0.1.0 (Cyrius-native `cat`/`bat` replacement, M0–M5 shipped) and **vyakarana** v0.1.0 (source-code grammar / tokenizer library — ten-kind palette locked; M1 agent started). owl M3b highlighting consumes vyakarana when M1 lands.
-> **Critical path CLEARED**: libro ✅ argonaut ✅ kybernet ✅ kernel ✅ boot pipeline ✅ kavach ✅ ark ✅ nous ✅
-> **Shared ecosystem**: 30+ repos ported to Cyrius. In port (partial, `rust-old/` still authoritative): takumi 0.8.0. Pending port: bhava, aethersafha. (aegis hit **1.0.0** in the v5.10.x window — out of pending.)
-> **Next milestone**: **May 1 V1** — bootable ISO runs DOOM from Cyrius; kernel + toolchain + 30+ ports + science library shipped. Then biweekly cadence to DEF CON.
+> 🔴 **NEXT distribution gate**: ISO Stage-4-only first cut — see [`iso-stage4-plan.md`](iso-stage4-plan.md) (four open decisions D1–D4 need user input). Packages kernel + gnoboot + userland into a distributable live image. The kernel already boots iron-direct via gnoboot + USB stick today; the ISO is the *distribution* path, not a boot blocker. Closed-beta first-tester sessions run on the NUC AMD (primary); Intel (Skytech) + Pi 4 queued after AMD proves out.
 
 ---
 
@@ -43,10 +16,10 @@
 
 AGNOS capability follows a **5-stage arc** that anchors what "the next stage" means at any cycle. Orthogonal to the [Strategic Vision](#strategic-vision) (release-milestone framing) and the [Phase 13A / 13C / 16 numbering](#critical-path-to-beta) (work-area framing) — the arc is the *capability lens* above both. User-defined 2026-05-22.
 
-| Stage | Capability content | Status (2026-05-22) | Exit trigger |
+| Stage | Capability content | Status (2026-05-26) | Exit trigger |
 |---|---|---|---|
-| **demo** | Boots to shell on iron, ext4 read-only, networking client-side. Can be *shown* working but not lived in — no state persistence across reboots. | **Current.** MVP gate (Attempt 68 / 1.30.9 / 2026-05-15) was the demo entry; everything since has been demo-stage hardening (storage drivers Phase 2-5, ext2/4 read, GPT, USB MS, kybernet+agnoshi typeable, r8169 Phase 1-4). | 1.33.x ext4 WRITE landing. |
-| **base** | Kernel solid; ext4 read+write; ark/nous package manager working end-to-end (resolve / fetch / install / remove); AGNOS-side update mechanism; enough soak surface for real-workload exposure without weekly showstoppers. | **Pending 1.33.x WRITE + ark/nous client maturation.** Triggers archaemenid dual-boot migration (AGNOS-primary on internal NVMe + Linux on SATA — see [`state.md`](state.md) § *archaemenid migration*). Functional-readiness trigger ≠ full base-stage exit; the stage matures over the subsequent ark/nous client cycles. | Native installer + server ecosystem landing. |
+| **demo** | Boots to shell on iron, ext4 read-only, networking client-side. Can be *shown* working but not lived in — no state persistence across reboots. | ✅ **Exited.** MVP gate (Attempt 68 / 1.30.9 / 2026-05-15) was the demo entry; the demo→base exit trigger (1.33.x ext2/4 **WRITE**, persist-across-reboot iron-validated) fired 2026-05-25. | 1.33.x ext4 WRITE landing — **fired**. |
+| **base** | Kernel solid; ext4 read+write; ark/nous package manager working end-to-end (resolve / fetch / install / remove); AGNOS-side update mechanism; enough soak surface for real-workload exposure without weekly showstoppers. | **Current (entering).** ext2/4 read+write shipped (1.33.x WRITE arc) + FAT-family read+write (1.34.x); the kernel-side foundation is in. Maturing over the ark/nous client cycles + AGNOS-side update. Triggers archaemenid dual-boot migration (AGNOS-primary on internal NVMe + Linux on SATA — see [`state.md`](state.md) § *archaemenid migration*). | Native installer + server ecosystem landing. |
 | **server** | **agnova native installer** (AGNOS installs itself onto target hardware; install-usb.sh host-side script retires); non-desktop subsystem suite (BBS, MUD, sovereign remote-shell, web server, ark+nous server-side) + the libs they consume. **Most of "Linux's purpose" gets absorbed at this stage** — archaemenid Linux usage is predominantly server-flavored (build hosting, file serving, CLI dev, network services), so server-stage AGNOS replaces it without needing GUI work. Archaemenid Linux eviction lands at **server**, not "swallow." | **Not started.** 1.32.x server-side TCP primitives (bite A) are the kernel foundation. | aethersafha + GUI userland landing. |
 | **desktop** | aethersafha (Wayland compositor — currently Pending in CLAUDE.md table) + display drivers (mabda + iGPU/dGPU) + user-facing app ports + GUI userland. Absorbs the daily-driver / GUI / browser workloads that server stage couldn't. | **Not started.** | Compat sandbox + non-native-workload absorption. |
 | **swallow** | **Compat sandbox layer** — AGNOS hosts non-AGNOS-native apps (Windows binaries, Linux binaries, web apps) inside a sovereign sandbox so endusers can move to AGNOS without giving up their existing app ecosystem. Connects directly to **Phase 20 — Cross-Platform Compat Subsystem** below. Sovereignty via **universal hosting**, not eviction — AGNOS becomes the host that can run anything, removing the last reason anyone would keep a separate non-AGNOS install. | **End-state.** No fixed date; trigger is final-workload capability parity. | (Terminal — no exit.) |
@@ -101,8 +74,8 @@ Phase 13A items 1–3 (boot → shell on hardware) ──→ CLOSED BETA (MVP)
 
 **Opening gate** (target early June 2026):
 - [x] **Boot-to-Shell MVP (13A items 1–3.5)** — ✅ Iron-validated 2026-05-15 on archaemenid (NUC AMD Beelink SER). Kernel completes full init spine → kybernet (PID 1) launches → agnoshi (`AGNOS shell v1.30.0`) prompt rendered on framebuffer. Twenty-nine attempts across three weeks of bring-up; full arc in [`iron-nuc-zen-log-mvp.md`](iron-nuc-zen-log-mvp.md); generic process pattern in [`iron-bring-up-process.md`](iron-bring-up-process.md). **The shell prompt is visible. The base OS is real.**
-- [ ] **USB-keyboard input** — shell prompt visible but typing produces no echo (modern UEFI doesn't emulate PS/2 over XHCI post-`ExitBootServices`). Native XHCI + USB-HID-boot driver scoped at [`../archive/usb-hid-keyboard-driver-shipped.md`](../archive/usb-hid-keyboard-driver-shipped.md) (5 phases, ~1.2–2.1k Cyrius LOC). **All 5 phases landed across agnos 1.30.0 → 1.30.5** (Phase 1-3 iron-validated through Attempt 52; Phase 4-5 compile-verified in 1.30.5). **2026-05-17 — silent-absorb root cause identified**: a one-line bug in `xhci_portsc_write` (double-applying `XHCI_PORTSC_NEUTRAL` mask, silently stripping the PR bit on every write). 13 hypotheses falsified across Attempts 32-54 were all chasing AMD silicon ghosts — bug was AGNOS's own helper. Surfaced via prior-art diff (EDK2 XhciDxe + Linux xhci-hub.c + coreboot Cezanne + AMD openSIL convergence). One-line fix queued; expected to unblock Phase 4/5 + every downstream USB device class (mouse, mass storage). Full resolution plan + pre-bound outcome matrix in [`../archive/usb-hid-keyboard-driver-shipped.md § Silent-Absorb Resolution Plan`](../archive/usb-hid-keyboard-driver-shipped.md#silent-absorb-resolution-plan-2026-05-17). MVP-gate cleared at Attempt 68 (2026-05-18, agnos 1.30.9).
-- [ ] First hardware boot session on AMD NUC (matrix row 14) or Pi 4 (row 3) — **non-founder tester sits at the prompt**. Now hardware-ready; awaits keyboard input + tester schedule.
+- [x] **USB-keyboard input** — ✅ **typeable on iron at Attempt 68** (agnos 1.30.9). Native XHCI + USB-HID-boot driver, all 5 phases shipped across agnos 1.30.0 → 1.30.5. Root cause of the long silent-absorb arc was a cyrius-side kmode gvar-init-order bug (fixed cyrius v5.11.64), not an AGNOS-side spec gap. Historical detail: [`../archive/usb-hid-keyboard-driver-shipped.md`](../archive/usb-hid-keyboard-driver-shipped.md).
+- [ ] First hardware boot session — **non-founder tester sits at the prompt**. Kernel is typeable on the NUC AMD; awaits the ISO Stage-4 cut + tester schedule.
 
 **Through summer 2026** (closed-beta program proper):
 - [ ] Initial cohort: friend-network, 5–15 testers, sitting at a shell on iron
@@ -132,7 +105,7 @@ Phase 13A items 1–3 (boot → shell on hardware) ──→ CLOSED BETA (MVP)
 - [ ] All consumer apps published to mela
 - [ ] 6 months of beta testing with no critical bugs
 
-Long-term vision: [`vision/conscious-objects.md`](vision/conscious-objects.md) — the quantum-substrate / Layer-0 horizon (post-v3.0, multi-year). Foundation governance is now [`planning/foundation-structure.md`](planning/foundation-structure.md) (promoted from vision → planning 2026-05-12). v2.0 Rust-kernel and v3.0 Cyrius-pivot vision sections were retired 2026-05-12 — both happened ahead of schedule (Cyrius kernel shipped 2026-04-04; Cyrius language at v5.11.24 already).
+Long-term vision: [`vision/conscious-objects.md`](vision/conscious-objects.md) — the quantum-substrate / Layer-0 horizon (post-v3.0, multi-year). Foundation governance is now [`planning/foundation-structure.md`](planning/foundation-structure.md) (promoted from vision → planning 2026-05-12). v2.0 Rust-kernel and v3.0 Cyrius-pivot vision sections were retired 2026-05-12 — both happened ahead of schedule (Cyrius kernel shipped 2026-04-04; Cyrius language already well into the v6.x line).
 Creator economy (sovereign distribution, bootable USB media): [`vision/creator-economy.md`](vision/creator-economy.md)
 Knowledge-completeness mapping (42 confessions of Ma'at ↔ AGNOS crates): [`vision/maat-42.md`](vision/maat-42.md)
 
@@ -165,132 +138,37 @@ Each beat is still a release, not a blog post. The beats are the right work; the
 
 ## Status
 
-### Cyrius Language — v5.11.0 (cut 2026-05-11)
+Shipped state is **not tracked here** — this roadmap is forward-facing. Current truth:
 
-Full milestone history lives in `cyrius/CLAUDE.md` + `cyrius/CHANGELOG.md`. Live cycle status in [`state.md`](state.md). Headline status for AGNOS:
+- **Kernel / Cyrius / per-repo versions + cycle state** → [`state.md`](state.md)
+- **Cyrius language milestone history** → `cyrius/CLAUDE.md` + `cyrius/CHANGELOG.md`
+- **Port dependency chain** → all critical-path ports (agnostik → agnosys → libro → argonaut → kybernet → kernel) are **Done**; the live per-repo port-status table is the [Named Subsystems](#named-subsystems-30) table below + [`state.md`](state.md). Monolith extraction completed 2026-04-01 ([sprint-history.md](sprint-history.md)).
 
-| Milestone | Status |
-|-----------|--------|
-| Self-hosting compiler | **Done** (29KB seed, 467KB compiler, self-compile) |
-| Multi-width types, unions, bitfields, defer | **Done** |
-| Dependency resolution (cyrius.cyml, falls back to cyrius.toml) | **Done** |
-| http_server + ws stdlib absorption | **Done** (v4.5.0) |
-| Multi-file linker + cross-unit DCE | **Done** (v4.6.x) |
-| PIC codegen, u128 types | **Done** (v4.7–4.8.x) |
-| Jump tables + register allocation | **Done** (v4.8.4) |
-| Math pack (u64_mulmod fast-path, 12× Miller-Rabin end-to-end) | **Done** (v4.8.5) |
-| aarch64 cross-compiler + native Pi self-host (byte-identical) | **Done** (v5.3.15+) |
-| Apple Silicon Mach-O (self-hosts byte-identically on M-series) | **Done** (v5.3.13) |
-| Windows PE32+ — `hello\n` runs end-to-end on real hardware | **Done** (v5.4.8) |
-| Windows Win64 ABI ≤4-arg (call-site + register mapping) | **Done** (v5.5.3) |
-| Windows Win64 ABI >4-arg cyrius-to-cyrius call-site | **Done** (v5.5.4) |
-| Windows `lib/fnptr.cyr` indirect fn-pointer Win64 calls | **Done** (v5.5.5–v5.5.7) |
-| Windows native self-host (`cc5_win` compiling itself byte-identical) | **Done** (v5.5.10) |
-| macOS aarch64 target closed (argv + Mach-O entry prologue) | **Done** (v5.5.17) |
-| aarch64 Linux stdlib shakedown (4-thread mutex on Pi 4) | **Done** (v5.5.18) |
-| u64-hashmap (SplitMix64, zero-alloc hot path) | **Done** (v5.5.20) |
-| AES-NI 16-B array alignment fix (sigil 2.9.1 unblock) | **Done** (v5.5.21) |
-| `cyrfmt --write` in-place rewrite | **Done** (v5.5.22) |
-| NSS/PAM real-fix arc (pwd/grp/shadow/PAM via unix_chkpwd) | **Done** (v5.5.23–v5.5.27) |
-| `lib/fdlopen.cyr` foreign-dlopen (Cosmopolitan pattern) | **Done** (v5.5.x arc) |
-| v5.5.x closeout — 40 patches, longest minor in Cyrius history | **Done** (v5.5.40, 2026-04-22) |
-| **Phase O1** — instrumentation + FNV-1a symbol hashing | **Done** (v5.6.0–v5.6.4) |
-| **Phase O2** — peephole categories 1–5 (PSR, flag-result reuse, push/pop elim, commutative combine-shuttle, aarch64 combine-shuttle) | **Done** (v5.6.5–v5.6.11, closed 2026-04-23) |
-| Linear-scan register allocator | **Done** — v5.6.20–v5.6.24 default-on |
-| Fused ops (madd, msub, ubfx, sbfx) | **Done** — v5.6.x post-regalloc |
-| Phase O3a IR instrumentation | **Done** — v5.6.12 (referenced as pre-existing through v5.8.x) |
-| Phase O4a/b/c regalloc — Poletto-Sarkar linear-scan picker | **Done** — v5.8.x (O4b explicit) |
-| Phase O5 / O6 (NOP harvest with jump+fixup, codebuf compaction) | **Done** — O5/O6 audit closed in v5.9.x |
-| v5.10.x — typed-simd ABI (11 phases), REAL TYPE SYSTEM (5 phases), struct-byval ABI (3 phases) | **Done** (v5.10.x closed 2026-05-11 at 5.10.50) |
-| v5.11.x — stdlib annotation arc + consumer-issue closeout (kavach P1 sandbox syscall wrappers landed v5.11.0) | **Done** (v5.11.x closed at 5.11.69, 2026-05-19; final 5.x minor) |
-| RISC-V rv64 codegen | In **v6.0.x** active cycle (slipped 7+ from v5.7.0 through the never-opened v5.12.x) |
-| Bare-metal / AGNOS kernel target | In **v6.0.x** active cycle (slip path v5.8.0 → v5.10.x → v5.11.x → the never-opened v5.12.x → **v6.0.x**; v5.10.x typed-simd + REAL TYPE SYSTEM + struct-byval ABI substrate and v5.11.x stdlib annotation prereqs both closed) |
+**Open KPIs** (the forward ones):
 
-### Cyrius Ports — Dependency Chain to Boot
-
-| Crate | Rust → Cyrius | Status | Notes |
-|-------|--------------|--------|-------|
-| agnostik | 0.90.0 → 0.97.1 | **Done** | Shared types |
-| agnosys | 0.51.0 → 1.2.6 | **Done** | Syscall wrappers (59× smaller) |
-| sigil | 1.0.0 → 3.1.1 | **Done** | Crypto boundary |
-| shravan | 1.1.0 → 2.3.2 | **Done** | Audio codecs |
-| libro | 0.92.0 → 2.6.3 | **Done** | Audit chain |
-| argonaut | 0.90.0 → 1.7.0 | **Done** | Init system library — BOOT_MINIMAL agnoshi added 2026-05-11 |
-| kybernet | 0.51.0 → 1.2.1 | **Done** | PID 1 (14× smaller, 486KB at 1.0; now ~1.15MB at 1.2.1 with edge_boot profile) |
-| AGNOS kernel | — → 1.29.0 | **Done** | 248KB at 1.26.1; current pin 5.10.44; 33 subsystems, 26 syscalls, Cyrius-native |
-| hoosh | 1.2.0 → 2.0.0 | **Done** | LLM gateway (10.8× smaller) — pre-CYML format still |
-| ai-hwaccel | 1.0.0 → 2.2.2 | **Done** | GPU detection (3.3× smaller) |
-| avatara | 1.0.1 → 2.3.0 | **Done** | Archetype overlay (2,761× faster cached) — remote-only |
-| kavach | 2.0.0 → 3.2.1 | **Done** | Sandbox (500× faster lifecycle) |
-| abaco | — → 2.2.0 | **Done** | Math/number theory (-52% lines, 12× Miller-Rabin) |
-| bote | 0.92.0 → 2.7.2 | **Done** | MCP core (~5µs/message) |
-| t-ron | 0.90.0 → 2.1.4 | **Done** | MCP security |
-| daimon | 0.6.0 → 1.2.3 | **Done** | Agent orchestrator |
-| agnoshi | 0.90.0 → 1.3.2 | **Done** | AI shell |
-| itihas | 1.0.1 → 2.2.0 | **Done** | History/versioning — remote-only |
-| hadara | — → 1.0.0 | **Native** | Culture modeling (Cyrius-native) |
-| mabda | 1.0.0 → 3.0.0-rc.2 | **Done** | GPU foundation — soaking pre-GA stdlib fold |
-| sankoch | — → 2.2.5 | **Done** | Lossless compression (LZ4, DEFLATE, zlib, gzip) |
-| ark | — → 0.8.0 | **Done** | Package manager (4× smaller, 40× faster) — still on 5.1.10 pin (extreme lag) |
-| nous | — → 1.1.2 | **Done** | Package resolver |
-| phylax | — → 1.1.1 | **Done** | Threat detection — exited 5.7.48 held cluster |
-| shakti | — → 0.3.0 | **Done** | Privilege escalation |
-| hisab | — → 2.2.2 | **Done** | Higher math |
-| bhava | — → 2.0.0 | Pending | Emotion/sentiment (has Cargo.toml) |
-| takumi | 0.8.0 → 0.8.x | **In port** | Package build system — Cyrius port active, pinned 5.5.23, `rust-old/` authoritative until parity |
-| aegis | — → 1.0.0 | **Done** | System security daemon — hit v1.0 in v5.10.x window |
-| aethersafha | — → 0.1.0 | Pending | Wayland compositor |
-
-### Monolith Extraction — Complete
-
-Full details: [sprint-history.md](sprint-history.md#monolith-extraction--complete-2026-04-01-to-2026-04-07)
-
-### Open KPIs
-
-| Metric | Target | Current | Status |
-|--------|--------|---------|--------|
-| Boot Time | <10s | **3.2s** (kernel+init), **~80ms** init→event loop | **Achieved** |
-| Boot-to-Shell on Hardware (MVP) | Yes | Pending | Phase 13A items 1–3 — kernel + kybernet + agnoshi on iron; Stage-4 ISO is the gate |
-| OS Independence (full self-hosting) | Yes | Pending | Phase 13A items 4–7 — explicitly post-MVP, Public Beta scope |
-| DOOM | Playable | **2.59ms/frame**, cyrius-doom 0.26.1, hardened (5 CVEs fixed) | **Unblocked** — Cyrius Phase O2 closed v5.6.11; regalloc v5.6.13 in flight. Full-frame benchmark re-run pending v5.6.x closeout. |
+| Metric | Target | Status |
+|--------|--------|--------|
+| Boot-to-Shell on Hardware (MVP) | Yes | ✅ **Achieved** — Attempt 68 / agnos 1.30.9 / 2026-05-15 |
+| OS Independence (full self-hosting) | Yes | Pending — Public Beta scope (Phase 13A items 4–7) |
+| Boot Time | <10s | ✅ **3.2s** kernel+init, ~80ms init→event loop |
 
 ---
 
 ## Active Work
 
-### Phase 13A — Boot-to-Shell MVP + OS Independence (BETA BLOCKER)
+### Phase 13A — OS Independence (Public Beta scope)
 
-**Two scopes in one phase.** The MVP (items 1–3 + 8) is the closed-beta line. The self-hosting block (items 4–7) is public-beta scope and is explicitly *post-MVP*.
+The MVP half of this phase — **boot → typeable shell on iron** — is **done** (Attempt 68 / agnos 1.30.9 / 2026-05-15; full arc in [`iron-nuc-zen-log-mvp.md`](iron-nuc-zen-log-mvp.md)). The immediate next gate is the **ISO Stage-4 cut** (top-matter + [`iso-stage4-plan.md`](iso-stage4-plan.md)), then the first non-founder tester session. The remaining, forward half is **OS Independence** (Public Beta) — self-hosting:
 
-**MVP ship test** — when this passes, closed beta cuts:
-> Boot the Stage-4 ISO on the NUC AMD (primary), the Pi 4, or any matrix-row machine that has been validated. The kernel comes up. kybernet runs as PID 1. agnoshi prints a prompt. A tester other than the founder sits at that prompt.
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| 4 | LFS Stage 1: bootstrap-toolchain end-to-end | Deferred (Public Beta) | Build cross-compiler from source tarballs. Not MVP — pre-built binaries ship in the Stage-4 ISO. |
+| 5 | LFS Stage 2: build base system in chroot | Deferred (Public Beta) | ark-build the base recipes. |
+| 6 | LFS Stage 3: build AGNOS userland on target | Deferred (Public Beta) | Cyrius-compiled binaries inside AGNOS; exercises the userland ↔ AGNOS-kernel ABI bridge end-to-end. |
+| 7 | Selfhost-validate passes all phases | Deferred (Public Beta) | `selfhost-validate --phase all` on the booted ISO. |
+| 8 | CI automation | In progress | GitHub Actions — supports MVP and beyond. |
 
-That's it. No package builds, no recipe sweeps, no self-host loop. Those come after.
-
-**Previous blocker (CLEARED)**: kybernet Cyrius port. Dependency chain completed 2026-04-13: libro ✅ → argonaut ✅ → kybernet 1.0.1 ✅ → kernel 1.22.0 (later hardened to 1.26.1, 248KB; now at 1.29.0) ✅ → boot pipeline (Cyrius, ~67KB → 81KB rebuilt against 5.10.44 on 2026-05-11) ✅.
-
-**Current MVP work**: Sovereign boot pipeline active. Kernel boots in QEMU via `make boot-test`. ISO Stage-4 cut + first hardware boot session remain.
-
-| # | Item | Scope | Status | Notes |
-|---|------|-------|--------|-------|
-| 1 | Kernel boots in QEMU | **MVP** | **Done** | boot.cyr (~81KB Cyrius binary, rebuilt against **5.10.44** on 2026-05-11), kernel **1.29.0** (was 1.26.1 at 248KB; current cycle on 5.10.44 pin) |
-| 2 | Sovereign boot pipeline | **MVP** | **Done** | `make boot-test` from genesis repo |
-| 2.5 | ISO `--iso-check` (Stage 0 component verification) | **MVP** | **Done** | 26-of-26 components READY (2026-04-27 audit), ISO assembly unblocked |
-| **3** | **ISO Stage-4-only first cut (live image, pre-built binaries)** | **MVP** | **🔴 NEXT** — planned, awaiting D1–D4 | See [`iso-stage4-plan.md`](iso-stage4-plan.md). Days, not weeks. Was the MVP gate; now the **distribution** path (kernel boots iron-direct via gnoboot + USB stick today). |
-| **3.5** | **First hardware boot session — kernel + kybernet + agnoshi shell prompt** | **MVP** | ✅ **Iron-validated 2026-05-15** | NUC AMD (archaemenid / Beelink SER, matrix row 14) — Attempt 28 hit MVP boot spine alive on iron; Attempt 29 + cleanup-pass burn at 16:45 PDT rendered shell prompt + full kernel log on framebuffer. Pi 4 (row 3, aarch64 secondary) pending USB-keyboard-input closure. Skytech Legacy 4 (row 12, Intel) queued post-AMD-proof. See [`iron-nuc-zen-log-mvp.md`](iron-nuc-zen-log-mvp.md). |
-| **3.6** | **USB-keyboard input on modern UEFI** (no SMM PS/2 emulation post-EBS) | **MVP** | 🟡 In flight (1.30.1) | Native XHCI + USB-HID-boot driver, 5 phases scoped at [`../archive/usb-hid-keyboard-driver-shipped.md`](../archive/usb-hid-keyboard-driver-shipped.md). **Phase 1 code landed in `agnos` [Unreleased] 2026-05-15** (PCIe discovery + capability reads; report-only, does not enable typing yet). **Awaiting Attempt 30 iron burn** — verification gate, expected `xhci:` framebuffer lines, CMOS `kcp=0x30`, and failure-mode triage captured in [`iron-nuc-zen-log-mvp.md`](iron-nuc-zen-log-mvp.md) § *Attempt 30 prep*. Phases 2–5: controller init / port enum / HID boot protocol / interrupt-driven kb_buf feed. Closes the "typeable" half of "boot-to-typeable-shell." |
-| 8 | CI automation | **MVP-adjacent** | In progress | GitHub Actions workflows — supports MVP and beyond |
-| 4 | LFS Stage 1: bootstrap-toolchain.sh end-to-end | **Post-MVP** (Public Beta) | Deferred | Build cross-compiler from source tarballs. Not in MVP scope — pre-built binaries ship in the Stage-4 ISO. |
-| 5 | LFS Stage 2: build base system in chroot | **Post-MVP** (Public Beta) | Deferred | ark-build all 109 base recipes. Public Beta = self-hosting story. |
-| 6 | LFS Stage 3: build AGNOS userland on target | **Post-MVP** (Public Beta) | Deferred | Cyrius-compiled binaries inside AGNOS. Also where userland ↔ AGNOS-kernel ABI bridge gets exercised end-to-end. |
-| 7 | Selfhost-validate passes all phases | **Post-MVP** (Public Beta) | Deferred | Run `selfhost-validate --phase all` on booted ISO |
-
-**MVP target**: Closed beta opening gate, **early June 2026** (~3 weeks from 2026-05-11). Gated on:
-- (a) **ISO Stage-4 D1–D4 resolved + Stage-4 ISO cut** — our work, install.cyr in agnosticos/scripts/
-- (b) **First hardware boot session** — kernel + kybernet + agnoshi reaching a shell on real iron (Pi 4 or AMD NUC)
-- (c) **Non-founder tester** sits at the prompt
-
-**NOT a gate**: the Cyrius v6.0.x bare-metal target. Earlier framing carried this as a dependency — that was conceptual residue from when Cyrius and agnos lived in the same repo (pre-2026-04-01 monolith extraction). The kernel already boots end-to-end in QEMU as a multiboot1 ELF — bare-metal compilation works *now*, via ad-hoc bare-metal mode in agnos. v6.0.x formalizes the toolchain side (ELF no-libc target format, interrupt-handler emit conventions, kernel-mode syscall stubs stripped) — useful for cleaner future kernel work, but **not required for the MVP to ship**. Language and kernel are separately-releasable subsystems; coupling MVP to a language-side cleanup is the residue-pattern of when they were one project.
+Self-hosting (items 4–7) is explicitly post-MVP — see [Public-Beta path](#public-beta-path-q4-2026--phase-13a-items-4-7). **NOT a gate**: the Cyrius v6.0.x bare-metal target — the kernel already builds + boots against the current Cyrius (6.0.1 pin); language and kernel are separately-releasable subsystems.
 
 ### P0 — Other Active Blockers
 
@@ -315,7 +193,7 @@ That's it. No package builds, no recipe sweeps, no self-host loop. Those come af
 |---|----------|------|-------|
 | B1 | High | Self-hosted CI runners on AGNOS | Replace Arch/Ubuntu runners with AGNOS itself |
 | B2 | High | RPi4 hardware boot test | Firmware blobs added, needs physical validation |
-| S1 | High | CVE-2026-31431 (Copy Fail) — host kernel cleanup + cross-repo audit | AF_ALG `algif_aead` + `splice()` LPE in mainline Linux 2017→. AGNOS-native kernel **structurally immune** (no socket/splice surface; verified against 26-syscall table invariant — anchored on table size, not patch level. Current: `agnos` v1.29.0). Local repos clean: sigil, agnosys, phylax — no AF_ALG refs. **Do**: (a) host bootstrap defconfigs in `agnosticos/kernel/{6.6-lts,6.x-stable,7.0-devel,configs}` — pin `# CONFIG_CRYPTO_USER_API* is not set` (HASH/SKCIPHER/AEAD/RNG); (b) audit when cloned: kybernet, libro, kavach, shakti, aegis, t-ron, argonaut, ark, agnostik, bote, daimon, hoosh. Live tracking in [`state.md`](state.md#cve-2026-31431-copy-fail-cleanup--audit). |
+| S1 | High | CVE-2026-31431 (Copy Fail) — host kernel cleanup + cross-repo audit | AF_ALG `algif_aead` + `splice()` LPE in mainline Linux 2017→. AGNOS-native kernel **structurally immune** (no socket/splice surface; verified against 26-syscall table invariant — anchored on table size, not patch level). Local repos clean: sigil, agnosys, phylax — no AF_ALG refs. **Do**: (a) host bootstrap defconfigs in `agnosticos/kernel/{6.6-lts,6.x-stable,7.0-devel,configs}` — pin `# CONFIG_CRYPTO_USER_API* is not set` (HASH/SKCIPHER/AEAD/RNG); (b) audit when cloned: kybernet, libro, kavach, shakti, aegis, t-ron, argonaut, ark, agnostik, bote, daimon, hoosh. Live tracking in [`state.md`](state.md#cve-2026-31431-copy-fail-cleanup--audit). |
 | R2 | High | Update scripts/CI for zugot | 16 scripts/CI/config files still reference local `recipes/` paths |
 | E1 | Medium | ESP32 agent source repo | Recipe done, MQTT bridge done. Pending: source repo + firmware |
 | V1 | Stretch | t-ron voice — contract Bruce Boxleitner | Direct voice-synthesis contract with the actor *infamous* for the role; permanently hardens t-ron's character identity to its namesake. **The play — the argument is the asset**: AGNOS ships a Tron that actually *exists* — t-ron is a living, executing MCP security monitor that demonstrably fights for users in the real tool layer. Disney's Tron is fiction; t-ron is shipped software. The substantive argument that move makes in public: *"the real version of this is now working software, not a 1982 film."* That argument is the asset — it lands the moment the cultural shift starts, and Disney litigating against it is them defending fiction against a working artifact (i.e. losing the argument). Disney's natural incentive then flips to **alignment** ("Tron is real"), not litigation. Boxleitner's voice/likeness is licensed directly (his to grant). Any litigation pressure is downstream noise, not the substance of the move. **Core idiom** — *"We fight for the users"* is t-ron's operating ethic, the line *made real*: it ties directly to the subsystem's job (MCP security monitor — protect the user from bad actors in the tool layer). **Capture corpus**: the core idiom is the non-negotiable seed; targeted phrase-set captured for inference seeding; everything else naturally generated by the model, no script-reading sessions. Iterative — once natural cadence locks, additional phrases / word recitations can be captured to refine the synthesis. **Reach goal**: Boxleitner's sign-off and active participation — the actor publicly endorsing the subsystem named in his role's honor, on par with the back-pocket-ally tier. **Sequencing**: post-V1, after first-tier ally relationships land. Outreach rides the public AGNOS news cycle (booted OS + DEF CON receipts + articles in circulation) so the conversation isn't cold — momentum opens the door. Budget + outreach path TBD. |
@@ -324,87 +202,17 @@ Repo-specific backlog items tracked in their respective repos.
 
 ---
 
-## Post-MVP — Closed-Beta Hardening Queue (1.30.x cycle)
+## Post-MVP — forward queue
 
-> **MVP iron-validated 2026-05-15.** The kernel boots to a shell prompt on real hardware. This section is the work *after* that line — making the prompt typeable, then hardening the cohort surface, then opening the path to OS Independence (Public Beta). Not a hypothetical roadmap — concrete next-cycle items the kernel and ecosystem need before the first non-founder tester sits at the prompt.
+> MVP iron-validated 2026-05-15; the kernel boots to a **typeable** shell on real hardware. The post-MVP hardening arcs — **1.30.x** keyboard, **1.31.x** storage (NVMe / AHCI / USB-MS / RAM-disk / GPT + ext2/4 read), **1.32.x** networking (r8169 + DHCP, iron-COMPLETE), **1.33.x** ext2/4 WRITE, **1.34.x** FAT-family — are all **shipped + (mostly) iron-validated**. Their per-cut detail lives in the agnos CHANGELOG + [`state.md`](state.md) + the iron logs, not here. What remains forward in this queue:
 
-### 1.30.0 → 1.30.5 — Keyboard input (code complete, iron-gated)
+### ISO Stage-4 cut + distribution (queued)
 
-Native XHCI + USB-HID-boot driver in `agnos/kernel/arch/x86_64/usb/`. Modern UEFI firmware does not emulate PS/2 over XHCI post-`ExitBootServices`; the legacy port 0x60 path is silent. Native bus + class driver is the real-answer fallback. Scoped: [`../archive/usb-hid-keyboard-driver-shipped.md`](../archive/usb-hid-keyboard-driver-shipped.md). **All 5 phases landed across 1.30.0 → 1.30.5**; the cycle-arc framing (one section per minor) has been collapsed to one section since the gate-to-ship variable is now iron-side, not code-side.
+The boot pipeline currently flashes via `install-usb.sh` directly. ISO Stage-4 cut packages the kernel + gnoboot + userland into a distributable live image (per [`iso-stage4-plan.md`](iso-stage4-plan.md)). Was a pre-MVP gate; now the *distribution* gate — the typeable shell + networking + storage trio + read+write filesystems are all in place, so the ISO is the remaining step before the first non-founder boot session. (No fixed version label — the original `1.33.x` slot was reabsorbed by the ext2/4-WRITE arc; this lands when the cut is scheduled.)
 
-| Phase | Scope | LOC | Status |
-|---|---|---|---|
-| 1 | PCIe discovery + capability reads (`xhci_probe`, MMIO map, `MaxSlots`/`MaxIntrs`/`MaxPorts`/`CSZ`/`DBOFF`/`RTSOFF` cache) | ~250 | ✅ Landed + iron-validated. kcp=0x30. |
-| 2 | Controller init (halt + reset + DCBAA + cmd ring + event ring + ERST + start) | ~450 | ✅ Landed + iron-validated. kcp=0x31. |
-| 2.5 | USBLEGSUP BIOS hand-off + USBLEGCTLSTS SMI-disable | ~55 | ✅ Landed + iron-validated. Renoir reports `already OS-owned`. |
-| 3 | Port enum + device address (Enable Slot + Address Device + Get Descriptor + HID predicate) | ~600 | ⚠️ **Code landed**; iron-blocked by silent-absorb arc on AMD FCH 1022:1639 (12 hypotheses falsified across Attempts 32-52; arc closed as "non-spec gate, parallel-track only" per the Attempt 52 decoupling decision). Phase 3 enumerates cleanly on QEMU xhci-pci. kcp=0x32 stamps on QEMU. |
-| 4 | HID boot protocol + interrupt endpoint (Configure Endpoint + Set Protocol = boot + transfer ring) | ~320 | ✅ Landed in agnos 1.30.5 (2026-05-17); compile-verified. kcp=0x33 stamps inside `hid_kbd_configure` on success. **Dormant on archaemenid** (no slot addressed → not called); QEMU is the active validation surface. |
-| 5 | Poll-driven `kb_buf` feed (HID usage → PS/2 set-1 scancode + modifier translation + report differ + event-ring drain) | ~280 | ✅ Landed in agnos 1.30.5 (2026-05-17); compile-verified. `kb_has_key()` calls `hid_poll()` so the existing `scancode_to_ascii` consumer path lights up unchanged. **Dormant on archaemenid** (same root cause as Phase 4). **This is the phase that closes the "typeable" gate.** |
+### 1.35.x — catchup tidbits (networking + device cleanup) — **ACTIVE cycle**
 
-**Typeable-shell-on-iron ships when**: the archaemenid silent-absorb arc unblocks (or another iron target proves out — Skytech Intel / a Pi 4 / different AMD silicon — see [`iron-nuc-zen-log-mvp.md`](iron-nuc-zen-log-mvp.md) § Attempt 54 prep + carry-forward). The CODE is complete and QEMU-testable today; the IRON path is gated on a Phase 3 enumeration unblock, not on more Phase 4/5 work.
-
-**Iron-burn cadence**: per `feedback_iron_burns_block_other_work`, burns are bundled with other "ready-to-ship" work to amortize single-machine disruption. **Next burn (Attempt 54) is externally gated on kriya 0.3.0 (M2 file operations) ship** — see [`iron-nuc-zen-log-mvp.md`](iron-nuc-zen-log-mvp.md) § Attempt 54 prep for the pre-bound outcome matrix and protocol.
-
-### 1.31.x — Storage device backends (active, NVMe arc closed 2026-05-20)
-
-User-directed scope pivot 2026-05-20: 1.31.x is the **storage devices** cycle. Networking moved out to 1.32.x (next cycle). NVMe was the first and most-needed backend (archaemenid has NVMe; every modern x86 host has NVMe); landing it first unblocks every real-iron storage path that doesn't require a USB stick.
-
-**1.31.0** — cycle-open cut (2026-05-20). Lean-by-default build via `KTEST` + `XHCI_VERBOSE` compile gates, FB-absent guard, stale Attempt-N prose cleanup, new `agnos/docs/development/build.md`. No storage engineering — just the production-default-lean posture that makes subsequent storage cuts easier to validate. **Test 1.31.0 as the base; fixes for it go in 1.31.x patches.**
-
-**1.31.1 (queued — NVMe arc)** — five phases sitting in `[Unreleased]` 2026-05-20, ready to cut as a single tagged release:
-- Phase 1: PCI class probe + BAR0 UC-remap + CAP/VS decode + controller disable
-- Phase 2: admin queue + IDENTIFY CONTROLLER + IDENTIFY NAMESPACE
-- Phase 3: Create I/O CQ + Create I/O SQ + blocking Read
-- Phase 4: Write + multi-LBA + PRP1 / PRP2 / PRP-list dispatch
-- Phase 5: `kernel/core/block.cyr` tag-dispatch abstraction (virtio-blk + nvme behind one `blk_*` API; NVMe overrides virtio when both present)
-- ~940 LOC across `kernel/core/nvme.cyr` + new `kernel/core/block.cyr`
-- QEMU end-to-end validated with byte-exact disk persistence (`CYRIUS!!` pattern round-trips through MMIO + DMA + I/O CQ)
-- MSI-X true-IRQ-driven completion **deferred** — xhci precedent (enable in PCI config, poll on timer ticks) covers correctness; real vector dispatch is a cross-driver framework slot, not an NVMe-only blocker
-
-**1.31.x — storage device backends (status after 1.31.1 cut)**
-
-Each backend gets its own patch cycle. Block-layer dispatch abstraction landed in NVMe Phase 5 means each new backend just registers itself via `blk_register_*(capacity, lba_bytes)` and implements the three wrapper functions (`*_blk_read` / `*_blk_write` / `*_blk_read_sectors`). The branch-arm-count discipline from CLAUDE.md applies — reach for fn-ptr dispatch only when the branches start to repeat meaningfully.
-
-| Patch slot | Backend | Status | Scope estimate |
-|---|---|---|---|
-| **1.31.0** | NVMe Phase 1-5 + block-layer dispatch | ✅ shipped 2026-05-20 (iron debut Attempt 80 — Crucial P3 2 TB) | ~940 LOC |
-| **1.31.1** | **AHCI / SATA Phase 1-4 + GPT Phase 1-3** | ✅ shipped 2026-05-20 (iron debut Attempt 81 — WD Blue SA510 2 TB; PASS-WITH-CAVEAT — post-RW IDENTIFY hang; three carry-forward patches landed in 1.31.2 `[Unreleased]`) | ~1,970 LOC (AHCI ~1,100 + GPT ~870) |
-| **1.31.2** | **AHCI carry-forward (3 patches) + USB Mass Storage Phase 1-4 + 2.5 + 2.6 + 2.7** | ✅ shipped 2026-05-21 (AHCI iron-validated Attempt 82 — full success rubric cleared; USB-MS iron Attempts 83/84/85/86 partial/falsified — Phase 2.7 Reset Recovery executed correctly on iron but post-recovery TUR still failed with `CSW signature mismatch` → eight-bug audit for 1.31.3) | ~990 LOC USB MS + AHCI patches |
-| **1.31.3** | **USB MS Phase 2.8 — eight-bug repair stack** (`XHCI_BULK_TIMEOUT_SPINS=200M` + strict TRB-pointer matching + SHORT_PACKET residue check + `msc_scsi_exec` unified retry+recover + drain repositioned + Reset Endpoint CSE tolerance + 64-bit `set_tr_dequeue`) | ✅ shipped 2026-05-21 (iron debut Attempt 87 PASS — full INQUIRY / TUR / RC10 chain on real Silicon Motion silicon; third storage-class iron debut closes after NVMe@80 + SATA@81) | ~200 LOC delta |
-| **1.31.4** | **RAM-disk backend + VirtIO 1.x modern virtio-blk-pci** | ✅ shipped 2026-05-21 (iron Attempt 88 PASS as no-regression burn — full storage trio re-registered cleanly, kernel reaches scheduler init; RAM-disk + VirtIO themselves QEMU-only by construction — RAM-disk is `pmm_alloc`-backed, VirtIO has no bare-metal device) | ~640 LOC (RAM-disk ~140 + VirtIO ~500 rewrite of 181-LOC transitional 0.9.5) |
-| **1.31.5** | **ext2 / ext4 read-only filesystem (Phase 1-4: superblock+BGDT+inode, indirect tree, dir walk + `ls`/`cat` + VFS_EXT2_FILE, ext4 extents)** | ✅ shipped 2026-05-21 (QEMU green on both ext2 + ext4 images byte-exact; iron burn 89 PENDING) | ~870 LOC across `kernel/core/ext2.cyr` + vfs.cyr + shell.cyr; build 520,920 → **568,960 B** (+47 KB); multi-source convergent audit at [`ext2-ext4-extents-prior-art.md`](ext2-ext4-extents-prior-art.md) (Linux v6.6 + FreeBSD + OpenBSD + Haiku + spec). Pre-iron-burn audit at `iron-nuc-zen-log.md` § Attempt 89. |
-| **1.31.6** | **Cleanup / hardening / audit cycle** *(post-greenfield discipline)* | planned next | Eight bites: (A) ext2 input validation sweep (~80 LOC); (B) fatfs BPB validation sweep (~30 LOC); (C) drop ext2 boot-time smoke hook (-40 LOC); (D) save Cyrius `var X[N]` byte-vs-u64 gotcha as feedback memory + CLAUDE.md note; (E) pre-iron-burn audit doc; (F) state.md / roadmap / iron-log sweep; **(G) multi-backend ext2 probe** — walks all registered backends for `0xEF53` magic at LBA 2-3 instead of using only `blk_active` (~80 LOC); **(H) partition-aware mount** — `ext2_init_partition(first_lba)` via GPT consumption (~50-100 LOC). Bite (G) is **gating for iron burn 89** since archaemenid's NVMe is btrfs (in use, can't reformat); iron FS surface = 125 GB Silicon Motion USB stick reformatted ext2/4 (per user decision 2026-05-21). ~270 LOC + ~200 audit prose. |
-| **1.31.7** | **ext4 64BIT support (Phase 5)** | planned | Modern `mkfs.ext4` defaults to 64bit even for filesystems well under 16 TB. Scope: BGDT entry size 32 → 64 bytes + block# width 32 → 64 throughout (~200 LOC). Closes the audit gap and ensures any real-world Linux ext4 partition mounts. Pre-burn derisk via `tune2fs -l /dev/nvme0n1p2 \| grep 64bit` informs scope timing; 1.31.7 is pinned regardless to close the audit. |
-| **1.32.0** | **Networking arc — TCP/UDP server primitives + DHCP client + r8169 driver Phase 1-4 + iron debut** | ✅ shipped 2026-05-22 (cycle opened + closed same-day; Iron Attempts 92 + 93 burned on archaemenid; **Attempt 93 verified DHCP gate fix on iron** — `dhcp: DISCOVER` egresses through r8169 path; OFFER-timeout + i225-V + BBS/MUD carry-forward to 1.32.1) | ~1,000 LOC across `net.cyr` + `r8169.cyr` + `main.cyr`. Build 578,432 → 601,392 B. See § *1.32.x cycle* in state.md for full bite table. |
-| **1.32.1** | **r8169 driver-level OFFER-timeout debug** (H1 PHY-not-configured / H7 TX OWN stuck / H8 RX OWN stuck) — networking-arc-continued cycle | **OPEN 2026-05-22** (lean cycle-open: VERSION bump + CHANGELOG `[1.32.1]` header + tracking surface; no code touches yet; audit doc §5b extension as opening move) | Audit doc first per [[feedback_iron_burns_block_other_work]] then discriminator instrumentation (CMOS-bank stamps per [[feedback_no_serial_on_iron]]) then driver patches. Iron Attempt 94+ target: full DHCP cycle on archaemenid. Out-of-cycle carry-forward continues for i225-V driver bite C (Intel iron pending) + BBS/MUD userland. |
-| **1.32.5** | **Networking arc CLOSE-OUT — exercise the 1.32.4 DHCP 10-bundle on iron** | **pinned** (opens after 1.32.4 close, conditional on Attempt 102 PASS landing outbound L3) | Re-enable `dhcp_init()` in the boot block so the landed-but-unexercised 10-bundle from [`dhcp-offer-downstream-audit.md`](dhcp-offer-downstream-audit.md) actually runs on iron: Fix A BOOTP `op==2` gate, Fix B magic-cookie validation, Fix C/D options-walker invariants (audited OK, no-code-change), `[0x88..0x8C]` CMOS ethertype/proto/port + listener-state stamps, `DHCP_FRAME_DUMP` compile-gated 64-B dump, `DHCP_STATIC_IP` fallback, ACK-matcher mirror. Plus opportunistic: TCP accept-success scenario-1 iron validation (`tcp-listen-smoke.sh` SLIRP-blocked in QEMU; now reachable with r8169 working). Closes the 1.32.x networking arc. **i225-V driver port is explicitly NOT in this cycle** — moves to the cycle that pairs with i9 / Intel-NIC iron post-archaemenid-migration. |
-| **1.33.x** | **WRITE cycle — ext2/ext4 mutation** | **pinned** | Cycle theme: block/inode allocator (bitmap walk + cursor), dirent insertion/removal, file create/truncate/unlink, mkdir/rmdir, write + journal-less commit semantics. ~1,500+ LOC; multi-source audit doc first per `feedback_redesign_dont_reinvent`. ext2 has no journal (spec-defined); power-loss = fsck-required image. |
-| **deferred to plug-and-play cycle (pre-1.35.0)** | **Optical via USB MS (SCSI MMC profile)** *(was bundled with 1.31.2; pulled out 2026-05-21)* | deferred — currently *derps archaemenid at cold boot* if HP external Blu-ray is plugged in pre-power-on (USB hand-off / firmware quirk; resolves when plugged post-boot, but iron arc isn't set up for hot-add yet). Proper home is the plug-and-play cycle (hot-add device support), which would also fix the cold-plug quirk as a side effect. **Alternative iron path**: older Intel All-in-One in the Intel-stocked stable has an *internal* CD/DVD drive — likely SATA ATAPI (would revive the "punted ATAPI/AHCI passthrough" path on a non-archaemenid surface). Choose path when the cycle opens. | ~200 LOC additional over USB MS for the SCSI MMC profile + non-512-B-sector plumbing; +~800 LOC if ATAPI/AHCI lane gets reopened for the AllInOne |
-| punted | ~~Optical (ATAPI / AHCI passthrough on archaemenid)~~ | **un-punted as alternative path** — see "deferred to plug-and-play cycle" row above. Was originally superseded by USB MS, but the archaemenid USB-optical cold-boot quirk surfaces ATAPI/AHCI on AllInOne as a parallel option. | — |
-
-**Iron-validation coverage through 1.32.0**: NVMe (Crucial P3, Attempt 80) + SATA (WD Blue SA510, Attempts 81+82) + USB MS (Silicon Motion stick, Attempt 87) + 1.31.4 no-regression (Attempt 88) + 1.31.5 no-regression (Attempt 89) + 1.31.6 ext4 victory lap (Attempt 90) + 1.31.7 ext4 64BIT + shell-UX (Attempt 91) + **1.32.0 r8169 iron debut (Attempt 92 PARTIAL — r8169 Phase 1-4 byte-clean, DHCP gate predicate bug surfaced + fixed same-day) + 1.32.0 DHCP gate-fix verification (Attempt 93 PARTIAL — `dhcp: DISCOVER` egresses through r8169 path on iron; new failure mode `dhcp: OFFER timeout` = 1.32.1 carry-forward)**. RAM-disk is `pmm_alloc`-backed (no hardware variable — see "RAM-disk iron exercise" in the opportunistic block for the optional `RAMDISK_ENABLE=1` cosmetic burn); VirtIO-blk has no bare-metal device. Optical defers to the plug-and-play cycle (pre-1.35.0). **Cycle sequencing post-1.32.0**: 1.32.1 = r8169 driver-level OFFER-timeout debug + i225-V (queued for Intel iron) + BBS/MUD userland (out-of-cycle); 1.33.x = WRITE cycle (ext2/ext4 mutation paths).
-
-### 1.32.x — Networking on iron (1.32.0 CLOSED 2026-05-22; 1.32.1 OPEN 2026-05-22 — networking-arc-continued)
-
-Originally planned as 1.31.x; storage took priority 2026-05-20 because the AMD archaemenid iron path needs real disk access before any user-facing FS work makes sense. Cycle opened + closed same-day on 2026-05-22 as **1.32.0 feature-complete**.
-
-**Shipped at 1.32.0**:
-- `kernel/core/net.cyr` (~543 LOC added) — TCP server primitives (`tcp_listen`/`tcp_bind`/`tcp_accept` + passive-open SYN handler + SYN_RCVD branch + ARP REQUEST handler), UDP server primitives (`udp_bind`/`udp_recv_from`/`udp_send_from` + 8-listener table), DHCP client (RFC 2131 DISCOVER → OFFER → REQUEST → ACK with full BOOTP header + option parsing).
-- `kernel/core/r8169.cyr` (~400 LOC) — first real-iron NIC driver: PCI probe + MAC read + soft reset (Phase 1), 16-entry RX descriptor ring + per-buffer 4 KB pages + `r8169_poll` (Phase 2), 16-entry TX descriptor ring + `r8169_send` + TPPoll NPQ kick (Phase 3), NIC dispatcher `nic_ready` / `nic_send` / `nic_poll` with priority r8169 > virtio_net (Phase 4). Multi-source convergent per [`network-arc-prior-art.md`](network-arc-prior-art.md) (Linux `r8169_main.c` + FreeBSD `if_re.c` + OpenBSD `re.c` + NetBSD `re.c` + Haiku + RTL8168 datasheet).
-- `kernel/core/main.cyr:655` DHCP gate predicate fix (`if (vnet_active != 0 || nic_ready() != 0)`) — explicit OR with generic NIC abstraction on RHS so future backends extend in-place without gate edits.
-- `kernel/core/virtio_net.cyr` (148 LOC, unchanged from prior cycles) — still works for QEMU; r8169 takes priority on iron.
-
-**Iron evidence**: Attempt 92 PARTIAL lit r8169 Phase 1-4 byte-clean on archaemenid (BAR2 byte-matched lspci, MAC byte-matched lspci, chip-rev decoded, rings up); same-day gate fix landed; Attempt 93 PARTIAL verified the fix on iron (`dhcp: DISCOVER` egresses through the r8169 path for the first time). Storage trio + GPT + ext4 mount + kybernet + shell all byte-clean — no regression. MVP gate stayed green at Attempt 93.
-
-**Carry-forward to 1.32.1**: r8169 driver-level OFFER-timeout debug (H1 PHY-not-configured / H7 TX OWN stuck / H8 RX OWN stuck — the originally-anticipated audit hypothesis surface, now reachable post-gate-fix); i225-V driver port (bite C, ~700-1100 LOC, pending Intel-NIC iron); BBS + MUD userland consumer apps (separate standalone repos, out-of-cycle by design). See state.md § *1.32.1 carry-forward* for full breakdown.
-
-### 1.33.x — ISO Stage-4 cut + distribution (queued)
-
-The boot pipeline currently flashes via `install-usb.sh` directly. ISO Stage-4 cut packages the kernel + gnoboot + userland into a distributable live image (per [`iso-stage4-plan.md`](iso-stage4-plan.md)). Was a pre-MVP gate; now becomes the *distribution* gate once the typeable shell + network + storage trio is in place.
-
-### 1.35.x — catchup tidbits (networking + device cleanup)
-
-Small, well-scoped items that accreted as deferrals during the storage (1.31.x) and networking (1.32.x) arcs. Not blockers for the WRITE arc (1.33.x) or the install cycle; they catch up the surface once the demo→base mutation work lands. Grouped here so they're not lost in per-release "Deferred" notes.
+The current agnos cycle. Small, well-scoped items that accreted as deferrals during the storage (1.31.x), networking (1.32.x), and FAT-family (1.34.x) arcs — caught up now that the demo→base mutation work (1.33.x WRITE) has landed. Grouped here so they're not lost in per-release "Deferred" notes.
 
 - **DNS — stub resolver client** — UDP-based A-record lookup against the configured resolver (DHCP option 6 already arrives in the OFFER; grab it there). Needs **UDP ingress + bind** wired (the egress side `udp_build`/`udp_send` exists; the receive/bind path is the gap flagged in the agnos CHANGELOG and the `dig` planning entry). RFC 1035 message format (header + question + answer-section walk), recursion-desired, single-question queries. Substrate for the **`dig`** userland tool (captured in [[project_tools_stable_ideas]]) and the precondition for any name-based networking (`ark`/`nous` fetch, `hoosh` gateway hostnames). Multi-source audit-doc-first per [[feedback_redesign_dont_reinvent]] (musl `res_*` + OpenBSD `asr` + Plan 9 `ndb/dns` + RFC 1035/3596). ~200-300 LOC.
 - **Legacy virtio-net interface** — the 1.34.x cleanup bite: stand up a separate legacy-mode init path (BAR0 I/O ports + `QUEUE_PFN`) behind a runtime cap-list-absent fallback. Full analysis preserved in [`virtio-net-legacy-layout-audit.md`](virtio-net-legacy-layout-audit.md) § "Post-implementation update". Not iron-relevant (archaemenid uses r8169); QEMU-completeness only.
@@ -412,18 +220,12 @@ Small, well-scoped items that accreted as deferrals during the storage (1.31.x) 
 
 ### Parallel cycle work (no version pin — opportunistic)
 
-These can land in any 1.30.x patch without blocking the gate cycle:
+These can land in any patch without blocking a gated cycle:
 
-- **RAM-disk iron exercise** (post-1.31.4, pre-1.35.0) — rebuild agnos 1.31.4+ with `RAMDISK_ENABLE=1` and burn on archaemenid to see the `ramdisk: 512 LBAs x 512B (64 pages; virtio primary)` line print on iron. Low information value (RAM-disk is `pmm_alloc`-backed; hardware tells us nothing new) — purely for CHANGELOG completeness so the 1.31.4 RAM-disk bite carries an iron mention. Bundle with any other iron burn that's already scheduled per `feedback_iron_burns_block_other_work`; don't stand up a dedicated burn for it.
-
-
-
-- **kriya v0.3.0** — M2 file-operations milestone (`cp` / `mv` / `rm` / `mkdir` / `touch` / `ln`) per [kriya M2](https://github.com/MacCracken/kriya/blob/main/docs/development/roadmap.md#m2--file-operations-v030). **Co-gates iron Attempt 54 alongside the active Cyrius agent cycle** — burn fires after BOTH gates release (single-machine dev setup; burns disrupt unrelated work; per `feedback_iron_burns_block_other_work`).
-- **commandress v0.2.0** — minimum viable prompt (config loader + cwd segment + exit-code segment + render pipeline) per [commandress M1](https://github.com/MacCracken/commandress/blob/main/docs/development/roadmap.md#m1--minimum-viable-prompt-v020)
-- **agnos kernel hardening** — single-line correctness fixes surfaced during 1.30.x iron burns; SMP AP-wakeup IPI gating decided post-Attempt-54 outcome
-- **gnoboot 0.3.x** — only as iron burns surface bootloader-side bugs; otherwise stable at 0.2.0 per the "lean is good" stance after the CMOS-removal cleanup track
-- **Cyrius bugs filed during iron work** — non-zero gvar-init issue currently filed at `cyrius/docs/development/issues/2026-05-15-cyrius-nonzero-gvar-init-not-honored.md`; the cyrius repo handles its own cycle (per `feedback_cyrius_hands_off`)
-- **Framebuffer — quiet-boot GOP rendering regression** — `fb_console` renders cleanly when BIOS quiet-boot is **OFF** (legacy VGA-style fallback, lower res) but garbles glyphs when quiet-boot is **ON** (GOP framebuffer at native 1080p+). Surfaced 2026-05-16 during Attempts 33–34: bisection initially pointed at Phase 2.5 USBLEGSUP claim, but Attempt 34 (Phase 2.5 disabled, quiet-boot ON) still corrupts — quiet-boot is the actual variable. **Iron-burn BIOS workaround**: Quiet Boot **OFF**, USB Legacy Support **On/Auto**, XHCI **Enabled**, Mass Storage **Enabled**. **Real fix** (defer to opportunistic): either root-cause the GOP rendering regression (what changed between Attempt 32 clean and Attempt 33+ garbled — gnoboot GOP capture, fb pixel-format/stride assumption, MTRR/PAT cache attributes on FB region) or land dual rendering paths (legacy VGA text-mode at `0xB8000` + linear GOP). Not blocking MVP — CMOS post-mortem (kcp slot) carries enough signal for phase-gate verification; VGA-mode visual is readable for surface triage.
+- **agnos kernel hardening** — single-line correctness fixes surfaced during iron burns; SMP AP-wakeup IPI gating remains hardware-in-the-loop-gated.
+- **gnoboot** — touched only as iron burns surface bootloader-side bugs; otherwise stable per the "lean is good" stance.
+- **Cyrius bugs filed during iron work** — surfaced to the user / cyrius repo, which handles its own cycle (per [[feedback_cyrius_hands_off]]).
+- **AMD Zen Quiet-Boot scanout residue** *(parked)* — `fb_console` renders cleanly when BIOS quiet-boot is **OFF** (VGA-spec fallback) but bands glyphs when **ON** (GOP framebuffer at native res). MVP-unblocked via the VGA-spec path; closed-out 2026-05-20 with the bug surviving (both GOP SetMode lever forms falsified). Resumption options: HUBP `clear_tiling` port OR a shadow-buffer FB-console eval. Pin: [[project_amd_zen_scanout_residue]].
 
 ### Public-Beta path (Q4 2026 — Phase 13A items 4-7)
 
@@ -645,51 +447,51 @@ Detailed items tracked in respective repos:
 
 ### Named Subsystems (30+)
 
-All subsystems are standalone repos at `/home/macro/Repos/{name}/`.
+All subsystems are standalone repos at `/home/macro/Repos/{name}/`. **Versions intentionally omitted** — they drift fast; live per-repo versions + Cyrius pins live in [`state.md`](state.md) + [`planning/shared-crates.md`](planning/shared-crates.md). The Port column flags only what is **not yet** Cyrius-native (the forward signal); everything else is ported (✅) or Cyrius-native.
 
-| Name | Role | Repo | Version | Cyrius Port |
-|------|------|------|---------|-------------|
-| **agnos** | AGNOS kernel | `MacCracken/agnos` | 1.29.0 | **Native** |
-| **cyrius** | Sovereign compiler | `MacCracken/cyrius` | 5.11.24 | **Native** |
-| **kybernet** | PID 1 binary | `MacCracken/kybernet` | 1.2.1 | **Done** |
-| **argonaut** | Init system (library) | `MacCracken/argonaut` | 1.7.0 | **Done** |
-| **agnosys** | Kernel interface | `MacCracken/agnosys` | 1.2.6 | **Done** |
-| **agnostik** | Shared types library | `MacCracken/agnostik` | 1.2.2 | **Done** |
-| **sigil** | Trust verification & crypto | `MacCracken/sigil` | 3.1.1 | **Done** |
-| **libro** | Audit chain | `MacCracken/libro` | 2.6.3 | **Done** |
-| **hoosh** | LLM inference gateway | `MacCracken/hoosh` | 2.0.0 | **Done** |
-| **avatara** | Divine archetype overlay | `MacCracken/avatara` | 2.3.0 | **Done** |
-| **ai-hwaccel** | GPU detection | `MacCracken/ai-hwaccel` | 2.2.2 | **Done** |
-| **kavach** | Sandbox execution | `MacCracken/kavach` | 3.2.1 | **Done** |
-| **abaco** | Math/number theory | `MacCracken/abaco` | 2.2.0 | **Done** |
-| **bote** | MCP core | `MacCracken/bote` | 2.7.2 | **Done** |
-| **t-ron** | MCP security monitor | `MacCracken/t-ron` | 2.1.4 | **Done** |
-| **daimon** | Agent orchestrator | `MacCracken/daimon` | 1.2.3 | **Done** |
-| **agnoshi** | AI shell | `MacCracken/agnoshi` | 1.3.2 | **Done** |
-| **hadara** | Culture modeling | `MacCracken/hadara` | 1.0.0 | **Native** |
-| **shravan** | Audio codecs | `MacCracken/shravan` | 2.3.2 | **Done** |
-| **mabda** | GPU foundation | `MacCracken/mabda` | 3.0.0-rc.2 | **Done** — pre-GA soak before stdlib fold |
-| **sankoch** | Lossless compression | `MacCracken/sankoch` | 2.2.5 | **Done** |
-| **itihas** | History/versioning | `MacCracken/itihas` | 2.2.0 | **Done** |
-| **bsp** | BSP geometry library | `MacCracken/bsp` | 1.1.2 | **Done** |
-| **cyrius-doom** | DOOM engine | `MacCracken/cyrius-doom` | 0.26.2 | **Native** — held on 5.7.48 pin |
-| **ark** | Unified package manager | `MacCracken/ark` | 0.8.0 | **Done** — extreme pin lag (5.1.10) |
-| **nous** | Package resolver | `MacCracken/nous` | 1.1.2 | **Done** |
-| **phylax** | Threat detection engine | `MacCracken/phylax` | 1.1.1 | **Done** |
-| **shakti** | Privilege escalation | `MacCracken/shakti` | 0.3.0 | **Done** |
-| **hisab** | Higher math | `MacCracken/hisab` | 2.2.2 | **Done** |
-| **owl** | `cat`/`bat` replacement | `MacCracken/owl` | 1.3.6 | **Native** — M0–M5 shipped; M3b blocked on vyakarana |
-| **vyakarana** | Source-code grammar / tokenizer | `MacCracken/vyakarana` | 2.2.1 | **Native** — M0 scaffold shipped 2026-04-23; M1 shell grammar in flight |
-| **bhava** | Emotion/sentiment | `MacCracken/bhava` | 2.0.0 | Pending |
-| **takumi** | Package build system | `MacCracken/takumi` | 0.8.0 | **In port** — pinned Cyrius 5.5.23, parity work in flight |
-| **aegis** | System security daemon | `MacCracken/aegis` | 1.0.0 | **Done** — hit v1.0 in v5.10.x window |
-| **aethersafha** | Desktop compositor | `MacCracken/aethersafha` | 0.1.0 | Pending |
-| **mela** | Agent marketplace | `MacCracken/mela` | 0.1.0 | Pending |
-| **agnova** | OS installer | `MacCracken/agnova` | 0.1.0 | Pending |
-| **seema** | Edge fleet management | `MacCracken/seema` | 0.1.0 | Pending |
-| **samay** | Task scheduler | `MacCracken/samay` | 0.1.0 | Pending |
-| **cyim** | Sovereign text editor (VIM-inspired) | `MacCracken/cyim` | 1.7.0 | **Native** — vyakarana consumer; cyim-lsp 1.5.0 companion shipped |
-| **bazaar** | Community package repo | `MacCracken/bazaar` | — | — |
+| Name | Role | Repo | Port |
+|------|------|------|------|
+| **agnos** | AGNOS kernel | `MacCracken/agnos` | Native |
+| **cyrius** | Sovereign compiler | `MacCracken/cyrius` | Native |
+| **kybernet** | PID 1 binary | `MacCracken/kybernet` | ✅ |
+| **argonaut** | Init system (library) | `MacCracken/argonaut` | ✅ |
+| **agnosys** | Kernel interface | `MacCracken/agnosys` | ✅ |
+| **agnostik** | Shared types library | `MacCracken/agnostik` | ✅ |
+| **sigil** | Trust verification & crypto | `MacCracken/sigil` | ✅ |
+| **libro** | Audit chain | `MacCracken/libro` | ✅ |
+| **hoosh** | LLM inference gateway | `MacCracken/hoosh` | ✅ |
+| **avatara** | Divine archetype overlay | `MacCracken/avatara` | ✅ |
+| **ai-hwaccel** | GPU detection | `MacCracken/ai-hwaccel` | ✅ |
+| **kavach** | Sandbox execution | `MacCracken/kavach` | ✅ |
+| **abaco** | Math/number theory | `MacCracken/abaco` | ✅ |
+| **bote** | MCP core | `MacCracken/bote` | ✅ |
+| **t-ron** | MCP security monitor | `MacCracken/t-ron` | ✅ |
+| **daimon** | Agent orchestrator | `MacCracken/daimon` | ✅ |
+| **agnoshi** | AI shell | `MacCracken/agnoshi` | ✅ |
+| **hadara** | Culture modeling | `MacCracken/hadara` | Native |
+| **shravan** | Audio codecs | `MacCracken/shravan` | ✅ |
+| **mabda** | GPU foundation | `MacCracken/mabda` | ✅ — pre-GA soak before stdlib fold |
+| **sankoch** | Lossless compression | `MacCracken/sankoch` | ✅ |
+| **itihas** | History/versioning | `MacCracken/itihas` | ✅ |
+| **bsp** | BSP geometry library | `MacCracken/bsp` | ✅ |
+| **cyrius-doom** | DOOM engine | `MacCracken/cyrius-doom` | Native |
+| **ark** | Unified package manager | `MacCracken/ark` | ✅ |
+| **nous** | Package resolver | `MacCracken/nous` | ✅ |
+| **phylax** | Threat detection engine | `MacCracken/phylax` | ✅ |
+| **shakti** | Privilege escalation | `MacCracken/shakti` | ✅ |
+| **hisab** | Higher math | `MacCracken/hisab` | ✅ |
+| **owl** | `cat`/`bat` replacement | `MacCracken/owl` | Native |
+| **vyakarana** | Source-code grammar / tokenizer | `MacCracken/vyakarana` | Native |
+| **bhava** | Emotion/sentiment | `MacCracken/bhava` | **Pending** |
+| **takumi** | Package build system | `MacCracken/takumi` | **In port** (`rust-old/` authoritative until parity) |
+| **aegis** | System security daemon | `MacCracken/aegis` | ✅ |
+| **aethersafha** | Desktop compositor | `MacCracken/aethersafha` | **Pending** |
+| **mela** | Agent marketplace | `MacCracken/mela` | **Pending** |
+| **agnova** | OS installer | `MacCracken/agnova` | **Pending** |
+| **seema** | Edge fleet management | `MacCracken/seema` | **Pending** |
+| **samay** | Task scheduler | `MacCracken/samay` | **Pending** |
+| **cyim** | Sovereign text editor (VIM-inspired) | `MacCracken/cyim` | Native |
+| **bazaar** | Community package repo | `MacCracken/bazaar` | — |
 
 ### Cross-Cutting Concerns
 
@@ -739,4 +541,4 @@ Unified Consciousness Model paper and bhava roadmap tracked in `MacCracken/bhava
 
 ---
 
-*Last Updated: 2026-05-11 (Cyrius v5.11.0 cut day) | Next Review: closed-beta cut (~early June 2026)*
+*Last Updated: 2026-05-26 (forward-facing restructure — shipped arcs moved to CHANGELOG/state.md) | Next Review: closed-beta cut (~early June 2026)*

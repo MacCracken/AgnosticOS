@@ -3,11 +3,11 @@
 > **A**rtificial **G**eneral **N**etwork **O**perating **S**ystem
 
 [![License](https://img.shields.io/badge/license-GPLv3-blue)](LICENSE)
-[![Kernel](https://img.shields.io/badge/kernel-AGNOS%201.32.7-orange)](https://github.com/MacCracken/agnos)
+[![Kernel](https://img.shields.io/badge/kernel-AGNOS%201.34.6-orange)](https://github.com/MacCracken/agnos)
 [![Language](https://img.shields.io/badge/Cyrius-6.0.1-red)](https://github.com/MacCracken/cyrius)
 [![Status](https://img.shields.io/badge/status-pre--beta-yellow)](docs/development/roadmap.md)
 
-**AGNOS** is a sovereign operating system written in **Cyrius** — a systems language with a 29KB seed, zero external dependencies, and a self-hosting compiler. The kernel is iron-validated on NUC AMD (Boot-to-Shell MVP, 2026-05-15). 30+ subsystems ported from Rust to Cyrius. No Linux dependency at runtime. Live binary sizes, per-repo versions, and cycle state: [`docs/development/state.md`](docs/development/state.md).
+**AGNOS** is a sovereign operating system written in **Cyrius** — a systems language with a 29KB seed, zero external dependencies, and a self-hosting compiler. The kernel boots to a typeable shell on real AMD hardware (Boot-to-Shell MVP, 2026-05-15); since then the storage stack (NVMe / SATA / USB-MS), a real-iron networking stack (TCP/IP + DHCP over an r8169 NIC), and read+write filesystems (ext2/ext4, FAT12/16/32, exFAT) have all landed — storage, networking, and ext4 iron-validated; the FAT-family `fsck`-validated. 30+ subsystems ported from Rust to Cyrius. No Linux dependency at runtime. Live binary sizes, per-repo versions, and cycle state: [`docs/development/state.md`](docs/development/state.md).
 
 > *AGI doesn't run on infrastructure built for web apps. It runs on infrastructure built for AGI.*
 >
@@ -23,7 +23,7 @@
 |  +--------------------+ |  +--------------------+ |  +----------+ |
 |  | aethersafha        | |  | daimon             | |  | AGNOS    | |
 |  | Wayland compositor | |  | 144+ MCP tools     | |  | kernel   | |
-|  |                    | |  | Agent orchestrator | |  | 35+ sub- | |
+|  |                    | |  | Agent orchestrator | |  | 40+ sub- | |
 |  +--------------------+ |  +--------------------+ |  | systems  | |
 |  | agnoshi            | |  | hoosh              | |  | 26 sys-  | |
 |  | AI shell           | |  | LLM gateway        | |  | calls    | |
@@ -39,7 +39,7 @@
 
 | Layer | Component | Notes |
 |-------|-----------|-------|
-| **Kernel** | AGNOS | Cyrius-native, 35+ subsystems, iron-validated NUC AMD 2026-05-15 |
+| **Kernel** | AGNOS | Cyrius-native, 40+ subsystems, iron-validated NUC AMD 2026-05-15 |
 | **Compiler** | Cyrius | self-hosting from 29KB seed |
 | **PID 1** | kybernet | service supervision, signal/event-loop |
 | **Init** | argonaut | 3 boot modes (Server / Desktop / Minimal) |
@@ -92,7 +92,7 @@ All ship as `.agnos-agent` marketplace bundles:
 
 | Milestone | Status |
 |-----------|--------|
-| Sovereign kernel (35+ subsystems, iron-validated NUC AMD 2026-05-15) | Done |
+| Sovereign kernel (40+ subsystems, iron-validated NUC AMD 2026-05-15) | Done |
 | Cyrius compiler (self-hosting, 42+ stdlib modules) | Done |
 | 30+ subsystem ports (Rust to Cyrius) | Done |
 | Sovereign boot pipeline (Cyrius) — sovereign UEFI handoff via gnoboot | Done |

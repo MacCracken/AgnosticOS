@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — cross-cutting documentation sweep (2026-05-26)
+
+Genesis-repo docs brought current after the agnos 1.33.x ext2/4-WRITE + 1.34.x FAT-family arcs landed (companion to the agnos-repo doc sweep at agnos `[1.35.0]`).
+
+- **`README.md`** — kernel badge 1.32.7 → **1.34.6**; lead capability line rewritten (boots to typeable shell; storage / networking / read+write filesystems landed + iron-validation status); kernel subsystem count 35+ → **40+**.
+- **`docs/development/roadmap.md`** — **restructured to forward-facing** (per user directive): removed the stale top-matter quote-block, the completed "Status" section (Cyrius milestone table + ports dependency chain + monolith-complete + KPIs), and the completed 1.30.x-keyboard / 1.31.x-storage / 1.32.x-networking cycle-tracking (history now lives in CHANGELOG + state.md). Retained the maturity arc (demo→base transition reflected), strategic vision, beta path, active 1.35.x, forward governance phases 13B–24, and the ecosystem inventory (Version column dropped from the Named Subsystems table — defers to state.md/shared-crates.md). 742 → 544 lines.
+- **`docs/doc-health.md`** — ledger refreshed for the 2026-05-26 sweep. `state.md`, `architecture.md`, `philosophy.md`, `thesis.md`, and `installation/*` were already pointer-based/current from the 2026-05-25 pass; articles + prior-art docs left as dated artifacts.
+
 ### Added — `scripts/install-usb.sh` 2-partition + agnos-fs seed upgrade (2026-05-22)
 
 Provision-mode upgrade from single-partition (256 MiB ESP + rest unallocated) to **two-partition layout**: ESP + 25 GiB ext4 `agnos-fs` partition pre-seeded for the upcoming **1.33.x ext4 WRITE** bring-up arc.
