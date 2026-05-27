@@ -44,13 +44,40 @@ New guard primitive `ip_safe_payload_len(ip_total, ip_ihl, avail)` (`net.cyr`):
 
 ---
 
-## Pass-2+ candidates (not yet scheduled — confirm before opening)
-
 Reviewed and judged **already adequately guarded** in pass 1 (no change needed): `dns_skip_name` (per-byte `p >= len` + 128-iter compression-loop cap), `dns_parse_answer` (`p+10`/`p+rdlen` bounds), `tcp_parse_mss` (`p+1 < hdr_len`, `olen < 2`, `p+4 <= hdr_len`), `net_handle_tcp` (`tcp_hdr_len` min/max), `ntp_parse_unix` (caller gates `n >= 48`).
 
-Remaining lower-priority hardening to consider in a later pass:
-- **mmap arena**: behavior at arena exhaustion / `pmm_alloc_2mb` returning 0 mid-multi-page request (sys_mmap pre-counts, but re-confirm the partial-rollback path); `munmap` of a partially-mapped range.
-- **RTC**: `rtc_read_unix` century-register garbage paths; `civil_to_unix` on absurd inputs (already sanity-rejects `< 1970`).
-- **DNS cache**: confirm eviction can't loop; name-length edge at exactly 63/64.
-- **TCP**: sequence-number wrap edges in the in-order ring / retransmit accounting (B1/B2).
-- **UDP**: validate the UDP length field itself (currently derives length from the IP payload, which pass 1 made safe — a defense-in-depth check of the UDP length header is optional).
+---
+
+## Pass 2 (staged on 1.35.7, version TBD) — TCP sequence-number wrap + RTC year bound
+
+Worked the pass-1 candidate list. Two genuine gaps found and fixed; the rest reviewed clean.
+
+### Finding 1 (correctness/robustness): two unmasked `seq + 1` RCV.NXT stores
+
+A full sweep of every SND.NXT/RCV.NXT update (`store64(cb+32 / cb+40, ...)`) found that **all of them mask `& 0xFFFFFFFF` except two**: `net_handle_tcp` line ~1911 (SYN_SENT → ESTABLISHED, `store64(cb+40, seq+1)`) and line ~1994 (FIN_WAIT, same). TCP sequence numbers are 32-bit and wrap at 2³². The passive-open path already masks (`(seq+1) & 0xFFFFFFFF`); the active and FIN_WAIT paths didn't.
+
+- **Line 1911 is a real (rare) bug**: a peer whose ISN is near 2³² (e.g. `0xFFFFFFFF`) makes RCV.NXT = `0x100000000` instead of `0`. The peer's first data segment carries the wrapped seq `0`, which never equals the unwrapped `expected`, so the in-order accept (`seq == expected`) silently rejects every segment → the connection stalls. Probability is ~1-in-2³² per connection (random ISN), but it's a clean correctness gap with a one-character fix.
+- **Line 1994 is consistency**: FIN_WAIT is closing (next state CLOSED on the same path) so RCV.NXT isn't reused, but it should mask like every other update.
+
+**Fix**: `(seq + 1) & 0xFFFFFFFF` at both sites — matching the established pattern at lines 1610/1697/1854/1874/1963/1975. No new helper (would create two ways to do the same masking); inline match keeps the file consistent.
+
+### Finding 2 (defense): RTC has no upper-year bound
+
+`rtc_read_unix` rejects `year < 1970` but not absurdly-high years. A corrupt century/year CMOS register (e.g. `rtc_bcd` of a garbage byte → up to 165) could yield `year` in the thousands, which `civil_to_unix` happily converts to a far-future Unix time and seeds as the wall clock until NTP corrects it. **Fix**: also reject `year > 2200` → `rtc_read_unix` returns 0 (clock unset, `date` says so) rather than seeding a nonsense year; NTP sets it on first sync. Bounded-wrong-but-honest beats bounded-wrong-and-asserted.
+
+### Reviewed clean (no change)
+- **`tcp_rx_append`**: flow-control-clamped (`take > free`), power-of-two ring mask (`rxw & (RING-1)`), both copy halves bounded to the ring — safe; the data length is `ip_payload_len`-derived (pass-1-clamped).
+- **mmap arena exhaustion**: `sys_mmap` pre-counts free 2 MB regions (`pmm_count_2mb_free() < npages → 0`) before the alloc loop, so a mid-loop `pmm_alloc_2mb == 0` is unreachable in the single-core model. The partial-rollback path is therefore dead code today — **left as-is**, flagged for the future SMP arc ([[project_multithreading_future_arc]]) which must make the count→alloc atomic (a speculative rollback now would be untestable dead code).
+- **`munmap` partial range**: already per-region present/absent (idempotent) — a partial range is handled.
+- **DNS cache**: eviction is two bounded linear scans (empty/expired, else min-exp), no loop; name region `slot*64 + j` with `j < host_len ≤ 63 < 64` — no overflow; `len > 63` rejected. Safe.
+- **UDP length field**: `net_handle_udp` derives its copy length from `ip_payload_len` (pass-1-clamped) and caps at 1016 into kmalloc(1024)/`var[256]` buffers — a UDP-header-length cross-check would be pure defense-in-depth; skipped.
+
+### Validation
+
+The two fixes are inline wrap/range guards on existing arithmetic — no new behavior on valid paths, so validated by **no-regression** rather than a new hermetic gate: `tcp-smoke` 4/4 + `tcp-listen-smoke` 2/2 (handshake/data/FIN unaffected), `rtc-smoke` green (live ~2026 CMOS read still seeds, not spuriously rejected), `test.sh` 4/4, `check.sh` 11/11. The wrap fix's correctness is established by the masked-pattern consistency (now uniform across all 8 seq-update sites).
+
+---
+
+## Pass-3+ candidates (none scheduled)
+
+The pass-1/2 sweep covered the untrusted-ingress and new-arithmetic surfaces. No further hardening gaps identified in the 1.35.x additions. A future pass could revisit TCP under adversarial sequencing once a real remote peer (beyond SLIRP) exercises it, but nothing is outstanding. Structural cleanup of `net.cyr` is **1.36.x refactor** territory, not hardening.
