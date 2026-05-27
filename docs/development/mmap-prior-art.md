@@ -1,10 +1,10 @@
 # Anonymous `mmap` — Design + Prior-Art Note
 
-> **Status**: design complete, pre-implementation. Drives agnos **1.35.3**. Unlike the protocol bites (DNS/NTP), `mmap` is an internal VMM facility, not a wire-format port — so this is a focused design note (the POSIX/Linux `mmap` contract is the reference) rather than a multi-OS comparison.
+> **Status**: `mmap` SHIPPED at agnos **1.35.3**; `munmap` SHIPPED at **1.35.4** (§ 7). Unlike the protocol bites (DNS/NTP), `mmap`/`munmap` are internal VMM facilities, not wire-format ports — so this is a focused design note (the POSIX/Linux contract is the reference) rather than a multi-OS comparison.
 >
-> **Scope**: **anonymous** `mmap` only — hand a process a fresh, zero-filled region of its own address space. No file-backing, no `MAP_FIXED` placement games, no `mremap`. Per the roadmap "mmap (anonymous-only) — adds VMM surface, no filesystem work."
+> **Scope**: **anonymous** `mmap`/`munmap` only — hand a process a fresh, zero-filled region of its own address space and release it again. No file-backing, no `MAP_FIXED` placement games, no `mremap`. Per the roadmap "mmap (anonymous-only) — adds VMM surface, no filesystem work."
 >
-> **Created**: 2026-05-27.
+> **Created**: 2026-05-27. **Updated**: 2026-05-27 (munmap, § 7).
 
 ---
 
@@ -57,8 +57,47 @@ Two consequences this forces on `mmap`:
 
 ## 6. Out of scope (deferred)
 
-- **`munmap`** — the natural pair (syscall 28); v1 maps without reclaim (freed at process teardown). A small follow-on once a consumer churns mappings.
 - **4 KB-granular `mmap`** — requires a 4 KB user-paging level (a PT layer under the PDs); a large VMM arc that also unblocks finer KPTI. Until then `mmap` is 2 MB-granular.
 - **File-backed `mmap`** (`MAP_SHARED`/`MAP_PRIVATE` over an fd) — needs the VFS page-cache; far future.
 - **`MAP_FIXED` / placement hints / `mremap`** — anonymous-bump-allocator only for v1.
 - **Retrofitting ELF/stack onto `pmm_alloc_2mb`** — would fix the pre-existing aliasing hazard project-wide; noted as a separate cleanup, not bundled here.
+
+---
+
+## 7. `munmap` (1.35.4)
+
+`mmap`'s natural pair: release a region a process got from `mmap` and return its physical 2 MB pages to the PMM. Without it, the global bump arena (256 MB→1 GB = 384 huge pages) and the 16 MB physical pool only recover at process teardown — fine for a one-shot allocation, a leak for any consumer that churns mappings (arena allocators, a heap that grows *and shrinks*). Syscall **28**.
+
+### The Linux model we deliberately do NOT copy
+
+Linux `do_munmap` is heavyweight because it carries **VMA metadata**: a red-black tree of `vm_area_struct`s per address space. `munmap(addr, len)` can split a VMA (unmap the middle of a mapping), merge neighbours, and unmap across several VMAs in one call — all bookkeeping over that tree. AGNOS has **no VMA layer**: a mapping's only record is the PD entry itself. So our `munmap` is correspondingly simpler *and* more restrictive — it is the literal inverse of our bump `mmap`, not a general range operation.
+
+### Design
+
+`sys_munmap(addr, length)`:
+
+1. **Validate** — `addr` must be 2 MB-aligned and within the arena `[0x10000000, 0x40000000)`; `length` rounds up to 2 MB exactly as `mmap` does. Anything else → `-1` (never touch non-arena memory — code, stacks, the kernel).
+2. **Walk to the PD once** (`PML4→PDPT→PD`; the whole arena lives under one PD since the per-process PD covers 0–1 GB).
+3. **Per 2 MB region** — read the PD entry; if **present**, recover `phys = entry & ~0x1FFFFF`, call `proc_unmap_page` (clears the entry in **both** the kernel and the KPTI user PD), `invlpg` the vaddr (the `vmm.cyr` idiom — the live process could otherwise keep a stale TLB entry into now-freed physical, a use-after-free), then `pmm_free_2mb(phys)`. If **not present**, skip it (idempotent — no double-free).
+4. **LIFO vaddr reclaim** — if the freed range sits exactly at the top of the bump arena (`addr + len == mmap_next_vaddr`), rewind the cursor so alloc-then-free round-trips don't bleed vaddr space. Non-top frees release physical but leave a vaddr hole (the bump allocator doesn't track holes — acceptable for a low-process-count kernel; a free-list is a later refinement if churn demands it).
+
+`pmm_free_2mb` already validates alignment + range and refuses the kernel region, so a malformed `phys` is a safe no-op. The TLB story: `invlpg` flushes the kernel-CR3 entry; the KPTI CR3 switch on syscall-return flushes the user side (same path that makes a fresh `mmap` mapping visible).
+
+### Diff against AGNOS
+
+| Need | Today | Gap |
+|---|---|---|
+| Clear a 2 MB user PD entry (kernel + KPTI user) | `proc_unmap_page(cr3, vaddr)` ✓ (guard-page use) | reuse |
+| Invalidate a stale huge-page TLB entry | `var f = v; asm { invlpg [rax]; }` ✓ (`vmm.cyr`) | reuse |
+| Free a contiguous 2 MB physical region | `pmm_free_2mb(phys)` ✓ (shipped with mmap) | reuse |
+| Read the phys backing a vaddr | PD-entry read (`load64(pd + idx*8) & ~0x1FFFFF`) | trivial new |
+| the `munmap` syscall | none | `sys_munmap` + dispatch entry 28 |
+
+### Validation
+
+The hermetic gate folds into `MMAP_SELFTEST` / `mmap-smoke.sh` (the pair shares one test surface): `pmm_free_2mb` **rejects** misaligned / kernel-region / out-of-range addresses (the guards `munmap` leans on), and an **alloc → free → alloc** round-trip proves freed physical is genuinely reusable — the core `munmap` value — with the free-count restored each cycle (`munmap: pmm-reuse PASS`). The full `sys_munmap` PD-walk + `proc_unmap_page` + `invlpg` path rides those iron-proven primitives (no live user-proc at boot to drive a real unmap), exactly as `sys_mmap` rides `proc_map_page`.
+
+### Still deferred after munmap
+
+- **4 KB-granular unmap / partial-region munmap** — needs the 4 KB paging level (and then VMA-ish tracking to split). Out with 4 KB `mmap`.
+- **vaddr free-list** — reclaim non-top holes in the bump arena. Only worth it if a consumer shows real fragmentation.
