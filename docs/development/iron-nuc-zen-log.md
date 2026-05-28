@@ -1,20 +1,27 @@
-> **Status**: ▶ **ACTIVE log — the Base→Server era** (big-write + storage-depth, agnos 1.37.x+). Same primary target: NUC AMD **archaemenid** (Beelink SER).
+> **Status**: ▶ **ACTIVE log — the BASE era** (base-hardening software maturity on archaemenid, agnos 1.37.x+). First of the planned **base → server → platforms** log split. Same primary target: NUC AMD **archaemenid** (Beelink SER).
 >
-> **Log chain**: [`iron-nuc-zen-log-mvp.md`](iron-nuc-zen-log-mvp.md) (MVP 1.0 — boot-to-shell, Attempts 1 – 68, agnos 1.30.9) → [`iron-nuc-zen-log-mvp2.md`](iron-nuc-zen-log-mvp2.md) (MVP 2.0 — networking + filesystem WRITE, 1.30.10 – 1.34.x; r8169 unicast-RX, DHCP, ext2/4 + FAT write burns) → **this file** (Base→Server). Consult the archives for any pre-existing root-cause shape recurrence; the **MVP2.0-era FAT/exFAT iron burn is still pending** in mvp2 ([`iron-nuc-zen-log-mvp2.md#tracker-1341-cycle`](iron-nuc-zen-log-mvp2.md#tracker-1341-cycle)).
+> **Log chain**: [`iron-nuc-zen-log-mvp.md`](iron-nuc-zen-log-mvp.md) (MVP 1.0 — boot-to-shell, Attempts 1 – 68, agnos 1.30.9) → [`iron-nuc-zen-log-mvp2.md`](iron-nuc-zen-log-mvp2.md) (MVP 2.0 — networking + filesystem WRITE, 1.30.10 – 1.34.x; r8169 unicast-RX, DHCP, ext2/4 + FAT write burns) → **this file** (base). Consult the archives for any pre-existing root-cause shape recurrence; the **MVP2.0-era FAT/exFAT iron burn is still pending** in mvp2 ([`iron-nuc-zen-log-mvp2.md#tracker-1341-cycle`](iron-nuc-zen-log-mvp2.md#tracker-1341-cycle)).
 
-# Iron Boot Test Log — Base→Server Era
+# Iron Boot Test Log — Base Era
 
-Append-only running log of AGNOS iron-boot work for the **Base→Server**
-phase of the maturity arc ([[project_agnos_maturity_arc]]: demo → base →
-server → desktop → swallow). The **MVP gate** (boot-to-shell with a typeable
-keyboard) closed at Attempt 68 (1.30.9); the **MVP 2.0** networking + write
-era closed with the 1.32.x/1.33.x iron burns. This era is about **filesystem
-depth and platform breadth** making the box a real base→server system:
+Append-only running log of AGNOS iron-boot work for the **base** phase of the
+maturity arc ([[project_agnos_maturity_arc]]: demo → base → server → desktop →
+swallow). The **MVP gate** (boot-to-shell with a typeable keyboard) closed at
+Attempt 68 (1.30.9); the **MVP 2.0** networking + write era closed with the
+1.32.x/1.33.x iron burns. This log covers the **base-hardening** software work
+on archaemenid — filesystem depth + the slimming/perf runway:
 
 - **big-write own-cycles** — ext4 **extent allocation** (1.37.x), **jbd2
   journaling** (1.38.x), the **VFS generic-write** lift (1.39.x);
-- **kernel-slimming** — font → `kashi` (1.40.x), shell → `agnoshi` (1.41.x);
-- **platform decades** — 1.5x Intel / 1.6x Pi-ARM / 1.7x radios / 1.8x RISC-V.
+- **kernel-slimming + perf** — font → `kashi`, shell → `agnoshi`, then the
+  perf + agnos-2.0 runway (1.40.x – 1.45.x).
+
+**Planned log separations** (user, 2026-05-27): the iron logs split along the
+maturity arc — **base → server → platforms**. This is the **base** log; a
+**server**-era log opens when server-grade work begins, and the **platform
+decades** (1.5x Intel / 1.6x Pi-ARM / 1.7x radios / 1.8x RISC-V — a distinct
+per-hardware-target testing surface) get their own **platforms** log(s) rather
+than landing here.
 
 **Format** (per [[feedback_retire_attempt_counter_post_mvp]]): new iron-burn
 entries headline by **version + subsystem**, not an Attempt-N counter (the
@@ -32,7 +39,7 @@ back. Status is one of `FAIL` / `PASS` / `PARTIAL` / `PENDING`.
 >
 > **State.md cycle headers link to these anchors via `iron-nuc-zen-log.md#tracker-1373-cycle` style.** Archived (MVP2.0-era) trackers live in [`iron-nuc-zen-log-mvp2.md`](iron-nuc-zen-log-mvp2.md).
 
-### Tracker: 1.37.x cycle — ext4 extent-ALLOCATION iron burn (OPEN 2026-05-27 — **the extent-write arc's first real-hardware touch, and the first burn of the Base→Server era.** The MVP2.0 1.33.1 W5 burn proved *indirect*-mapped inode growth survives a power-cycle on the unmodified default `mkfs.ext4` agnos-fs (`persist.txt` survived). But anything `mkfs.ext4`/Linux creates is `EXTENTS_FL` — a *different* write path. The 1.37.x arc added it: depth-0 append (1.37.0), depth-0→1 grow (1.37.1), multi-leaf depth-1 sibling split (1.37.2), depth-1→2 index-block grow (1.37.3) — **all QEMU `e2fsck -fn`-clean** on default `mkfs.ext4` images. This burn confirms the extent metadata the kernel writes (extent records, `ee_len`/`ee_start_hi`, index entries, leaf+index node `metadata_csum` checksums, `i_blocks`) is valid on real NAND, the same dispositive bar as 1.33.1. **Mechanism: the compile-gated `EXT2_EXTENT_WRITE_SELFTEST` build self-seeds its own extent file** (`ext2_extent_seed_create` creates `/extseed.dat` as an empty `EXTENTS_FL` inode if absent), drives sparse extent writes through depth 0→1→2, and prints the tree shape + PASS to the **FB console** (no serial on iron per [[feedback_no_serial_on_iron]]; FB-readable, deterministic, mirrors the QEMU smoke). So this is **flash-and-test — no host-side mount/seed**. Depth-0/1 covers every realistic file; depth-2 is the completeness ceiling (≈ 1360 extents) the selftest forces. NO burn auto-run per [[feedback_iron_burns_block_other_work]] — rubric below; the user flashes + burns. The depth-2 *code* is done + QEMU-validated (self-seed smoke `e2fsck`-clean); this tracker governs only the iron confirmation.) {#tracker-1373-cycle}
+### Tracker: 1.37.x cycle — ext4 extent-ALLOCATION iron burn (OPEN 2026-05-27 — **the extent-write arc's first real-hardware touch, and the first burn of the base era.** The MVP2.0 1.33.1 W5 burn proved *indirect*-mapped inode growth survives a power-cycle on the unmodified default `mkfs.ext4` agnos-fs (`persist.txt` survived). But anything `mkfs.ext4`/Linux creates is `EXTENTS_FL` — a *different* write path. The 1.37.x arc added it: depth-0 append (1.37.0), depth-0→1 grow (1.37.1), multi-leaf depth-1 sibling split (1.37.2), depth-1→2 index-block grow (1.37.3) — **all QEMU `e2fsck -fn`-clean** on default `mkfs.ext4` images. This burn confirms the extent metadata the kernel writes (extent records, `ee_len`/`ee_start_hi`, index entries, leaf+index node `metadata_csum` checksums, `i_blocks`) is valid on real NAND, the same dispositive bar as 1.33.1. **Mechanism: the compile-gated `EXT2_EXTENT_WRITE_SELFTEST` build self-seeds its own extent file** (`ext2_extent_seed_create` creates `/extseed.dat` as an empty `EXTENTS_FL` inode if absent), drives sparse extent writes through depth 0→1→2, and prints the tree shape + PASS to the **FB console** (no serial on iron per [[feedback_no_serial_on_iron]]; FB-readable, deterministic, mirrors the QEMU smoke). So this is **flash-and-test — no host-side mount/seed**. Depth-0/1 covers every realistic file; depth-2 is the completeness ceiling (≈ 1360 extents) the selftest forces. NO burn auto-run per [[feedback_iron_burns_block_other_work]] — rubric below; the user flashes + burns. The depth-2 *code* is done + QEMU-validated (self-seed smoke `e2fsck`-clean); this tracker governs only the iron confirmation.) {#tracker-1373-cycle}
 
 **Hypothesis.** The extent-allocation write path that is QEMU-`e2fsck -fn`-clean via the self-seed smoke (depth 0→1→2) will (a) self-create + grow an `EXTENTS_FL` file on archaemenid's real NVMe NAND, (b) reach depth 2 with the selftest's PASS lines on the FB, (c) keep the written data + extent tree across a power-cycle, and (d) be **host-`e2fsck -fn` clean** after the burn — i.e. real-hardware extent writes are byte-valid, exactly as indirect writes were at 1.33.1.
 
@@ -56,4 +63,4 @@ Rows 2 + 4 are the in-system iron evidence; row 6 is dispositive (same as the 1.
 
 ## Burns
 
-*(Per-version iron-burn narrative for the Base→Server era will be appended here as burns run. First expected entry: the 1.37.x extent-allocation burn above.)*
+*(Per-version iron-burn narrative for the base era will be appended here as burns run. First expected entry: the 1.37.x extent-allocation burn above.)*

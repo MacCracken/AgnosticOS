@@ -19,6 +19,8 @@ type: state
 >
 > MVP gate (boot-to-shell on iron) green since Attempt 68 / 1.30.9.
 >
+> **Iron-log roads (base → server → platforms)** — logs split by maturity era; active one keeps the bare name. **base** (active — [`iron-nuc-zen-log.md`](iron-nuc-zen-log.md), 1.37.x+) closes at FS-crash-safe (1.37 extent → 1.38 jbd2 → 1.39 VFS) + general exec-from-disk; **server** closes at self-hosting — *build agnos on agnos* (headless, **no desktop needed**; coincides with the public-beta gate); **platforms** (1.5x+ hardware) runs orthogonally. Chain: [`-mvp`](iron-nuc-zen-log-mvp.md) (boot) → [`-mvp2`](iron-nuc-zen-log-mvp2.md) (net+write) → active. Stage definitions: the maturity-arc memory.
+>
 > **Crate registries**: [`planning/shared-crates.md`](planning/shared-crates.md) (full, incl. pre-1.0); [`docs/applications/libs/README.md`](../applications/libs/README.md) (v1.0+ subset).
 
 ### Storage + filesystem-read arc (1.31.x) — CLOSED 2026-05-22
