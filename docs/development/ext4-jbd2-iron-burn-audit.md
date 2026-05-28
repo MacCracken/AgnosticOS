@@ -150,8 +150,15 @@ commit / checkpoint stages) are the load-bearing primitive iron will pressure-te
 
 - **i225-V NIC** (still queued for Intel iron post-archaemenid migration).
 - **CSUM_V2/V3 journals** — our write path refuses these (1.38.5 narrow scope).
-  archaemenid's mkfs.ext4 doesn't enable CSUM_V2/V3 by default (verified via the
-  `jbd2-refusal-smoke.sh` Python helper's "no SB csum to recompute" path).
+  ~~archaemenid's mkfs.ext4 doesn't enable CSUM_V2/V3 by default~~ **← FALSIFIED
+  by the 2026-05-28 burn.** The real agnos-fs journal IS **CSUM_V3 + 64BIT**
+  (`incompat=0x12`, `csum_type=4`/CRC32C) — host e2fsprogs 1.47.4 enables
+  `metadata_csum` by default, which produces a CSUM_V3 journal. The
+  `jbd2-refusal-smoke.sh` "no SB csum to recompute" path validated the *non-csum*
+  QEMU images only, hiding this gap. **Consequence**: the write-side of the whole
+  1.38.x arc (Tests 4 + 5) is iron-untestable on this partition until CSUM_V2/V3
+  commit/descriptor/tag checksums are implemented. The guard held safely (read-side
+  + e2fsck clean); see [`iron-nuc-zen-log.md#tracker-138-cycle`](iron-nuc-zen-log.md#tracker-138-cycle).
 - **Block-bitmap / group-descriptor / extent-tree node journaling** (1.38.6
   narrow scope only routed `put_inode`'s inode-table write; allocator writes
   stay direct → grow-then-crash can leave e2fsck-fixable orphan blocks).

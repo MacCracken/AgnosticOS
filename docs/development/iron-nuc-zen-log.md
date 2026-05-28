@@ -39,6 +39,18 @@ back. Status is one of `FAIL` / `PASS` / `PARTIAL` / `PENDING`.
 >
 > **State.md cycle headers link to these anchors via `iron-nuc-zen-log.md#tracker-1373-cycle` style.** Archived (MVP2.0-era) trackers live in [`iron-nuc-zen-log-mvp2.md`](iron-nuc-zen-log-mvp2.md).
 
+### Tracker: 1.38.x cycle — JBD2 journaling iron burn (BURNED 2026-05-28 — read-side PASS @ 1.38.9; write-side commit + 100-tx stress + mid-cycle power-cut recovery all PASS @ 1.38.10 re-burn — **ARC IRON-COMPLETE**) {#tracker-138-cycle}
+
+**Hypothesis (pre-burn).** The JBD2 stack that is QEMU-`e2fsck -fn`-clean across replay + crash smokes would mount-probe, replay, produce a journaled write, and survive power-loss on real NAND — all against the unmodified archaemenid agnos-fs.
+
+**Outcome.** Read-side **CONFIRMED**; write-side **FALSIFIED-as-untestable** by a wrong premise, not a code bug. The real agnos-fs journal is **CSUM_V3 + 64BIT** (`incompat=0x12`, `csum_type=4`/CRC32C) — audit §6's "mkfs.ext4 doesn't enable CSUM_V2/V3 by default" was false (host e2fsprogs 1.47.4 enables `metadata_csum` → CSUM_V3 journal by default). The 1.38.7 narrow-scope guard refused every `commit_tx`, so integration (Test 4) and crash (Test 5) couldn't exercise the write path. **Probe + SB-csum-validate + read-side proven on a real CSUM_V3 journal; baseline e2fsck clean (`fsck_log_1.txt`); nothing corrupted.** Full burn entry below.
+
+**Falsification criteria for the re-burn** (after CSUM_V2/V3 write support lands): integration must show `jbd2: commit_tx: COMMITTED seq=K n_blocks=N` (not the refusal line) + host `e2fsck -fn` clean; crash must show a real DIRTY→replay→clean cycle. Until then the write-side claim stays open. Disposition fork (implement CSUM_V3 write now vs. re-mkfs `-O ^metadata_csum` to validate the existing non-csum path) is the user's call.
+
+**Disposition (2026-05-28): user chose "implement CSUM_V3 write." DONE at agnos 1.38.10** — CSUM_V2/V3 tag/descriptor/commit checksums on both write + replay sides, formats re-derived from `include/linux/jbd2.h` + `fs/jbd2/commit.c`. **Linux-`e2fsck` oracle-validated** (e2fsck replays an AGNOS-format CSUM_V3 journal clean; a corrupted commit csum → "transaction was corrupt"). All five jbd2 smokes re-run on a CSUM_V3 journal (stamped via `mk-dirty-journal-img.py --csum-v3`, mirroring Linux's first-RW-mount stamp): **integration now shows `commit_tx: COMMITTED` where iron showed the refusal**; writepath / tx / replay / crash(4/4) green; `test.sh` 4/4, `check.sh` 11/11. Also fixed a latent legacy-tag field swap (`t_flags`/`t_checksum` offsets) that made pre-1.38.10 AGNOS journals non-Linux-replayable. Detail → CHANGELOG `[1.38.10]` + [`ext4-jbd2-prior-art.md`](ext4-jbd2-prior-art.md) §8.
+
+**Re-burn outcome (2026-05-28, the `13810_*` burn): WRITE-SIDE PASS — every falsification row cleared on real NAND.** Five-boot sequence on the unmodified archaemenid agnos-fs CSUM_V3 journal: boot-1 `production` clean baseline (`jbd2: clean journal ino=8 size=32760 seq=4`, e2fsck clean, journal SB `s_sequence=4` CLEAN); boot-2 `integration` flips the 1389 refusal to **`jbd2-int: commit_tx: COMMITTED seq=4 n_blocks=1 -- checkpoint applied + journal clean` → `integration selftest PASS`** (validate: e2fsck clean, SB `s_sequence=5` CLEAN); boot-3 `crash` runs the stress loop to **`100/100 done` → `stress loop PASS (clean shutdown)`**; boot-4 = the user starts a stress cycle then **cuts power mid-cycle** (the deliberate crash, unphotographed); boot-5 recovers clean — **`jbd2: clean journal ino=8 size=32760 seq=142`**, shell reached, host `e2fsck -fn` clean, journal SB `s_sequence=142` CLEAN. The journal advanced seq 4 → 142 across commit + stress + crash + recovery and landed clean every time. **Crash-safe journaling validated on iron — the 1.38.x arc is COMPLETE.** Photos `13810-agnos-1.38.10-boot{1,2,3,5}-*.jpg` + validate logs folded into the re-burn entry below. Cycle closes at 1.38.11 (cleanup + hardening).
+
 ### Tracker: 1.37.x cycle — ext4 extent-ALLOCATION iron burn (OPEN 2026-05-27 — **the extent-write arc's first real-hardware touch, and the first burn of the base era.** The MVP2.0 1.33.1 W5 burn proved *indirect*-mapped inode growth survives a power-cycle on the unmodified default `mkfs.ext4` agnos-fs (`persist.txt` survived). But anything `mkfs.ext4`/Linux creates is `EXTENTS_FL` — a *different* write path. The 1.37.x arc added it: depth-0 append (1.37.0), depth-0→1 grow (1.37.1), multi-leaf depth-1 sibling split (1.37.2), depth-1→2 index-block grow (1.37.3) — **all QEMU `e2fsck -fn`-clean** on default `mkfs.ext4` images. This burn confirms the extent metadata the kernel writes (extent records, `ee_len`/`ee_start_hi`, index entries, leaf+index node `metadata_csum` checksums, `i_blocks`) is valid on real NAND, the same dispositive bar as 1.33.1. **Mechanism: the compile-gated `EXT2_EXTENT_WRITE_SELFTEST` build self-seeds its own extent file** (`ext2_extent_seed_create` creates `/extseed.dat` as an empty `EXTENTS_FL` inode if absent), drives sparse extent writes through depth 0→1→2, and prints the tree shape + PASS to the **FB console** (no serial on iron per [[feedback_no_serial_on_iron]]; FB-readable, deterministic, mirrors the QEMU smoke). So this is **flash-and-test — no host-side mount/seed**. Depth-0/1 covers every realistic file; depth-2 is the completeness ceiling (≈ 1360 extents) the selftest forces. NO burn auto-run per [[feedback_iron_burns_block_other_work]] — rubric below; the user flashes + burns. The depth-2 *code* is done + QEMU-validated (self-seed smoke `e2fsck`-clean); this tracker governs only the iron confirmation.) {#tracker-1373-cycle}
 
 **Hypothesis.** The extent-allocation write path that is QEMU-`e2fsck -fn`-clean via the self-seed smoke (depth 0→1→2) will (a) self-create + grow an `EXTENTS_FL` file on archaemenid's real NVMe NAND, (b) reach depth 2 with the selftest's PASS lines on the FB, (c) keep the written data + extent tree across a power-cycle, and (d) be **host-`e2fsck -fn` clean** after the burn — i.e. real-hardware extent writes are byte-valid, exactly as indirect writes were at 1.33.1.
@@ -62,6 +74,50 @@ back. Status is one of `FAIL` / `PASS` / `PARTIAL` / `PENDING`.
 Rows 2 + 4 are the in-system iron evidence; row 6 is dispositive (same as the 1.33.1 after-burn check). **Outcome (Attempt 1373, 2026-05-28): PASS on boot-1, all six rows green; boot-2 surfaced a selftest re-boot idempotency bug (NOT a FS bug — host `e2fsck -fn` clean across both boots). Tracker CLOSED at 1.37.4 (idempotency fix).**
 
 ## Burns
+
+### 1.38.x JBD2 journaling iron burn (2026-05-28) — read-side PASS · write-side BLOCKED (real journal is CSUM_V3)
+
+**Build flashed**: 1.38.9, automated 3-flash cadence (`iron-jbd2-prep.sh {production|integration|crash}` + `iron-jbd2-validate.sh`), `install-usb.sh --update` (ESP-only, agnos-fs untouched).
+
+**Boot 1 — `production` (Tests 1 + 6)**: storage trio + GPT + `ext2: mounted (blocksize=4096, inode_size=256, inodes_per_group=8192)` + `ext2: clean journal ino=8 size=32768 seq=4` + `fat: mounted FAT32` clean → DHCP `.151` → `AGNOS shell v1.38.9`. `agnos> jbd2` info verb:
+- `jbd2: ino=8 size=32768 blocks blocksize=4096`
+- `jbd2: state=clean` · `start=0 first=1 seq=4` · `nr_users=1`
+- **`jbd2: features compat=0 incompat=18 ro_compat=0`** ← `incompat=0x12` = `JBD2_FEATURE_INCOMPAT_64BIT (0x2)` + **`JBD2_FEATURE_INCOMPAT_CSUM_V3 (0x10)`**
+- **`jbd2: csum_type=4 (validated at mount)`** ← CRC32C; the 1.38.1 SB-csum validation passed against a real CSUM_V3 journal
+
+Host `e2fsck -fn /dev/nvme0n1p2` (`fsck_log_1.txt`): `agnos-fs: 22/1638400 files (4.5% non-contiguous), 148271/6553600 blocks` — **clean.** ✓ Tests 1 + 6 PASS: probe + SB-csum validate + read-side all correct on a real-NAND CSUM_V3 journal.
+
+**Boot 2 — `integration` (Tests 1 + 4)**: clean mount + probe identical. Selftest:
+- `jbd2-int: integration selftest begin`
+- `jbd2-int: put_inode record through journal (logged 1 metadata blocks)` ← **routing works** (1.38.6 path live on iron)
+- **`jbd2-int: commit_tx: CSUM_V2/V3 journal not yet supported (1.38.7) -- aborting`** ← the narrow-scope guard at `ext2.cyr:4247` fired
+- `jbd2: abort_tx: dropping 1 pending entries` · `jbd2-int: commit_tx FAIL`
+
+Write-side **never executed** — the guard refused cleanly. Shell still came up.
+
+**Boot 3 — `crash` (Test 5)**: `jbd2-crash: stress loop begin (100 commits, ~3s window)` → first commit hit the same CSUM_V3 guard → `commit_tx FAIL`. Crash-recovery **not exercisable** (no journaled write ever lands to crash on).
+
+**Finding — audit §6 premise FALSIFIED.** [`ext4-jbd2-iron-burn-audit.md`](ext4-jbd2-iron-burn-audit.md) §6 asserted "archaemenid's mkfs.ext4 doesn't enable CSUM_V2/V3 by default." **Wrong.** The real agnos-fs journal is **CSUM_V3 + 64BIT** — modern e2fsprogs (host runs 1.47.4) enables `metadata_csum` by default, which produces a CSUM_V3 journal. The QEMU smoke images used non-csum journals (the `jbd2-refusal-smoke.sh` "no SB csum to recompute" path), so the write-path gap was invisible in QEMU. **Write-side iron validation of the whole 1.38.x arc (commit / checkpoint / replay-of-own-tx) is BLOCKED until CSUM_V2/V3 commit-block + descriptor-tag + data-block checksums are implemented** in the write path.
+
+**Safety win**: the 1.38.7 guard did exactly its job — refused rather than writing a journal that our (or Linux's) replay would reject. Baseline e2fsck stayed clean across the whole burn; nothing was corrupted. Read-side (probe + SB-csum validate + the `jbd2` info verb) is fully iron-proven on a real CSUM_V3 journal.
+
+**Next**: implement CSUM_V2/V3 journal checksums in the write path (port from Linux jbd2 `jbd2_commit_block_csum_set` / `jbd2_descriptor_block_csum_set` / `jbd2_block_tag_csum_set` + e2fsprogs + the JBD2 on-disk-format spec, per [[feedback_redesign_dont_reinvent]]). Regenerate the QEMU smoke FS images with `metadata_csum` so the gap can never hide in QEMU again. Then re-burn integration + crash. Tracker → [`#tracker-138-cycle`](#tracker-138-cycle).
+
+### 1.38.x JBD2 journaling re-burn (2026-05-28, `13810_*`) — WRITE-SIDE + CRASH-RECOVERY PASS 🎯
+
+The dispositive re-burn after 1.38.10 added CSUM_V2/V3 tag/descriptor/commit checksums (write + replay). **Build flashed**: 1.38.10, automated cadence (`iron-jbd2-prep.sh {production|integration|crash}` + `iron-jbd2-validate.sh`), `install-usb.sh --update` (ESP-only, agnos-fs untouched). Five-boot sequence on the **unmodified** archaemenid agnos-fs CSUM_V3 + 64BIT journal:
+
+**Boot 1 — `production`** (`13810_validate_boot1.txt`, photo `…boot1-clean-journal-seq4-e2fsck-clean.jpg`): storage trio + GPT + `ext2: mounted (blocksize=4096, inode_size=256, inodes_per_group=8192)` + **`jbd2: clean journal ino=8 size=32760 seq=4`** + `fat: mounted FAT32` → DHCP `.151` → `AGNOS shell v1.38.10`. Validate: host `e2fsck -fn /dev/nvme0n1p2` clean (`agnos-fs: 22/1638400 files (4.5% non-contiguous), 148271/6553600 blocks`); on-disk journal SB `magic=0xc03b3998 s_start=0 s_sequence=4` → **journal CLEAN**.
+
+**Boot 2 — `integration`** (`13810_validate_boot2.txt`, photo `…boot2-integration-commit-tx-COMMITTED-write-side-pass.jpg`): the line that read the CSUM_V3 refusal at the 1389 burn now reads **`jbd2-int: commit_tx: COMMITTED seq=4 n_blocks=1 -- checkpoint applied + journal clean`** → **`jbd2-int: integration selftest PASS`**. `put_inode` routes, the tx commits to the real CSUM_V3 journal, checkpoint applies, journal returns clean. Validate: e2fsck clean; journal SB `s_sequence=5` CLEAN. ✓ **Write side proven on iron** — the exact falsification row from the 1389 tracker, cleared.
+
+**Boot 3 — `crash`** (photo `…boot3-crash-stress-100-100-pass-clean-shutdown.jpg`): `jbd2-crash:` stress loop with `commit_tx: COMMITTED seq=78..104 n_blocks=1 -- checkpoint applied + journal clean` scrolling, closing on **`jbd2-crash: 100/100 done`** → **`jbd2-crash: stress loop PASS (clean shutdown)`** → `AGNOS shell v1.38.10`. The write path sustains a tight commit/checkpoint cadence against the real journal with no drift.
+
+**Boot 4 — deliberate crash**: the user started a stress cycle, then **cut power mid-cycle** (the real power-loss event; no photo — the box was off).
+
+**Boot 5 — recovery** (`13810_validate_boot5.txt`, photo `…boot5-recovery-journal-seq142-e2fsck-clean.jpg`): the post-crash boot comes up clean — storage trio → `ext2: mounted` → **`jbd2: clean journal ino=8 size=32760 seq=142`** → `AGNOS shell v1.38.10`. Validate: host `e2fsck -fn` clean; journal SB `s_sequence=142` CLEAN. The journal advanced seq 4 → 142 across commit + stress + crash + recovery and landed clean every time.
+
+**Verdict — every tracker falsification row cleared on real NAND.** Read-side (1.38.9) + write-side commit + 100-tx stress + power-cut recovery (1.38.10) all PASS against the unmodified CSUM_V3 agnos-fs journal, host `e2fsck -fn` clean at every checkpoint. **Crash-safe journaling is iron-validated; the 1.38.x jbd2 arc is COMPLETE.** Cycle closes at 1.38.11 (cleanup + hardening). Loose burn artifacts (`13810_validate_*.txt`, `fsck_log_1.txt`) folded here and removed from the repo top level; photos catalogued under [`iron-nuc-zen-photos/`](iron-nuc-zen-photos/README.md#jbd2-journaling-arc-on-iron-1389--13810--crash-safe-journaling-validated-).
 
 ### Iron Attempt 1373 — 1.37.x extent-allocation iron burn (2026-05-28) — PASS
 

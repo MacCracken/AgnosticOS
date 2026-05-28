@@ -49,14 +49,25 @@ The journal is a regular file referenced by `s_journal_inum` (superblock byte of
 
 0x0C tags[]      array of journal_block_tag_s entries until h_magic-tail or block end
 ```
-Each tag (V3 with 64bit+csum, length depends on flags):
+Tag layout depends on the journal's csum feature — **two distinct structs** (verbatim from `include/linux/jbd2.h`, verified 2026-05-28):
+
+**Legacy `journal_block_tag_t`** (no-csum / CSUM_V2 — fields are `__be`):
 ```
-t_blocknr      u32be    low 32 bits of FS block this log entry will be written to
-t_flags        u16be    bit 0=ESCAPE, bit 1=SAME_UUID, bit 3=LAST_TAG, bit 4=BLOCK_TAG_CSUM_V3
-t_checksum     u16be    crc32c lo-16 of [seed=h_sequence][block_data], 0 if BLOCK_TAG_CSUM_V3 not set
-t_blocknr_high u32be    high 32 bits (only if 64bit incompat feature set)
-[16 bytes uuid if !SAME_UUID]
+0x00 t_blocknr      be32    low 32 bits of target FS block
+0x04 t_checksum     be16    CSUM_V2: low 16 bits of crc32c(crc32c(seed, be32(seq)), data); else 0
+0x06 t_flags        be16    bit0=ESCAPE bit1=SAME_UUID bit2=DELETED bit3=LAST_TAG
+0x08 t_blocknr_high be32    high 32 bits — ONLY if 64BIT incompat set
 ```
+Tag size = 8 (no 64bit) or 12 (64bit). **⚠ AGNOS BUG (found 2026-05-28):** the existing read (`ext2.cyr:3956`) + write (`ext2.cyr:4159-4164`) place `t_flags`@+4 and `t_checksum`@+6 — **swapped** vs the real struct above. Self-consistent in QEMU (AGNOS-reads-AGNOS, csum=0) but a journal AGNOS leaves dirty is **not Linux-replayable** (Linux reads flags from the wrong offset → never sees LAST_TAG). See §8.
+
+**`journal_block_tag3_t`** (CSUM_V3 — what archaemenid's journal uses — all `__be32`):
+```
+0x00 t_blocknr      be32    low 32 bits of target FS block
+0x04 t_flags        be32    bit0=ESCAPE bit1=SAME_UUID bit2=DELETED bit3=LAST_TAG  (4-byte!)
+0x08 t_blocknr_high be32    high 32 bits (meaningful only if 64BIT)
+0x0C t_checksum     be32    full crc32c(crc32c(seed, be32(seq)), data)
+```
+Tag size = 16 (always, for csum3). A 16-byte UUID follows the FIRST tag (the one without SAME_UUID set).
 After the tags, the descriptor block is followed by **N data blocks** in order — one per non-LAST_TAG entry, each a full FS block being the new contents of `(t_blocknr_high << 32) | t_blocknr`. The block following the last data block can be another descriptor (chain continues) OR a commit block (transaction ends).
 
 **Commit block** (`h_blocktype = 2`):
@@ -72,7 +83,9 @@ After the tags, the descriptor block is followed by **N data blocks** in order �
 0x18 h_commit_sec  u64be
 0x20 h_commit_nsec u32be
 ```
-The commit block's presence + valid checksum is the *atomicity gate* — replay applies all data blocks for sequence `N` iff the commit block for `N` is found and its `h_chksum[0]` matches `crc32c(seed=uuid+sequence, descriptor+data_blocks)`. No commit block ⇒ transaction torn ⇒ skip + halt replay.
+The commit block's presence + valid checksum is the *atomicity gate*. **Two checksum conventions** (verified 2026-05-28 from `commit.c:jbd2_commit_block_csum_set`):
+- **CSUM_V2/V3 (the modern path — archaemenid's journal):** `h_chksum_type = 0`, `h_chksum_size = 0`, and `h_chksum[0] = crc32c(j_csum_seed, entire_commit_block)` computed with the `h_chksum[0]` field pre-zeroed and covering the WHOLE blocksize. (The older `type=4 size=4` payload-over-descriptor+data form is the V1 ASYNC_COMMIT convention — NOT used when CSUM_V2/V3 is set.)
+- No commit block ⇒ transaction torn ⇒ skip + halt replay.
 
 **Revoke block** (`h_blocktype = 5`): tells replay to NOT re-apply earlier transactions' writes to specific blocks. Used when ext4 frees + reuses a metadata block as data — the freed-block's old metadata content must not get replayed over the new data.
 
@@ -183,3 +196,32 @@ A crash at any point yields one of three replay states:
 - **Journal-superblock metadata_csum** — the V2 superblock has `s_checksum` (crc32c); we'll validate it on read but not necessarily recompute on every write (Linux only writes the superblock at clean-shutdown, mount, and growfs). Worth a bite if the validation gap shows up in practice.
 - **External journal device** — Linux supports putting the journal on a separate block device. Single-disk AGNOS use cases don't need this; deferred indefinitely.
 - **Online resize** — `resize2fs` on a journaled FS extends the journal in place. AGNOS doesn't grow filesystems online today; deferred.
+
+## 8. CSUM_V2/V3 write support — design (added 2026-05-28, post-iron-burn)
+
+**Why now.** The 2026-05-28 iron burn falsified §6's premise of the [iron-burn audit](ext4-jbd2-iron-burn-audit.md): the real archaemenid agnos-fs journal is **CSUM_V3 + 64BIT** (`incompat=0x12`, `csum_type=4`/CRC32C — host e2fsprogs 1.47.4 enables `metadata_csum` → CSUM_V3 by default). The 1.38.5 narrow-scope refusal (`ext2.cyr:4247`) means `commit_tx` aborts on this journal, so the entire write-side arc (Tests 4 + 5) is iron-untestable until the V2/V3 checksums are computed. Read-side (probe + SB-csum-validate) IS iron-proven; this section closes the write half.
+
+### 8.1 The exact formats (verbatim-derived from `include/linux/jbd2.h` + `fs/jbd2/commit.c`, verified 2026-05-28)
+
+All checksums are AGNOS's existing `ext2_crc32c(seed, buf, len)` — the **non-finalized** CRC32C (returns the running value, no final `~`; self-test `crc32c(~0,"123456789",9)=0x1CF96D7C`). This is exactly `jbd2_chksum()`.
+
+- **`j_csum_seed`** = `ext2_crc32c(0xFFFFFFFF, journal_sb + 0x30, 16)` — crc32c of the **journal superblock's** `s_uuid[16]` (offset 0x30), NOT the ext4 fs UUID, NOT `ext2_csum_seed`. Compute once at probe, store in a new `ext2_jbd2_csum_seed` global.
+- **Per-tag data csum** (`jbd2_block_tag_csum_set`): `c = ext2_crc32c(j_csum_seed, be32(h_sequence), 4)` then `c = ext2_crc32c(c, data_block, blocksize)`. V3 → full 32 bits into `tag3.t_checksum`@+12; V2 → low 16 bits into `tag.t_checksum`@+4.
+- **Descriptor-block tail csum** (`jbd2_descriptor_block_csum_set`): reserve the last 4 bytes (`jbd2_journal_block_tail = { be32 t_checksum }`) at `blocksize-4`; zero it; `c = ext2_crc32c(j_csum_seed, whole_descriptor_block, blocksize)`; store `c` BE at `blocksize-4`. Tags must not overrun into this tail.
+- **Commit-block csum** (`jbd2_commit_block_csum_set`, the V2/V3 path): set `h_chksum_type=0`, `h_chksum_size=0`, `h_chksum[0]=0`; `c = ext2_crc32c(j_csum_seed, whole_commit_block, blocksize)`; store `c` BE at `h_chksum[0]` (offset 0x10).
+
+### 8.2 The two AGNOS structural changes
+
+1. **V3 16-byte tag emit/parse** (`journal_block_tag3_t`): `t_blocknr`@0, `t_flags`@4 (be32), `t_blocknr_high`@8, `t_checksum`@12 (be32). Distinct from the legacy 8/12-byte tag. The write descriptor builder + the replay walk both branch on `has_feature_csum3`.
+2. **Legacy-tag swap fix** (`ext2.cyr:3956` read + `4159-4164` write): real `journal_block_tag_t` is `t_checksum`@+4 (be16), `t_flags`@+6 (be16) — AGNOS has them swapped. Self-consistent in QEMU but not Linux-replayable. **Decision: fix it in this arc** (it's a 2-line offset correction on each side + a comment), because the crash-recovery test's whole point is Linux-interop durability, and shipping a known not-Linux-replayable journal undercuts that. It touches the iron-validated no-csum path, so it gets its own QEMU smoke re-run + is called out in the burn rubric.
+
+### 8.3 Bite plan (each builds + smokes green before the next; `test.sh` 4/4 + `check.sh` 11/11 the floor)
+
+- **Bite 1 — csum primitives + seed.** Add `ext2_jbd2_csum_seed` global; compute at probe from journal `s_uuid`. Add helpers `ext2_jbd2_tag_data_csum(seq, data_buf)`, `ext2_jbd2_desc_tail_csum_set(desc_buf)`, `ext2_jbd2_commit_csum_set(commit_buf)`. Self-test the seed + a known tag csum under a compile gate. No behavior change yet (commit still refuses).
+- **Bite 2 — V3 descriptor write.** Branch `ext2_jbd2_build_and_write_descriptor` on csum3: emit 16-byte tags (flags be32@+4, blocknr_high@+8, data-csum@+12), reserve + fill the tail csum. Keep the legacy path for no-csum, **with the swap fixed**.
+- **Bite 3 — V3 commit write.** `ext2_jbd2_build_and_write_commit` sets type/size=0 + commit-csum over the whole block. Then **remove the refusal guard** at `ext2.cyr:4247` (gate behind feature support, not blanket refusal — if a future even-newer feature appears, refuse THAT).
+- **Bite 4 — V3 replay parse.** Branch the replay walk (`ext2.cyr:3948+`) to read 16-byte V3 tags + validate the descriptor tail + commit csum + per-tag data csum before applying. This is what makes crash-recovery (replay-of-own-tx) correct on the real journal. Legacy path keeps the swap fix.
+- **Bite 5 — regenerate QEMU smoke images with `metadata_csum`** so all jbd2 smokes exercise the CSUM_V3 path (the gap that hid this in QEMU). `mkfs.ext4` default already does this on a modern host; pin `-O metadata_csum,64bit` explicitly in the smoke image builders. Re-run tx / writepath / integration / crash / replay smokes — all must stay green on a CSUM_V3 journal.
+- **Bite 6 — hardening + iron rubric refresh.** Bounds/mismatch paths for the new csum branches; update [`ext4-jbd2-iron-burn-audit.md`](ext4-jbd2-iron-burn-audit.md) §6 (already corrected) + the rubric to expect `commit_tx: COMMITTED` on the real journal. Then the user re-burns integration + crash.
+
+Per [[feedback_redesign_dont_reinvent]]: formats triangulated from Linux jbd2.h/commit.c + e2fsprogs `recovery.c` + the ext4 wiki, not Linux alone. Per [[feedback_audit_re_derive_dont_validate_comments]]: the §2 tag layout was re-derived from the live header (and found the existing comment wrong), not trusted.
