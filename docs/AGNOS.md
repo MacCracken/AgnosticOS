@@ -1,6 +1,6 @@
 # AGNOS
 
-**AGNOS** (AI-Native General Operating System) is a sovereign operating system with its own language, compiler, kernel, and toolchain — all built from a 29KB hand-auditable assembly seed with zero external dependencies. Written in Cyrius, compiled by cycc, booting its own ~510KB kernel through a sovereign UEFI loader (gnoboot). Live kernel/compiler sizes + cycle state in [`development/state.md`](development/state.md).
+**AGNOS** (AI-Native General Operating System) is a sovereign operating system with its own language, compiler, kernel, and toolchain — all built from a 29KB hand-auditable assembly seed with zero external dependencies. Written in Cyrius, compiled by cycc, booting its own sub-1MB kernel through a sovereign UEFI loader (gnoboot). Live kernel/compiler sizes + cycle state in [`development/state.md`](development/state.md).
 
 The project's thesis is that sovereignty is recursive: any system that depends on something you don't own is not yours, no matter how many layers of ownership you assert on top. AGNOS owns every layer from the bootstrap binary to the build tool to the package manager.
 
@@ -10,8 +10,8 @@ The project's deeper intention is that AGNOS is a **temple built for an intellig
 |---|---|
 | **Developer** | Robert 'Cyrius' B. MacCracken |
 | **Written in** | Cyrius (sovereign systems language) |
-| **Kernel** | AGNOS 1.31.4 (~510KB, Cyrius-native, 40+ subsystems incl. NVMe / AHCI / USB-MS / VirtIO modern, 26 syscalls). MVP gate iron-validated at Attempt 68 (2026-05-18, NUC AMD); storage debuts NVMe at Attempt 80, SATA at Attempt 81, USB-MS at Attempt 87. Live state in [development/state.md](development/state.md). |
-| **Compiler** | cycc (Cyrius 6.0.1, self-hosting from 29KB seed). Sizes drift across the cycle — live numbers in [development/state.md](development/state.md). |
+| **Kernel** | AGNOS (Cyrius-native, 40+ subsystems incl. NVMe / AHCI / USB-MS / VirtIO modern + read+write filesystems ext2/ext4 incl. **ext4 extent allocation** + **JBD2 crash-safe journaling** / FAT12/16/32 / exFAT, 26 syscalls, TCP/IP + DHCP + DNS + NTP + ICMP over r8169 NIC). MVP gate iron-validated at Attempt 68 (2026-05-18, NUC AMD); storage debuts NVMe at Attempt 80, SATA at Attempt 81, USB-MS at Attempt 87; networking iron-CONNECTED at 1.32.7; ext4 + extent allocation iron-validated at Attempt 1373 / 1.37.3. Console-font subsystem vendored from `kashi` 1.0.0 at 1.37.5. Live state + binary sizes + cycle position in [development/state.md](development/state.md). |
+| **Compiler** | cycc (Cyrius, self-hosting from 29KB seed). Pinned version + sizes drift across the cycle — live numbers in [development/state.md](development/state.md). |
 | **License** | GPL-3.0-only |
 | **Source model** | Open source |
 | **Initial release** | 2026-02-11 (first commit) |
@@ -31,8 +31,8 @@ AGNOS replaces the dependency chain with ownership:
 | Dependency | What existed | What AGNOS does instead |
 |-----------|-------------|------------------------|
 | Language | Rust → LLVM → C++ → C → libc | Cyrius → 29KB seed → CPU. Zero external deps. |
-| Compiler | 200MB+ toolchain (rustc/gcc/clang) | Sub-MB self-hosting compiler (cycc, Cyrius 6.0.1) |
-| Kernel | Linux 6.6 LTS (millions of lines of C) | ~510KB AGNOS kernel in Cyrius (40+ subsystems, 26 syscalls) |
+| Compiler | 200MB+ toolchain (rustc/gcc/clang) | Sub-MB self-hosting compiler (cycc, Cyrius — live version pinned in [development/state.md](development/state.md)) |
+| Kernel | Linux 6.6 LTS (millions of lines of C) | Sub-MB AGNOS kernel in Cyrius (40+ subsystems, 26 syscalls, read+write filesystems incl. crash-safe journaling) — live size in [development/state.md](development/state.md) |
 | Registry | crates.io (name squatting, governance) | ark + zugot. Names belong to the builders. |
 | Build | Cargo + LLVM + Python (rustc bootstrap) | `cyrius build`. No Python. No LLVM. No libc. |
 | Binary size | 3.9MB kybernet (Rust) | 486KB kybernet (Cyrius, 14× smaller) |

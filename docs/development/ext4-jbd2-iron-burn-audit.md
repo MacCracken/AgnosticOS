@@ -162,6 +162,10 @@ commit / checkpoint stages) are the load-bearing primitive iron will pressure-te
 
 ## 7. Burn-day flow (user-driven)
 
+Two flows — pick by friction tolerance:
+
+### Manual flow (no automation; 1.38.8-era)
+
 1. Plug archaemenid; cable monitor + power; ensure NVMe (Crucial P3) is the
    AGNOS-EXT primary, SATA (WD Blue) is secondary.
 2. From Linux: `python3 scripts/mk-dirty-journal-img.py /dev/nvme0n1p2 0 1`
@@ -177,6 +181,39 @@ commit / checkpoint stages) are the load-bearing primitive iron will pressure-te
 8. Boot Linux. Run `e2fsck -fn /dev/nvme0n1p2` post each test.
 9. Update `agnosticos/docs/development/iron-nuc-zen-log.md` with the tracker
    entry per [[feedback_iron_log_tracker_pattern]].
+
+### Automated flow (1.38.9+; CMOS-stamped, single-command prep + validate)
+
+1.38.9 adds three layers of automation that drop burn-cycle friction:
+
+**Layer 1 — host wrappers** (single command per variant):
+- `agnosticos/scripts/iron-jbd2-prep.sh {production|no-replay|replay|integration|crash}` — builds the right env-var variant + (for `replay`) pre-stages the dirty journal + flashes via `install-usb.sh --update`. One command per variant; ESP-only flash so agnos-fs persists across burns.
+- `agnosticos/scripts/iron-jbd2-validate.sh` — post-burn (run from Linux): reads CMOS JBD2 telemetry via `read-boot-log` + runs `e2fsck -fn /dev/nvme0n1p2` + parses on-disk journal SB. One command; full report.
+
+**Layer 2 — bundled multi-test boots** (`integration` variant covers Tests 1+3+4 in one boot when paired with `replay`'s dirty-journal pre-stage):
+- Flash `iron-jbd2-prep.sh integration` against a `mk-dirty-journal-img.py`-mutated partition → AGNOS boots → probe detects DIRTY → replay applies → integration selftest opens tx + put_inode + commits. Single boot exercises probe + replay + integration. Reduces flash cadence 4-5 burns → 3 burns: `production` (baseline), `integration` (deep tests, optionally with pre-staged dirty journal for Test 3), `crash` (power-pull).
+
+**Layer 3 — CMOS-stamped JBD2 events** (kernel writes telemetry to slots 0xA0-0xA4 at probe / replay / commit; survives across reboots; read by `read-boot-log.cyr` so post-burn validation works without serial / FB camera):
+
+| CMOS slot | Stamp | Values |
+|-----------|-------|--------|
+| `0xA0` | PROBE_OUTCOME | 0=no-journal · 1=clean · 2=dirty · 0xFF=malformed |
+| `0xA1` | REPLAY_ATTEMPT | 0=not-attempted · 1=replay-path-ran |
+| `0xA2` | REPLAY_OUTCOME | 0=n/a · 1=success · 0xFF=failure |
+| `0xA3` | REPLAY_TX_COUNT | saturating byte (replayed transactions) |
+| `0xA4` | COMMIT_TX_COUNT | saturating byte (commit_tx successes this boot) |
+
+`iron-jbd2-validate.sh` decodes these into a human-readable report incl. warn lines for inconsistent states (probe=dirty + replay=not-attempted = built-with-JBD2_NO_REPLAY; probe=no-journal + commit_tx>0 = state error; etc.).
+
+**Recommended automated burn cadence (3 flashes total)**:
+
+| # | Command (host, pre-burn) | Variant | Tests covered | Read after | Validation (host, post-burn) |
+|---|-------------------------|---------|---------------|------------|------------------------------|
+| 1 | `sh scripts/iron-jbd2-prep.sh production` | production | Test 1 (clean probe) + 6 (e2fsck) | clean boot | `sh scripts/iron-jbd2-validate.sh` → expect `PROBE: CLEAN` + e2fsck clean |
+| 2 | `sh scripts/iron-jbd2-prep.sh integration` | integration | Tests 1 (clean probe — Test 3 path only if dirty pre-staged) + 4 (put_inode routed) + 6 | clean boot incl. selftest trace | `iron-jbd2-validate.sh` → expect `PROBE: CLEAN` + `COMMIT: N≥1 commits` + e2fsck clean |
+| 3 | `sh scripts/iron-jbd2-prep.sh crash` | crash | Test 5 (power-pull during stress); pull power at ~3-5s; then re-flash production + boot again | replay trace on second boot | `iron-jbd2-validate.sh` → expect `PROBE: DIRTY` (or CLEAN if kill landed between commits) + `REPLAY: SUCCESS` + e2fsck clean |
+
+For Test 2 (refusal-only — useful regression but not strictly necessary since 1.38.3 replay supersedes the refusal), add a 4th flash `sh scripts/iron-jbd2-prep.sh no-replay` against a dirty-pre-staged partition.
 
 Photo expected to be labelled `13MN_jbd2_*.jpg` (phone-label sequence) — the
 catalog convention from [[feedback_top_level_photos_are_fresh_iron]] applies.

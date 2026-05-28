@@ -383,6 +383,18 @@ fn main(): i64 {
     var fbg_h     = fbg_h_b0 | (fbg_h_b1 << 8) | (fbg_h_b2 << 16) | (fbg_h_b3 << 24);
     var fbg_pitch = fbg_p_b0 | (fbg_p_b1 << 8) | (fbg_p_b2 << 16) | (fbg_p_b3 << 24);
 
+    # JBD2 iron-burn telemetry (agnos 1.38.9+ — see ext2.cyr Jbd2CmosSlot enum).
+    # Written by ext2_jbd2_probe / ext2_jbd2_replay / ext2_jbd2_commit_tx so a
+    # post-burn `read-boot-log` can confirm probe-detected-clean-or-dirty,
+    # replay-fired-and-succeeded, AGNOS-produced-N-journaled-writes — without
+    # needing eyes on the FB during the burn (no serial cable on archaemenid
+    # per feedback_no_serial_on_iron).
+    var jbd2_probe_outcome   = cmos_read(0xA0);  # 0:no-journal / 1:clean / 2:dirty / 0xFF:malformed
+    var jbd2_replay_attempt  = cmos_read(0xA1);  # 0:not / 1:replay-path-ran
+    var jbd2_replay_outcome  = cmos_read(0xA2);  # 0:n/a / 1:ok / 0xFF:fail
+    var jbd2_replay_tx_count = cmos_read(0xA3);  # saturating count
+    var jbd2_commit_tx_count = cmos_read(0xA4);  # saturating count of commit_tx successes this boot
+
     # --- Default: focused current-sweep summary ----------------------------
     # Strips the verbose chapters / interpretation prose / verdict layers
     # from the output and prints only the slots relevant to the active
@@ -580,6 +592,36 @@ fn main(): i64 {
     println("    [0x8C] = 0x01 → listener bound (rules out race); 0x00 → race or no listener (escape-plan step 2)");
     println("    Combined: [0x88..0x8B]=08,00,11,44 + [0x8C]=01 + OFFER timeout = (c2) AGNOS dropped a real DHCP frame");
     println("    Combined: [0x88..0x8B]=non-DHCP fingerprint + OFFER timeout = (c1) admitted broadcast was NOT DHCP");
+
+    # JBD2 telemetry (agnos 1.38.9+ — written by ext2.cyr Jbd2CmosSlot).
+    println("");
+    println("--- JBD2 iron-burn telemetry (1.38.9+) ---");
+    print_cmos_line("CMOS[0xA0] jbd2 probe outcome                  = ", jbd2_probe_outcome);
+    print_cmos_line("CMOS[0xA1] jbd2 replay attempted               = ", jbd2_replay_attempt);
+    print_cmos_line("CMOS[0xA2] jbd2 replay outcome                 = ", jbd2_replay_outcome);
+    print_cmos_line("CMOS[0xA3] jbd2 replayed-tx count (saturating) = ", jbd2_replay_tx_count);
+    print_cmos_line("CMOS[0xA4] jbd2 commit-tx count this boot (sat)= ", jbd2_commit_tx_count);
+    if (jbd2_probe_outcome == 0)    { println("  jbd2: PROBE -- no-journal feature (vanilla ext2 FS)"); }
+    if (jbd2_probe_outcome == 1)    { println("  jbd2: PROBE -- CLEAN journal at mount (s_start=0; normal post-clean-shutdown state)"); }
+    if (jbd2_probe_outcome == 2)    { println("  jbd2: PROBE -- DIRTY journal at mount (s_start != 0; replay path SHOULD have fired)"); }
+    if (jbd2_probe_outcome == 0xFF) { println("  jbd2: PROBE -- MALFORMED journal (bad magic / unknown blocktype / blocksize mismatch / csum fail)"); }
+    if (jbd2_replay_attempt == 1) {
+        if (jbd2_replay_outcome == 1) {
+            print_str("  jbd2: REPLAY -- SUCCESS, applied "); print_num(jbd2_replay_tx_count); println(" tx, SB now clean");
+        }
+        if (jbd2_replay_outcome == 0xFF) { println("  jbd2: REPLAY -- FAILED (torn / malformed / SB-rewrite error); write_ok=0 stays"); }
+    }
+    if ((jbd2_replay_attempt == 0) & (jbd2_probe_outcome == 2)) {
+        println("  jbd2: WARN -- probe saw DIRTY but replay path did NOT fire (JBD2_NO_REPLAY build OR ext2_active=0?)");
+    }
+    if (jbd2_commit_tx_count > 0) {
+        print_str("  jbd2: COMMIT -- AGNOS produced ");
+        print_num(jbd2_commit_tx_count);
+        println(" journaled commits this boot (the 1.38.6 integration path is firing)");
+    }
+    if ((jbd2_probe_outcome == 0) & (jbd2_commit_tx_count > 0)) {
+        println("  jbd2: WARN -- no-journal probe but commit_tx fired (state error?)");
+    }
 
     # USBLEGSUP outcome decoder.
     if (xh_usbleg == 0) { println("  USBLEGSUP: n/a (no xECP chain) — controller does not advertise extended caps."); }

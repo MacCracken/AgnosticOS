@@ -1,6 +1,6 @@
 # AGNOS — Project History & Timeline
 
-> **Status**: Active | **Last Updated**: 2026-05-15
+> **Status**: Active | **Last Updated**: 2026-05-28
 
 ---
 
@@ -84,6 +84,14 @@ The shared crate ecosystem now spans 80+ crates (most at v1.0+ stable), with 19+
 | **Cyrius v5.9.x close — 44 patches over 3 days** (catchup + niyama-fold cycle); pin-lag bands collapse — agnosys/vyakarana/sandhi/cyim/agnostik/owl all roll forward; aegis graduates 0.1.0 → 0.8.2; **darshana** extracted from cyim's TTY layer when chakshu became second consumer | 2026-05-08 | 87 |
 | **Cyrius v5.10.x — REAL TYPE SYSTEM arc** opens with per-phase compile-time profiling instrumentation (v5.10.0), pivots at v5.10.5 to type vocabulary (cstring / Result / Option / Tagged) and call-site type checking (Phase 2 at v5.10.24); 24 patches in 2 days. cc5 binary at 783,408 B (+42 KB). Bare-metal + RISC-V rv64 reservation slips to v5.12.x; v5.11.x reserved for TS testing suite + bug sweep | 2026-05-08 → 2026-05-09 | 87–88 |
 | **Iron boot — MVP spine alive on archaemenid** (Attempt 28, NUC AMD Beelink SER). Path C sovereign UEFI (`gnoboot`) hands off to `agnos` 1.30.1 via the sovereign boot-info struct at RDI; kernel completes its full init spine on real hardware — GDT/TSS/IDT, APIC + timer, paging, PMM, heap, ACPI/PCI enumeration, VFS, initrd, SYSCALL, stack canary, scheduler arming (closed-beta gate cp_fb 0x11 MAGENTA re-held), userland exec test, kybernet-launch site. Four checkpoints past the closed-beta gate. The mem-iso ladder (Attempts 17-27, repair letters F-O across 11 burns) closed when Repair (O) deleted the offending 303-line test block per `uefi-boot-prior-art.md` §6. Closes the "boots-on-iron" front; remaining work to typeable-shell MVP is fb glyph renderer + PS/2-emulation verification for USB keyboards. [Photo](development/iron-nuc-zen-photos/attempt-28-mvp-spine-alive.jpg) · [Attempt 28 entry](development/iron-nuc-zen-log-mvp.md) | 2026-05-15 | 93 |
+| **MVP GATE HIT — typeable shell on iron** (Attempt 68, agnos 1.30.9). Closed-beta MVP (kernel + kybernet + agnoshi typeable on archaemenid) clears after the xhci silent-absorb arc closed (9 repair letters / 5 days / 19 attempts ending at cyrius v5.11.64's gvar-init-order fix; root cause was an upstream cyrius bug, not silicon) | 2026-05-18 | 96 |
+| **Cyrius v6.0.0 cycle-open + two-binary rename ceremony**: `cc5` → `cycc` (production), `cyrc` → `cybs` (bootstrap); v5.11.x closes at **5.11.69** — 70 patches across 11 days, longest minor in Cyrius history | 2026-05-19 | 97 |
+| **kashi extracted** (काशि — AGNOS console-font subsystem; freestanding VGA 8x16 + CGA 8x8 glyph cores split from `fb_console.cyr` for parallel-agent development). v1.0+ binaries cohort jumps to 13 with sys-info + terminal-aesthetics burst (mihi/iam/chakshu/bannermanor/darshana/hapi) | 2026-05-20 | 98 |
+| **Storage arc (agnos 1.31.x) CLOSED** — all 5 block backends + GPT + ext2/ext4 read landed with iron debuts: NVMe Attempt 80, AHCI/SATA 81, USB-MS 87, RAM-disk + VirtIO-blk modern 88, ext2/ext4 read 1.31.5 + 64BIT 1.31.7 | 2026-05-22 | 100 |
+| **r8169 unicast-RX delivery arc CLOSED at 1.32.7** (`missed` collapsed 176 → 0 via RX-ring deepen 16 → 64). **Networking-iron-COMPLETE at 1.32.9** (DHCP `.142` real lease on archaemenid) | 2026-05-25 | 103 |
+| **W5 demo→base iron burn PASS** (Attempt 91 / agnos 1.33.1) — `persist.txt` survives reboot on unmodified default `mkfs.ext4`; **demo→base maturity exit on real NAND**. `fsync` FLUSH-CACHE barrier at 1.33.5 | 2026-05-26 | 104 |
+| **FAT-family arc COMPLETE** (1.34.0–1.34.6 across FAT12/16/32 + exFAT read+write + LFN + dir growth + Unicode names + ESP-write guard; `fsck`-clean in QEMU). **1.35.x networking-comms arc COMPLETE** (DNS + ICMP + TCP hardening B0-B4 + NTP + anonymous mmap/munmap + RTC boot clock + DNS cache + arc-close hardening). **1.36.x refactor cycle COMPLETE** (net.cyr split, main.cyr selftest extraction). **1.37.x ext4 extent-allocation arc OPENS** | 2026-05-27 | 105 |
+| **Iron Attempt 1373 PASS — ext4 extent allocation iron-validated** (agnos 1.37.3 depth-2 PASS + e2fsck-clean on real NVMe). **1.37.5 arc-close: kashi 0.6.0 vendored into kernel** (retires inline glyph tables). **kashi v1.0.0 API freeze** later same day. **1.38.x JBD2 journaling arc COMPLETE in a single day** — 9 bites: probe → probe-deepen → log reader → replay → lifecycle → write path → integration → crash smoke → hardening + iron-burn audit. AGNOS now both *consumes* Linux-left journals AND *produces* its own; sync-checkpoint with 3 FLUSH-CACHE barriers; `jbd2-crash-smoke.sh` 4/4 e2fsck-clean across SIGKILL points | 2026-05-28 | 106 |
 | **Target: Closed beta cut** | **early June 2026** | ~115 |
 
 ---
@@ -98,10 +106,10 @@ The Cyrius compiler binary has been renamed four times over the language's evolu
 | `cc2` | v2.x | First rename (v2.0, ~2026-04-08) |
 | `cc3` | v3.x and v4.x | Stayed across both major versions (v3.0 shipped ~2026-04-09; persisted through v4.8.x on 2026-04-14) |
 | `cc5` | v5.x (current) | `cc3` → `cc5` at v5.0.0 (2026-04-15) — **cc4 was never shipped**; that binary name/version was skipped |
-| `cyc` | v6.x (queued) | Final rename — binary name becomes version-neutral, ending the rename cycle permanently |
+| `cycc` | v6.x (current) | `cc5` → `cycc` ("Cyrius Computer Compiler") at v6.0.0 ceremony on 2026-05-19. Bootstrap `cyrc` → `cybs` ("Cyrius Bootstrap") in the same ceremony. **Names are now permanent** — no `cycc7` at v7.0.0; the cc3 → cc5 (v5.0.0) → cycc (v6.0.0) sequence was the LAST name-change penalty paid |
 
-Four renames total across four language-major transitions. The `cc5` → `cyc` event at v6.0 is the one-and-done cleanup that future major versions inherit without further renaming.
+Four renames total across four language-major transitions. The `cc5` → `cycc` event at v6.0 (landed 2026-05-19) is the one-and-done cleanup that future major versions inherit without further renaming. Back-compat symlinks `cc5 → cycc` + `cyrc → cybs` ship through the v6.0.x window (drop at v6.1.0).
 
 ---
 
-*Last Updated: 2026-05-09*
+*Last Updated: 2026-05-28*

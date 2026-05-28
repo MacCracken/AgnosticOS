@@ -251,6 +251,7 @@ Sovereign video codecs — no C, no FFI, no libav*. Each codec is a standalone c
 
 | Crate | Description | Key Consumers |
 |-------|-------------|---------------|
+| **rekha** | Vector / outline font subsystem — TrueType / OpenType parser + Bézier rasterizer (Sanskrit: रेखा *line/outline/contour/stroke*). Sibling-to-kashi pair: **kashi** handles bitmap glyph sources (BIOS ROM fonts, PSF1/PSF2, hand-drawn arrays — the *shining* glyph cores at v1.0.0 2026-05-28); **rekha** handles outline/Bézier sources for scalable typography (resolution-independent rendering). Discovered 2026-05-28 while working on kashi and asking about TIFF support — different decode pipeline, different render math, not a kashi extension. Likely follows kashi's parallel-agent pattern per [[project_kashi_parallel_split]]. Long-horizon — surfaces when aethersafha (Wayland compositor) gets real or when a document/viewer app demands scalable text. Captured in `project_tools_stable_ideas.md`. | aethersafha (eventual); document viewers; framebuffer console v2 |
 | **krishi** | Agriculture — crop science, soil, irrigation, yield modeling (Sanskrit: कृषि) | vanaspati, badal, kimiya, kshetra |
 | **prakriti** | Ecology — ecosystem modeling, food webs, biodiversity (Sanskrit: प्रकृति) | jantu, vanaspati, badal, jivanu |
 

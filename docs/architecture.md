@@ -156,24 +156,33 @@ The original 5-layer plan listed VirtIO-Blk + FAT16. The 1.31.x cycle (Mar–May
 
 **Partition + filesystem layer:**
 - **GPT (Phase 1-3)** — header + full 16 KB array walk + UTF-16LE partition names + table-less CRC32 + backup-header recovery + 7-GUID type classifier + `parts` shell command. Iron-validated multi-partition layouts at Attempts 81/89/90
-- **ext2 / ext4 read-only (Phase 1-5)** — superblock + BGDT + inode (direct + single/double/triple indirect tree) + dirent walk + absolute-path resolution + `VFS_EXT2_FILE` FD type + ext4 extents header/leaf walker (FreeBSD-shape) + 64BIT support (s_desc_size + dynamic BGDT stride + bg_inode_table_hi guard). **Iron-validated** on real Linux ext4 on NVMe at Attempt 90 (1.31.6)
+- **ext2 / ext4 read + write + extent allocation + JBD2 journaling** — superblock + BGDT + inode (direct + single/double/triple indirect tree) + dirent walk + absolute-path resolution + `VFS_EXT2_FILE` FD type + ext4 extents header/leaf walker (FreeBSD-shape) + 64BIT support (s_desc_size + dynamic BGDT stride + bg_inode_table_hi guard) + **write path** (create / write / unlink / mkdir / rmdir / rename / ln / symlink / truncate, metadata_csum-stamping, `e2fsck -fn`-clean — 1.33.x WRITE arc) + **ext4 extent allocation** (depth-0 append → depth-0→1 grow → multi-leaf depth-1 sibling split → depth-1→2 index-block grow, the full on-demand grow ladder — 1.37.x) + **JBD2 journaling** (probe → log reader → replay-on-mount → in-memory transaction lifecycle → write path with 3-barrier sync-checkpoint → `put_inode` integration → crash-injection smoke + hardening — 1.38.x). **Iron-validated** on real Linux ext4 on NVMe at Attempt 90 (1.31.6 read-only baseline), Attempt 91 (1.31.7 ext4 64BIT shell UX), Attempt 1331 (1.33.1 write-survives-reboot demo→base exit), Attempt 1373 (1.37.3 extent allocation depth-2)
 - **Partition-aware mount via GPT consumption** — `ext2_try_partition_mount` iterates Linux-FS-GUID partitions when whole-disk probe misses; mounts the first match
-- **fatfs (read-only FAT16)** — root directory listing, file open/read; BPB validation sweep at 1.31.6 (num_fats / sectors_per_cluster / root_entry sanity)
+- **fatfs (FAT12/16/32 read + write)** — partition-aware multi-backend mount + FAT-chain traversal + create / content / delete / truncate + LFN. `fsck.fat -n`-clean (1.34.x FAT-family arc)
+- **exFAT (read + write)** — allocation bitmap + typed dir-set (SetChecksum / NameHash) + up-case table for Unicode names + directory growth (root extension + spanning dir-set append). `fsck.exfat -n`-clean (1.34.x)
+- **FS write-safety** — ESP-write guard at 1.34.6: FAT/exFAT writes refused on boot-ESP partitions (firmware territory); data writes go to MSFT-Basic partitions / USB sticks
 
-**Multi-source convergent prior-art audits**: every non-trivial subsystem in this layer gets a written audit before its iron burn — see [`development/ext2-ext4-extents-prior-art.md`](development/ext2-ext4-extents-prior-art.md), [`development/ext4-64bit-prior-art.md`](development/ext4-64bit-prior-art.md), [`development/msc-reset-recovery-prior-art.md`](development/msc-reset-recovery-prior-art.md), [`development/ext2-iron-burn-audit.md`](development/ext2-iron-burn-audit.md). Linux is one source of many — FreeBSD / OpenBSD / NetBSD / Haiku / EDK2 / SeaBIOS / U-Boot / Plan 9 + vendor errata triangulated per [`feedback_redesign_dont_reinvent`](../../../.claude/projects/-home-macro-Repos-agnosticos/memory/feedback_redesign_dont_reinvent.md).
+**Multi-source convergent prior-art audits**: every non-trivial subsystem in this layer gets a written audit before its iron burn — see [`development/ext2-ext4-extents-prior-art.md`](development/ext2-ext4-extents-prior-art.md), [`development/ext4-64bit-prior-art.md`](development/ext4-64bit-prior-art.md), [`development/ext2-ext4-write-prior-art.md`](development/ext2-ext4-write-prior-art.md), [`development/ext4-extent-alloc-prior-art.md`](development/ext4-extent-alloc-prior-art.md), [`development/ext4-jbd2-prior-art.md`](development/ext4-jbd2-prior-art.md), [`development/fat-family-prior-art.md`](development/fat-family-prior-art.md), [`development/exfat-prior-art.md`](development/exfat-prior-art.md), [`development/msc-reset-recovery-prior-art.md`](development/msc-reset-recovery-prior-art.md), [`development/ext2-iron-burn-audit.md`](development/ext2-iron-burn-audit.md), [`development/ext4-jbd2-iron-burn-audit.md`](development/ext4-jbd2-iron-burn-audit.md). Linux is one source of many — FreeBSD / OpenBSD / NetBSD / Haiku / EDK2 / SeaBIOS / U-Boot / Plan 9 + vendor errata triangulated per [`feedback_redesign_dont_reinvent`](../../../.claude/projects/-home-macro-Repos-agnosticos/memory/feedback_redesign_dont_reinvent.md).
 
-**Not yet shipped at this layer**: FAT32 (no consumer pressure), per-backend GPT parsing (only `blk_active` parses today; deferred to next storage-cycle reopening), HTREE indexed directories, fast/slow symlink resolution, ext2/ext4 write paths (write cycle pinned to 1.33.x). Framebuffer/MMIO graphics belongs to a separate display layer, not Layer 3.
+**Not yet shipped at this layer**: HTREE indexed directories, fast/slow symlink resolution, ext4 hole-fill + out-of-order extent inserts, JBD2 CSUM_V2/V3 per-tag/per-commit checksums + full revoke handling, bitmap/group-desc/extent-tree journaling (1.38.x integration narrowly routes the inode-table write only), NTFS / squashfs read, optical via USB-MS SCSI MMC (non-512-B sectors). Framebuffer/MMIO graphics belongs to a separate display layer, not Layer 3.
 
 ### Layer 4 — Can Talk to the World
 
-- **VirtIO-Net** — legacy PCI, virtqueues, Ethernet frames
-- **ARP + IPv4 + UDP** — full send/recv
-- **TCP** — connect/send/recv/close with SYN/ACK/FIN state machine (not just the UDP-only MVP originally planned)
+- **r8169 GbE NIC driver** — RTL8168/8125 PCI probe + RX/TX rings + RX-ring deepen 16→64 (1.32.7 unicast-RX fix). Iron-CONNECTED on archaemenid (Attempt 1327 / 1.32.7). The 1.32.x networking arc closed with DHCP `.142` real-lease iron-verified at Attempt 1329 / 1.32.9.
+- **VirtIO-Net** — legacy PCI, virtqueues, Ethernet frames (QEMU-only; back-burnered with known TX gap)
+- **ARP + IPv4 + UDP** — full send/recv; UDP 8-listener bind table
+- **TCP** — connect/send/recv/close with SYN/ACK/FIN state machine + server primitives (listen/bind/accept) + 1.35.1 hardening (in-order receive ring, retransmit/RTO, MSS/segmentation, peer-window)
+- **DHCP client** — RFC 2131 DISCOVER → OFFER → REQUEST → ACK; real lease iron-verified (1.32.9)
+- **DNS stub resolver** — `dns` shell verb, RFC 1035 parse incl. compression pointers, 8-entry TTL-respecting positive cache (1.35.0 / 1.35.6)
+- **ICMP echo** — `ping` verb, pingable + outbound (1.35.0)
+- **NTP/SNTP** — one-shot SNTP query for wall clock, `ntp` + `date` verbs (1.35.2)
+- **RTC boot clock** — CMOS read at boot for wall clock without network, `date [RTC]` / `[NTP]` (1.35.5)
+- **Arc-close ingress hardening** — `net_poll` clamps attacker-controlled IPv4 total-length to actually-received frame size, closing forged-length over-read on ICMP/UDP/TCP handlers (1.35.7)
 - **Serial console** — input + output via COM1 / PL011
 
 ### Layer 5 — Can Be Used
 
-- **Shell** — 22 commands: `help echo ps free cat uptime lspci cpus net send recv tcp pipe blkread parts ls cd pwd disk bench test halt`. `ls` accepts flag tokens (`-la` no-op for now); `cat` falls through to initrd on ext2 miss; `cd` + `pwd` consume `sh_cwd_inode` / `sh_cwd_path` globals for CWD-relative path resolution (1.31.7 bites D/B/C)
+- **Shell** — 34 commands: `help echo ps free cat uptime lspci cpus net send recv tcp pipe blkread parts ls cd pwd disk bench test halt` (base) + `mkdir rm rmdir touch ln sync` (ext2/4 mutation verbs from the 1.33.x WRITE arc) + `dns ping ntp date` (1.35.x networking-comms) + `jbd2` (1.38.1 journal-state diagnostic). `ls` accepts flag tokens (`-la` no-op for now); `cat` falls through to initrd on ext2 miss; `cd` + `pwd` consume `sh_cwd_inode` / `sh_cwd_path` globals for CWD-relative path resolution (1.31.7 bites D/B/C)
 - **kybernet PID 1** — service supervision, signal/event-loop, kernel-interface boundary. Per-repo benchmarks + test count in kybernet's own state.md.
 - **Signals** — per-process `proc_signals` / `proc_sigmask`, `kill` / `sigprocmask` / `signalfd`
 - **Epoll** — `epoll_create`, `epoll_ctl`, `epoll_wait`
@@ -192,7 +201,7 @@ The original 5-layer plan listed VirtIO-Blk + FAT16. The 1.31.x cycle (Mar–May
 | + VirtIO + basic TCP | ~65 KB | — |
 | Full Layer 1–5 + Path-C UEFI ABI + USB-HID + xHCI cmd-path | ~70–80 KB | **see [`development/state.md`](development/state.md) for live size** |
 
-The shipped kernel is several times the original estimate because it carries features outside the original 5-layer shortest-path plan: SMP infrastructure (APIC, IPI, trampoline, per-CPU stacks); cross-architecture (x86_64 + aarch64 in one binary); full TCP instead of UDP-only; slab allocator with 8 size classes; FAT16 driver; Ring 3 with proper TSS; Local APIC timer; v1.30.x's Path-C sovereign UEFI handoff and native XHCI / USB-HID-boot driver added another sizable chunk.
+The shipped kernel is several times the original estimate because it carries features outside the original 5-layer shortest-path plan: SMP infrastructure (APIC, IPI, trampoline, per-CPU stacks); cross-architecture (x86_64 + aarch64 in one binary); full TCP + DHCP + DNS + NTP + ICMP comms substrate (1.35.x) instead of UDP-only; slab allocator with 8 size classes; full FAT12/16/32 + exFAT read+write drivers (1.34.x) instead of FAT16 read-only; ext2/4 read **+ write + extent allocation + JBD2 crash-safe journaling** (1.33.x–1.38.x); Ring 3 with proper TSS; Local APIC timer; v1.30.x's Path-C sovereign UEFI handoff and native xHCI / USB-HID-boot driver added another sizable chunk. The 1.37.5 kashi vendoring (~+100 KB) brings the freestanding font-data core (full CP437 + 8x8 + 9x16-derived faces); the 1.38.x JBD2 stack (~+30 KB) adds the full probe → log reader → replay → write path → integration → crash smoke surface.
 
 The conceptual 5-layer model still maps. The kernel simply carries more per layer than the MVP "boots into shell" scope intended.
 
@@ -225,13 +234,16 @@ umount(24)      pipe(25)
 | Framebuffer text rendering quality (Quiet-Boot legibility on AMD Zen) | Banding observed on archaemenid Quiet-Boot framebuffer; closeout-pinned at gnoboot 0.4.2 / agnos 1.30.12 after two GOP SetMode levers were falsified. Next-cycle options: HUBP `clear_tiling` port or shadow-buffer architectural eval. Doesn't block MVP (VGA-path legible). |
 | Wayland compositor (aethersafha) | Display-layer prereq for the GUI track; scaffold only at 0.1.0. Closed-beta MVP runs without it (agnoshi-as-console via argonaut 1.7.0 BOOT_MINIMAL). |
 | Per-backend GPT parsing | `gpt.cyr` currently only parses against `blk_active`; partitions on non-active backends aren't reachable. Deferred to next storage-cycle reopening or to a real consumer surfacing demand. |
-| ext2/ext4 write paths | Pinned to **1.33.x** as the WRITE cycle (block/inode allocator, dirent insertion/removal, file create/truncate/unlink, mkdir/rmdir). Substantial own-cycle (~1,500+ LOC); multi-source audit doc first. Read-only is sufficient for current iron + boot paths. |
+| ext2/ext4 write paths | ✅ **Shipped (1.33.x)** — block/inode allocator, dirent insertion/removal, file create/truncate/unlink, mkdir/rmdir/rename/ln/symlink, metadata_csum-stamping. W5 demo→base iron burn confirmed at 1.33.1 (`persist.txt` survives reboot on default `mkfs.ext4`). |
+| ext4 extent allocation | ✅ **Shipped (1.37.x)** — depth-0 append → depth-0→1 grow → multi-leaf depth-1 sibling split → depth-1→2 index-block grow (the full on-demand grow ladder). Iron-validated Attempt 1373 / 1.37.3. |
+| JBD2 crash-safe journaling | ✅ **Shipped (1.38.x)** — probe → log reader → replay-on-mount → in-memory transaction lifecycle → write path (3-barrier sync-checkpoint) → `put_inode` integration → crash-injection smoke + hardening + iron-burn audit. AGNOS now both consumes Linux-left journals AND produces its own. Iron burn user-driven post-1.38.8 per audit doc rubric. |
+| FAT-family (FAT12/16/32 + exFAT) read+write | ✅ **Shipped (1.34.x)** — partition-aware multi-backend mount, FAT-chain traversal, create/content/delete/truncate/LFN, exFAT allocation bitmap + typed dir-set + up-case table + directory growth, ESP-write guard. `fsck`-clean in QEMU; user-driven iron burn pending. |
 | HTREE indexed dirs + fast/slow symlinks (ext4) | Performance optimizations + extension; linear dirent scan + indirect-tree read suffices today. Queue when a real consumer needs them. |
-| FAT32 + additional read-only FSes | No consumer pressure. FAT16 + ext2/4 cover current boot path + iron read surface. |
-| Full USB hub / hot-plug | xHCI cmd-path + USB-HID + USB Mass Storage classes shipped (1.30.x → 1.31.3); hub topology + hot-add deferred to plug-and-play cycle (pre-1.35.0). |
-| SMP scheduling (beyond infrastructure) | APIC/IPI/trampoline are in place; cross-core scheduler + AP-wakeup-on-real-hardware deferred. Gated on hardware-validation infra. |
-| Real-iron NIC (e1000e / I225-V / RTL8125) | Different device class; carved out for **1.32.x networking cycle** (`storage ✅ → networking → write`). |
+| Full USB hub / hot-plug | xHCI cmd-path + USB-HID + USB Mass Storage classes shipped (1.30.x → 1.31.3); hub topology + hot-add deferred to plug-and-play cycle. |
+| SMP scheduling (beyond infrastructure) | APIC/IPI/trampoline are in place; cross-core scheduler + AP-wakeup-on-real-hardware deferred. Gated on hardware-validation infra + the multi-threading kernel arc. |
+| i225-V NIC driver | ✅ **r8169 shipped (1.32.x)** for AMD primary line; i225-V queued for Intel iron post-archaemenid migration (separate hardware line, not an AMD blocker). |
 | Optical via USB MS (SCSI MMC profile) | HP external USB Blu-ray on archaemenid derps the NUC at cold boot pre-power-on (firmware quirk). Deferred to plug-and-play cycle; AllInOne internal CD/DVD an alternative path. |
+| NTFS / squashfs read | Roadmap row 23. No consumer pressure; deferred. |
 
 ## Named Subsystems
 
