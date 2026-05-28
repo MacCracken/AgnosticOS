@@ -1,6 +1,6 @@
 > **Status**: ✅ **CAPPED 2026-05-19** — closed-beta MVP gate hit at Attempt 68 / agnos 1.30.9 (typeable shell on archaemenid). Frozen historical record.
 >
-> **Successor**: [`iron-nuc-zen-log.md`](iron-nuc-zen-log.md) — active log for 1.30.10+ work (framebuffer refresh, networking/storage, post-MVP iron bring-up).
+> **Successor**: [`iron-nuc-zen-log-mvp2.md`](iron-nuc-zen-log-mvp2.md) — the MVP 2.0 era (networking + filesystem WRITE, 1.30.10 – 1.34.x). The chain then continues to [`iron-nuc-zen-log.md`](iron-nuc-zen-log.md) (active — Base→Server, 1.37.x+).
 >
 > **Last Updated**: 2026-05-19 (cap)
 

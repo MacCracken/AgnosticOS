@@ -541,7 +541,7 @@ The "discard + continue" inner loop could in principle starve the caller — if 
 1. **AAP added** (`:577` region) — `accept = AAP|AB|AM|APM` → RxConfig `0xEF0F`. Primary, iPXE-convergent.
 2. **FS|LS discard gate removed** from `r8169_poll` (`:636` region) — FreeBSD/OpenBSD `re_rxeof` gate the SOF|EOF requirement behind `RL_FLAG_JUMBOV2` ONLY; iPXE checks OWN+RES only. For non-jumbo single-descriptor frames the gate never fires for legit traffic; removing it matches all non-Linux prior art and is free to stack (covers the case where AAP delivers a frame the old gate would have rejected). Secondary; not expected load-bearing.
 
-Build: 621,816 B (Attempt 103) → **621,704 B** (−112 B). `scripts/build.sh` x86_64 OK, multiboot2 ELF64. Iron Attempt 104 validates per the rubric at [`iron-nuc-zen-log.md#tracker-1325-cycle`](iron-nuc-zen-log.md#tracker-1325-cycle). NOT auto-proposed per [[feedback_iron_burns_block_other_work]].
+Build: 621,816 B (Attempt 103) → **621,704 B** (−112 B). `scripts/build.sh` x86_64 OK, multiboot2 ELF64. Iron Attempt 104 validates per the rubric at [`iron-nuc-zen-log-mvp2.md#tracker-1325-cycle`](iron-nuc-zen-log-mvp2.md#tracker-1325-cycle). NOT auto-proposed per [[feedback_iron_burns_block_other_work]].
 
 ---
 
@@ -584,4 +584,4 @@ Build: 621,704 B (Attempt 104) → **621,768 B** (+64 B, settle spin). `scripts/
 
 With APM (correct IDR) + AAP (promiscuous) both on and broadcast proven delivering, a unicast reply to our MAC *must* be chip-accepted. **The one divergence from all prior-art: AGNOS sent exactly ONE ARP request and never retransmitted** (Linux `neigh`, iPXE, lwIP `etharp`, *BSD all retransmit per RFC 1122 §2.3.2.1; a missed/un-elicited first reply is never re-offered).
 
-**1.32.6 bite 1 (LANDED)**: ARP request retransmit ~1/sec across the 5 s window (`main.cyr:684-713`). Correct regardless + a clean discriminator — next burn `arp: REPLY` → transient/elicitation miss; still timeout → systematic unicast drop ⇒ **bite 2 (deep driver APM re-derive, multi-source) queued** per user direction. Build 622,408 → **622,560 B**. Full rubric: [`iron-nuc-zen-log.md#tracker-1326-cycle`](iron-nuc-zen-log.md#tracker-1326-cycle).
+**1.32.6 bite 1 (LANDED)**: ARP request retransmit ~1/sec across the 5 s window (`main.cyr:684-713`). Correct regardless + a clean discriminator — next burn `arp: REPLY` → transient/elicitation miss; still timeout → systematic unicast drop ⇒ **bite 2 (deep driver APM re-derive, multi-source) queued** per user direction. Build 622,408 → **622,560 B**. Full rubric: [`iron-nuc-zen-log-mvp2.md#tracker-1326-cycle`](iron-nuc-zen-log-mvp2.md#tracker-1326-cycle).

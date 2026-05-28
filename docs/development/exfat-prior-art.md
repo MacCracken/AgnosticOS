@@ -6,7 +6,7 @@ type: prior-art
 
 # exFAT — prior art (read → write)
 
-> **Cycle**: agnos **1.34.1** — the FAT-family sibling, split out of 1.34.0. Tracker: [`iron-nuc-zen-log.md#tracker-1341-cycle`](iron-nuc-zen-log.md#tracker-1341-cycle). This is **bite 1** (the audit). Multi-source per [[feedback_redesign_dont_reinvent]] — Microsoft exFAT specification + Linux `fs/exfat` + `exfatprogs` (`mkfs.exfat`/`fsck.exfat`, the host oracle). Builds on the overview in [`fat-family-prior-art.md`](fat-family-prior-art.md) § 4 with the offset-precise detail an implementation needs.
+> **Cycle**: agnos **1.34.1** — the FAT-family sibling, split out of 1.34.0. Tracker: [`iron-nuc-zen-log-mvp2.md#tracker-1341-cycle`](iron-nuc-zen-log-mvp2.md#tracker-1341-cycle). This is **bite 1** (the audit). Multi-source per [[feedback_redesign_dont_reinvent]] — Microsoft exFAT specification + Linux `fs/exfat` + `exfatprogs` (`mkfs.exfat`/`fsck.exfat`, the host oracle). Builds on the overview in [`fat-family-prior-art.md`](fat-family-prior-art.md) § 4 with the offset-precise detail an implementation needs.
 
 ## 0. Why a new module, not a `fatfs` mode
 

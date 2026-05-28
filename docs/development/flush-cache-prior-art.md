@@ -6,7 +6,7 @@ type: prior-art
 
 # `fsync` / FLUSH-CACHE durability barrier — prior art
 
-> **Cycle**: agnos **1.33.5** — the last 1.33.x WRITE-arc follow-on. Tracker: [`iron-nuc-zen-log.md#tracker-1335-cycle`](iron-nuc-zen-log.md#tracker-1335-cycle). This is **bite 1** (the audit). Multi-source per [[feedback_redesign_dont_reinvent]] — Linux is one source of many; derive the command shape from the specs first, then diff against AGNOS.
+> **Cycle**: agnos **1.33.5** — the last 1.33.x WRITE-arc follow-on. Tracker: [`iron-nuc-zen-log-mvp2.md#tracker-1335-cycle`](iron-nuc-zen-log-mvp2.md#tracker-1335-cycle). This is **bite 1** (the audit). Multi-source per [[feedback_redesign_dont_reinvent]] — Linux is one source of many; derive the command shape from the specs first, then diff against AGNOS.
 
 ## 0. Scope honesty — this is a HARDENING item, not a bug fix
 

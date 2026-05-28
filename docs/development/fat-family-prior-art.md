@@ -6,7 +6,7 @@ type: prior-art
 
 # FAT-family filesystems — prior art (FAT write → exFAT)
 
-> **Cycle**: agnos **1.34.x** — opens the additional-filesystems arc (roadmap row 21). Tracker: [`iron-nuc-zen-log.md#tracker-1340-cycle`](iron-nuc-zen-log.md#tracker-1340-cycle). This is **bite 1** (the audit). Multi-source per [[feedback_redesign_dont_reinvent]] — derive the on-disk shape from the specs + multiple OSes first, then diff against AGNOS. FS-choice (2026-05-26): FAT-family first; NTFS + squashfs deferred to roadmap row 23.
+> **Cycle**: agnos **1.34.x** — opens the additional-filesystems arc (roadmap row 21). Tracker: [`iron-nuc-zen-log-mvp2.md#tracker-1340-cycle`](iron-nuc-zen-log-mvp2.md#tracker-1340-cycle). This is **bite 1** (the audit). Multi-source per [[feedback_redesign_dont_reinvent]] — derive the on-disk shape from the specs + multiple OSes first, then diff against AGNOS. FS-choice (2026-05-26): FAT-family first; NTFS + squashfs deferred to roadmap row 23.
 
 ## 0. Why this arc, and what "done" means
 

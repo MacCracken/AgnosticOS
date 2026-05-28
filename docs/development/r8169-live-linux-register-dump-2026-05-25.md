@@ -98,4 +98,4 @@ A 3-source convergent audit (Linux v6.6 `r8169_main.c` + FreeBSD `if_rlreg.h`/`i
 Falsification rubric: FB reads `net: L3+TCP OK -- outbound TCP handshake established`
 instead of `SYN sent but no SYN+ACK`. If still FAIL, Normal_mode is not the gate and the
 drop is below CPlusCmd (RX descriptor OWN/DMA) — re-baseline against this dump. Receipt:
-[`iron-nuc-zen-log.md#tracker-1326-cycle`](iron-nuc-zen-log.md#tracker-1326-cycle) bite 6.
+[`iron-nuc-zen-log-mvp2.md#tracker-1326-cycle`](iron-nuc-zen-log-mvp2.md#tracker-1326-cycle) bite 6.
