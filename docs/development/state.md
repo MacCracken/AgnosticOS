@@ -8,7 +8,7 @@ type: state
 
 > **⚠ NOT A LOG.** This file is **live state with pointers** — current truth only, plus links to where the history lives. Iron attempt history → [`iron-nuc-zen-log.md`](iron-nuc-zen-log.md). Per-repo release history → each repo's `CHANGELOG.md`. Crate versions → the two registry pointers below. If you find yourself writing prose narrative here, it belongs in one of those other files.
 
-> **Cyrius toolchain**: agnos pins **6.0.3** (`scripts/cyrius.cyml`; moved 6.0.1 → 6.0.3 at the 1.35.5 cycle-open). Installed `cycc` has since advanced to **6.0.14** — the pin is held deliberately on a known-working version per [[feedback_dont_chase_cyrius_pin]]; the build's "pin drift" warning is noise, not a to-do. v6.0.0 cycle opened 2026-05-19; v5.11.x closed at **5.11.69**.
+> **Cyrius toolchain**: agnos pins **6.0.14** (`cyrius.cyml`; 6.0.1 → 6.0.3 at the 1.35.5 cycle-open, held through the 1.37/1.38 big-write arcs, → **6.0.14 at the 1.39.0 cycle-open 2026-05-28** — user-requested re-pin to current; A/B byte-identical, all gates green, drift warning cleared). The agnosticos `scripts/cyrius.cyml` boot-pipeline pin is **separate** (still 5.11.59; sweep deferred to its next boot-side touch). v6.0.0 cycle opened 2026-05-19; v5.11.x closed at **5.11.69**.
 > **Last refresh**: 2026-05-28. **agnos kernel: 1.38.11** · gnoboot 0.4.2. **The big-write era (1.37–1.38) is the active surface.** Arc ladder since the last refresh:
 > - **1.35.x comms arc — CLOSED at 1.35.7.** DNS stub resolver + 8-entry TTL cache, ICMP echo/`ping`, TCP hardening (retransmit + RX window + MSS), NTP/SNTP + CMOS RTC boot clock, anonymous `mmap`/`munmap` (first new functional syscall since v1.21), arc-close hardening (forged-IP-length clamp + TCP seq-wrap/RTC bounds).
 > - **1.36.x refactor cycle.** `net.cyr` 3-way split (L2/L3 core + protocols + ingress) + `main.cyr` selftest extraction — **all byte-for-byte identical builds** (sha256-verified), behavior provably unchanged.
@@ -18,7 +18,7 @@ type: state
 > **JBD2 iron burn done 2026-05-28** (boots `1389_*`): **read-side PASSED** (probe + SB-csum-validate on the real journal); **write-side was blocked** because archaemenid's agnos-fs journal is **CSUM_V3 + 64BIT** (`incompat=0x12`) — the Linux kernel stamps CSUM_V3 onto a `metadata_csum` journal on first RW mount, `mke2fs` doesn't, so the QEMU smokes never hit it and the 1.38.7 refusal aborted every `commit_tx` on iron. **1.38.10 implements the V3 tag/descriptor/commit checksums** (write + replay), formats re-derived from `include/linux/jbd2.h` + `fs/jbd2/commit.c` and **Linux-`e2fsck`-oracle-validated**; `commit_tx` now COMMITs to the real journal. All 5 jbd2 smokes green on a CSUM_V3 journal (`mk-dirty-journal-img.py --csum-v3` mirrors the kernel stamp); also fixed a latent legacy-tag field swap that made AGNOS journals non-Linux-replayable. `test.sh` 4/4 · `check.sh` 11/11 · build **992,832 B**. Per-cut detail → CHANGELOG `[1.35.0]`–`[1.38.11]`; iron evidence → [`#tracker-138-cycle`](iron-nuc-zen-log.md#tracker-138-cycle) + the 1.37.x Attempt 1373 entry.
 > **JBD2 write-side re-burn DONE 2026-05-28** (boots `13810_*`): five-boot sequence on the unmodified CSUM_V3 agnos-fs journal cleared every tracker row — boot-1 clean baseline (seq 4), boot-2 integration **`commit_tx: COMMITTED`** (the line that refused at the 1389 burn) + `integration selftest PASS`, boot-3 crash **`stress loop PASS (clean shutdown)`** (100/100), boot-4 deliberate mid-cycle power cut, boot-5 recovery clean (`jbd2: clean journal … seq=142`). Host `e2fsck -fn` clean + journal SB CLEAN at every checkpoint. **Crash-safe journaling iron-validated — the 1.38.x arc is COMPLETE.** Photos catalogued → [`iron-nuc-zen-photos/`](iron-nuc-zen-photos/README.md).
 >
-> **NEXT = user git tag of 1.38.11 (cleanup + hardening cycle-close cut)** → then **1.39.x VFS generic-write lift**.
+> **NEXT = user git tags of 1.38.11 (jbd2 arc-close) + 1.39.0 (Cyrius re-pin 6.0.3 → 6.0.14, language-bump cut — no kernel engineering)** → then the **1.39.x VFS generic-write lift** arc proper (specific roadmap tags assigned as it opens).
 >
 > **Closed arcs (history lives in CHANGELOG + iron-log, not here):** storage backends + GPT + ext2/ext4 read, 1.31.x ([`#tracker-133-cycle`](iron-nuc-zen-log-mvp2.md#tracker-133-cycle) for the FS detail); networking, 1.32.x (see Networking line below); ext2/ext4 WRITE incl. the W5 demo→base iron burn + the 1.33.5 fsync/FLUSH-CACHE barrier, 1.33.x ([`#tracker-1335-cycle`](iron-nuc-zen-log-mvp2.md#tracker-1335-cycle)); 1.34.x FAT/exFAT write-completeness; 1.35.x comms (DNS/ICMP/TCP-hardening/NTP/RTC/mmap); 1.36.x net.cyr+main.cyr refactor (byte-identical); 1.37.x ext4 extent-allocation (iron Attempt 1373); 1.38.x jbd2 journaling (CSUM_V3 write+replay; **write-side + crash-recovery iron-validated at the `13810_*` re-burn**; arc closed at 1.38.11).
 >
@@ -166,12 +166,16 @@ CYML format — 5.11.x cluster (no leading-edge holdouts after agnos graduation)
   v5.11.8:  ai-hwaccel (2.2.2)
 
 CYML format — LEADING-EDGE 6.0.x cluster (post-v5.11.x graduations):
-  v6.0.1:  agnos (1.31.7), agnoshi (1.3.3), mihi (1.0.0), iam (1.0.0),
+  v6.0.14: agnos (1.39.0)   ← re-pinned at the 1.39.0 cycle-open 2026-05-28
+                              (6.0.1 mid-1.31.x → 6.0.3 at 1.35.5, held through
+                              the 1.37/1.38 big-write arcs → 6.0.14; A/B
+                              byte-identical, all gates green)
+  v6.0.1:  agnoshi (1.3.3), mihi (1.0.0), iam (1.0.0),
            chakshu (0.6.0), bannermanor (1.0.0), darshana (0.3.5),
            hapi (0.5.0)
-           — eight repos on the v6.0.x lane. agnos graduated mid-1.31.x
-             cycle for binary fixes in cycc 6.0.1 (was 5.11.64, the
-             gvar-init-order anchor). The 2026-05-20 terminal-
+           — agnos originally graduated mid-1.31.x cycle for binary fixes
+             in cycc 6.0.1 (was 5.11.64, the gvar-init-order anchor), then
+             advanced to 6.0.14 at 1.39.0 (above). The 2026-05-20 terminal-
              aesthetics burst brought six: mihi + iam cut as NEW 1.0.0
              repos straight on v6.0.1; chakshu jumped 0.3.0 → 0.6.0 +
              5.10.20 → 6.0.1; bannermanor (`bnrmr` figlet-equivalent) +
