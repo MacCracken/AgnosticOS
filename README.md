@@ -3,11 +3,11 @@
 > **A**rtificial **G**eneral **N**etwork **O**perating **S**ystem
 
 [![License](https://img.shields.io/badge/license-GPLv3-blue)](LICENSE)
-[![Kernel](https://img.shields.io/badge/kernel-AGNOS%201.34.6-orange)](https://github.com/MacCracken/agnos)
-[![Language](https://img.shields.io/badge/Cyrius-6.0.1-red)](https://github.com/MacCracken/cyrius)
+[![Kernel](https://img.shields.io/badge/kernel-AGNOS%201.38.8-orange)](https://github.com/MacCracken/agnos)
+[![Language](https://img.shields.io/badge/Cyrius-6.0.9-red)](https://github.com/MacCracken/cyrius)
 [![Status](https://img.shields.io/badge/status-pre--beta-yellow)](docs/development/roadmap.md)
 
-**AGNOS** is a sovereign operating system written in **Cyrius** — a systems language with a 29KB seed, zero external dependencies, and a self-hosting compiler. The kernel boots to a typeable shell on real AMD hardware (Boot-to-Shell MVP, 2026-05-15); since then the storage stack (NVMe / SATA / USB-MS), a real-iron networking stack (TCP/IP + DHCP over an r8169 NIC), and read+write filesystems (ext2/ext4, FAT12/16/32, exFAT) have all landed — storage, networking, and ext4 iron-validated; the FAT-family `fsck`-validated. 30+ subsystems ported from Rust to Cyrius. No Linux dependency at runtime. Live binary sizes, per-repo versions, and cycle state: [`docs/development/state.md`](docs/development/state.md).
+**AGNOS** is a sovereign operating system written in **Cyrius** — a systems language with a 29KB seed, zero external dependencies, and a self-hosting compiler. The kernel boots to a typeable shell on real AMD hardware (Boot-to-Shell MVP, 2026-05-15); since then the storage stack (NVMe / SATA / USB-MS), a real-iron networking stack (TCP/IP + DHCP + DNS + NTP + ICMP over an r8169 NIC), and read+write filesystems (ext2/ext4 incl. **ext4 extent allocation** + **JBD2 crash-safe journaling**, FAT12/16/32, exFAT) have all landed — storage, networking, ext4 read+write+extent-alloc iron-validated; the FAT-family + JBD2 stacks `fsck`/QEMU-validated with iron burns user-driven. Console-font subsystem vendored from **kashi 1.0.0** (parallel-agent-developed sibling repo). 30+ subsystems ported from Rust to Cyrius. No Linux dependency at runtime. Live binary sizes, per-repo versions, and cycle state: [`docs/development/state.md`](docs/development/state.md).
 
 > *AGI doesn't run on infrastructure built for web apps. It runs on infrastructure built for AGI.*
 >
