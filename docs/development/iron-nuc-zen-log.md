@@ -59,8 +59,46 @@ back. Status is one of `FAIL` / `PASS` / `PARTIAL` / `PENDING`.
 | 5 | Persistence across power-cycle | reboot to Linux, `debugfs -R "dump /extseed.dat …"` | file ≈ 11 MB sparse; byte @ offset 8192 (logical block 2) = `0xAB` | data absent / wrong bytes / size collapsed |
 | 6 | **Host `e2fsck -fn` clean** (load-bearing gate) | mount/pull agnos-fs on Linux, `e2fsck -fn <part>` | **clean** — real-NAND extent records + leaf/index checksums + `i_blocks` all valid | any e2fsck error (csum mismatch, bad extent, i_blocks off) |
 
-Rows 2 + 4 are the in-system iron evidence; row 6 is dispositive (same as the 1.33.1 after-burn check). **Outcome / photos: PENDING IRON BURN.**
+Rows 2 + 4 are the in-system iron evidence; row 6 is dispositive (same as the 1.33.1 after-burn check). **Outcome (Attempt 1373, 2026-05-28): PASS on boot-1, all six rows green; boot-2 surfaced a selftest re-boot idempotency bug (NOT a FS bug — host `e2fsck -fn` clean across both boots). Tracker CLOSED at 1.37.4 (idempotency fix).**
 
 ## Burns
 
-*(Per-version iron-burn narrative for the base era will be appended here as burns run. First expected entry: the 1.37.x extent-allocation burn above.)*
+### Iron Attempt 1373 — 1.37.x extent-allocation iron burn (2026-05-28) — PASS
+
+**Build flashed**: 1.37.3 selftest kernel (`EXT2_EXTENT_WRITE_SELFTEST=1`, 843,624 B), `install-usb.sh --update` (ESP-only, agnos-fs untouched).
+
+**Boot 1 — fresh agnos-fs**: storage trio + GPT + `ext2: mounted (blocksize=4096, inode_size=256, inodes_per_group=8192)` + `fat: mounted FAT32` clean. FB:
+- `ext-ext: seeded /extseed.dat (empty extent file)` ✓ row 2
+- `ext-ext: ino=18 extent size0=0` ✓ row 2
+- `ext-ext: final depth=2 root_entries=1 size=11149376` ✓ row 4
+- `ext-ext: depth-2 PASS` ✓ row 4
+- `ext-ext: append PASS` ✓ row 4
+- → `Activating scheduler...` → `dhcp: DISCOVER` (boot continued normally) ✓ row 1
+
+**Boot 2 — same NVMe, reboot**: storage + mount path identical. FB:
+- `ext-ext: ino=18 extent size0=11149376` (file persisted from boot-1 ✓ rows 3/5)
+- `ext-ext: final depth=2 root_entries=1 size=11149376` (tree persisted ✓ row 5)
+- `ext-ext: no sibling leaf formed FAIL` ← test-not-idempotent bug
+
+**Reset (cold)**: agnos-fs wiped (the user re-flashed the FS partition); boot-3 path equivalent to boot-1, PASS.
+
+**Host verification (row 6, dispositive)** — pulled `/dev/nvme0n1p2` (agnos-fs) post-reboot:
+```
+$ sudo e2fsck -fn /dev/nvme0n1p2
+e2fsck 1.47.4 (6-Mar-2025)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+agnos-fs: 20/1638400 files (5.0% non-contiguous), 148269/6553600 blocks
+```
+**Clean.** ✓ row 6 — real-NAND extent records + leaf/index checksums + `i_blocks` all valid on archaemenid hardware, exactly as 1.33.1 was for indirect writes.
+
+**Boot-2 FAIL diagnosis**: `ext2_extent_write_selftest` loops from `lblk=2` and sets `got_sibling` only when it observes `eh_depth==1` with `eh_entries>=2` *during* the loop. Boot-1's run persisted `/extseed.dat` at `eh_depth==2`; boot-2's first iteration overwrites lblk=2 in place, the post-write inode read reports `d==2` → `got_depth2=1`, `lblk=6002`, loop exits — `got_sibling` never flipped → false `no sibling leaf formed FAIL`. **The FS is healthy; only the selftest's PASS-detection rubric was non-idempotent.**
+
+**Fix (1.37.4)**: `ext2_extent_write_selftest` now checks `eh_depth` after `ext2_get_inode`; if `==2`, emits `ext-ext: /extseed.dat already at depth=2 (prior boot) -- skip PASS` and returns 0. The persisted tree IS the durability proof — skip-with-PASS preserves the evidence rather than tearing it down. QEMU two-boot test confirms the new path.
+
+**Network note (parked)**: DHCP / router association had minor flake on boot-2 + boot-3, eventually associated on the second reset. Not investigated this cycle — user-flagged for later review.
+
+**Arc closure**: 1.37.x extent allocation is **iron-validated on archaemenid**. The boot-1 PASS + host e2fsck-clean reboot survival is the dispositive proof. 1.37.4 cleans up the boot-2 false-FAIL noise so re-runs against persisted state stay green.
