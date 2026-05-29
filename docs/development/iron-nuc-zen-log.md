@@ -39,6 +39,37 @@ back. Status is one of `FAIL` / `PASS` / `PARTIAL` / `PENDING`.
 >
 > **State.md cycle headers link to these anchors via `iron-nuc-zen-log.md#tracker-1373-cycle` style.** Archived (MVP2.0-era) trackers live in [`iron-nuc-zen-log-mvp2.md`](iron-nuc-zen-log-mvp2.md).
 
+### Tracker: 1.39.x cycle — VFS generic-write lift iron burn (PENDING — the FAT/exFAT shell verbs' first real-hardware touch; folds in the long-pending **1.34.x FAT/exFAT iron burn** carry-forward, [`iron-nuc-zen-log-mvp2.md#tracker-1341-cycle`](iron-nuc-zen-log-mvp2.md#tracker-1341-cycle). Code is QEMU-`fsck`-clean across all four FAT/exFAT read+write smokes; this tracker governs only the iron confirmation. NO auto-run per [[feedback_iron_burns_block_other_work]] — rubric below; the user flashes + burns.) {#tracker-139-cycle}
+
+**Scope.** The 1.39.x arc lifted the shell write/dir verbs off the hardwired ext2 path onto a generic per-FS dispatch ([`vfs-generic-write-prior-art.md`](vfs-generic-write-prior-art.md)): `cat`/`ls`/`touch`/`echo >`/`rm`/`mkdir`/`rmdir`/`mv`/`sync` now reach **FAT32 + exFAT** through `vfs_*_secondary`. 1.39.8 (bite 8) consolidated the seven duplicated non-ESP-preference chains behind one `vfs_secondary_select()` and added the `vfs_sec_name_ok` ingress bound (1..255). This burn validates that the dispatch + both writable backends are byte-valid on real NAND, the same dispositive bar (host-`fsck` clean) as the 1.33.1 ext2 and 1.37.x extent burns. **Root-level verbs only** — FAT/exFAT subdir paths are deferred to 1.39.9, so the burn rubric is root-only.
+
+**Hypothesis.** The FAT/exFAT shell verbs that are QEMU-`fsck`-clean across `fat-write-smoke` + `exfat-write-smoke` will (a) create/write/delete/mkdir/rmdir/rename a bare-named file+dir on a **real FAT32 and a real exFAT volume** on archaemenid, (b) print the `fatw:`/`exfatw:` PASS lines to the **FB** (iron-readable; the selftest uses `kprint`, no serial — [[feedback_no_serial_on_iron]]), (c) keep the writes across a power-cycle, and (d) be **host-`fsck.fat` / `fsck.exfat` clean** after the burn.
+
+**Mechanism — and the test-surface fork (the user's call before the burn).** The shell's FAT/exFAT verbs only fire when `ext2_active == 0` (single-primary-FS: ext2 wins when present). archaemenid's internal agnos-fs **is** ext2, so the verbs are unreachable from a normal shell there. Two ways to exercise them on iron:
+
+- **(a) Compile-gated self-driver (recommended, brick-safe).** Ship a `FATFS_WRITE_SELFTEST=1` (and a second `EXFAT_WRITE_SELFTEST=1`) kernel — the same auto-drivers the QEMU smokes use, which `kprint` `fatw:`/`exfatw:` PASS lines to the FB. The self-driver bypasses the ext2-first gate by calling the backend directly. **Target a separate USB FAT32 / exFAT *data* stick (non-ESP)** — `vfs_secondary_select`'s non-ESP preference picks the data stick over the boot ESP automatically, and the writes never touch the boot path. Two flashes (one per FS) or a combined selftest.
+- **(b) Boot-ESP write (NOT recommended).** Writing to the gnoboot boot ESP needs `FAT_ALLOW_ESP_WRITE=1` and risks corrupting the boot volume. Reserve for a throwaway boot medium only.
+
+**Pre-burn state (build is Claude's per [[feedback_build_freshness_is_mine]]; user flashes + tests):**
+- The shipped **1.39.8 production kernel** is the plain `sh scripts/build.sh` build (selftest flags are dev-only) — **1,007,696 B**, banner `v1.39.x`, FAT/exFAT verbs present.
+- The **burn kernel** is a `FATFS_WRITE_SELFTEST=1` / `EXFAT_WRITE_SELFTEST=1` build (Claude produces on the user's go, once the surface fork is chosen). All four FAT/exFAT smokes + the ext2-write regression are QEMU-green at this cut.
+- User flashes `build/agnos` (`install-usb.sh --update`, ESP-only — agnos-fs untouched) + provides the FAT32/exFAT data stick per fork (a).
+
+**Test-item rubric (root-only; per FS — run once on FAT32, once on exFAT):**
+
+| # | Test item | Read-out (FB) | PASS | Falsifies if |
+|---|-----------|---------------|------|--------------|
+| 1 | Boot to shell on archaemenid | selftest kernel, FB | clean storage trio + GPT + the FAT/exFAT volume mounts (`fat: mounted …` / `exfat: mounted …`) → `AGNOS shell v1.39.x` | hang/panic before mount |
+| 2 | `cat` / `ls` reach the volume | `fatr: chain-read OK` / `vfsls:` ls names; exFAT equivalents | read-back byte-exact + dir entry names print | `chain-read FAIL` / no names |
+| 3 | `touch` + `echo >` create+write | `fatw: create … rc=0` / `fatw: write … rc=N`; exFAT `exfatw:` | both rc≥0, file present on readback | any `rc<0` / file absent |
+| 4 | `rm` delete | `fatw: delete … wrc=0` | entry gone on readback | `wrc<0` / entry persists |
+| 5 | `mkdir` / `rmdir` | `fatw: mdir …` descends; dir gone after rmdir | both succeed, empty-check enforced | dir not created / non-empty rmdir succeeds |
+| 6 | `mv` rename | `fatw: rename …`; new name present, old gone | content-preserving rename | old persists / content lost |
+| 7 | Power-cycle persistence | re-boot, re-read the written files | writes survive | data lost across cold boot |
+| 8 | Host `fsck` after burn | `fsck.fat -n` / `fsck.exfat -n` on the stick from Linux | **clean** (no errors) | any fsck error → on-disk structures invalid |
+
+**Falsification summary.** Any `rc<0` from a verb, a missing/extra dirent on readback, lost data across the power-cycle, or a non-clean host `fsck` falsifies "FAT/exFAT writes are byte-valid on real hardware." Test 8 (host `fsck` clean) is the dispositive bar, exactly as for the ext2 (1.33.1) and extent (1.37.x) burns.
+
 ### Tracker: 1.38.x cycle — JBD2 journaling iron burn (BURNED 2026-05-28 — read-side PASS @ 1.38.9; write-side commit + 100-tx stress + mid-cycle power-cut recovery all PASS @ 1.38.10 re-burn — **ARC IRON-COMPLETE**) {#tracker-138-cycle}
 
 **Hypothesis (pre-burn).** The JBD2 stack that is QEMU-`e2fsck -fn`-clean across replay + crash smokes would mount-probe, replay, produce a journaled write, and survive power-loss on real NAND — all against the unmodified archaemenid agnos-fs.
