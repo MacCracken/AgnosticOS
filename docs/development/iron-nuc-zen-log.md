@@ -70,6 +70,8 @@ back. Status is one of `FAIL` / `PASS` / `PARTIAL` / `PENDING`.
 
 **Falsification summary.** Any `rc<0` from a verb, a missing/extra dirent on readback, lost data across the power-cycle, or a non-clean host `fsck` falsifies "FAT/exFAT writes are byte-valid on real hardware." Test 8 (host `fsck` clean) is the dispositive bar, exactly as for the ext2 (1.33.1) and extent (1.37.x) burns.
 
+**Combined with 1.40.x exec-from-disk.** This VFS burn now rides with the **exec-from-disk** iron burn (1.40.x) as one hardware session — both are base-era exit-leg validations. The full step-by-step manual checklist (FAT/exFAT verbs **and** `run /bin/prog2` in ring 3 on real Zen) lives in [`exec-iron-manual-tests.md`](exec-iron-manual-tests.md); the automated QEMU pre-check for both arcs is `agnos/scripts/sweep.sh` (must be all-green before burning).
+
 ### Tracker: 1.38.x cycle — JBD2 journaling iron burn (BURNED 2026-05-28 — read-side PASS @ 1.38.9; write-side commit + 100-tx stress + mid-cycle power-cut recovery all PASS @ 1.38.10 re-burn — **ARC IRON-COMPLETE**) {#tracker-138-cycle}
 
 **Hypothesis (pre-burn).** The JBD2 stack that is QEMU-`e2fsck -fn`-clean across replay + crash smokes would mount-probe, replay, produce a journaled write, and survive power-loss on real NAND — all against the unmodified archaemenid agnos-fs.
