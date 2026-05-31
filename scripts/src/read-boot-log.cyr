@@ -1,92 +1,50 @@
-# read-boot-log.cyr — dump the AGNOS Path-C boot checkpoint trail
-# from CMOS scratch RAM via direct port I/O.
+# read-boot-log — sovereign CMOS boot-log reader (Cyrius, direct port I/O).
 #
-# The Linux /dev/nvram driver rejects every read with -EIO when the
-# BIOS's CMOS checksum doesn't match its historical convention (very
-# common on modern UEFI hardware — first seen on archaemenid, the
-# AMD Beelink SER, 2026-05-13). We sidestep the driver entirely:
-# iopl(3) grants ring-3 port I/O, then we talk to the CMOS hardware
+# /dev/nvram is dead on archaemenid (the Linux nvram driver rejects the BIOS
+# checksum layout with -EIO), so we iopl(3) + read the RTC/CMOS index/data
 # pair (0x70 = index, 0x71 = data) ourselves.
 #
-# CMOS trail (battery-backed, survives the reset that follows a
-# triple-fault). Slots shifted +0x10 on 2026-05-14 (was 0x40-0x43)
-# after archaemenid BIOS was observed clobbering 0x42/0x43/0x44 on
-# every cold boot; the 0x50-0x7F range is virgin on this hardware.
+# Two CMOS banks (port-pair routing):
+#   slots < 0x80  → low bank, ports 0x70/0x71  (bit 7 of 0x70 = NMI mask)
+#   slots >= 0x80 → extended bank, ports 0x72/0x73 (7-bit offset, real = +0x80)
+# The extended bank read back NOISE at the 1409 burn (0x86 sentinel was 0x5A,
+# not the 0xCC it should be), so DO NOT trust slots >= 0x80 on this box.
 #
-#     CMOS[0x50] = kernel checkpoint  (1..N)   — boot_shim + core/main
-#     CMOS[0x51] = kernel magic       (0xAB)   — set at boot_shim entry
-#     CMOS[0x52] = gnoboot checkpoint (1..5)
-#     CMOS[0x53] = gnoboot magic      (0xCD)   — set at efi_main entry
+# LIVE signal slots (everything else is BIOS noise / retired arcs — gone):
+#   0x50  kernel checkpoint (highest boot stage reached; last-write-wins)
+#   0x51  kernel magic 0xAB (set at boot_shim entry)
+#   0x52  gnoboot checkpoint
+#   0x53  gnoboot magic 0xCD (set at efi_main entry)
+#   0x54  CPU-exception fault vector   (idt.cyr exc_handlers_init, 1.40.9)
+#   0x55  fault-handler magic 0xE5     (= a real exception was caught this boot)
+#   0x5C..0x5F  on a #PF-halt boot ONLY: CR2 bits 23:0 + error code.
+#   0x60..0x62  on a #PF-halt boot ONLY: CR2 bits 47:24 (full 48-bit address;
+#               1.40.9 follow-on #2). On any other boot 0x5C-0x62 are stale
+#               r8169/xhci leftovers — ignore them unless 0x55=0xE5 + 0x54=0x0E.
+#   0xA0..0xA4  jbd2 iron-burn telemetry (probe / replay / commit counters)
 #
-# Iron has no serial wiring (single-machine dev setup, archaemenid IS
-# the iron-boot target); CMOS is the only post-mortem signal channel.
-#
-# Sources:
-#   gnoboot/src/main.cyr                       — CMOS[0x42]/[0x43] writes
-#   agnos/kernel/arch/x86_64/boot_shim.cyr     — CMOS[0x40]/[0x41] writes (CPs 1-5)
-#   agnos/kernel/core/main.cyr                 — CMOS[0x40] late-init (CPs 6-16)
-#   agnosticos/docs/development/path-c-sovereign-uefi.md
-#
-# Build:    cyrius build src/read-boot-log.cyr build/read-boot-log
-# Run:      sudo ./build/read-boot-log
+# History (xhci/r8169/dhcp/MTRR decode chapters) was stripped 2026-05-31 — those
+# arcs are closed; their slots are no longer written. `git log` has the old text.
 
 include "lib/string.cyr"
 include "lib/fmt.cyr"
 include "lib/args.cyr"
 
-# Read one CMOS byte. Caller must hold iopl(3) (CAP_SYS_RAWIO).
-#
-# Encoding details (so the next person can verify):
-#   - First param `cmos_off` lives at [rbp - 0x08] per Cyrius ABI;
-#     we read only its low byte into AL.
-#   - First local `val` lives at [rbp - 0x10]; we write the result there.
-#   - OUT 0x70 / IN 0x71 use the immediate-port form (ports < 256),
-#     so DX is left untouched.
-#
-# Two-bank routing (CC fix 2026-05-17). Port 0x70 latches a 7-bit index
-# — bit 7 is the NMI mask. Reading slot 0x84 via 0x70/0x71 actually
-# returns slot 0x04 (RTC hours) and toggles NMI. Slots ≥ 0x80 live on
-# the extended bank addressed by 0x72/0x73 (0x72 takes a 7-bit offset
-# with no NMI bit, real slot = offset + 0x80). Attempt 51 readback
-# confirmed slots 0x80/0x82/0x84 had been returning BCD time-of-day
-# from the RTC for the entire AA+BB diagnostic arc; 0x81/0x83/0x85
-# happened to alias to RTC alarm regs and preserved kernel writes,
-# masking the bug. Empirical sentinel at slot 0x86 (kernel writes
-# 0xCC) verifies extended-bank support on AMD FCH 1022:1639.
 fn cmos_read_lo(cmos_off: i64): i64 {
     var val = 0;
     asm {
-        # mov al, byte [rbp - 0x08]   ; low byte of cmos_off → AL
-        0x8A; 0x45; 0xF8;
-        # out 0x70, al                ; select CMOS register
-        0xE6; 0x70;
-        # in al, 0x71                 ; read CMOS data byte
-        0xE4; 0x71;
-        # movzx eax, al               ; zero-extend (upper 32 of RAX cleared)
-        0x0F; 0xB6; 0xC0;
-        # mov [rbp - 0x10], rax       ; store to local `val`
-        0x48; 0x89; 0x45; 0xF0;
-    }
-    return val;
-}
-
-fn cmos_read_hi(cmos_off: i64): i64 {
-    var val = 0;
-    asm {
-        0x8A; 0x45; 0xF8;
-        # out 0x72, al                ; select extended CMOS register
-        0xE6; 0x72;
-        # in al, 0x73                 ; read extended CMOS data byte
-        0xE4; 0x73;
-        0x0F; 0xB6; 0xC0;
-        0x48; 0x89; 0x45; 0xF0;
+        0x8A; 0x45; 0xF8;     # mov al, byte [rbp-0x08]   (low byte of cmos_off → AL)
+        0xE6; 0x70;           # out 0x70, al              (select CMOS register)
+        0xE4; 0x71;           # in  al, 0x71              (read CMOS data byte)
+        0x0F; 0xB6; 0xC0;     # movzx eax, al             (zero-extend, clears upper RAX)
+        0x48; 0x89; 0x45; 0xF0;  # mov [rbp-0x10], rax    (store to local `val`)
     }
     return val;
 }
 
 fn cmos_read(cmos_off: i64): i64 {
-    if (cmos_off < 0x80) { return cmos_read_lo(cmos_off); }
-    return cmos_read_hi(cmos_off - 0x80);
+    # Only the low bank is trustworthy on archaemenid (see header note).
+    return cmos_read_lo(cmos_off);
 }
 
 fn print_cmos_line(label, b) {
@@ -99,54 +57,19 @@ fn print_cmos_line(label, b) {
     return 0;
 }
 
-# Print string without trailing newline. Used by the focused summary
-# block where lines are composed from multiple fragments.
 fn print_str(s): i64 {
     syscall(1, 1, s, strlen(s));
     return 0;
 }
 
-# Print a single byte as "0xab" (lowercase, 2-digit, no newline).
 fn print_hexb(b: i64): i64 {
     syscall(1, 1, "0x", 2);
     fmt_byte(b);
     return 0;
 }
 
-# Print MTRR effective-type byte as its mnemonic. Type encoding per
-# Intel SDM Vol 3A §11.5.2.2 / AMD APM Vol 2 §7.7.5 (matches PAT MSR
-# 0x277 enum). Used by the focused summary's MTRR audit row.
-fn print_mtrr_type(t: i64): i64 {
-    if (t == 0) { print_str("UC"); }
-    elif (t == 1) { print_str("WC"); }
-    elif (t == 4) { print_str("WT"); }
-    elif (t == 5) { print_str("WP"); }
-    elif (t == 6) { print_str("WB"); }
-    else { print_str("??"); }
-    return 0;
-}
-
-# Sentinel-check glyph. Prints "✓" if actual matches expected; otherwise
-# "⚠ expected 0xXX got 0xYY". Used by the focused summary to flag prior-
-# repair sentinel mismatches at a glance.
-fn print_check(actual: i64, expected: i64): i64 {
-    if (actual == expected) {
-        print_str("✓");
-    } else {
-        print_str("⚠ expected ");
-        print_hexb(expected);
-        print_str(" got ");
-        print_hexb(actual);
-    }
-    return 0;
-}
-
-# Dump CMOS bytes 0x0E-0x7F in a hex-grid layout. RTC bytes 0x00-0x0D
-# are deliberately skipped: reading them while the RTC is updating
-# returns garbage, and they're not where any checkpoint signal lives.
-# Used to discover which CMOS slots the BIOS leaves untouched (i.e.
-# which bytes are safe to use as a boot-log signal channel on this
-# specific hardware).
+# Raw CMOS hex grid (0x0E-0x7F). Used to spot which slots the BIOS leaves
+# untouched on a given board. RTC bytes 0x00-0x0D skipped (garbage mid-update).
 fn cmos_dump() {
     println("CMOS dump (0x0E-0x7F, RTC region 0x00-0x0D skipped):");
     println("");
@@ -154,7 +77,6 @@ fn cmos_dump() {
     var row = 0;
     while (row < 8) {
         var base = row * 16;
-        # Row header: "0xNN  "
         syscall(1, 1, "  0x", 4);
         fmt_byte(base);
         syscall(1, 1, "  ", 2);
@@ -162,7 +84,6 @@ fn cmos_dump() {
         while (col < 16) {
             var off = base + col;
             if (off < 14) {
-                # RTC region — skip with placeholder
                 syscall(1, 1, "-- ", 3);
             } else {
                 var b = cmos_read(off);
@@ -170,7 +91,6 @@ fn cmos_dump() {
                 syscall(1, 1, " ", 1);
             }
             col = col + 1;
-            # extra space between 4-byte groups
             if (col == 4)  { syscall(1, 1, " ", 1); }
             if (col == 8)  { syscall(1, 1, " ", 1); }
             if (col == 12) { syscall(1, 1, " ", 1); }
@@ -178,807 +98,133 @@ fn cmos_dump() {
         syscall(1, 1, "\n", 1);
         row = row + 1;
     }
+    return 0;
+}
+
+# Decode the #PF error code (low byte) bit-by-bit.
+fn print_pf_errcode(e: i64): i64 {
+    print_str("    err 0x"); fmt_byte(e); print_str(" =");
+    if ((e & 1) == 0) { print_str(" not-present"); } else { print_str(" protection"); }
+    if ((e & 2) == 0) { print_str(" / read"); }      else { print_str(" / write"); }
+    if ((e & 4) == 0) { print_str(" / SUPERVISOR(CPL0)"); } else { print_str(" / user(CPL3)"); }
+    if ((e & 16) != 0) { print_str(" / instr-fetch"); } else { print_str(" / data"); }
     println("");
-    println("  signal slots in current build:");
-    println("    0x50 = kernel checkpoint, 0x51 = kernel magic (0xAB)");
-    println("    0x52 = gnoboot checkpoint, 0x53 = gnoboot magic (0xCD)");
-    println("  (pre-2026-05-14: 0x40-0x43; moved after BIOS clobber found on archaemenid)");
-    println("");
-    println("  rule of thumb: bytes that are 0x00 OR 0xFF across multiple cold");
-    println("  boots are likely safe. Bytes that hold small consecutive values");
-    println("  or persist non-trivial state are probably BIOS-managed — move");
-    println("  signal slots elsewhere if 0x50-0x53 are not in the safe set.");
     return 0;
 }
 
 fn main(): i64 {
     args_init();
     var dump_mode = 0;
-    var verbose_mode = 0;
     var i = 1;
     while (i < argc()) {
         var arg = argv(i);
         if (streq(arg, "--dump") == 1) { dump_mode = 1; }
-        elif (streq(arg, "--verbose") == 1) { verbose_mode = 1; }
-        elif (streq(arg, "-h") == 1) {
-            println("Usage: read-boot-log [--dump | --verbose]");
-            println("  default    focused current-sweep summary (decoded, no chapters)");
-            println("  --verbose  full CMOS slot listing + interpretation chapters + verdict layers");
-            println("  --dump     raw CMOS 0x0E-0x7F hex grid");
-            return 0;
-        }
-        elif (streq(arg, "--help") == 1) {
-            println("Usage: read-boot-log [--dump | --verbose]");
-            println("  default    focused current-sweep summary (decoded, no chapters)");
-            println("  --verbose  full CMOS slot listing + interpretation chapters + verdict layers");
-            println("  --dump     raw CMOS 0x0E-0x7F hex grid");
+        elif (streq(arg, "--verbose") == 1) { dump_mode = 0; }   # accepted, no-op (always full now)
+        elif (streq(arg, "-h") == 1 || streq(arg, "--help") == 1) {
+            println("Usage: read-boot-log [--dump]");
+            println("  default   decoded boot-log summary (gnoboot/kernel checkpoints + fault)");
+            println("  --dump    raw CMOS 0x0E-0x7F hex grid");
             return 0;
         }
         else {
-            # Unknown arg — error loudly. Past behavior silently fell through
-            # to the focused summary, which made typos like `--versbose`
-            # look like `--verbose was broken`. Attempt 96 (1.32.2) caught it.
             print_str("error: unknown argument '"); print_str(arg); println("'");
-            println("Usage: read-boot-log [--dump | --verbose]");
-            println("  default    focused current-sweep summary (decoded, no chapters)");
-            println("  --verbose  full CMOS slot listing + interpretation chapters + verdict layers");
-            println("  --dump     raw CMOS 0x0E-0x7F hex grid");
+            println("Usage: read-boot-log [--dump]");
             return 1;
         }
         i = i + 1;
     }
 
-    # iopl(3) — grant ring-3 port I/O. EPERM if not root / no CAP_SYS_RAWIO.
-    var rc = syscall(172, 3);
+    var rc = syscall(172, 3);   # iopl(3) — needs root / CAP_SYS_RAWIO
     if (rc != 0) {
         println("error: iopl(3) failed — run with sudo (need CAP_SYS_RAWIO).");
         return 1;
     }
 
-    if (dump_mode == 1) {
-        cmos_dump();
-        return 0;
-    }
+    if (dump_mode == 1) { return cmos_dump(); }
 
     var gmagic = cmos_read(83);  # 0x53
     var gcp    = cmos_read(82);  # 0x52
     var kmagic = cmos_read(81);  # 0x51
     var kcp    = cmos_read(80);  # 0x50
-    var cr4hi  = cmos_read(84);  # 0x54  CR4 byte 2 (bits 16-23), Attempt-18+ diag (post-cr3-switch)
-    var cr4pre = cmos_read(85);  # 0x55  CR4 byte 2 (bits 16-23), Attempt-19+ diag (pre-stac)
-    # Repair (J), Attempt 23+: PMM-allocation byte-2 stamps from proc_create_address_space.
-    # Slots 0x56-0x57 = AS1 call's first 2 pmm_alloc results (kernel PML4 + PDPT) — STILL ACTIVE.
-    # Slots 0x58-0x5F = REPURPOSED 2026-05-22 for r8169 NIC post-mortem
-    #   (agnos 1.32.1 bite B — see r8169-iron-burn-audit.md § 10.5).
-    # Slots 0x5C-0x61 (former AS2 #1-#6) all retired — 0x5C-0x5F now r8169,
-    #   0x60 reused by xhci PORTPMSC (Repair R8), 0x61 unclaimed scratch.
-    # Each AS1 slot = (phys_addr >> 16) & 0xFF. 0x00 = page < 0x10000 (kernel-PT range, smoking gun);
-    # 0x20+ = page >= 0x200000 (safe, above PMM's 2 MB watermark).
-    var as1_pml4 = cmos_read(86);  # 0x56
-    var as1_pdpt = cmos_read(87);  # 0x57
+    var fvec   = cmos_read(84);  # 0x54  exception fault vector
+    var fmag   = cmos_read(85);  # 0x55  fault-handler magic (0xE5 = caught)
 
-    # r8169 diagnostic slots (1.32.1 bite B — Attempt 94+).
-    var r8169_probe_done   = cmos_read(88);   # 0x58  1 = r8169_probe completed
-    var r8169_phy_outcome  = cmos_read(89);   # 0x59  0=not attempted, 1=link up,
-                                              #        2=autoneg timeout, 3=BMCR-write
-                                              #        timeout, 4=BMSR-read timeout
-    var r8169_tx_count     = cmos_read(90);   # 0x5A  saturating TX send count
-    var r8169_tx_desc0_own = cmos_read(91);   # 0x5B  TX desc 0 high byte; 0x80 = OWN
-                                              #        stuck (H7), 0x00 = NIC processed
-    var r8169_rx_count     = cmos_read(92);   # 0x5C  saturating RX poll count
-    var r8169_rx_desc0_own = cmos_read(93);   # 0x5D  RX desc 0 high byte; 0x80 = OWN
-                                              #        re-armed, 0x00 = packet awaiting
-    var r8169_rx_buf0_byte = cmos_read(94);   # 0x5E  first byte of RX desc 0 buffer
-                                              #        (non-zero = DMA visible)
-    var r8169_slot5f       = cmos_read(95);   # 0x5F  reserved for r8169 future
-    # Slots 0x62-0x6F + 0x60: xhci post-mortem (Attempt 36+, R10 expanded
-    # the range 2026-05-16). Repurposed from the retired Repair-K/N mem-iso
-    # block. Stamped by:
-    #   xhci_usblegsup_claim     → 0x62 (USBLEGSUP outcome enum)
-    #   xhci_enumerate           → 0x63 / 0x64 / 0x65-0x67 (CCS, reset, proto)
-    #   xhci_xecp_classify_ports → 0x68 / 0x69 / 0x6A (cap-walk inventory)
-    #   xhci_ports_power_on      → 0x6B (PORTSC.PP=1 verified bitmap)
-    #   xhci_port_reset (R4)     → 0x6C (PSC change-byte on USB2 reset fail)
-    #   xhci_port_reset (R10)    → 0x6D (PLS observed pre-PR + provenance nibble)
-    #   xhci_probe (R7)          → 0x6E / 0x6F (HCCPARAMS1/2 low bytes)
-    #   xhci_port_reset (R8)     → 0x60 (PORTPMSC low byte on USB2 reset fail;
-    #                                    reuses retired Repair-O AS2 slot)
-    #   xhci_port_reset (T)      → 0x70 (PR retry count — Linux-style hub.c
-    #                                    retry loop, 0..2 = retries fired
-    #                                    before success/giveup, 3 = exhausted)
-    #   xhci_probe (V)           → 0x71 / 0x72 (MTRR_DEF_TYPE + PAT MSR low
-    #                                    bytes — MMIO cache-attribute diag
-    #                                    for F5 silent-absorb hypothesis)
-    #   xhci_probe (X')          → 0x73 (BAR-controlling PDE low byte, post
-    #                                    vmm_remap_uc_2mb — proves the
-    #                                    rewrite landed; 0x9B/0xBB=UC, 0x83=WB)
-    #   xhci_probe (V'')         → 0x74 / 0x75 / 0x76 (BAR PML4E / PDPTE /
-    #                                    PD-entry via full four-level walk)
-    #   xhci_port_reset (W)      → 0x77 / 0x78 / 0x79 (USBSTS byte0, USBSTS
-    #                                    byte1, USBCMD byte0 — at reset-fail-
-    #                                    time; surfaces CNR/HCE/SRE silent-
-    #                                    absorb gate from the controller side)
-    #   xhci_xecp_classify_ports → 0x7A (packed unclassified cap IDs: high
-    #                                    nibble = first unclassified, low =
-    #                                    second; surfaces 2nd SupProto +
-    #                                    Debug Cap + xPM that the driver
-    #                                    silently skips today)
-    # Decoders below.
-    var xh_pmsc    = cmos_read(96);   # 0x60 — PORTPMSC of failing port (R8)
-    var xh_usbleg  = cmos_read(98);   # 0x62
-    var xh_ccs     = cmos_read(99);   # 0x63
-    var xh_reset   = cmos_read(100);  # 0x64
-    var xh_proto12 = cmos_read(101);  # 0x65
-    var xh_proto34 = cmos_read(102);  # 0x66
-    var xh_proto56 = cmos_read(103);  # 0x67
-    var xh_capcnt  = cmos_read(104);  # 0x68
-    var xh_capbits = cmos_read(105);  # 0x69
-    var xh_supp1   = cmos_read(106);  # 0x6A
-    var xh_pp      = cmos_read(107);  # 0x6B
-    var xh_pscchg  = cmos_read(108);  # 0x6C
-    var xh_pls     = cmos_read(109);  # 0x6D — PLS pre-PR (R10)
-    var xh_hccp1   = cmos_read(110);  # 0x6E — HCCPARAMS1 low byte (R7)
-    var xh_hccp2   = cmos_read(111);  # 0x6F — HCCPARAMS2 low byte (R7)
-    var xh_retry   = cmos_read(112);  # 0x70 — PR retry count (Repair T)
-    var xh_mtrr    = cmos_read(113);  # 0x71 — MTRR_DEF_TYPE MSR 0x2FF byte 0 (Repair V)
-    var xh_pat0    = cmos_read(114);  # 0x72 — PAT MSR 0x277 byte 0 (PA0) (Repair V)
-    var xh_pde     = cmos_read(115);  # 0x73 — BAR-controlling PDE low byte (Repair X')
-    var xh_pml4e   = cmos_read(116);  # 0x74 — BAR PML4 entry low byte (Repair V'')
-    var xh_pdpte   = cmos_read(117);  # 0x75 — BAR PDPT entry low byte (Repair V'')
-    var xh_pde_w   = cmos_read(118);  # 0x76 — BAR PD entry low byte via four-level walk (Repair V'')
-    var xh_sts_lo  = cmos_read(119);  # 0x77 — USBSTS byte 0 at reset-fail-time (HCH/HSE/EINT/PCD) (Repair W)
-    var xh_sts_hi  = cmos_read(120);  # 0x78 — USBSTS byte 1 at reset-fail-time (SSS/RSS/SRE/CNR/HCE) (Repair W)
-    var xh_cmd_lo  = cmos_read(121);  # 0x79 — USBCMD byte 0 at reset-fail-time (R/S/HCRST/INTE/HSEE/LHCRST) (Repair W)
-    var xh_capxc   = cmos_read(122);  # 0x7A — unclassified xECP cap IDs packed (Repair W)
-    var xh_sup2    = cmos_read(123);  # 0x7B — 2nd SupProto rev|port_count (Repair b')
-    var xh_sup2off = cmos_read(124);  # 0x7C — 2nd SupProto port_off (Repair b')
-    var xh_sup3    = cmos_read(125);  # 0x7D — 3rd SupProto rev|port_count (Repair b')
-    var xh_sup3off = cmos_read(126);  # 0x7E — 3rd SupProto port_off (Repair b')
-    var xh_zsent   = cmos_read(127);  # 0x7F — Repair Z timing-delay sentinel (0xAA = site executed)
-    var xh_spcount = cmos_read(128);  # 0x80 — Repair (AA) MaxScratchpadBufs low byte
-    var xh_spsent  = cmos_read(129);  # 0x81 — Repair (AA) 0x80-range sentinel (0xAA = slot trustworthy)
-    var xh_hcsp2b3 = cmos_read(130);  # 0x82 — Repair (AA) HCSPARAMS2 byte 3 (raw bits 31:24)
-    var xh_spdcba  = cmos_read(131);  # 0x83 — Repair (AA, 1.30.4 redesigned) sp_array phys byte 2 ((>>16)&0xFF)
-    var xh_bbsent  = cmos_read(132);  # 0x84 — Repair (BB) DNCTRL-write sentinel (0xBB = site executed)
-    var xh_hcsp2b2 = cmos_read(133);  # 0x85 — Repair (AA audit add-on) HCSPARAMS2 byte 2 (raw bits 23:16)
-    var xh_ccsent  = cmos_read(134);  # 0x86 — Repair (CC) extended-CMOS bank sentinel (0xCC = 0x72/0x73 pair live)
-    var xh_ddsent  = cmos_read(135);  # 0x87 — Repair (DD) event-ring drain sentinel (0xDD = site executed)
-
-    # CMOS extended-bank slots 0x88-0x8C — REPURPOSED 2026-05-23 (agnos
-    # 1.32.4) for DHCP-OFFER-downstream-of-r8169_poll observability. Per
-    # agnosticos/docs/development/dhcp-offer-downstream-audit.md § 5
-    # Bite 2: these stamps fingerprint the LAST-CONSUMED frame at
-    # net_poll + first UDP/68 delivery at net_handle_udp, disambiguating
-    # (c1) admitted broadcast was NOT DHCP vs (c2) admitted broadcast
-    # WAS DHCP but lost downstream in dhcp_init matcher.
-    var dhcp_eth_hi    = cmos_read(136);  # 0x88 — last frame ethertype hi byte (offset +12); 0x08 = IPv4 or ARP, 0xDD = IPv6
-    var dhcp_eth_lo    = cmos_read(137);  # 0x89 — last frame ethertype lo byte (offset +13); 0x00 IPv4, 0x06 ARP, 0xDD IPv6
-    var dhcp_ip_proto  = cmos_read(138);  # 0x8A — IP proto (if IPv4) at offset +14+IHL; 0x11=UDP, 0x01=ICMP, 0x06=TCP, 0x02=IGMP
-    var dhcp_udp_dport = cmos_read(139);  # 0x8B — UDP dst port lo byte (if UDP) at offset +14+IHL+3; 0x44=68 (DHCP), 0x89=137 NetBIOS, 0xE9=5353 mDNS, 0x6C=1900 SSDP
-    var dhcp_listen_st = cmos_read(140);  # 0x8C — DHCP listener.state at first UDP/68 frame; 0x01 = bound, 0x00 = race or no listener
-
-    # CMOS extended-bank slots 0x8D-0x8F still retired (former MTRR/PCI audit slots)
-    # CMOS extended-bank slots 0x90-0xCF reserved for DHCP_FRAME_DUMP=1 builds
-    # (64-byte mirror of first UDP/68 frame post-DISCOVER, for byte-by-byte
-    # comparison against tcpdump capture — engage only if Fixes A+B falsify).
-
-    # FB geometry post-mortem (extended-bank 0x90-0x9F, written by
-    # agnos/kernel/arch/x86_64/fb_console.cyr::fb_console_init). On iron
-    # (single-machine archaemenid, no serial cable) this is the only way
-    # to recover the GOP mode + geometry that gnoboot captured. Primary
-    # diagnostic for the quiet-boot ON vs VGA-spec ON garbled-glyph
-    # divergence — different mode numbers under each setting prove the
-    # firmware is exposing different GOP geometry.
-    var fbg_w_b0 = cmos_read(0x90);  var fbg_w_b1 = cmos_read(0x91);
-    var fbg_w_b2 = cmos_read(0x92);  var fbg_w_b3 = cmos_read(0x93);
-    var fbg_h_b0 = cmos_read(0x94);  var fbg_h_b1 = cmos_read(0x95);
-    var fbg_h_b2 = cmos_read(0x96);  var fbg_h_b3 = cmos_read(0x97);
-    var fbg_p_b0 = cmos_read(0x98);  var fbg_p_b1 = cmos_read(0x99);
-    var fbg_p_b2 = cmos_read(0x9A);  var fbg_p_b3 = cmos_read(0x9B);
-    var fbg_pf      = cmos_read(0x9C);
-    var fbg_mode    = cmos_read(0x9D);
-    var fbg_modemax = cmos_read(0x9E);
-    var fbg_magic   = cmos_read(0x9F);  # expect 0xFB if fb_console_init ran
-    var fbg_w     = fbg_w_b0 | (fbg_w_b1 << 8) | (fbg_w_b2 << 16) | (fbg_w_b3 << 24);
-    var fbg_h     = fbg_h_b0 | (fbg_h_b1 << 8) | (fbg_h_b2 << 16) | (fbg_h_b3 << 24);
-    var fbg_pitch = fbg_p_b0 | (fbg_p_b1 << 8) | (fbg_p_b2 << 16) | (fbg_p_b3 << 24);
-
-    # JBD2 iron-burn telemetry (agnos 1.38.9+ — see ext2.cyr Jbd2CmosSlot enum).
-    # Written by ext2_jbd2_probe / ext2_jbd2_replay / ext2_jbd2_commit_tx so a
-    # post-burn `read-boot-log` can confirm probe-detected-clean-or-dirty,
-    # replay-fired-and-succeeded, AGNOS-produced-N-journaled-writes — without
-    # needing eyes on the FB during the burn (no serial cable on archaemenid
-    # per feedback_no_serial_on_iron).
-    var jbd2_probe_outcome   = cmos_read(0xA0);  # 0:no-journal / 1:clean / 2:dirty / 0xFF:malformed
-    var jbd2_replay_attempt  = cmos_read(0xA1);  # 0:not / 1:replay-path-ran
-    var jbd2_replay_outcome  = cmos_read(0xA2);  # 0:n/a / 1:ok / 0xFF:fail
-    var jbd2_replay_tx_count = cmos_read(0xA3);  # saturating count
-    var jbd2_commit_tx_count = cmos_read(0xA4);  # saturating count of commit_tx successes this boot
-
-    # --- Default: focused current-sweep summary ----------------------------
-    # Strips the verbose chapters / interpretation prose / verdict layers
-    # from the output and prints only the slots relevant to the active
-    # sweep. The sweep tag ("Repair (NN) …") must be updated as repairs
-    # land — same convention as docs/development/iron-nuc-zen-log.md.
-    # Use `--verbose` for the full forensic dump (chapters preserved for
-    # falsified-hypothesis triage).
-    if (verbose_mode == 0) {
-        println("");
-        println("=== AGNOS current-sweep boot log ===");
-        println("agnos 1.32.3 cycle — r8169 RX-path 5-part bundle (audit-driven, multi-source convergent Linux+OpenBSD+FreeBSD): Part A multi-frame budget loop in r8169_poll; Part B RES (0x00200000) + FS|LS (0x30000000) gating; Part C r8169_rx_rearm helper with EOR read-preserve; Part D CMOS-stamp hot-path elimination (stamps fire only on state transitions now); Part E RxMaxSize Linux-converge (0x05F3 -> 0x4000). Expected on Attempt 97: dhcp: DISCOVER -> OFFER ip=192.168.1.X -> REQUEST -> ACK gw=192.168.1.1 mask=255.255.255.0.");
-        println("Reference: docs/development/iron-nuc-zen-log.md § Tracker 1.32.3 + r8169-rx-path-audit.md");
-        println("");
-        println("Boot reached:");
-        print_str("  kernel  checkpoint = "); print_hexb(kcp);
-        print_str("     magic = "); print_hexb(kmagic); print_str(" "); print_check(kmagic, 0xAB);
-        print_str("\n");
-        print_str("  gnoboot checkpoint = "); print_hexb(gcp);
-        print_str("     magic = "); print_hexb(gmagic); print_str(" "); print_check(gmagic, 0xCD);
-        print_str("\n");
-        println("");
-        println("Controller capability:");
-        print_str("  HCCPARAMS1 = "); print_hexb(xh_hccp1);
-        print_str("        HCCPARAMS2 = "); print_hexb(xh_hccp2);
-        print_str("\n");
-        print_str("  MaxScratchpadBufs = "); print_hexb(xh_spcount);
-        print_str("    sp_array phys byte 2 = "); print_hexb(xh_spdcba);
-        print_str("\n");
-        println("");
-        println("Enumeration (Phase 3) — last completed port state:");
-        print_str("  USBLEGSUP outcome      = "); print_hexb(xh_usbleg);
-        println("        (0x01 = OS-owned)");
-        print_str("  CCS bitmap             = "); print_hexb(xh_ccs); print_str("\n");
-        print_str("  Reset OK bitmap        = "); print_hexb(xh_reset); print_str("\n");
-        print_str("  PORTSC.PP bitmap       = "); print_hexb(xh_pp); print_str("\n");
-        print_str("  PSC change byte (R4)   = "); print_hexb(xh_pscchg); print_str("\n");
-        print_str("  PLS pre-PR     (R10)   = "); print_hexb(xh_pls);
-        println("         (0x07 = Polling)");
-        println("");
-        println("Run-time @ silent-absorb fail:");
-        print_str("  USBSTS byte 0 [0x77]   = "); print_hexb(xh_sts_lo);
-        println("   (HCH | HSE | EINT | PCD)");
-        print_str("  USBSTS byte 1 [0x78]   = "); print_hexb(xh_sts_hi);
-        println("   (CNR | HCE | SRE)");
-        print_str("  USBCMD byte 0 [0x79]   = "); print_hexb(xh_cmd_lo);
-        println("   (R/S | HCRST | INTE | HSEE)");
-        println("");
-        println("Prior repairs — sentinels only (runlog; all falsified for events_seen=0):");
-        print_str("  AA scratchpad install  [0x81]  = "); print_hexb(xh_spsent);
-        print_str("  "); print_check(xh_spsent, 0xAA); print_str("\n");
-        print_str("  BB DNCTRL write        [0x84]  = "); print_hexb(xh_bbsent);
-        print_str("  "); print_check(xh_bbsent, 0xBB); print_str("\n");
-        print_str("  CC extended-CMOS bank  [0x86]  = "); print_hexb(xh_ccsent);
-        print_str("  "); print_check(xh_ccsent, 0xCC); print_str("\n");
-        print_str("  DD event-drain + PCD   [0x87]  = "); print_hexb(xh_ddsent);
-        print_str("  "); print_check(xh_ddsent, 0xDD); print_str("\n");
-        println("");
-        println("FB geometry (gnoboot GOP capture, written by fb_console_init):");
-        print_str("  sentinel [0x9F]        = "); print_hexb(fbg_magic);
-        print_str("  "); print_check(fbg_magic, 0xFB); print_str("   (0xFB = fb_console_init ran)\n");
-        print_str("  GOP mode#  [0x9D/0x9E] = "); print_hexb(fbg_mode);
-        print_str(" / "); print_hexb(fbg_modemax);
-        println("           (current / max — diff across BIOS paths reveals firmware-mode divergence)");
-        print_str("  PixelFormat [0x9C]     = "); print_hexb(fbg_pf);
-        println("                          (0=RGBX 1=BGRX 2=BitMask 3=BltOnly)");
-        print_str("  width  [0x90..0x93]    = "); print_num(fbg_w);  println("");
-        print_str("  height [0x94..0x97]    = "); print_num(fbg_h);  println("");
-        print_str("  pitch  [0x98..0x9B]    = "); print_num(fbg_pitch);
-        println(" bytes/scanline");
-        println("");
-        println("");
-        println("Sweep symptom under test: r8169 OFFER-timeout on iron despite chip-engines-healthy CMOS evidence (Attempt 96: 0x5B=0x30 TX cleared, 0x5E=0x01 RX DMA visible). Wire + DHCP server independently confirmed working (Linux dhclient on same enp1s0 chip leases from 192.168.1.1).");
-        println("Burn under test: agnos 1.32.3 — r8169 RX-path 5-part bundle (Parts A+B+C+D+E above). Bug = r8169_poll's pre-fix single-frame return — live-LAN multicast kept refilling whatever slot rx_idx pointed at while OFFER sat one slot over.");
-        println("Audit doc:     docs/development/r8169-rx-path-audit.md + iron-nuc-zen-log.md § Tracker 1.32.3");
-        println("Verbose log:   ./scripts/read-boot-log.sh --verbose    (full CMOS r8169 slots 0x58-0x5F with refreshed state-transition semantics)");
-        return 0;
-    }
-
-    # --- Verbose: full forensic dump (--verbose) ---------------------------
+    println("--- boot-log (live slots) ---");
     print_cmos_line("CMOS[0x53] gnoboot magic    = ", gmagic);
     print_cmos_line("CMOS[0x52] gnoboot checkpt  = ", gcp);
     print_cmos_line("CMOS[0x51] kernel  magic    = ", kmagic);
     print_cmos_line("CMOS[0x50] kernel  checkpt  = ", kcp);
-    print_cmos_line("CMOS[0x54] CPU-exception fault vector (1.40.9 idt.cyr)  = ", cr4hi);
-    print_cmos_line("CMOS[0x55] fault-handler magic (0xE5 = caught this boot) = ", cr4pre);
-    println("  1.40.9 semantics: exc_handlers_init stamps the faulting vector to 0x54 + magic 0xE5 to");
-    println("  0x55 then cli;hlt. (Pre-1.40.9 these were CR4-byte-2 diag — stale; ignore old labels.)");
-    println("    [0x55]==0xE5 AND [0x54]==0x0D -> #GP (bad CS/SS descriptor at iretq/sysret)");
-    println("                      [0x54]==0x0E -> #PF (page fault — see CR2 decode below)");
-    println("                      [0x54]==0x06 -> #UD (bad opcode — e.g. SYSCALL w/ EFER.SCE clear)");
-    println("                      [0x54]==0x08 -> #DF (fault during fault delivery — TSS RSP0)");
-    println("    [0x55] != 0xE5 = no armed vector caught it (pre-iretq fault, or a vector we don't arm).");
-    println("  #PF CR2/err-code (1.40.9 follow-on, ONLY meaningful when [0x55]=0xE5 AND [0x54]=0x0E):");
-    println("    On a #PF-halt boot the #PF handler overwrites the r8169 slots 0x5C-0x5F (last writer;");
-    println("    r8169 ran at boot, long before exec) with the faulting address + error code:");
-    println("      [0x5C] = CR2 bits 23:16  -> 0x40 = code page (~0x4xxxxx); 0x80/0xC0 = user stack");
-    println("      [0x5D] = CR2 bits 15:8 ; [0x5E] = CR2 bits 7:0  (full low-24b faulting VA)");
-    println("      [0x5F] = #PF error code: bit0 P(0=not-present,1=protection) bit1 W/R bit2 U/S");
-    println("               bit3 RSVD bit4 I/D(1=instruction fetch). e.g. 0x10=fetch/not-present,");
-    println("               0x11=fetch/protection, 0x04=data-read/user-not-present.");
-    println("    (Values print under the r8169 labels below — cross-read them as CR2/err on a #PF halt.)");
-    syscall(1, 1, "\n", 1);
+    print_cmos_line("CMOS[0x54] fault vector     = ", fvec);
+    print_cmos_line("CMOS[0x55] fault magic      = ", fmag);
 
-    # Repair (J), Attempt 23+: AS1 PMM-allocation stamps (slots 0x56-0x57 STILL ACTIVE).
-    # The 0x58-0x5B AS1 #3-#6 + 0x5C-0x5F AS2 #1-#4 slots were repurposed
-    # 2026-05-22 for r8169 NIC post-mortem (see r8169 block below).
-    print_cmos_line("CMOS[0x56] AS1 pmm_alloc #1 (new_pml4 byte 2)  = ", as1_pml4);
-    print_cmos_line("CMOS[0x57] AS1 pmm_alloc #2 (new_pdpt byte 2)  = ", as1_pdpt);
-    println("  Repair (J) PMM scan: byte 2 of each pmm_alloc result.");
-    println("    0x00            = page in [0x0000..0xFFFF] — KERNEL-PT RANGE, smoking gun.");
-    println("    0x01..0x1F      = page in [0x010000..0x1FFFFF] — below 2 MB watermark, also bad.");
-    println("    0x20..0xFF      = page >= 0x200000 — safe (above kernel reservation).");
-    println("    AS1 #1+#2 (slots 0x56-0x57) reading < 0x20 with kcp >= 0x18 = PMM bug confirmed.");
+    # --- gnoboot / kernel reach ---
     println("");
-    println("agnos 1.32.3 r8169 NIC post-mortem (slots 0x58-0x5F — STATE-TRANSITION semantics, refreshed at audit Part D):");
-    print_cmos_line("CMOS[0x58] r8169 probe-done sentinel            = ", r8169_probe_done);
-    println("    1 = r8169_probe completed (chip present + reset OK + phy_init reached).");
-    println("    0 = either no r8169 chip OR probe bailed out early (FB log will say which).");
-    print_cmos_line("CMOS[0x59] r8169 phy_init outcome enum          = ", r8169_phy_outcome);
-    println("    0 = not attempted (chip absent OR probe failed before phy_init).");
-    println("    1 = LINK UP — autonegotiation completed, PHY ready.");
-    println("    2 = autoneg timeout — BMSR.LinkStatus never set within 300 polls.");
-    println("    3 = BMCR-write timeout — PHYAR flag never cleared (MDIO write broken).");
-    println("    4 = BMSR-read timeout — PHYAR flag never set on read (MDIO read broken).");
-    print_cmos_line("CMOS[0x5A] r8169 TX send count (saturating)     = ", r8169_tx_count);
-    println("    Number of r8169_send invocations (0xFF = >=255). Expect >=3 on a working DHCP cycle (DISCOVER + REQUEST + retransmit). Expect 2 if OFFER timeout (DISCOVER + FIX #9 retransmit only).");
-    print_cmos_line("CMOS[0x5B] r8169 TX desc 0 high byte (1.32.3: stamped from r8169_send at tx_idx==1 transition) = ", r8169_tx_desc0_own);
-    println("    0x30 = OWN cleared + FS + LS — NIC processed our descriptor, frame egressed to wire (healthy).");
-    println("    0xB0 = OWN+FS+LS — our write went in but NIC never cleared OWN (TX wedge).");
-    println("    0x00 = stamp never reached (no second send fired) OR pre-1.32.3 binary.");
-    print_cmos_line("CMOS[0x5C] r8169 RX consumed-frame count        = ", r8169_rx_count);
-    println("    1.32.3 semantics CHANGE: was 'poll invocations', now 'frames consumed by r8169_poll' (state-transition stamp per audit Part D).");
-    println("    Expected on a working DHCP cycle: low double digits (the multicast + ARP + OFFER frames consumed during the DHCP wait window).");
-    println("    0xFF = >=255 frames consumed (heavy multicast LAN); 0x00 = no frames ever consumed (RxConfig filter rejecting OR ring fully NIC-owned).");
-    print_cmos_line("CMOS[0x5D] r8169 RX last-consumed desc high byte = ", r8169_rx_desc0_own);
-    println("    1.32.3 semantics CHANGE: stamps status of the descriptor we JUST consumed, not desc 0 at poll-entry.");
-    println("    Expected: 0x30 (OWN-cleared + FS + LS) on every successful consume; chip writes both FS+LS for single-segment frames per RTL § 6.7.");
-    println("    0x70 = OWN-cleared + EOR + FS + LS (last-slot consumption, idx==15); also healthy.");
-    println("    0x00 = no successful consume ever happened (paired with 0x5C=0x00 = full RX-path failure).");
-    print_cmos_line("CMOS[0x5E] r8169 RX last-consumed buf first byte = ", r8169_rx_buf0_byte);
-    println("    1.32.3 semantics CHANGE: stamps first byte of the LAST consumed frame's buffer, not desc 0's buffer perpetually.");
-    println("    0xB0 = our MAC first byte (b0:41:6f:0c:e4:25) — UNICAST OFFER from DHCP server addressed to us. Strongest signal that OFFER reached us.");
-    println("    0xFF = broadcast (ff:ff:ff:ff:ff:ff) — broadcast OFFER OR our own loopback'd DISCOVER seen in promisc... but we're not promisc, so OFFER.");
-    println("    0x01 = IPv4 multicast (01:00:5e:...) — IGMP / mDNS / SSDP. Pre-1.32.3 this byte was 'stuck' here; post-fix it should refresh to OFFER's 0xB0 within one poll cycle of OFFER arrival.");
-    println("    0x33 = IPv6 multicast (33:33:...) — IPv6 NDP / MLD. Same story as 0x01.");
-    println("    0x00 = no frame ever consumed.");
-    print_cmos_line("CMOS[0x5F] r8169 reserved                       = ", r8169_slot5f);
-    println("    Reserved for future r8169 diagnostic. Currently unwritten (BIOS-noise byte).");
-    syscall(1, 1, "\n", 1);
-
-    # --- xHCI post-mortem (Attempt 36+) ---------------------------------
-    # Slots 0x62-0x6B are stamped by xhci_init paths to make port-reset /
-    # enumeration / xECP-walk state readable independent of the framebuffer.
-    # The kcp slot 0x50 is overwritten by kybernet (last-write-wins), so
-    # these dedicated slots are the only survivable xhci signal post-shell.
-    print_cmos_line("CMOS[0x62] xhci USBLEGSUP outcome      = ", xh_usbleg);
-    print_cmos_line("CMOS[0x63] xhci port CCS bitmap        = ", xh_ccs);
-    print_cmos_line("CMOS[0x64] xhci port reset-OK bitmap   = ", xh_reset);
-    print_cmos_line("CMOS[0x65] xhci proto ports 1+2 (hi|lo)= ", xh_proto12);
-    print_cmos_line("CMOS[0x66] xhci proto ports 3+4 (hi|lo)= ", xh_proto34);
-    print_cmos_line("CMOS[0x67] xhci proto ports 5+6 (hi|lo)= ", xh_proto56);
-    print_cmos_line("CMOS[0x68] xhci xECP cap walk count    = ", xh_capcnt);
-    print_cmos_line("CMOS[0x69] xhci xECP cap-ID bitmap     = ", xh_capbits);
-    print_cmos_line("CMOS[0x6A] xhci 1st SupProto rev|count = ", xh_supp1);
-    print_cmos_line("CMOS[0x6B] xhci PORTSC.PP=1 bitmap     = ", xh_pp);
-    print_cmos_line("CMOS[0x6C] xhci PSC change-byte (R4)   = ", xh_pscchg);
-    print_cmos_line("CMOS[0x6D] xhci PLS pre-PR (R10)       = ", xh_pls);
-    print_cmos_line("CMOS[0x6E] xhci HCCPARAMS1 lo (R7)     = ", xh_hccp1);
-    print_cmos_line("CMOS[0x6F] xhci HCCPARAMS2 lo (R7)     = ", xh_hccp2);
-    print_cmos_line("CMOS[0x60] xhci PORTPMSC of failed port (R8) = ", xh_pmsc);
-    print_cmos_line("CMOS[0x70] xhci PR retry count (T)           = ", xh_retry);
-    print_cmos_line("CMOS[0x71] MTRR_DEF_TYPE MSR 0x2FF byte0 (V) = ", xh_mtrr);
-    print_cmos_line("CMOS[0x72] PAT MSR 0x277 byte0 (PA0) (V)     = ", xh_pat0);
-    print_cmos_line("CMOS[0x73] xhci BAR PDE low byte (X')        = ", xh_pde);
-    print_cmos_line("CMOS[0x74] xhci BAR PML4E low byte (V'')     = ", xh_pml4e);
-    print_cmos_line("CMOS[0x75] xhci BAR PDPTE low byte (V'')     = ", xh_pdpte);
-    print_cmos_line("CMOS[0x76] xhci BAR PDE  via walk (V'')      = ", xh_pde_w);
-    print_cmos_line("CMOS[0x77] xhci USBSTS byte0 reset-fail (W)  = ", xh_sts_lo);
-    print_cmos_line("CMOS[0x78] xhci USBSTS byte1 reset-fail (W)  = ", xh_sts_hi);
-    print_cmos_line("CMOS[0x79] xhci USBCMD byte0 reset-fail (W)  = ", xh_cmd_lo);
-    print_cmos_line("CMOS[0x7A] xhci unclassified xECP cap IDs (W)= ", xh_capxc);
-    print_cmos_line("CMOS[0x7B] xhci 2nd SupProto rev|count (b')  = ", xh_sup2);
-    print_cmos_line("CMOS[0x7C] xhci 2nd SupProto port_off  (b')  = ", xh_sup2off);
-    print_cmos_line("CMOS[0x7D] xhci 3rd SupProto rev|count (b')  = ", xh_sup3);
-    print_cmos_line("CMOS[0x7E] xhci 3rd SupProto port_off  (b')  = ", xh_sup3off);
-    print_cmos_line("CMOS[0x7F] xhci Repair-Z timing-delay sentinel = ", xh_zsent);
-    print_cmos_line("CMOS[0x80] xhci MaxScratchpadBufs (AA)         = ", xh_spcount);
-    print_cmos_line("CMOS[0x81] xhci 0x80-range sentinel (AA)       = ", xh_spsent);
-    print_cmos_line("CMOS[0x82] xhci HCSPARAMS2 byte 3 raw (AA)     = ", xh_hcsp2b3);
-    print_cmos_line("CMOS[0x83] xhci sp_array phys byte 2 (AA 1.30.4) = ", xh_spdcba);
-    print_cmos_line("CMOS[0x84] xhci DNCTRL-write sentinel (BB)     = ", xh_bbsent);
-    print_cmos_line("CMOS[0x85] xhci HCSPARAMS2 byte 2 raw (AA aud) = ", xh_hcsp2b2);
-    print_cmos_line("CMOS[0x86] xhci extended-CMOS sentinel (CC)    = ", xh_ccsent);
-    print_cmos_line("CMOS[0x87] xhci event-drain sentinel (DD)      = ", xh_ddsent);
-    # 1.32.4 DHCP-OFFER-downstream observability — see audit doc for full decode tables.
-    print_cmos_line("CMOS[0x88] dhcp last-frame ethertype hi        = ", dhcp_eth_hi);
-    print_cmos_line("CMOS[0x89] dhcp last-frame ethertype lo        = ", dhcp_eth_lo);
-    print_cmos_line("CMOS[0x8A] dhcp last-frame IP proto (if IPv4)  = ", dhcp_ip_proto);
-    print_cmos_line("CMOS[0x8B] dhcp last-frame UDP dport lo (if UDP)= ", dhcp_udp_dport);
-    print_cmos_line("CMOS[0x8C] dhcp listener.state at first /68    = ", dhcp_listen_st);
-    println("  DHCP downstream fingerprint cheat-sheet (1.32.4 Attempt 101+):");
-    println("    [0x88,0x89] = 0x08,0x00 → IPv4 (continue to [0x8A]); 0x08,0x06 → ARP (c1 confirmed); 0xDD,0xDD → IPv6 (c1)");
-    println("    [0x8A] = 0x11 → UDP (continue to [0x8B]); 0x01 → ICMP; 0x06 → TCP; 0x02 → IGMP (c1)");
-    println("    [0x8B] = 0x44 → port 68 = DHCP-bound (c2 case); 0x89 = NetBIOS; 0xE9 = mDNS; 0x6C = SSDP (c1)");
-    println("    [0x8C] = 0x01 → listener bound (rules out race); 0x00 → race or no listener (escape-plan step 2)");
-    println("    Combined: [0x88..0x8B]=08,00,11,44 + [0x8C]=01 + OFFER timeout = (c2) AGNOS dropped a real DHCP frame");
-    println("    Combined: [0x88..0x8B]=non-DHCP fingerprint + OFFER timeout = (c1) admitted broadcast was NOT DHCP");
-
-    # JBD2 telemetry (agnos 1.38.9+ — written by ext2.cyr Jbd2CmosSlot).
-    println("");
-    println("--- JBD2 iron-burn telemetry (1.38.9+) ---");
-    print_cmos_line("CMOS[0xA0] jbd2 probe outcome                  = ", jbd2_probe_outcome);
-    print_cmos_line("CMOS[0xA1] jbd2 replay attempted               = ", jbd2_replay_attempt);
-    print_cmos_line("CMOS[0xA2] jbd2 replay outcome                 = ", jbd2_replay_outcome);
-    print_cmos_line("CMOS[0xA3] jbd2 replayed-tx count (saturating) = ", jbd2_replay_tx_count);
-    print_cmos_line("CMOS[0xA4] jbd2 commit-tx count this boot (sat)= ", jbd2_commit_tx_count);
-    if (jbd2_probe_outcome == 0)    { println("  jbd2: PROBE -- no-journal feature (vanilla ext2 FS)"); }
-    if (jbd2_probe_outcome == 1)    { println("  jbd2: PROBE -- CLEAN journal at mount (s_start=0; normal post-clean-shutdown state)"); }
-    if (jbd2_probe_outcome == 2)    { println("  jbd2: PROBE -- DIRTY journal at mount (s_start != 0; replay path SHOULD have fired)"); }
-    if (jbd2_probe_outcome == 0xFF) { println("  jbd2: PROBE -- MALFORMED journal (bad magic / unknown blocktype / blocksize mismatch / csum fail)"); }
-    if (jbd2_replay_attempt == 1) {
-        if (jbd2_replay_outcome == 1) {
-            print_str("  jbd2: REPLAY -- SUCCESS, applied "); print_num(jbd2_replay_tx_count); println(" tx, SB now clean");
-        }
-        if (jbd2_replay_outcome == 0xFF) { println("  jbd2: REPLAY -- FAILED (torn / malformed / SB-rewrite error); write_ok=0 stays"); }
+    if (gmagic != 205) {   # 0xCD
+        println("verdict: gnoboot never ran (CMOS[0x53] != 0xCD) — firmware rejected");
+        println("  BOOTX64.EFI or boot order skipped the AGNOS USB. Check BIOS menu.");
+        return 0;
     }
-    if ((jbd2_replay_attempt == 0) & (jbd2_probe_outcome == 2)) {
-        println("  jbd2: WARN -- probe saw DIRTY but replay path did NOT fire (JBD2_NO_REPLAY build OR ext2_active=0?)");
-    }
-    if (jbd2_commit_tx_count > 0) {
-        print_str("  jbd2: COMMIT -- AGNOS produced ");
-        print_num(jbd2_commit_tx_count);
-        println(" journaled commits this boot (the 1.38.6 integration path is firing)");
-    }
-    if ((jbd2_probe_outcome == 0) & (jbd2_commit_tx_count > 0)) {
-        println("  jbd2: WARN -- no-journal probe but commit_tx fired (state error?)");
+    if (kmagic != 171) {   # 0xAB
+        println("verdict: gnoboot ran but the kernel never reached boot_shim entry");
+        println("  (CMOS[0x51] != 0xAB). Handoff or early long-mode setup faulted.");
+        return 0;
     }
 
-    # USBLEGSUP outcome decoder.
-    if (xh_usbleg == 0) { println("  USBLEGSUP: n/a (no xECP chain) — controller does not advertise extended caps."); }
-    if (xh_usbleg == 1) { println("  USBLEGSUP: already OS-owned — BIOS bit 16 was already clear; claim is structurally a no-op."); }
-    if (xh_usbleg == 2) { println("  USBLEGSUP: claimed from BIOS — SMI handoff completed; BIOS released bit 16 within ~1 s spin."); }
-    if (xh_usbleg == 3) { println("  USBLEGSUP: BIOS held (timeout) — bit 16 never cleared within ~1 s. Firmware-specific quirk; best-effort fallthrough."); }
-    if (xh_usbleg == 4) { println("  USBLEGSUP: cap not present — xECP chain walked but no cap_id=1 found. Standard handoff inapplicable."); }
-    if (xh_usbleg > 4) {
-        syscall(1, 1, "  USBLEGSUP: unknown enum value (", 33);
-        print_num(xh_usbleg);
-        println(") — stale CMOS or new enum value not decoded here.");
-    }
-
-    # Per-port CCS + reset bitmaps. archaemenid presents 6 ports.
-    syscall(1, 1, "  CCS    (CMOS[0x63]): ports connected =", 40);
-    var bit = 0;
-    var any_ccs = 0;
-    while (bit < 8) {
-        if ((xh_ccs & (1 << bit)) != 0) {
-            syscall(1, 1, " ", 1);
-            print_num(bit + 1);
-            any_ccs = 1;
-        }
-        bit = bit + 1;
-    }
-    if (any_ccs == 0) { syscall(1, 1, " <none>", 7); }
-    syscall(1, 1, "\n", 1);
-
-    syscall(1, 1, "  Reset  (CMOS[0x64]): ports reset OK   =", 41);
-    bit = 0;
-    var any_reset = 0;
-    while (bit < 8) {
-        if ((xh_reset & (1 << bit)) != 0) {
-            syscall(1, 1, " ", 1);
-            print_num(bit + 1);
-            any_reset = 1;
-        }
-        bit = bit + 1;
-    }
-    if (any_reset == 0) { syscall(1, 1, " <none>", 7); }
-    syscall(1, 1, "\n", 1);
-
-    syscall(1, 1, "  PP=1  (CMOS[0x6B]): ports powered    =", 41);
-    bit = 0;
-    var any_pp = 0;
-    while (bit < 8) {
-        if ((xh_pp & (1 << bit)) != 0) {
-            syscall(1, 1, " ", 1);
-            print_num(bit + 1);
-            any_pp = 1;
-        }
-        bit = bit + 1;
-    }
-    if (any_pp == 0) { syscall(1, 1, " <none>", 7); }
-    syscall(1, 1, "\n", 1);
-
-    # Per-port protocol classification. Each byte packs two ports (high
-    # nibble = lower-numbered port, low nibble = next port). Value 0=unknown,
-    # 2=USB 2.x, 3=USB 3.x.
-    syscall(1, 1, "  Proto  per port: ", 19);
-    var pn = 1;
-    while (pn <= 6) {
-        var pbyte = xh_proto12;
-        if (pn == 3) { pbyte = xh_proto34; }
-        if (pn == 4) { pbyte = xh_proto34; }
-        if (pn == 5) { pbyte = xh_proto56; }
-        if (pn == 6) { pbyte = xh_proto56; }
-        var pn_proto = (pbyte >> 4) & 0xF;
-        if (pn == 2) { pn_proto = pbyte & 0xF; }
-        if (pn == 4) { pn_proto = pbyte & 0xF; }
-        if (pn == 6) { pn_proto = pbyte & 0xF; }
-        syscall(1, 1, "p", 1);
-        print_num(pn);
-        syscall(1, 1, "=", 1);
-        if (pn_proto == 0) { syscall(1, 1, "?", 1); }
-        if (pn_proto == 2) { syscall(1, 1, "USB2", 4); }
-        if (pn_proto == 3) { syscall(1, 1, "USB3", 4); }
-        if (pn_proto != 0) {
-            if (pn_proto != 2) {
-                if (pn_proto != 3) {
-                    syscall(1, 1, "?", 1);
-                    print_num(pn_proto);
-                }
+    # --- exception decode (the live diagnostic) ---
+    if (fmag == 229) {     # 0xE5 — a real exception was caught + halted this boot
+        print_str("FAULT: an armed CPU exception fired this boot — vector ");
+        print_num(fvec); println("");
+        if (fvec == 13) { println("  #GP — bad CS/SS selector or descriptor at iretq/sysret."); }
+        elif (fvec == 14) {
+            println("  #PF — page fault. Full 48-bit faulting address + cause:");
+            var b0 = cmos_read(94);  # 0x5E  CR2 bits  7:0
+            var b1 = cmos_read(93);  # 0x5D  CR2 bits 15:8
+            var b2 = cmos_read(92);  # 0x5C  CR2 bits 23:16
+            var b3 = cmos_read(96);  # 0x60  CR2 bits 31:24  (1.40.9 follow-on #2)
+            var b4 = cmos_read(97);  # 0x61  CR2 bits 39:32
+            var b5 = cmos_read(98);  # 0x62  CR2 bits 47:40
+            var ec = cmos_read(95);  # 0x5F  #PF error code (low byte)
+            print_str("    CR2 = 0x");
+            fmt_byte(b5); fmt_byte(b4); fmt_byte(b3); fmt_byte(b2); fmt_byte(b1); fmt_byte(b0);
+            println("");
+            print_pf_errcode(ec);
+            # Classify off the HIGH bytes (b3..b5). The per-process CR3 maps only
+            # 0-4 GB, so anything with a bit set above 31 = outside that window.
+            if (b5 != 0 || b4 != 0) {
+                println("    -> >= 4 GB: OUTSIDE the per-process CR3's 0-4 GB window —");
+                println("       a wild/garbage pointer or an unmapped high mapping.");
+                println("       THIS is the value the old low-24 capture truncated to 0x6190.");
             }
+            elif (b3 != 0) {
+                print_str("    -> 0x"); fmt_byte(b3);
+                println("xxxxxx (1-4 GB): MMIO/BAR region or high RAM (mapped via PDPT[1..3]).");
+            }
+            elif (b2 < 0x10) {
+                println("    -> LOW (< 16 MB): kernel structure / trampoline / page-table");
+                println("       region, NOT a user-space VA (kernel-side bug).");
+            }
+            elif (b2 == 0x40) { println("    -> ~0x4xxxxx: user code-segment region."); }
+            elif (b2 >= 0x80) { println("    -> >= 0x800000: user stack region."); }
+            else { println("    -> low/mid range — cross-read against the kernel map."); }
         }
-        syscall(1, 1, " ", 1);
-        pn = pn + 1;
-    }
-    syscall(1, 1, "\n", 1);
-
-    # xECP cap walk inventory.
-    syscall(1, 1, "  xECP   (CMOS[0x68/0x69]): walked ", 35);
-    print_num(xh_capcnt);
-    syscall(1, 1, " caps; ", 7);
-    if ((xh_capbits & 0x1) != 0) { syscall(1, 1, "USBLEGSUP=yes ", 14); }
-    else { syscall(1, 1, "USBLEGSUP=no  ", 14); }
-    if ((xh_capbits & 0x2) != 0) { syscall(1, 1, "SupProto=yes", 12); }
-    else { syscall(1, 1, "SupProto=no ", 12); }
-    syscall(1, 1, "\n", 1);
-
-    var sup_rev   = (xh_supp1 >> 4) & 0xF;
-    var sup_count = xh_supp1 & 0xF;
-    syscall(1, 1, "  1stSupProto (CMOS[0x6A]): rev_major=", 38);
-    print_num(sup_rev);
-    syscall(1, 1, " port_count=", 12);
-    print_num(sup_count);
-    if (sup_count == 0xF) { syscall(1, 1, " (or higher; clamped to 4-bit nibble)", 37); }
-    syscall(1, 1, "\n", 1);
-
-    # PSC change-byte (R4) decoder. Stamped by xhci_port_reset USB2 branch on
-    # any failure-return path. Bits map to PORTSC bits 16:23 (>> 16 already
-    # applied at stamp time).
-    syscall(1, 1, "  PSCchg (CMOS[0x6C]): bits set         =", 41);
-    var any_pscchg = 0;
-    if ((xh_pscchg & 0x01) != 0) { syscall(1, 1, " LWS", 4); any_pscchg = 1; }
-    if ((xh_pscchg & 0x02) != 0) { syscall(1, 1, " CSC", 4); any_pscchg = 1; }
-    if ((xh_pscchg & 0x04) != 0) { syscall(1, 1, " PEC", 4); any_pscchg = 1; }
-    if ((xh_pscchg & 0x08) != 0) { syscall(1, 1, " WRC", 4); any_pscchg = 1; }
-    if ((xh_pscchg & 0x10) != 0) { syscall(1, 1, " OCC", 4); any_pscchg = 1; }
-    if ((xh_pscchg & 0x20) != 0) { syscall(1, 1, " PRC", 4); any_pscchg = 1; }
-    if ((xh_pscchg & 0x40) != 0) { syscall(1, 1, " PLC", 4); any_pscchg = 1; }
-    if ((xh_pscchg & 0x80) != 0) { syscall(1, 1, " CEC", 4); any_pscchg = 1; }
-    if (any_pscchg == 0) { syscall(1, 1, " <none>", 7); }
-    syscall(1, 1, "\n", 1);
-
-    # PLS pre-PR (R10) decoder. Stamped by xhci_port_reset USB2 branch
-    # *before* the PR write. Encoding: low nibble = PLS field at first read
-    # on the connected port; top nibble = provenance:
-    #   0x0N = first read PLS=N on connected port (CCS==1)
-    #   0xEN = final PLS=N after ~20ms settle wait (never reached Polling)
-    #   0xFN = arrived at U0 mid-wait (N usually == 0)
-    var pls_lo = xh_pls & 0xF;
-    var pls_hi = (xh_pls >> 4) & 0xF;
-    syscall(1, 1, "  PLS    (CMOS[0x6D]): pre-PR state         = ", 47);
-    if (pls_lo == 0) { syscall(1, 1, "U0 (Enabled)", 12); }
-    if (pls_lo == 1) { syscall(1, 1, "U1 (Suspend)", 12); }
-    if (pls_lo == 2) { syscall(1, 1, "U2 (Suspend2)", 13); }
-    if (pls_lo == 3) { syscall(1, 1, "U3 (Powered-off)", 16); }
-    if (pls_lo == 4) { syscall(1, 1, "Disabled", 8); }
-    if (pls_lo == 5) { syscall(1, 1, "RxDetect", 8); }
-    if (pls_lo == 6) { syscall(1, 1, "Inactive", 8); }
-    if (pls_lo == 7) { syscall(1, 1, "Polling (good — PR honored)", 27); }
-    if (pls_lo == 8) { syscall(1, 1, "Recovery", 8); }
-    if (pls_lo == 9) { syscall(1, 1, "Hot-Reset", 9); }
-    if (pls_lo == 10) { syscall(1, 1, "Compliance", 10); }
-    if (pls_lo == 11) { syscall(1, 1, "Test", 4); }
-    if (pls_lo > 11) { syscall(1, 1, "Reserved/Unknown", 16); }
-    if (pls_hi == 0xE) { syscall(1, 1, " [post-settle, never reached Polling]", 37); }
-    if (pls_hi == 0xF) { syscall(1, 1, " [arrived at U0 mid-settle — skipped to success]", 49); }
-    if (xh_pls == 0)   { syscall(1, 1, " (no stamp — kcp may predate R10, or no connected port)", 56); }
-    syscall(1, 1, "\n", 1);
-
-    # HCCPARAMS1/2 low-byte (R7) decoders. Surfaces controller-advertised
-    # capability bits — particularly relevant for AMD FCH USB2 reset quirks.
-    syscall(1, 1, "  HCCP1  (CMOS[0x6E]): bits set         =", 41);
-    var any_hccp1 = 0;
-    if ((xh_hccp1 & 0x01) != 0) { syscall(1, 1, " AC64", 5); any_hccp1 = 1; }
-    if ((xh_hccp1 & 0x02) != 0) { syscall(1, 1, " BNC", 4); any_hccp1 = 1; }
-    if ((xh_hccp1 & 0x04) != 0) { syscall(1, 1, " CSZ", 4); any_hccp1 = 1; }
-    if ((xh_hccp1 & 0x08) != 0) { syscall(1, 1, " PPC", 4); any_hccp1 = 1; }
-    if ((xh_hccp1 & 0x10) != 0) { syscall(1, 1, " PIND", 5); any_hccp1 = 1; }
-    if ((xh_hccp1 & 0x20) != 0) { syscall(1, 1, " LHRC", 5); any_hccp1 = 1; }
-    if ((xh_hccp1 & 0x40) != 0) { syscall(1, 1, " LTC", 4); any_hccp1 = 1; }
-    if ((xh_hccp1 & 0x80) != 0) { syscall(1, 1, " NSS", 4); any_hccp1 = 1; }
-    if (any_hccp1 == 0) { syscall(1, 1, " <none>", 7); }
-    syscall(1, 1, "\n", 1);
-
-    syscall(1, 1, "  HCCP2  (CMOS[0x6F]): bits set         =", 41);
-    var any_hccp2 = 0;
-    if ((xh_hccp2 & 0x01) != 0) { syscall(1, 1, " U3C", 4); any_hccp2 = 1; }
-    if ((xh_hccp2 & 0x02) != 0) { syscall(1, 1, " CMC", 4); any_hccp2 = 1; }
-    if ((xh_hccp2 & 0x04) != 0) { syscall(1, 1, " FSC", 4); any_hccp2 = 1; }
-    if ((xh_hccp2 & 0x08) != 0) { syscall(1, 1, " CTC", 4); any_hccp2 = 1; }
-    if ((xh_hccp2 & 0x10) != 0) { syscall(1, 1, " LEC", 4); any_hccp2 = 1; }
-    if ((xh_hccp2 & 0x20) != 0) { syscall(1, 1, " CIC", 4); any_hccp2 = 1; }
-    if ((xh_hccp2 & 0x40) != 0) { syscall(1, 1, " ETC", 4); any_hccp2 = 1; }
-    if ((xh_hccp2 & 0x80) != 0) { syscall(1, 1, " ETC_TSC", 8); any_hccp2 = 1; }
-    if (any_hccp2 == 0) { syscall(1, 1, " <none>", 7); }
-    syscall(1, 1, "\n", 1);
-
-    print_cmos_line("  PORTPMSC of failing port (CMOS[0x60], R8) low byte = ", xh_pmsc);
-
-    println("  Interpretation cheat-sheet:");
-    println("    USBLEGSUP=already-OS + reset-OK bitmap empty = SMI not the gating issue; suspect xECP misclassification, paired-port USB2-on-USB3-phys mapping, BAR cache-attribute (see PA0 row), or controller-side disable.");
-    println("    CCS-bitmap empty + PP bitmap full = port power asserted but no devices attached (or detected); physically re-verify the device on at least one port.");
-    println("    CCS-bitmap empty + PP bitmap empty + HCCP1 PPC=1 = controller refused PORTSC.PP writes (controller-level port disable upstream).");
-    println("    CCS-bitmap empty + PP bitmap partial = asymmetric port-power state; correlate the missing PP bits with which physical port the device is in.");
-    println("    CCS-bitmap empty + PP NOT in CMOS (slot 0x6B = 0x00) on a kcp >= 0x32 boot = xhci_ports_power_on never ran; check if the build predates the PP-assert phase.");
-    println("    proto=0 (unknown) on a CCS=1 port = xECP walk did not classify it; check xECP cap inventory above — SupProto=no would explain.");
-    println("    SupProto=yes + port_count != all-physical-ports = some ports outside the SupProto coverage; check if more SupProto caps exist (cap walk count > 2).");
-    println("    PSCchg=<none> on a CCS=1 + reset=<none> boot = PR write absorbed silently — controller did NOT enter reset state. Cross-check CMOS[0x6D] PLS, [0x70] PR retry, and [0x71/0x72] cache attributes. If PLS=Polling + [0x70]=0x03 + PA0=WB, the BAR is WB-cached and writes coalesce in L1/L2 (post-Repair-X this should not occur — verify vmm_remap_uc_2mb landed in the binary).");
-    println("    PR retry [0x70]=0x00 + reset=<none> = first PR write engaged the controller (PR/PRC/PED bit set at timeout) but failed downstream — read PSCchg + PLS for the failure mode.");
-    println("    PR retry [0x70]=0x01 or 0x02 + reset=<none> = silent-absorb on early writes then controller engaged on retry N; silicon is non-deterministic on first PR write. Read PSCchg for the post-engagement state.");
-    println("    PR retry [0x70]=0x03 + reset=<none> = 3 consecutive silent-absorbs; retry pattern is not the unblock. Suspect BAR cache attribute (PA0 row below).");
-    println("    PR retry [0x70]=0x01..0x02 + reset≠<none> = retry succeeded; non-determinism present but recoverable.");
-    println("    PLS=Polling (7) + reset=<none> = PLS gate ran clean (spec-compliant precondition); see PSCchg + PR retry rows for downstream failure mode.");
-    println("    PLS=U0 (0) on connected port + reset returned 1 (success path) = port arrived at Enabled state on its own; xhci_port_reset short-circuited. Enable Slot is next gate.");
-    println("    PLS top-nibble 0xE on connected port = settle wait expired without PLS reaching Polling; physical link / cable / device-side issue or controller-side soft-disable.");
-    println("    PLS top-nibble 0xF on connected port = PLS arrived at U0 mid-settle; treated as success.");
-    println("    HCCP1 PPC bit (0x08) — read it, do NOT assume. PPC=0 means PORTSC.PP is hardwired-on per port and xhci_ports_power_on() is a structural no-op on that silicon. PPC=1 means SW PP-assert is required.");
-    println("    HCCP1 LWS-preservation: AGNOS PORTSC RMW must zero bit 16 (LWS) at PR-write time. If LWS=1 leaks through, xHCI 1.2 §5.4.8.3 makes the write both a strobed PLS update and PR=1 simultaneously (undefined). Linux's xhci_port_state_to_neutral always zeroes LWS unless explicitly writing PLS.");
-    println("    HCCP2 LEC=1 = Large ESIT supported; informational. CIC=1 = Configuration Information Capability; informational. CTC=1 = Compliance Transition Capability.");
-    println("    PORTPMSC low byte = USB2 PMSC: bit 0 = L1_HW (RW); bits 4:7 = HIRD/BESL; etc. Non-zero on a reset-fail boot indicates the controller is exposing USB2 PM state — uncommon but possible quirk surface.");
-    println("    PSCchg=CSC only on a CCS=1 + reset=<none> boot = device-attach was observed but no reset progress. PR write taken, controller did not transition. Likely needs a longer wait or port-state precondition not met.");
-    println("    PSCchg=PRC (with or without CSC) on a CCS=1 + reset=<none> boot = reset DID complete (PRC fired) but PED never followed; controller's reset-to-Enabled transition failed silicon-side. Suspect signal/link issue.");
-    println("    PSCchg=PEC on a reset=<none> boot = port enable-state changed without a clean reset. Likely a soft-disable cascade.");
-    println("    PSCchg=OCC = over-current event during reset — physical/power fault.");
-    println("    MTRR_DEF_TYPE [0x71]: bits 0-7 = default mem-type (0=UC, 1=WC, 4=WT, 5=WP, 6=WB); bit 10 = FE (fixed-range enable); bit 11 = E (global MTRR enable). AGNOS kernel does NOT touch MSR 0x2FF, so this is firmware-programmed. Typical PC firmware: 0x0C = E|FE|WB (variable-range MTRRs may override to UC for MMIO holes). 0x00 = MTRRs disabled (caching governed by PAT alone).");
-    println("    PA0 [0x72]: PAT entry 0 byte (0=UC, 1=WC, 4=WT, 5=WP, 6=WB, 7=UC-). 2MB-page PDEs with flag 0x83 (P|W|PS) select PAT index 0 → this byte IS the default mapping's effective memory type unless a variable-range MTRR overrides it. Firmware-default PAT MSR 0x0007040600070406 → PA0=0x06 (WB). Repair (X) remaps the xHCI BAR to PA3=UC via vmm_remap_uc_2mb (flag 0x9B), so the BAR's effective type should be UC regardless of PA0 — if PORTSC silent-absorb survives on a build that includes vmm_remap_uc_2mb, the remap didn't take effect (verify with X' PDE re-stamp).");
-    println("    PA0=0x00 (UC) + reset=<none> = PAT entry 0 already UC. Cache hypothesis weakens; suspect controller-side gate (HCCPARAMS3 / xECP cap not yet walked).");
-    println("    [0x71]=0x00 AND [0x72]=0x00 = rdmsr helper didn't execute; the diagnostic-stamp pair never ran. Compare build artifact size to docs/development/state.md current floor; re-burn if stale.");
-    println("    PDE [0x73]: low byte of the 2 MB PDE controlling the xHCI BAR, read back AFTER vmm_remap_uc_2mb. Bit map: 0=P, 1=R/W, 2=U/S, 3=PWT, 4=PCD, 5=A, 6=D, 7=PS. Load-bearing bits for the cache-attribute proof are PCD (bit 4) + PWT (bit 3): both set + PS=1 → PA3 → UC (Repair X took effect).");
-    println("    [0x73]=0x9B (10011011) or 0xBB (with A-bit set by the walk) = PCD|PWT|PS|R/W|P → PA3=UC. **Repair X landed in the page table.** If the silent-absorb persists with this value, F5 (BAR cache attribute) is falsified; escalate to Repair V'' (full PML4→PDPT→PD walk to surface aliasing through another mapping).");
-    println("    [0x73]=0x83 (10000011) = PS|R/W|P with PCD=PWT=0 → PA0=WB. **vmm_remap_uc_2mb is a no-op on this path** — the rewrite never reached the controlling PDE. Debug the helper: check pmm_alloc success for the shatter case, PDPT[gb_idx] re-point, CR3 reload eviction. Pre-bound Attempt 45 outcome.");
-    println("    [0x73]=0x00 = stamp never ran; xhci_probe didn't reach the X' site. Either pre-X build is on iron or earlier xhci_probe step faulted. Re-burn after confirming binary size matches Attempt 45 floor in docs/development/state.md.");
-    println("    [0x73]=other = the PDE has flags we don't model (G, NX, large-page PAT-bit-12 fold). Decode bit-by-bit from the bit map above and flag for triage.");
-    println("    PML4E [0x74] / PDPTE [0x75] / PDE-via-walk [0x76]: Repair V'' four-level walk from PML4@0x1000 for xhci_mmio_base. Same bit map as [0x73] (0=P, 1=R/W, 2=U/S, 3=PWT, 4=PCD, 5=A, 6=D, 7=PS). [0x76]=0xFF is a SENTINEL meaning PDPTE had PS=1 → BAR is mapped by a 1GB huge page; no PD level exists on this path.");
-    println("    [0x74]=0x03/0x07 AND [0x75]=0x03/0x07 (NOT 0x83) AND [0x76]=0x9B/0xBB (matches [0x73]) + reset still failed: **Row 1 — hypothesis (a) FALSIFIED.** Walk agrees with X'; UC is the only mapping for this BAR. Escalate to Burn B (Repair W) — controller-side gate (USBSTS/USBCMD/unclassified xECP caps).");
-    println("    [0x74]=0x03/0x07 AND [0x75]=0x03/0x07 AND [0x76]=0x83 (PA0=WB) + reset still failed: **Row 2 — walk and X' DISAGREE.** X' shortcut read from a different PD than the four-level walk; confirms two-mapping aliasing or shatter-PD-pointer divergence. Real fix: align X path with what the walk sees; ~10 LOC, re-burn under fixed X.");
-    println("    [0x75]=0x83 (PS bit set in PDPTE → 1GB huge page) AND [0x76]=0xFF sentinel + reset still failed: **Row 3 — shatter never ran.** vmm_remap_uc_2mb's PDPT-repoint write didn't take effect; X is a no-op. Stage Repair (Y) PDPT-repoint bisector to confirm where the rewrite went wrong.");
-    println("    [0x64]=0x05 (both connected ports reset) regardless of [0x74]/[0x75]/[0x76] values: **Row 4 — late-arriving fix.** Extremely unlikely on a read-only walk; re-burn for reproducibility, then Phase 4.");
-    println("    [0x74]=0x00 (PML4E unmapped): **Row 5 — V'' walk hit unmapped translation.** Shouldn't be possible for the BAR but stamp surfaces it. Audit pt_init coverage of MMIO range; re-burn after fix.");
-    println("    All V'' slots [0x74][0x75][0x76]=0x00 with kcp >= 0x18: V'' stamp site never executed (xhci_probe didn't reach the walk site, or earlier xhci_probe step faulted between X' and V''). Compare flashed binary to Attempt 46 floor (state.md); re-burn after confirming size match.");
-    println("    USBSTS byte0 [0x77]: bits 0-7 of USBSTS (xHCI 1.2 §5.4.2). Bit 0 = HCH (Host Controller Halted; 1 = controller halted, R/S not honored). Bit 2 = HSE (Host System Error; 1 = bus error on a system access — fatal). Bit 3 = EINT (Event Interrupt; informational, RW1C). Bit 4 = PCD (Port Change Detect; informational, RW1C). 0x00 on a reset-fail boot with R/S=1 expected = controller running, no errors signalled — silent-absorb is downstream of error bits.");
-    println("    USBSTS byte1 [0x78]: bits 8-15. Bit 0=8 SSS / bit 1=9 RSS / bit 2=10 SRE (Save/Restore Error) / bit 3=11 **CNR** / bit 4=12 **HCE**. CNR (Controller Not Ready) = 0x08: spec § says NO operational-register writes accepted while CNR=1 — **THE silent-absorb smoking gun**. HCE (Host Controller Error) = 0x10: fatal internal controller error — gate the controller into a frozen state where writes are absorbed. 0x00 = controller signals neither — silent-absorb gate is somewhere else (paired-port routing / AMD-FCH PR-timing / vendor cap).");
-    println("    [0x77]=0x00 AND [0x78]=0x00 on a kcp >= 0x32 boot = controller running clean per its own status; the gate is outside USBSTS's purview. Escalate to Burn C (Repair Z — AMD-FCH PR-write timing delay) or audit a captured vendor cap from [0x7A].");
-    println("    [0x77]=0x01 (HCH=1) with R/S claimed asserted = controller halted itself; check USBSTS HSE/HCE bits and re-read USBCMD byte 0 [0x79] for R/S state. Major regression — restart sequencing in xhci_start broke.");
-    println("    [0x78]=0x08 (CNR=1) at reset-fail-time = **gate found**: controller is rejecting operational-register writes. Investigate whether CSS / CRS / xhci_start sequencing race left CNR set, or external bus event (AER) is freezing the controller. Repair (W2) = poll CNR=0 before each PORTSC write.");
-    println("    [0x78]=0x10 (HCE=1) = controller-fatal; system was likely going to hang elsewhere too. Capture USBSTS+USBCMD on the next attempt and triage with vendor; consider gnoboot-level pre-handoff controller-reset.");
-    println("    [0x78]=0x04 (SRE=1) only = save/restore mechanism reported an error; usually informational unless we're using CSS/CRS (we aren't). Note and ignore for the silent-absorb hypothesis.");
-    println("    USBCMD byte0 [0x79]: bits 0-7 of USBCMD (§5.4.1). Bit 0 = R/S (Run/Stop). Bit 1 = HCRST (host reset; self-clears when done). Bit 2 = INTE (interrupt enable). Bit 3 = HSEE (host system error enable). Bit 7 = LHCRST. 0x01 = R/S only (expected if xhci_start ran but INTE not asserted). 0x05 = R/S|INTE (Linux-standard). 0x00 = controller stopped — fatal regression.");
-    println("    [0x79]=0x00 with kcp >= 0x32 = R/S=0 (controller stopped before reset-fail-time). Either xhci_start regressed or the controller halted itself between init and enumerate.");
-    println("    [0x79]=0x02 (HCRST=1) = host reset still in progress at PR-write time — that explains the silent-absorb; HCRST must clear before any operational write is honored. Add a CNR-or-HCRST poll to xhci_init.");
-    println("    Unclassified xECP caps [0x7A]: packed nibble-each (high = first unclassified cap ID, low = second). Spec cap IDs ≤ 0x0A fit cleanly; vendor caps (0xC0+) clip to low nibble and are surfaced only by cap_count [0x68] exceeding 2 + known-cap sum. Common IDs: 0x02 = SECOND SupProto (USB3 sibling-port table — likely on AMD FCH; first SupProto covers USB2 ports), 0x03 = xPM, 0x04 = IO Virt, 0x05 = MSI, 0x0A = USB Debug Cap (xDC).");
-    println("    [0x7A]=0x20 (high=2, low=0): first unclassified is a second SupProto cap — driver only honors first SupProto; second never had its port range walked. Audit xhci_xecp_classify_ports to handle multiple SupProto caps (this is exactly the AMD-FCH USB2/USB3 sibling case).");
-    println("    [0x7A]=0x2A (high=2, low=0xA): second SupProto + Debug Cap unclassified. Two caps the driver isn't using. Second SupProto likely covers the USB3 ports (5,6) — explains why proto map shows USB3 but reset only attempted on what classify_ports tagged from FIRST SupProto.");
-    println("    [0x7A]=0xA0 (high=0xA, low=0): first unclassified is Debug Cap only (no second SupProto). Less likely on AMD FCH but possible. Driver isn't claiming the debug cap; not the silent-absorb gate but worth surfacing.");
-    println("    [0x7A]=0x00 with cap_count [0x68] >= 3 = walk reached extra caps but classify-skip path didn't fire — either both unclassified slots stayed 0 (impossible if cap_count > 2) or the kernel build lacks Repair (W) (re-burn after size check).");
-    println("    [0x7A]=0xXY where X or Y is in [3..F]: spec-defined caps — see ID list above. Anything ≥ 0xC after clipping = vendor cap (caller should re-burn with full-byte capture if it matters).");
-    println("    Repair (b') per-cap SupProto fingerprints [0x7B..0x7E]: nibble-packed rev|count + raw port_off. 1st SupProto fingerprint stays in [0x6A]. With cap_count [0x68] = 5 and 3 unclassified caps observed in [0x7A], the AMD FCH on archaemenid exposes 3 SupProto caps total (plus USBLEGSUP + one other).");
-    println("    [0x7B]/[0x7D]: high nibble = rev_major (2 = USB2 / 3 = USB3 / 4 = USB4-SSP). Low nibble = port_count (1..F).");
-    println("    [0x7C]/[0x7E]: raw port_off (1-based). 1 = starts at port 1; 5 = USB3 bank; 6 = port 6 only.");
-    println("    Failing ports across the silent-absorb arc are 1 + 3 (USB2). If 2nd or 3rd SupProto covers any port in [1..4], that's the overlap row → per-bank PSIV / HW-LPM quirk. If neither covers [1..4], the b' data is informational and the gate is elsewhere (escalate to Repair Z timing).");
-    println("    [0x7B]=0x31 + [0x7C]=0x05 + [0x7D]=0x31 + [0x7E]=0x06: archaemenid AMD FCH shape — 2nd cap = USB3 port 5 alone, 3rd cap = USB3 port 6 alone. **NEITHER overlaps failing USB2 ports 1+3** → (b') falsified for this hardware. Behavioral repair = Z timing.");
-    println("    [0x7B]=0x32 + [0x7C]=0x05 + [0x7D]=0x22 + [0x7E]=0x01 or 0x03: 2nd cap = USB3 grouped, 3rd cap = USB2 sibling overlap with the failing ports → (b'') per-bank PSIV consumption needed.");
-    println("    All [0x7B..0x7E] = 0x00 with kcp >= 0x32: pre-b' build flashed (size != 346,376 B) OR cap walk faulted before SupProto branch.");
-    println("    Repair (Z) sentinel [0x7F]: 0xAA = Z timing-delay site executed at least once across the per-port reset loop (last-write-wins is fine). 0x00 = pre-Z binary on iron (size != 346,456 B) OR Z site faulted / regressed / DCE'd out.");
-    println("    [0x7F]=0xAA + [0x64]=0x00: Z executed but didn't break the silent-absorb → ALL behavioral hypotheses in the silent-absorb trio (F5/X/V'', b/W, b'/c/Z) exhausted. Escalation = decoupled re-evaluation, NOT another diagnostic letter.");
-    println("    [0x7F]=0xAA + [0x64] non-zero: Z is the unblock → Phase 3 closes; xhci enumeration proceeds to Address Device + control transfers.");
-    println("    Repair (AA) — HCSPARAMS2.MaxScratchpadBufs + DCBAA[0] scratchpad install [0x80..0x83]. First use of CMOS 0x80+ range (0x50-0x7F exhausted). Per xHCI 1.2 §4.20, when MaxScratchpadBufs > 0 the OS MUST allocate N page-sized buffers + a u64 pointer array, then write the array's phys into DCBAA[0] before R/S=1. Pre-AA AGNOS left DCBAA[0]=0 on a TODO comment; on AMD Renoir/Cezanne (1022:1639) this is suspected silent-absorb root cause across Attempts 32-49.");
-    println("    [0x81]=0xAA: 0x80-range slot is trustworthy (BIOS/POST didn't clobber). [0x81]!=0xAA: BIOS writes into 0x80+ region OR AA stamp site didn't run — verify build size against Attempt 50 floor in state.md before interpreting [0x80]/[0x82]/[0x83].");
-    println("    [0x80]=0x00 + [0x81]=0xAA: controller reports MaxScratchpadBufs=0 — AA is a structural no-op on this hardware; silent-absorb hypothesis (AA) FALSIFIED. Escalate to alternate hardware target or PCIe USB add-in.");
-    println("    1.30.4 stamp redesign: [0x83] now captures sp_array phys byte 2 ((>>16)&0xFF), not byte 0. Page-aligned phys is structurally &0xFF==0 (4 KB alignment) which made the Attempt 50 Row 1/Row 4 distinction broken. Byte 2 is non-zero for any phys >= 64 KB (universally true post-kernel-init on x86_64).");
-    println("    [0x80]>0x00 + [0x81]=0xAA + [0x83]=0x00 (post-1.30.4): scratchpad alloc failed (pmm_alloc returned 0) OR the alloc landed at a phys < 64 KB (impossible during normal kernel init — would indicate PMM corruption). Check Phase 2 FB for 'xhci: scratchpad array alloc failed' or 'xhci: scratchpad buf alloc failed'.");
-    println("    [0x80]>0x00 + [0x81]=0xAA + [0x83]!=0x00 + [0x64]!=0x00: **REPAIR (AA) IS THE UNBLOCK** → reset succeeded, Phase 3 enumeration runs, Phase 4/5 (HID translation + kb_buf feed) becomes the typeable-shell gate. THIS IS MVP.");
-    println("    [0x80]>0x00 + [0x81]=0xAA + [0x83]!=0x00 + [0x64]=0x00: scratchpad correctly installed but reset still absorbed — AA falsified. Cross-check Repair (BB) DNCTRL outcome below; if [0x84]=0xBB and reset still failed, gate is somewhere else (next Linux-diff targets: IMOD with INTE-on, per-port event-ring drain ordering, AMD-FCH PCI cap 1022:1639).");
-    println("    [0x82] raw byte cross-check: encodes HCSPARAMS2 bits 31:24. Per Linux HCS_MAX_SCRATCHPAD: count = (bits 25:21 << 5) | bits 31:27. [0x82]=0x00 means bits 31:27 = 0 (low 5 bits of count are 0) AND bits 25:24 = 0 (top 2 bits of bits 25:21). Combined constraint: count must be in {0, 32, 64, 96, 128, 160, 192, 224} (i.e., 32 * X where X = bits 23:21).");
-    println("    [0x85] HCSPARAMS2 byte 2 (1.30.4 audit add-on): captures raw bits 23:16. bits 23:21 = top 3 bits of HCS_MAX_SCRATCHPAD's 'bits 25:21' field. If [0x82]=0 + [0x85] top 3 bits = X, expected count = X * 32. Attempt 50 had [0x80]=0x35 (53) + [0x82]=0 — mathematically impossible (53 isn't 32*X for any integer X). [0x85] disambiguates: if [0x85]'s top 3 bits give a value consistent with [0x80], the original CMOS-capture was correct and the [0x80]/[0x82] mismatch was a Cyrius shift-emit divergence (file cyrius-side issue). If [0x85] also disagrees, capture site has a bug.");
-    println("    Repair (BB) — Device Notification Control (DNCTRL, op_reg 0x14) [0x84] (1.30.4). Audit found XHCI_OP_DNCTRL defined at xhci_regs.cyr:70 but never written anywhere — same shape as AA precedent (register known, write step skipped). Linux xhci_set_dev_notifications writes DEV_NOTE_FWAKE=0x02 unconditionally during xhci_init() before R/S=1; AGNOS now does the same. Sentinel [0x84]=0xBB proves the write site executed.");
-    println("    [0x84]=0xBB + [0x64]!=0x00: **REPAIR (BB) IS THE UNBLOCK** — DNCTRL was the silent-absorb gate; some USB2 port-link-state transitions on AMD Renoir/Cezanne gated on notification handling. Phase 3 enumeration ran. Phase 4/5 becomes the typeable-shell gate.");
-    println("    [0x84]=0xBB + [0x64]=0x00: BB executed cleanly, silent-absorb persists. BB falsified; eleventh hypothesis in the arc. Next Linux-diff targets: IMOD write with INTE-on test, per-port event-ring drain ordering, AMD-FCH-specific PCI cap.");
-    println("    [0x84]=0x00 with kcp >= 0x32: pre-BB binary on iron OR DNCTRL write site faulted. Verify build size against 1.30.4 floor before interpreting BB outcome.");
-    println("    Repair (CC) — Extended-CMOS bank sentinel [0x86] (1.30.4 post-Attempt-51). Port 0x70 bit 7 is the NMI mask; slots 0x80+ via 0x70/0x71 alias to RTC seconds/minutes/hours (bits 6:0). Attempt 51 [0x80]=0x48 / [0x82]=0x04 / [0x84]=0x19 were RTC BCD time-of-day (19:04:48 wall clock), NOT the kernel's intended bytes. [0x81]/[0x83]/[0x85] aliased to RTC alarm regs which happen to be unused scratch, preserving kernel writes and masking the bug across Attempts 50+51. xhci_cmos_stamp + cmos_read now route slots >= 0x80 through ports 0x72/0x73 (extended CMOS bank, 7-bit offset, no NMI bit). Sentinel [0x86]=0xCC verifies the AMD FCH 1022:1639 honors the extended port pair.");
-    println("    [0x86]=0xCC: extended CMOS bank live — slots 0x80..0xFF on 0x72/0x73 are now trustworthy. Re-interpret [0x80]/[0x82]/[0x84] as actual kernel writes (HCSPARAMS2.MaxScratchpadBufs / HCSPARAMS2 byte 3 / BB sentinel).");
-    println("    [0x86]=0x00 or other: extended CMOS not supported on this chipset OR sentinel site faulted. [0x80]+ remain unreliable for diagnostics; rely on FB lines until a different transport lands.");
-    println("    Repair (DD) — Event-ring drain + USBSTS.PCD clear before PR write [0x87] (post-Attempt-51). USBSTS [0x77]=0x10 across the silent-absorb arc = PCD (Port Change Detect, bit 4) set, signaling at least one Port Status Change event sitting un-acknowledged on the event ring. Linux's xhci-hub.c drains events between port operations; AGNOS only drained from EP0 doorbell completions (post-reset). Hypothesis: AMD FCH 1022:1639 gates subsequent PORTSC writes (silent-absorb) until prior change events are consumed + PCD cleared. xhci_drain_port_change_events walks event TRBs cycle-bit-match, advances ERDP with EHB bit, then writes USBSTS=0x10 to RW1C-clear PCD. FB line 'xhci: drained N events' surfaces drained count.");
-    println("    [0x87]=0xDD + [0x64]!=0x00: **REPAIR (DD) IS THE UNBLOCK** — event-ring drain + PCD clear was the silent-absorb gate. Phase 3 enumeration runs. Phase 4/5 becomes the typeable-shell gate.");
-    println("    [0x87]=0xDD + [0x64]=0x00: DD executed cleanly, silent-absorb persists. DD falsified; twelfth hypothesis in the arc. Remaining Linux-diff targets: IMOD-with-INTE write, per-slot doorbell ordering, vendor PCI cap dump. Decoupling decision remains in force — Phase 4/5 continues in parallel.");
-    println("    [0x87]=0x00 with kcp >= 0x32: pre-DD binary on iron OR drain site faulted. Verify build size against 1.30.4 DD floor (350,008 B) before interpreting outcome.");
-    syscall(1, 1, "\n", 1);
-    # End xHCI post-mortem block.
-
-    # --- Verdict layer 1: did gnoboot launch at all? ---
-    if (gmagic != 0xCD) {
-        println("verdict: gnoboot never launched (CMOS[0x53] != 0xCD).");
-        println("  UEFI firmware rejected BOOTX64.EFI, or the boot order didn't");
-        println("  pick the AGNOS USB. Check BIOS boot menu + ESP layout.");
-        println("  (If CMOS is fresh / never written, both magics will be 0x00.)");
+        elif (fvec == 6) { println("  #UD — bad opcode (e.g. SYSCALL with EFER.SCE clear)."); }
+        elif (fvec == 8) { println("  #DF — double fault (fault during fault delivery; check TSS RSP0)."); }
+        else { println("  (other vector — see Intel SDM Vol 3 Table 6-1)."); }
         return 0;
     }
 
-    # --- Verdict layer 2: did gnoboot reach handoff? ---
-    if (gcp == 1) { println("verdict (gnoboot): efi_main entered but died before locating the ESP."); return 0; }
-    if (gcp == 2) { println("verdict (gnoboot): located ESP but died before reading + verifying /boot/agnos."); return 0; }
-    if (gcp == 3) { println("verdict (gnoboot): mapped kernel ELF but died before GetMemoryMap / pre-EBS."); return 0; }
-    if (gcp == 4) { println("verdict (gnoboot): reached pre-EBS but ExitBootServices itself failed (likely invalid mm_key)."); return 0; }
-    if (gcp != 5) {
-        syscall(1, 1, "verdict (gnoboot): undefined checkpoint ", 40);
-        print_num(gcp);
-        println(" — possibly stale CMOS.");
-        return 0;
+    # --- jbd2 telemetry (only meaningful past mount) ---
+    var j0 = cmos_read(160);  # 0xA0 probe outcome
+    if (j0 == 1 || j0 == 2) {
+        print_cmos_line("CMOS[0xA0] jbd2 probe     = ", j0);
+        print_cmos_line("CMOS[0xA4] jbd2 commits   = ", cmos_read(164));
     }
 
-    # --- Verdict layer 3: did kernel start? ---
-    if (kmagic != 0xAB) {
-        println("verdict: gnoboot completed handoff (CP 5) but the kernel's first");
-        println("  instruction never wrote the magic byte at CMOS[0x51].");
-        println("  Possibilities:");
-        println("    - jmp to 0x1000A8 went somewhere unmapped (page fault, no IDT).");
-        println("    - kernel ELF wasn't at 0x1000A8 (wrong entry point).");
-        println("    - first boot_shim instruction faulted (very unlikely — it's a CMOS write).");
-        return 0;
-    }
-
-    # --- Verdict layer 4: where did kernel stall? ---
-    if (kcp == 1)  { println("verdict (kernel): entry reached (instr 1), died before visual canary (CP 2)."); return 0; }
-    if (kcp == 2)  { println("verdict (kernel): canary ran, died before stack setup (CP 3)."); return 0; }
-    if (kcp == 3)  { println("verdict (kernel): stack set up, died before COM1 UART init (CP 4)."); return 0; }
-    if (kcp == 4)  { println("verdict (kernel): COM1 init done, died inside boot_info_capture_rdi OR the CR4 SMEP/SMAP enable block (both sit between CP 4 and CP 5 in Attempt-19+ boot_shim). CPUID and `mov cr4, ebx` are routine ring-0 ops, so boot_info_capture_rdi is the prime suspect."); return 0; }
-    if (kcp == 5)    { println("verdict (kernel): reached top-level main.cyr, died in the two opening kprintln calls (before bisector 0x80)."); return 0; }
-    if (kcp == 128)  { println("verdict (kernel): bisector 0x80 — opening kprintln pair OK, died inside gdt_init."); return 0; }
-    if (kcp == 129)  { println("verdict (kernel): bisector 0x81 — gdt_init OK, died inside tss_init."); return 0; }
-    if (kcp == 130)  { println("verdict (kernel): bisector 0x82 — tss_init OK, died inside idt_init."); return 0; }
-    if (kcp == 6)  { println("verdict (kernel): GDT/TSS/IDT loaded, died before APIC/timer init (CP 7)."); return 0; }
-    if (kcp == 7)  { println("verdict (kernel): APIC + timer live, died before pt_init (CP 8)."); return 0; }
-    if (kcp == 8)  { println("verdict (kernel): page tables built, died before pmm_init (CP 9). Historical RDRAND stall."); return 0; }
-    if (kcp == 9)  { println("verdict (kernel): PMM up, died before heap_init (CP 10)."); return 0; }
-    if (kcp == 10) { println("verdict (kernel): heap up, died before dev_init / acpi_init / pci_scan (CP 11)."); return 0; }
-    if (kcp == 11) { println("verdict (kernel): ACPI + PCI enumerated, died before vfs_init (CP 12)."); return 0; }
-    if (kcp == 12) { println("verdict (kernel): VFS up, died before syscall_init / stack_canary (CP 13)."); return 0; }
-    if (kcp == 13) { println("verdict (kernel): SYSCALL + stack canary up, died before proc creation (CP 14)."); return 0; }
-    if (kcp == 14) { println("verdict (kernel): test procs created, died before 'sti' (CP 15)."); return 0; }
-    if (kcp == 15) { println("verdict (kernel): interrupts enabled, died before scheduler activation (CP 16)."); return 0; }
-    if (kcp == 16) { println("verdict (kernel): scheduler armed (CP 0x10) — kernel init COMPLETE. Stall is post-init, before first hlt return (CP 0x12)."); return 0; }
-    if (kcp == 18) { println("verdict (kernel): CP 0x12 reached (post-VFS / initrd / memfile tests written this slot most recently). CMOS captures latest write, not highest CP — kernel may have advanced further. Visual cell-color ladder was retired post-Attempt-29 (cp_fb cells stripped); rely on kcp + on-screen kprint log for disambiguation."); return 0; }
-    if (kcp == 19) { println("verdict (kernel): 10 hlts done (CP 0x13) — matches QEMU known-good cycle. Died between iter 10 and iter 25."); return 0; }
-    if (kcp == 20) { println("verdict (kernel): 25 hlts done (CP 0x14) — past QEMU's break point. CMOS captures latest write — userland exec stamp also lands on 0x14, see below."); return 0; }
-    if (kcp == 17) { println("verdict (kernel): post-scheduler idle loop COMPLETE (CP 0x11). All 50 hlts retired. Stall is post-loop."); return 0; }
-    if (kcp == 32) { println("verdict (kernel): CP 0x20 — entered test_proc_a (1st context switch in OK), died before its first serial_print. Improbable path — investigate iretq → user-proc entry."); return 0; }
-    if (kcp == 33) { println("verdict (kernel): CP 0x21 — test_proc_a's first serial_print done, first arch_wait did not return. Sub-case 1: timer IRQ not re-delivered post-iretq (PIC EOI / IF-flag / IDT)."); return 0; }
-    if (kcp == 34) { println("verdict (kernel): CP 0x22 — test_proc_a round-trip OK (hlt returned inside the user proc), stuck oscillating on test_proc_a. Sub-case 3a: sched_next never advances past proc 1."); return 0; }
-    if (kcp == 35) { println("verdict (kernel): CP 0x23 — sched rotated test_proc_a → test_proc_b OK. Scheduler is alive; proc 0 (kernel idle) starved by round-robin. Sub-case 3b: fix sched_next to include proc 0 OR mark proc 0 ready post-save_context."); return 0; }
-    if (kcp == 22) { println("verdict (kernel): CP 0x16 — address spaces created OK from spawn_user_proc (proc_create_address_space returned). Died before proc_map_page (CP 0x17)."); return 0; }
-    if (kcp == 23) { println("verdict (kernel): CP 0x17 — per-process page mapping installed OK. Died before user-proc dispatch (CP 0x14)."); return 0; }
-    if (kcp == 20) { println("verdict (kernel): CP 0x14 — userland exec test reached (CMOS captures latest write; same slot also stamped at '25 hlts done' inside the idle loop). Most recent stamp wins — assume userland exec reached if kprint log on screen shows 'Userland exec complete'."); return 0; }
-    if (kcp == 21) { println("verdict (kernel): CP 0x15 — kybernet-launch reached. Shell loop is alive (verified Attempt 29 — 'agnos>' prompt rendered). kcp is the LAST stamp written to CMOS[0x50] (single-byte slot, last-write-wins) — if xhci_probe / xhci_init / xhci_start / xhci_enumerate ran, their 0x30 / 0x31 / 0x32 stamps were overwritten by kybernet's 0x15. CMOS[0x62-0x7A] above carry the xhci post-mortem (USBLEGSUP / CCS / reset / proto / xECP inventory / PP bitmap / PSCchg / PLS pre-PR / HCCPARAMS1/2 / PORTPMSC / PR retry / MTRR_DEF_TYPE / PA0 / BAR PDE / V'' four-level walk PML4E+PDPTE+PDE / W USBSTS+USBCMD at reset-fail-time / W unclassified xECP cap IDs) that survives the overwrite — use those slots, not kcp, to reconstruct xhci state. Framebuffer is the primary truth channel for line-text ('xhci: found at ...' / 'port N connected' / 'reset failed (proto=X)'). No input echoes is expected through Phase 4; HID translation lands in Phase 5. Current attempt narrative + queued repairs in agnosticos/docs/development/iron-nuc-zen-log.md."); return 0; }
-    if (kcp == 48) { println("verdict (kernel): CP 0x30 — xhci probe + halt+reset complete, but xhci_start() did NOT reach the running state. Controller located, capability registers cached, USBLEGSUP claim ran (one of 'claimed from BIOS' / 'already OS-owned' / 'n/a' / 'BIOS held (timeout)' on fb above), controller halted with CNR clear. The start sequence (DCBAA / cmd ring / event ring + ERST allocation, op-reg programming, R/S=1, HCH=0 wait) is what stamps 0x31. kcp pegged at 0x30 means a step inside xhci_start failed — check fb for 'xhci: DCBAA alloc failed' / 'xhci: DMA sanity check failed' / 'xhci: cmd ring alloc failed' / 'xhci: event ring alloc failed' / 'xhci: ERST alloc failed' / 'xhci: start timeout (HCH never cleared)'. See agnosticos/docs/development/planning/usb-hid-keyboard-driver.md § Phase 2."); return 0; }
-    if (kcp == 49) { println("verdict (kernel): CP 0x31 — xhci Phase 2 complete: controller is RUNNING but Phase 3 enumeration did NOT address any device. Phase 3 (port enumeration + Enable Slot + Address Device + Get Device Descriptor) ran but no connected port survived the full chain. Check fb for 'xhci: port N reset failed' / 'xhci: Enable Slot failed, ccode=N' / 'xhci: Address Device failed, ccode=N' / 'xhci: get descriptor (8|18) failed' / 'xhci: transfer event timeout'. If 'port N reset failed' AND the USBLEGSUP line above shows 'BIOS held (timeout)', that's the confirmed-but-escalated case — BIOS firmware bug or wrong sequence, NOT Phase 2.5 missing. If 'port N reset failed' WITH 'USBLEGSUP claimed from BIOS' / 'already OS-owned' above, the Phase 2.5 hypothesis is FALSIFIED — port reset is failing for a different reason (cable/signal, port-protocol misclassification, or controller-internal). If no port lines appear at all, no PORTSC reported CCS=1 — confirm a USB device is physically attached. See agnosticos/docs/development/planning/usb-hid-keyboard-driver.md § Phase 3."); return 0; }
-    if (kcp == 50) { println("verdict (kernel): CP 0x32 — xhci Phase 3 complete: at least one connected port survived reset, Enable Slot, Address Device, and Get Device Descriptor. The framebuffer carries the per-port summary line ('xhci: port N connected, SPEED, slot=X, VID=Y PID=Z, class=C'); '[HID-kbd]' suffix marks any device whose Device Descriptor declared HID-boot-keyboard at device-class level (rare — most kbds expose HID at interface level, surfaced in Phase 4 once Configure Endpoint + Set Protocol = boot land). Typing on shell prompt still produces no echo through Phase 4; HID translation lands in Phase 5. See agnosticos/docs/development/planning/usb-hid-keyboard-driver.md § Phase 4."); return 0; }
-    # NOTE: Verdicts for the mem-iso block (kcp 0x19, 0x1A-0x1D, 0x60-0x68,
-    # 0xE1-0xEA Repair M/N) were deleted with Repair (O) on 2026-05-15.
-    # Those code paths no longer exist in the kernel; any matching kcp now
-    # implies stale CMOS from a pre-Attempt-28 burn. The "unexpected
-    # checkpoint" fall-through below handles them.
-    syscall(1, 1, "verdict (kernel): unexpected checkpoint ", 40);
-    print_num(kcp);
-    println(" — possibly stale CMOS.");
+    # --- no exception caught: report how far the kernel got ---
+    println("");
+    print_str("verdict: no armed exception caught (CMOS[0x55] != 0xE5). Kernel reached ");
+    print_str("checkpoint 0x"); fmt_byte(kcp);
+    println(" — cross-read the on-screen kprint log for the stall point.");
     return 0;
 }
 
