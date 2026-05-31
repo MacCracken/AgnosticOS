@@ -161,7 +161,7 @@ Rows 2 + 4 are the in-system iron evidence; row 6 is dispositive (same as the 1.
 | 0xE5 | 0x08 | #DF | fault during fault delivery — TSS RSP0 (0x200000) reachability |
 | (no 0xE5) | — | still reset | the fault is a vector we didn't arm, OR pre-iretq — re-audit |
 
-That vector is the actual root cause; it drives the 1.40.9 follow-on / 1.40.10 fix.
+That vector is the actual root cause; it drives the 1.40.9 follow-on fix (folded into the still-open .9).
 
 **Photos**: `1408_boot1.jpg` (A1 pass), `1408_boot2_crash.jpg` (A2 pass + A3 last-line-before-reset) at agnosticos top level — catalogue under [`iron-nuc-zen-photos/`](iron-nuc-zen-photos/README.md).
 
@@ -184,6 +184,28 @@ That vector is the actual root cause; it drives the 1.40.9 follow-on / 1.40.10 f
 **User iron note: "first boot reset, then each attempt after locked up."** The reset-vs-halt non-determinism tracks the corrupted FS. A *halt* = the #PF handler caught it (gave us `0x54=0x0E`); a *reset* = an **uncatchable** path — a fault during fault delivery (#DF whose own push also faults → triple-fault), or a fault on a vector we don't arm. As the duplicate-dirent state shifted boot-to-boot, the fault landed differently. **Caution:** a duplicate/garbage `/bin/prog2` dirent can make the exec path stream-load the *wrong* blocks → a corrupt ELF → a #PF that is a corruption artifact, **not** the pure ring-3-transition bug. So the captured `0x54=0x0E` may be partly FS-noise.
 
 **∴ CLEAN THE FS BEFORE the CR2 re-burn** so we localize the *real* fault, not corruption. The dedup fix prevents re-accumulation but can't undo existing dupes — re-mkfs the agnos-fs partition + re-seed (cleanest), or `sudo e2fsck -fy /dev/nvme0n1p2` (repairs in place). Then flash the new selftest kernel + reproduce A3; on the halt, `read-boot-log --verbose` → `[0x5C]` says code (0x40) vs stack (0x80/0xC0), `[0x5F]` says fetch-vs-data + present-vs-perms. **Flash-ready artifact: `agnos/build/agnos` = 1,042,176 B EXEC selftest, 1.40.9, CR2-capture + dedup in** (exec-smoke 7/7 · ext2-write 19/19 · check 11/11). `read-boot-log` rebuilt (97,352 B) with the fault/CR2 decode.
+
+### 1.40.9 CR2 + RIP capture burns (2026-05-31, boots `1409_second_attempt_*` / `1409_fourthboot` / RIP burn) — **ROOT CAUSE FOUND: kernel crossed 2 MB + non-deterministic syscall kstack**
+
+The staged diagnostics fired in sequence and the RIP capture was dispositive.
+
+- **CR2 + errcode** (`1409_second_attempt`, then `1409_fourthboot` with the full 48-bit stamp): **`CR2 = 0x000140006190`** (≈5 GB), err `0x00` = not-present · read · **SUPERVISOR (CPL0)** · data. A kernel-mode read of a wild ≥4 GB address — DISPROVED the "first user VA after the iretq" theory (that would be `U/S=1`). A `read-boot-log` **decoder bug** was found + fixed along the way (the #PF/CR2 decode was gated behind a stale gnoboot-magic heuristic that bailed even with the fault stamps present).
+- **Faulting RIP** (this burn): **`RIP(low32) = 0x22220202`**, **`CR2 = 0x010140006190`**. CR2's low 32 bits are **identical** to the prior burn (`0x40006190`); only the bits-40-47 byte differs (`0x00`→`0x01`) — a stable low pointer with **uninitialized high garbage** (zeroed on QEMU, random on Zen). `0x22220202` (~572 MB) is OUTSIDE the kernel image (1–2 MB) and the err code has **no I/D bit**, so that page is mapped+executing: **the kernel transferred control to garbage RAM** (a corrupted `ret`/`jmp` target), then a random byte-stream there read a wild address.
+
+**Static-disassembly audit EXONERATES the exec/resume logic (the state.md leading hypothesis is FALSIFIED).** Disassembled `build/agnos`:
+- `exec_and_wait` (`0x10d8af`): standard `push rbp; mov rbp,rsp` prologue; the save writes `[rbp+0]`→exec_ctx[5] (caller rbp), `lea [rbp+0x10]`→exec_ctx[6] (return rsp), `[rbp+0x8]`→exec_ctx[7] (return rip). Correct.
+- `kernel_resume` (`0x183746`): `movabs rax,0x1ad370` (=&exec_ctx) then restores rbx/r12-r15/rbp + rsp(exec_ctx[6]) + rdx(exec_ctx[7]) and `jmp rdx`. Correct — `jmp rdx` targets the real `call exec_and_wait` return site (`0x11ae17` in `sh_cmd_run`), not garbage.
+- `sh_cmd_run` continuation (`0x11ae17`): `pid` is in **r14** (callee-saved, restored by kernel_resume); the rest is plain direct calls + `leave;ret`. Correct.
+  ⟹ the longjmp is a faithful, deterministic round-trip; it cannot be the source of a garbage RIP. The fault is **memory corruption fed into a `ret`**, and the only QEMU-vs-Zen non-determinism in the path is uninitialized RAM.
+
+**Root cause (confirmed in source).** `pmm_init` (`pmm.cyr`) reserved only the **first 2 MB** (pages 0-511) for the kernel — *"kernel + page tables + stack"* — but the kernel's **LOAD MemSiz now reaches `0x20F4E0`** (it crossed 2 MB; `.bss` is ~463 KB). Pages 512-527 (`0x200000-0x210000`) are live kernel `.bss` the PMM treated as free. The syscall kstack (`syscall_kstack_reserve` → `pmm_alloc_2mb`) only landed at the safe `0x200000` (→ top `0x3F0000`) when **region 1 happened to be entirely free** at that point in boot — but the **KASLR-seeded `pmm_next_free` (RDRAND) + the boot allocs before it** (`main.cyr:150-163`: pmm test, `vmm_alloc_at`, `heap_init`) **differ between QEMU and real Zen**. On iron, region 1 could be disturbed first → the kstack **relocated to `0x400000`**, which is the **user-code VA base**: the per-process CR3 maps `0x400000` to the user code page, **overriding** the identity mapping the kstack needs. The first syscall then pushed onto a stack not present under the user CR3 → the syscall call-chain `ret`'d through corruption → **wild #PF at `0x22220202` / `CR2 ≥ 4 GB`**. (This is the same mechanism behind the earlier "~17% exec flake.")
+
+**Fix folded into the open (untagged) 1.40.9 — behavioral; QEMU-validated** (1.40.9 was never tagged, so this rides in it alongside the CR2-capture + dedup fixes; tag .9 after the re-burn confirms, new fixes ride the next build):
+1. `pmm_init` reserves the **first 4 MB** (pages 0-1023 = regions 0+1, `0xFF×128` bitmap, `pmm_used=1024`, KASLR hint `1024 + seed%3072`) — covers the >2 MB kernel image AND region 1, which holds the kstack.
+2. `syscall_kstack_reserve` pins the kstack to a **FIXED `0x3F0000`** (top of the now-reserved region 1) — no `pmm_alloc_2mb`, no boot-order/KASLR dependency. `0x3F0000` is in the boot 0–1 GB identity 2 MB-page map (P|RW, mirrored into every per-process CR3) and **below** the `0x400000` user-VA base, so no per-process mapping overrides it.
+3. Comments at `pmm_alloc_2mb` + the `main.cyr` call site updated. `pmm_alloc_2mb` auto-skips the reserved region 1.
+
+QEMU: **exec-smoke 7/7** (prog2 + argv both run in ring 3, exit codes 42/90 captured, `e2fsck -fn` clean). EXEC-selftest build **1,046,080 B** (MemSiz `0x20F4E0`). **NEXT: dispositive re-burn** — flash this kernel + reproduce A3; expected `EXEC-DISK-OK` + `run: exit 42` on real Zen instead of the #PF halt. Per [[feedback_no_instrumentation_means_no_instrumentation]] this is a behavioral fix, not instrumentation. *(NOTE: bump the `pmm_init` reservation if the kernel image ever crosses 4 MB.)*
 
 ### 1.38.x JBD2 journaling iron burn (2026-05-28) — read-side PASS · write-side BLOCKED (real journal is CSUM_V3)
 
