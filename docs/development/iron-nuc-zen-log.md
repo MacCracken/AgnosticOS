@@ -70,7 +70,27 @@ back. Status is one of `FAIL` / `PASS` / `PARTIAL` / `PENDING`.
 
 **Falsification summary.** Any `rc<0` from a verb, a missing/extra dirent on readback, lost data across the power-cycle, or a non-clean host `fsck` falsifies "FAT/exFAT writes are byte-valid on real hardware." Test 8 (host `fsck` clean) is the dispositive bar, exactly as for the ext2 (1.33.1) and extent (1.37.x) burns.
 
-**Combined with 1.40.x exec-from-disk.** This VFS burn now rides with the **exec-from-disk** iron burn (1.40.x) as one hardware session — both are base-era exit-leg validations. The full step-by-step manual checklist (FAT/exFAT verbs **and** `run /bin/prog2` in ring 3 on real Zen) lives in [`exec-iron-manual-tests.md`](exec-iron-manual-tests.md); the automated QEMU pre-check for both arcs is `agnos/scripts/sweep.sh` (must be all-green before burning).
+**Combined with 1.40.x exec-from-disk.** This VFS burn now rides with the **exec-from-disk** iron burn (1.40.x) as one hardware session — both are base-era exit-leg validations. The full step-by-step manual checklist (FAT/exFAT verbs **and** `run /bin/prog2` in ring 3 on real Zen) lives in [`exec-iron-manual-tests.md`](exec-iron-manual-tests.md); the automated QEMU pre-check for both arcs is `agnos/scripts/sweep.sh` (must be all-green before burning). **The two arcs are the two TRACKS of this one session — Track A = exec (this is the primary/dispositive new-work track); Track B = the FAT/exFAT verbs (above). See [`#tracker-140-cycle`](#tracker-140-cycle) for the exec hypothesis + rubric.**
+
+### Tracker: 1.40.x cycle — exec-from-disk iron burn (STAGED 2026-05-30, PENDING — **the base-maturity SECOND exit leg's first real-hardware touch: a program loaded from the filesystem, run in ring 3 on real Zen.** The 1.40.x arc built it end-to-end — streaming ELF64 loader (1.40.2) → ring-3 execution + exit-code capture (1.40.3) → ENOEXEC/E2BIG (1.40.4) → subdir/CWD paths + sweep + manual plan (1.40.5) → 2-exec multi-run (1.40.6) → argv passing (1.40.7) → argv-deref harden + burn-prep (1.40.8), **all QEMU-green** (`exec-smoke.sh` 7/7, `sweep.sh` 7/7). This burn confirms the ring-3 transition (SYSCALL/SYSRET, iretq, SMAP STAC/CLAC, SMEP, EFER.SCE) + the streaming load off real NVMe NAND work on real silicon — none of which QEMU `-cpu max` fully stands in for. **Mechanism: the `EXEC_SELFTEST` kernel self-seeds `/bin/prog2` + `/notelf` + `/bin/argv` into the ext2 agnos-fs, runs them, and prints to the FB** (no serial — [[feedback_no_serial_on_iron]]; flash-and-test, no host-side seeding). NO burn auto-run per [[feedback_iron_burns_block_other_work]] — rubric below; the user flashes + burns.) {#tracker-140-cycle}
+
+**Hypothesis.** The exec path that is QEMU-green via `exec-smoke.sh` (7/7) will, on archaemenid's real Zen silicon + NVMe NAND: (a) stream-load a static ELF64 off the ext2 agnos-fs and **run it in ring 3** — `/bin/prog2`'s `write(1,…)` reaches the FB (**`EXEC-DISK-OK`**) and its `exit(42)` is captured (**`run: exit 42`**); (b) refuse a non-ELF cleanly (`/notelf` → `run: not an executable`, no hang); (c) deliver argv on the SysV init stack — `/bin/argv Z` dereferences `argv[1][0]='Z'` and exits **90**; (d) return cleanly into the kernel after each run (`exec: selftest done`); (e) leave the agnos-fs **host-`e2fsck -fn` clean** after the self-seed writes.
+
+**Falsification criteria.** No `EXEC-DISK-OK` or no `run: exit 42` → the ring-3 / SYSCALL / SMAP path fails on real Zen (the ten QEMU-resolved bring-up bugs would have an iron-only sibling). A hang/triple-fault on `/notelf` → the ENOEXEC refusal is unsafe on iron. No `run: exit 90` → argv strings don't reach the user stack on real hardware. No `exec: selftest done` → `exec_and_wait` doesn't return cleanly into its caller frame. Any host `e2fsck` error → the self-seed writes corrupt the FS on real NAND. **Dispositive bar: `EXEC-DISK-OK` + `run: exit 42` on real Zen** — that's exec-from-disk proven on iron, the second base-maturity exit leg.
+
+**Test-item rubric (Track A — one burn):**
+
+| # | Test item | Read-out (FB) | PASS | Falsifies if |
+|---|-----------|---------------|------|--------------|
+| A1 | Boot the `EXEC_SELFTEST` kernel | storage trio + GPT + `ext2: mounted …` → reaches the `exec:` lines | clean mount, no hang/panic | hang/triple-fault before the exec lines |
+| A2 | ENOEXEC refusal | `exec: running /notelf` → `run: not an executable` | non-ELF refused, no hang | crash/hang on the non-ELF |
+| A3 | Load + run from subdir (★ dispositive) | `exec: running /bin/prog2` → **`EXEC-DISK-OK`** | the program ran in ring 3 on real Zen; its `write(1,…)` reached the FB | no `EXEC-DISK-OK` (ring-3 / SMAP / SYSCALL failure on silicon) |
+| A4 | Exit code captured (★ dispositive) | **`run: exit 42`** | `exec_and_wait` resumed the kernel with the program's code | no `run: exit 42` |
+| A5 | argv[1] deref (1.40.8) | `exec: running /bin/argv Z` → **`run: exit 90`** | `argc≥2` AND `argv[1]` points at the real `"Z"` in the user stack | no `run: exit 90` |
+| A6 | Clean return | **`exec: selftest done`** | `exec_and_wait` returned cleanly into its caller (shell-loop shape) | boot halts at the last `run: exit` |
+| A7 | Post-burn FS intact | from Linux, `e2fsck -fn` the agnos-fs | the prog2/notelf/argv writes are clean on NAND | any e2fsck error |
+
+**Expected, not a falsification:** only **2** programs run per boot (prog2 + argv) — a 3rd exec exhausts the 2 MB-page pool (no process teardown yet; that's the next exec bite). The AMD Zen FB scanout banding is the known parked cosmetic residue ([[project_amd_zen_scanout_residue]]), not a regression.
 
 ### Tracker: 1.38.x cycle — JBD2 journaling iron burn (BURNED 2026-05-28 — read-side PASS @ 1.38.9; write-side commit + 100-tx stress + mid-cycle power-cut recovery all PASS @ 1.38.10 re-burn — **ARC IRON-COMPLETE**) {#tracker-138-cycle}
 
@@ -107,6 +127,43 @@ back. Status is one of `FAIL` / `PASS` / `PARTIAL` / `PENDING`.
 Rows 2 + 4 are the in-system iron evidence; row 6 is dispositive (same as the 1.33.1 after-burn check). **Outcome (Attempt 1373, 2026-05-28): PASS on boot-1, all six rows green; boot-2 surfaced a selftest re-boot idempotency bug (NOT a FS bug — host `e2fsck -fn` clean across both boots). Tracker CLOSED at 1.37.4 (idempotency fix).**
 
 ## Burns
+
+<!-- ============================================================
+     PRE-STAGED SKELETON — combined 1.39.x VFS + 1.40.x exec burn
+     Fill in after the burn (the user will return with FB photos +
+     host e2fsck/fsck output). Track A (exec) is the primary/dispositive
+     new-work track; Track B (FAT/exFAT verbs) folds the long-pending
+     1.34.x carry-forward. Delete this comment when the entry is filled.
+     Trackers: #tracker-140-cycle (exec) + #tracker-139-cycle (VFS).
+     ============================================================ -->
+### 1.39.x VFS + 1.40.x exec-from-disk combined iron burn (2026-05-30, boots `1408_*`) — PARTIAL (Track A 3/4; A3 ring-3 run RESETS)
+
+**One hardware session.** Staged via `agnos/scripts/burn-prep.sh`; FAT/ext2-write + exec smokes QEMU-green at agnos **1.40.8** (`EXEC_SELFTEST=1 EXT2_WRITE_SELFTEST=1`, self-seeds `/bin/prog2` + `/notelf` + `/bin/av`).
+
+**Track A — exec-from-disk (primary/dispositive; [`#tracker-140-cycle`](#tracker-140-cycle)). 3/4 first try.**
+- **A1 boot/mount**: **PASS** — `1408_boot1.jpg`: full storage trio, `jbd2: clean journal seq=142`, FAT32 mount, the complete `ext2w:` W2–W5 write suite (`Wsync state OK`), `shtest: SHELL-WROTE-IT`.
+- **A2 ENOEXEC**: **PASS** — `1408_boot2_crash.jpg`: `exec: running /notelf` → `run: not an executable`.
+- **A3 `EXEC-DISK-OK`** (ring-3 run on real Zen) ★: **FAIL — spontaneous reset.** Last FB line `exec: running /bin/prog2`; box resets before `EXEC-DISK-OK`. No panic — a triple-fault → CPU reset.
+- A4–A7: not reached.
+
+**CMOS bisection (`read-boot-log.sh`): `CMOS[0x50]=0x20`, magic 0x51=0xAB.** 0x20 is stamped only at `ring3.cyr` immediately before the `iretq` into ring 3 (1.40.3+ exec path only). So the **entire load path succeeded** (`elf_load_from_file` + `proc_create_address_space` + `pmm_alloc_2mb` + argv-stack + page maps); **the fault IS the ring-3 transition** (iretq / first instruction / first SYSCALL) on real Zen — QEMU `-cpu max` passes the identical binary 7/7. (Stale xhci/FB/gnoboot slots + the script's stale r8169-era "expected" comparisons in that dump are noise; only 0x50/0x51 load-bearing.)
+
+**Ruled out (re-derived from source):** CS/SS iretq selectors (0x23/0x1B correct for this GDT's non-standard uDS@0x18/uCS@0x20 order, confirmed by SYSRET STAR base); SMEP/SMAP (smoke is `-cpu max` + boot_shim enables CR4.SMEP/SMAP on the Path-C handoff); 2 MB alloc>4 GB (pmm pool is fixed 16 MB, regions 1–7); boot-path divergence (smoke boots gnoboot+OVMF, same Path C as iron).
+
+**Disposition → agnos 1.40.9 (the silent reset is its own bug).** The IDT pointed all 256 vectors at a bare `iretq`, so ANY transition fault → mis-return → #DF → #TF → reset. 1.40.9 installs real #UD/#DF/#TS/#NP/#SS/#GP/#PF handlers that stamp the fault vector to **`CMOS[0x54]`** + magic `0xE5` to **`CMOS[0x55]`**, then `cli;hlt`. QEMU exec-smoke 7/7 + check 11/11 (handlers dormant when nothing faults). Iron kernel built (1,040,672 B EXEC selftest). *(exFAT-write sweep row is red on the clean baseline too — host `mkfs.exfat` 1.3.2 format drift, orthogonal; filed `agnos/docs/development/issue/2026-05-31-exfat-write-mkfs-1.3.2-drift.md`.)*
+
+**1.40.9 RE-BURN RUBRIC (user-driven; no auto-run).** Flash the 1.40.9 EXEC selftest kernel, reproduce A3. Expected: instead of a reset, the box **HALTS** at `exec: running /bin/prog2`. Then `sudo agnosticos/scripts/read-boot-log.sh --verbose`:
+| `CMOS[0x55]` | `CMOS[0x54]` | Means | Points at |
+|---|---|---|---|
+| 0xE5 | 0x0D | #GP | bad CS/SS descriptor type at iretq/sysret |
+| 0xE5 | 0x0E | #PF | unmapped entry/stack VA (CR2 = the addr) — entry-page perms |
+| 0xE5 | 0x06 | #UD | bad opcode — e.g. SYSCALL with EFER.SCE clear |
+| 0xE5 | 0x08 | #DF | fault during fault delivery — TSS RSP0 (0x200000) reachability |
+| (no 0xE5) | — | still reset | the fault is a vector we didn't arm, OR pre-iretq — re-audit |
+
+That vector is the actual root cause; it drives the 1.40.9 follow-on / 1.40.10 fix.
+
+**Photos**: `1408_boot1.jpg` (A1 pass), `1408_boot2_crash.jpg` (A2 pass + A3 last-line-before-reset) at agnosticos top level — catalogue under [`iron-nuc-zen-photos/`](iron-nuc-zen-photos/README.md).
 
 ### 1.38.x JBD2 journaling iron burn (2026-05-28) — read-side PASS · write-side BLOCKED (real journal is CSUM_V3)
 
