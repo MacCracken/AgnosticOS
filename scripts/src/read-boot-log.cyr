@@ -18,6 +18,7 @@
 #   0x54  CPU-exception fault vector   (idt.cyr exc_handlers_init, 1.40.9)
 #   0x55  fault-handler magic 0xE5     (= a real exception was caught this boot)
 #   0x5C..0x5F  on a #PF-halt boot ONLY: CR2 bits 23:0 + error code.
+#   0x63..0x66  on a #PF-halt boot ONLY: faulting RIP bits 31:0 (follow-on #3).
 #   0x60..0x62  on a #PF-halt boot ONLY: CR2 bits 47:24 (full 48-bit address;
 #               1.40.9 follow-on #2). On any other boot 0x5C-0x62 are stale
 #               r8169/xhci leftovers — ignore them unless 0x55=0xE5 + 0x54=0x0E.
@@ -157,20 +158,13 @@ fn main(): i64 {
     print_cmos_line("CMOS[0x54] fault vector     = ", fvec);
     print_cmos_line("CMOS[0x55] fault magic      = ", fmag);
 
-    # --- gnoboot / kernel reach ---
+    # --- exception decode (the live diagnostic, checked FIRST) ---
+    # A caught CPU exception (CMOS[0x55]=0xE5) is the most specific signal in the
+    # bank — decode it BEFORE the gnoboot/kernel-reach heuristics below. Those
+    # heuristics short-circuit on a stale/mismatched gnoboot magic (0x53 read back
+    # 0x02 on the 1.40.9 fourth boot, not the expected 0xCD) and were suppressing
+    # the whole CR2 dump even with a #PF plainly stamped.
     println("");
-    if (gmagic != 205) {   # 0xCD
-        println("verdict: gnoboot never ran (CMOS[0x53] != 0xCD) — firmware rejected");
-        println("  BOOTX64.EFI or boot order skipped the AGNOS USB. Check BIOS menu.");
-        return 0;
-    }
-    if (kmagic != 171) {   # 0xAB
-        println("verdict: gnoboot ran but the kernel never reached boot_shim entry");
-        println("  (CMOS[0x51] != 0xAB). Handoff or early long-mode setup faulted.");
-        return 0;
-    }
-
-    # --- exception decode (the live diagnostic) ---
     if (fmag == 229) {     # 0xE5 — a real exception was caught + halted this boot
         print_str("FAULT: an armed CPU exception fired this boot — vector ");
         print_num(fvec); println("");
@@ -188,6 +182,18 @@ fn main(): i64 {
             fmt_byte(b5); fmt_byte(b4); fmt_byte(b3); fmt_byte(b2); fmt_byte(b1); fmt_byte(b0);
             println("");
             print_pf_errcode(ec);
+            # 1.40.9 follow-on #3: faulting RIP low 32 bits (slots 0x63-0x66).
+            # Kernel code is <16 MB so this fully localizes the instruction that
+            # dereferenced the wild pointer. 0 = pre-#3 build (no RIP capture).
+            var r0 = cmos_read(99);   # 0x63  RIP bits  7:0
+            var r1 = cmos_read(100);  # 0x64  RIP bits 15:8
+            var r2 = cmos_read(101);  # 0x65  RIP bits 23:16
+            var r3 = cmos_read(102);  # 0x66  RIP bits 31:24
+            if (r0 != 0 || r1 != 0 || r2 != 0 || r3 != 0) {
+                print_str("    faulting RIP (low 32) = 0x");
+                fmt_byte(r3); fmt_byte(r2); fmt_byte(r1); fmt_byte(r0);
+                println("  -> map to .cyr via the kernel map / nm");
+            }
             # Classify off the HIGH bytes (b3..b5). The per-process CR3 maps only
             # 0-4 GB, so anything with a bit set above 31 = outside that window.
             if (b5 != 0 || b4 != 0) {
@@ -210,6 +216,18 @@ fn main(): i64 {
         elif (fvec == 6) { println("  #UD — bad opcode (e.g. SYSCALL with EFER.SCE clear)."); }
         elif (fvec == 8) { println("  #DF — double fault (fault during fault delivery; check TSS RSP0)."); }
         else { println("  (other vector — see Intel SDM Vol 3 Table 6-1)."); }
+        return 0;
+    }
+
+    # --- gnoboot / kernel reach (fallback: only when NO exception was caught) ---
+    if (gmagic != 205) {   # 0xCD
+        println("verdict: gnoboot never ran (CMOS[0x53] != 0xCD) — firmware rejected");
+        println("  BOOTX64.EFI or boot order skipped the AGNOS USB. Check BIOS menu.");
+        return 0;
+    }
+    if (kmagic != 171) {   # 0xAB
+        println("verdict: gnoboot ran but the kernel never reached boot_shim entry");
+        println("  (CMOS[0x51] != 0xAB). Handoff or early long-mode setup faulted.");
         return 0;
     }
 
