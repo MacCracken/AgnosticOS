@@ -229,6 +229,17 @@ The 1.38.x arc built the jbd2 journaling stack end-to-end (probe → SB-csum-val
 
 ---
 
+## exec-from-disk arc on iron (1.40.8 burn → 1.40.9 fix) — ring-3 transition resets on Zen ⚠
+
+The 1.40.x arc built exec-from-disk end-to-end (streaming ELF64 loader → ring-3 execution + exit-code capture → ENOEXEC/E2BIG → subdir paths → multi-run → argv), all QEMU-green (`exec-smoke.sh` 7/7). The **1408 burn (1.40.8)** is the first real-hardware touch of the combined VFS + exec session and went **3/4 first try** — but the dispositive ring-3 program run reset the box. CMOS bisection (`CMOS[0x50]=0x20`, the pre-iretq stamp at `ring3.cyr`) proved the **load path fully succeeded**: the fault is the ring-3 transition itself (iretq / first instruction / first SYSCALL) on real Zen, which QEMU `-cpu max` passes on the identical binary. Root cause of the *silent reset* (vs a readable fault) was the IDT pointing all 256 vectors at a bare `iretq` → any transition fault triple-faulted → reset; **agnos 1.40.9** installs real #UD/#DF/#TS/#NP/#SS/#GP/#PF handlers that stamp the fault vector to `CMOS[0x54]` (+ magic `0xE5` at `0x55`) then halt, so the 1.40.9 re-burn will name the Zen fault instead of rebooting. Per-attempt tracker + re-burn rubric: [`iron-nuc-zen-log.md#tracker-140-cycle`](../iron-nuc-zen-log.md#tracker-140-cycle).
+
+| Photo | Date | What it shows |
+|-------|------|---------------|
+| `1408-agnos-1.40.8-boot1-A1-pass-storage-ext2w-suite-jbd2-clean-shtest.jpg` | 2026-05-30 | **agnos 1.40.8 combined burn boot-1 — A1 PASS.** Phone-label `1408_boot1`. Full storage trio + GPT + `ext2: mounted (blocksize=4096, inode_size=256, inodes_per_group=8192)` + `jbd2: clean journal … seq=142` + `fat: mounted FAT32`, then the complete ext2-write self-test suite scrolling green — `ext2w:` W2 alloc/free round-trip → W3 write/read/sparse/truncate → W4 create+write/unlink → W5 mkdir/rmdir → Wren/Whard/Wsym/Wsymres/Wuninit → **`ext2w: Wsync state OK`** — closing on `shtest: SHELL-WROTE-IT` / `shtest: end`. The FS + write + journaling foundation is solid on iron; this is the green base the exec test runs on top of. |
+| `1408-agnos-1.40.8-boot2-A2-enoexec-pass-A3-prog2-last-line-before-reset.jpg` | 2026-05-30 | **agnos 1.40.8 combined burn boot-2 — A2 PASS, A3 RESET.** Phone-label `1408_boot2_crash`. Continues from the write suite into the exec self-test: **`exec: running /notelf`** → **`run: not an executable`** (A2 ENOEXEC refusal clean, the doubled line is the parked AMD-Zen FB-banding residue). Then **`exec: running /bin/prog2`** is the **last line on the framebuffer** — the box spontaneously resets before any `EXEC-DISK-OK` or `run: exit 42`. No panic, no halt: a triple-fault → CPU reset. This is the dispositive A3 failure that the CMOS `0x50=0x20` bisection localized to the ring-3 transition, and that agnos 1.40.9's exception handlers convert into a readable `CMOS[0x54]` fault vector on re-burn. |
+
+---
+
 Anticipated photo themes for 1.30.12+ (Attempt 72 forward):
 
 - **Framebuffer refresh — before/after scroll perf fix** — bench output capturing visible refresh quality before and after the chunked block-copy rewrite of `fb_scroll_up`.
