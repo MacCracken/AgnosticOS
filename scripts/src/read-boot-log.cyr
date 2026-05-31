@@ -478,14 +478,24 @@ fn main(): i64 {
     print_cmos_line("CMOS[0x52] gnoboot checkpt  = ", gcp);
     print_cmos_line("CMOS[0x51] kernel  magic    = ", kmagic);
     print_cmos_line("CMOS[0x50] kernel  checkpt  = ", kcp);
-    print_cmos_line("CMOS[0x54] CR4 byte 2 (post first cr3_load(as1))   = ", cr4hi);
-    print_cmos_line("CMOS[0x55] CR4 byte 2 (pre-stac, post kcp=0x60)    = ", cr4pre);
-    println("  byte 2 bit map (LSB-first): FSGSBASE PCIDE OSXSAVE - SMEP SMAP PKE -");
-    println("  SMEP = 0x10, SMAP = 0x20. Post-Attempt-20 baseline (Repair F landed):");
-    println("    [0x54] expected 0x30 once kcp >= 0x18.");
-    println("    [0x55] expected 0x30 once kcp >= 0x60 (Attempt 21+) or >= 0x1B (pre-21).");
-    println("    Either field 0x00 with kcp at/past its site = CR4 cleared downstream.");
-    println("    [0x55]=0x00 with kcp pinned at 0x18 = dump never reached (pre-21 cp_fb hang).");
+    print_cmos_line("CMOS[0x54] CPU-exception fault vector (1.40.9 idt.cyr)  = ", cr4hi);
+    print_cmos_line("CMOS[0x55] fault-handler magic (0xE5 = caught this boot) = ", cr4pre);
+    println("  1.40.9 semantics: exc_handlers_init stamps the faulting vector to 0x54 + magic 0xE5 to");
+    println("  0x55 then cli;hlt. (Pre-1.40.9 these were CR4-byte-2 diag — stale; ignore old labels.)");
+    println("    [0x55]==0xE5 AND [0x54]==0x0D -> #GP (bad CS/SS descriptor at iretq/sysret)");
+    println("                      [0x54]==0x0E -> #PF (page fault — see CR2 decode below)");
+    println("                      [0x54]==0x06 -> #UD (bad opcode — e.g. SYSCALL w/ EFER.SCE clear)");
+    println("                      [0x54]==0x08 -> #DF (fault during fault delivery — TSS RSP0)");
+    println("    [0x55] != 0xE5 = no armed vector caught it (pre-iretq fault, or a vector we don't arm).");
+    println("  #PF CR2/err-code (1.40.9 follow-on, ONLY meaningful when [0x55]=0xE5 AND [0x54]=0x0E):");
+    println("    On a #PF-halt boot the #PF handler overwrites the r8169 slots 0x5C-0x5F (last writer;");
+    println("    r8169 ran at boot, long before exec) with the faulting address + error code:");
+    println("      [0x5C] = CR2 bits 23:16  -> 0x40 = code page (~0x4xxxxx); 0x80/0xC0 = user stack");
+    println("      [0x5D] = CR2 bits 15:8 ; [0x5E] = CR2 bits 7:0  (full low-24b faulting VA)");
+    println("      [0x5F] = #PF error code: bit0 P(0=not-present,1=protection) bit1 W/R bit2 U/S");
+    println("               bit3 RSVD bit4 I/D(1=instruction fetch). e.g. 0x10=fetch/not-present,");
+    println("               0x11=fetch/protection, 0x04=data-read/user-not-present.");
+    println("    (Values print under the r8169 labels below — cross-read them as CR2/err on a #PF halt.)");
     syscall(1, 1, "\n", 1);
 
     # Repair (J), Attempt 23+: AS1 PMM-allocation stamps (slots 0x56-0x57 STILL ACTIVE).
