@@ -258,7 +258,7 @@ QEMU: **exec-smoke 7/7**, **sweep 6/7** (the red row is the pre-existing FAT-wri
 
 **1.40.10 bite 2 — LANDED (rides this same burn).** Interactive `run <prog>` post-boot left `proc_current` on the dead exec proc; the next timer tick's unconditional `proc_set_state(old,1)` (`sched.cyr:150`) resurrected it → it'd later be scheduled → ring-0 user-code switch. Fix: `kernel_resume` now resets `proc_current = 0` (the kmain thread) after clearing the return-point globals, so every post-exit tick switches kmain↔idle only. Exit-code attribution safe (`sh_cmd_run` reads the local `pid`, `shell.cyr:765`; code stamped before `kernel_resume`). QEMU exec-smoke 7/7 (multi-run selftest exercises `kernel_resume` twice — both exit codes 42/90 still attribute) + sweep 6/7 (same pre-existing exFAT-read red). Bite 1 makes scheduler *activation* crash-safe; bite 2 makes interactive `run` crash-safe — both ride this burn. (Remaining follow-on, NOT a crash: no process teardown — ~14 runs exhaust `proc_table`; a later exec bite.)
 
-**Photo**: `1409_final_pass_test_reset_back.jpeg` at agnosticos top level — catalogue under [`iron-nuc-zen-photos/`](iron-nuc-zen-photos/README.md).
+**Photo**: [`iron-nuc-zen-photos/1409-agnos-1.40.9-exec-from-disk-pass-exit-42-90-then-dhcp-discover-reset.jpg`](iron-nuc-zen-photos/1409-agnos-1.40.9-exec-from-disk-pass-exit-42-90-then-dhcp-discover-reset.jpg) (phone-label `1409_final_pass_test_reset_back`) — catalogued in [`iron-nuc-zen-photos/README.md`](iron-nuc-zen-photos/README.md). The other four 1409 boots (`1409_boot_lock`, `1409_second_attempt_boot1/boot2`, `1409_fourthboot_idempotent`) are filed there too.
 
 ### 1.38.x JBD2 journaling iron burn (2026-05-28) — read-side PASS · write-side BLOCKED (real journal is CSUM_V3)
 
