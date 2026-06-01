@@ -260,6 +260,27 @@ QEMU: **exec-smoke 7/7**, **sweep 6/7** (the red row is the pre-existing FAT-wri
 
 **Photo**: [`iron-nuc-zen-photos/1409-agnos-1.40.9-exec-from-disk-pass-exit-42-90-then-dhcp-discover-reset.jpg`](iron-nuc-zen-photos/1409-agnos-1.40.9-exec-from-disk-pass-exit-42-90-then-dhcp-discover-reset.jpg) (phone-label `1409_final_pass_test_reset_back`) — catalogued in [`iron-nuc-zen-photos/README.md`](iron-nuc-zen-photos/README.md). The other four 1409 boots (`1409_boot_lock`, `1409_second_attempt_boot1/boot2`, `1409_fourthboot_idempotent`) are filed there too.
 
+### 1.40.13 mount-routing + 1.40.10 scheduler + 1.40.12 boot-stack combined iron burn (2026-05-31, boots `14013_*`) — **WHOLE 1.40.x ARC IRON-VALIDATED 🎯**
+
+**Build flashed**: 1.40.13 (`EXEC_SELFTEST` + `FATFS_WRITE_SELFTEST` + `EXT2_WRITE_SELFTEST`), `install-usb.sh --update`. One bug-capture boot then a routing-fixed re-burn (3 shots).
+
+**Bug boot — `14013_boot_cmd_fails`** (Track B, the mount-routing failure that 1.40.13 was cut to fix): raw `fatw:` backend tests all PASS, but the shell-routed pass fails wholesale — `vfsw: shell touch+echo over FAT ->` → `touch: no such directory` / `mkdir: no such parent` / `rmdir: no such path` / `rm: no such path` / `mv: no such src directory` / `echo: no such directory` (strings that ONLY come from the ext2 branch ⇒ every verb routed to ext2 while FAT owned the path). The `ext2_active`-flag routing, exactly as diagnosed. Motivated the `{prefix→backend}` mount-registry rewrite.
+
+**Routing-fixed re-burn — `14013_final1/2/3`** (the dispositive PASS; one boot, three shots):
+- **pt1 (`14013_final1`)**: `ext2:` mounted at `/` (clean journal `seq=4`) + `fat: mounted FAT32`, both live. `fatw:` suite green, then the previously-failing shell pass succeeds — `vfsw: shell touch+echo over FAT ->` → `sync: clean` → `vfsw: subdir paths over FAT done` → **`SUBDIR-FAT-OK`** → `vfsrf: FAT whole-file read past 4KB OK`. **FAT-through-shell while ext2 owns `/` — the exact iron config the bare-name version couldn't reach. Mount-namespace routing (1.40.13) iron-validated.**
+- **pt2 (`14013_final2`)**: ext2w csum-match chain + full write suite (W2 alloc/free, W3 write/read/sparse/truncate, W4 create+write/unlink, W5 mkdir/rmdir, Wren) — no regression from the routing change.
+- **pt3 (`14013_final3`)**: ext2w tail (Wsym/Wsymres/Wuninit/Wsync), `shtest cat: SHELL-WROTE-IT`, then the boot completes **clean through** SYSCALL/SYSRET → canary → interrupts → `Timer ticks before sched: 6` → `Activating scheduler...` → **`dhcp: DISCOVER` → `OFFER ip=192.168.1.157` → `REQUEST` → `ACK ip=192.168.1.157 gw=192.168.1.1 mask=255.255.255.0 dns=192.168.1.1`** → `arp REPLY gw_mac=d4:6a:91:ce:70:60` → `net: L2 OK — gateway MAC cached` → **`Launching kybernet...`** — **NO RESET.**
+
+**What this burn validated (four cuts in one boot):**
+- **1.40.13 mount-namespace routing** — FAT shell verbs reachable while ext2 owns `/` (pt1). Track B of [`#tracker-139-cycle`](#tracker-139-cycle) ✓.
+- **1.40.10 scheduler-reset fix** — the box rides cleanly through `Activating scheduler...` and the DHCP hlt-wait that reset it at the 1.40.9 final burn (pt3). [`#tracker-14010-cycle`](#tracker-14010-cycle) ✓.
+- **1.40.12 boot-stack relocation to `0x380000`** — no rodata-corruption symptoms; full clean boot (pt2/pt3). ✓.
+- **1.40.9 exec-from-disk** — already validated at the 1409 burn; the exec selftest ran clean again here.
+
+**Net: the entire 1.40.x exec-from-disk + VFS-routing arc is iron-validated.** Base maturity (FS-crash-safe + exec-from-disk + scheduler-past-activation) is closed on hardware. **Open: only the 1.40.14 closeout re-burn** (process teardown/reaping — `proc_reap`/`proc_free_address_space`, QEMU exec-smoke 7/7 + sweep functional 6/6 + reap-stability assertions green; rides the next Track-B FAT/exFAT verbs burn, which can now collapse to one boot since both backends mount at once).
+
+**Photos**: [`14013-agnos-1.40.13-mount-routing-bug-fat-shell-verbs-fail-vfsw-no-such-dir.jpg`](iron-nuc-zen-photos/14013-agnos-1.40.13-mount-routing-bug-fat-shell-verbs-fail-vfsw-no-such-dir.jpg) + the three `14013-agnos-1.40.13-mount-routing-fixed-pt{1,2,3}-*.jpg` shots — catalogued in [`iron-nuc-zen-photos/README.md`](iron-nuc-zen-photos/README.md).
+
 ### 1.38.x JBD2 journaling iron burn (2026-05-28) — read-side PASS · write-side BLOCKED (real journal is CSUM_V3)
 
 **Build flashed**: 1.38.9, automated 3-flash cadence (`iron-jbd2-prep.sh {production|integration|crash}` + `iron-jbd2-validate.sh`), `install-usb.sh --update` (ESP-only, agnos-fs untouched).
