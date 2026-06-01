@@ -231,9 +231,9 @@ Both coexist with running `systemd-networkd` / `dhclient`. POSIX variant require
 
 The following audit docs were the *speculation-driven* output of the prior approach. They contain useful prior-art surveys (Linux/BSD/iPXE/lwIP/etc.) that may still be of historical interest, but their **prescriptive sections** ("fix A: BOOTP op==2 gate", "fix B: magic cookie validation", "fix C: xid byte-order audit", etc.) are now superseded — none of those fixes were load-bearing, as the probe proves.
 
-- `docs/development/dhcp-end-to-end-audit.md` — six wiring-bug FIX#1..#6 set: probe confirms FIX#1 (use `nic_mac` not `vnet_mac`) is correct in spirit (must use a non-zero chaddr); FIX#2..#6 unfalsifiable from this surface alone
-- `docs/development/dhcp-offer-downstream-audit.md` — 10-item bundle: items 3 (op==2 gate) + 4 (magic cookie) + 5 (xid byte-order) + 6 (options walker) + 10 (ACK matcher) all PROVEN unnecessary as load-bearing fixes; items 1 (tcpdump capture) + 2 (CMOS stamps) + 7 (listener-state stamp) + 8 (frame dump) + 9 (static IP) were instrumentation only
-- `docs/development/dhcp-and-outbound-l3-audit-2026-05-24.md` — route helper + outbound TCP test: route helper is structurally correct (probe doesn't exercise it because POSIX kernel handles routing); the cycle-104 ARP timeout symptom that motivated it remains unexplained by anything in *this* doc's scope
+- `docs/development/prior-art/dhcp-end-to-end-audit.md` — six wiring-bug FIX#1..#6 set: probe confirms FIX#1 (use `nic_mac` not `vnet_mac`) is correct in spirit (must use a non-zero chaddr); FIX#2..#6 unfalsifiable from this surface alone
+- `docs/development/prior-art/dhcp-offer-downstream-audit.md` — 10-item bundle: items 3 (op==2 gate) + 4 (magic cookie) + 5 (xid byte-order) + 6 (options walker) + 10 (ACK matcher) all PROVEN unnecessary as load-bearing fixes; items 1 (tcpdump capture) + 2 (CMOS stamps) + 7 (listener-state stamp) + 8 (frame dump) + 9 (static IP) were instrumentation only
+- `docs/development/prior-art/dhcp-and-outbound-l3-audit-2026-05-24.md` — route helper + outbound TCP test: route helper is structurally correct (probe doesn't exercise it because POSIX kernel handles routing); the cycle-104 ARP timeout symptom that motivated it remains unexplained by anything in *this* doc's scope
 
 ## Reproducing
 

@@ -32,13 +32,13 @@ Multi-source convergent reference documents written before each major kernel tou
 |----------|-----------|--------|
 | [path-c-sovereign-uefi.md](path-c-sovereign-uefi.md) | Sovereign UEFI handoff (gnoboot ↔ kernel ABI) | Landed v1.30.0 |
 | [uefi-boot-prior-art.md](uefi-boot-prior-art.md) | UEFI boot ecosystem audit + foot-gun catalog | Reference |
-| [xhci-prior-art-audit.md](xhci-prior-art-audit.md) | xHCI controller prior-art (Linux + SeaBIOS + FreeBSD + Haiku) | Landed v1.30.x USB arc |
-| [true-font-swap-plan.md](true-font-swap-plan.md) | VGA 8x16 BIOS-ROM font swap | Landed v1.30.12 |
-| [ahci-iron-burn-audit.md](ahci-iron-burn-audit.md) | AHCI/SATA Phase 1-4 risk surface + iron-burn plan | Landed v1.31.1 (Attempt 81 PASS) |
-| [usb-ms-iron-burn-audit.md](usb-ms-iron-burn-audit.md) | USB Mass Storage Phase 1-4 + iron-burn plan | Landed v1.31.2 → v1.31.3 (Attempt 87 PASS) |
-| [msc-reset-recovery-prior-art.md](msc-reset-recovery-prior-art.md) | USB MSC Reset Recovery multi-source audit (Linux + FreeBSD + OpenBSD + EDK2) | Drove Phase 2.6/2.7/2.8 stack |
-| [ramdisk-virtio-modern-prior-art.md](ramdisk-virtio-modern-prior-art.md) | RAM-disk + VirtIO 1.x modern multi-source audit (5 OS impls) | Landed v1.31.4 (QEMU 5/5 green) |
-| [path-a-elf64-multiboot2.md](path-a-elf64-multiboot2.md) | GRUB MB2-EFI dead-end audit | Archived in place (retired 2026-05-13) |
+| [xhci-prior-art-audit.md](prior-art/xhci-prior-art-audit.md) | xHCI controller prior-art (Linux + SeaBIOS + FreeBSD + Haiku) | Landed v1.30.x USB arc |
+| [true-font-swap-plan.md](prior-art/true-font-swap-plan.md) | VGA 8x16 BIOS-ROM font swap | Landed v1.30.12 |
+| [ahci-iron-burn-audit.md](prior-art/ahci-iron-burn-audit.md) | AHCI/SATA Phase 1-4 risk surface + iron-burn plan | Landed v1.31.1 (Attempt 81 PASS) |
+| [usb-ms-iron-burn-audit.md](prior-art/usb-ms-iron-burn-audit.md) | USB Mass Storage Phase 1-4 + iron-burn plan | Landed v1.31.2 → v1.31.3 (Attempt 87 PASS) |
+| [msc-reset-recovery-prior-art.md](prior-art/msc-reset-recovery-prior-art.md) | USB MSC Reset Recovery multi-source audit (Linux + FreeBSD + OpenBSD + EDK2) | Drove Phase 2.6/2.7/2.8 stack |
+| [ramdisk-virtio-modern-prior-art.md](prior-art/ramdisk-virtio-modern-prior-art.md) | RAM-disk + VirtIO 1.x modern multi-source audit (5 OS impls) | Landed v1.31.4 (QEMU 5/5 green) |
+| [path-a-elf64-multiboot2.md](prior-art/path-a-elf64-multiboot2.md) | GRUB MB2-EFI dead-end audit | Archived in place (retired 2026-05-13) |
 
 ## Applications
 

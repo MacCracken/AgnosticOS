@@ -245,7 +245,7 @@ The real proof is iron Attempt 99.
 
 ## Receipt
 
-This audit lives at `agnosticos/docs/development/r8169-chip-init-audit.md`. Cross-references: `r8169-iron-burn-audit.md` (audit doc lineage), `r8169-rx-path-audit.md` (immediate predecessor — covers the inside of `r8169_poll`), `dhcp-end-to-end-audit.md` (the wiring layer). State.md cycle entry updated separately under 1.32.4 OPEN.
+This audit lives at `agnosticos/docs/development/prior-art/r8169-chip-init-audit.md`. Cross-references: `r8169-iron-burn-audit.md` (audit doc lineage), `r8169-rx-path-audit.md` (immediate predecessor — covers the inside of `r8169_poll`), `dhcp-end-to-end-audit.md` (the wiring layer). State.md cycle entry updated separately under 1.32.4 OPEN.
 
 ---
 

@@ -3,11 +3,11 @@
 > **A**rtificial **G**eneral **N**etwork **O**perating **S**ystem
 
 [![License](https://img.shields.io/badge/license-GPLv3-blue)](LICENSE)
-[![Kernel](https://img.shields.io/badge/kernel-AGNOS%201.38.8-orange)](https://github.com/MacCracken/agnos)
-[![Language](https://img.shields.io/badge/Cyrius-6.0.9-red)](https://github.com/MacCracken/cyrius)
+[![Kernel](https://img.shields.io/badge/kernel-AGNOS%201.41.0-orange)](https://github.com/MacCracken/agnos)
+[![Language](https://img.shields.io/badge/Cyrius-6.0.14-red)](https://github.com/MacCracken/cyrius)
 [![Status](https://img.shields.io/badge/status-pre--beta-yellow)](docs/development/roadmap.md)
 
-**AGNOS** is a sovereign operating system written in **Cyrius** — a systems language with a 29KB seed, zero external dependencies, and a self-hosting compiler. The kernel boots to a typeable shell on real AMD hardware (Boot-to-Shell MVP, 2026-05-15); since then the storage stack (NVMe / SATA / USB-MS), a real-iron networking stack (TCP/IP + DHCP + DNS + NTP + ICMP over an r8169 NIC), and read+write filesystems (ext2/ext4 incl. **ext4 extent allocation** + **JBD2 crash-safe journaling**, FAT12/16/32, exFAT) have all landed — storage, networking, ext4 read+write+extent-alloc iron-validated; the FAT-family + JBD2 stacks `fsck`/QEMU-validated with iron burns user-driven. Console-font subsystem vendored from **kashi 1.0.0** (parallel-agent-developed sibling repo). 30+ subsystems ported from Rust to Cyrius. No Linux dependency at runtime. Live binary sizes, per-repo versions, and cycle state: [`docs/development/state.md`](docs/development/state.md).
+**AGNOS** is a sovereign operating system written in **Cyrius** — a systems language with a 29KB seed, zero external dependencies, and a self-hosting compiler. The kernel boots to a typeable shell on real AMD hardware (Boot-to-Shell MVP, 2026-05-15); since then the storage stack (NVMe / SATA / USB-MS), a real-iron networking stack (TCP/IP + DHCP + DNS + NTP + ICMP over an r8169 NIC), read+write filesystems (ext2/ext4 incl. **ext4 extent allocation** + **JBD2 crash-safe journaling**, FAT12/16/32, exFAT), and **exec-from-disk** (static programs load + run in ring 3 off the agnos-fs) have all landed and are **iron-validated on real AMD Zen** — the FS-crash-safety + exec exit-legs both confirmed on hardware. Console-font subsystem vendored from **kashi 1.0.0** (parallel-agent-developed sibling repo); the interactive shell is moving to the userland **agnoshi** binary (shell-separation arc, in progress). 30+ subsystems ported from Rust to Cyrius. No Linux dependency at runtime — the kernel exposes a **small sovereign syscall surface with no socket/splice/AF_ALG layer** (structurally immune to that CVE class). Live binary sizes, per-repo versions, syscall count, and cycle state: [`docs/development/state.md`](docs/development/state.md).
 
 > *AGI doesn't run on infrastructure built for web apps. It runs on infrastructure built for AGI.*
 >
@@ -25,8 +25,8 @@
 |  | Wayland compositor | |  | 144+ MCP tools     | |  | kernel   | |
 |  |                    | |  | Agent orchestrator | |  | 40+ sub- | |
 |  +--------------------+ |  +--------------------+ |  | systems  | |
-|  | agnoshi            | |  | hoosh              | |  | 26 sys-  | |
-|  | AI shell           | |  | LLM gateway        | |  | calls    | |
+|  | agnoshi            | |  | hoosh              | |  | sovereign| |
+|  | AI shell           | |  | LLM gateway        | |  | syscalls | |
 |  |                    | |  | 15 providers       | |  | Cyrius-  | |
 |  +--------------------+ |  +--------------------+ |  | native   | |
 |  | 23+ consumer apps  | |  | aegis + sigil      | |  | iron-    | |
@@ -141,7 +141,7 @@ make boot-test
 - **sigil** — Ed25519 trust verification, revocation
 - **libro** — Cryptographic audit chain, hash-linked event log
 - **aegis** — System security daemon (threat detection, quarantine, scanning)
-- **AGNOS kernel** — Security hardening 13/13 closed (S1-S13 incl. KASLR data-only, KPTI-light, IBRS Spectre v2 mitigations, VT-d IOMMU, stack canaries); structurally immune to CVE-2026-31431 (no socket/splice/AF_ALG surface in 26-syscall table)
+- **AGNOS kernel** — Security hardening 13/13 closed (S1-S13 incl. KASLR data-only, KPTI-light, IBRS Spectre v2 mitigations, VT-d IOMMU, stack canaries); structurally immune to CVE-2026-31431 (no socket/splice/AF_ALG surface in the sovereign syscall table)
 
 Versions + per-subsystem detail in [`docs/development/state.md`](docs/development/state.md). See [SECURITY.md](SECURITY.md) for vulnerability reporting.
 

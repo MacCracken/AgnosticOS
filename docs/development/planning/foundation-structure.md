@@ -2,7 +2,7 @@
 
 > **Status**: Planning — Pre-Foundation | **Last Updated**: 2026-05-12
 >
-> Technical sovereignty can be undone in a courtroom. A 26-syscall
+> Technical sovereignty can be undone in a courtroom. A minimal-syscall-surface
 > kernel doesn't protect the project from a subpoena ordering the
 > handover of trademarks, copyrights, signing keys, or contributor
 > records. A parallel PKI doesn't protect the project from being

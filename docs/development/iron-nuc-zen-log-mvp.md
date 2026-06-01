@@ -630,7 +630,7 @@ rule):**
   (`grub-file --is-x86-multiboot2` PASS, `RAX = 0x36D76289` confirms
   GRUB prepared the handoff). No cyrius issue to file from this
   diagnosis.
-- Path A doc (`docs/development/path-a-elf64-multiboot2.md`) should
+- Path A doc (`docs/development/prior-art/path-a-elf64-multiboot2.md`) should
   gain a "Status update 2026-05-13" section noting Step 5b failed and
   why Steps 6-8 are paused.
 
@@ -6564,7 +6564,7 @@ xhci: Enable Slot failed, ccode=0
 **Decision applied**: Per user 2026-05-18 mid-day ("I really don't care what fixes it I want it fixed... hardening and cleanup can always be done later"), the "single-behavioral-repair-per-burn" discipline is suspended for the cmd-path silent-absorb arc. Future burns may bundle multiple convergent-prior-art behavioral repairs as long as each carries its own line-by-line audit. Instrumentation discipline (`feedback_no_instrumentation_means_no_instrumentation`) remains in force.
 
 **Pivot to multi-source prior-art audit** (replaces letter-stacking):
-- New artifact: [`docs/development/xhci-prior-art-audit.md`](xhci-prior-art-audit.md) — four-source (Linux + FreeBSD + Haiku + EDK2) convergence diff against AGNOS xhci_start + cmd-submit + CCE-drain.
+- New artifact: [`docs/development/prior-art/xhci-prior-art-audit.md`](prior-art/xhci-prior-art-audit.md) — four-source (Linux + FreeBSD + Haiku + EDK2) convergence diff against AGNOS xhci_start + cmd-submit + CCE-drain.
 - Replaces the symptom-dictionary bootstrap with a baseline-diff bootstrap. Next session reads this BEFORE the CMOS read-boot-log.
 - Reader: [`scripts/read-boot-log.sh`](../../scripts/read-boot-log.sh) default prints the focused current-sweep CMOS view (decoded sentinels + ✓/⚠ marks); `--verbose` recovers the full slot listing + interpretation chapters + verdict layers for falsified-hypothesis triage.
 

@@ -13,7 +13,7 @@ This doc is what you'd hand to a new agent (or a future-you) starting a bring-up
 | **Use when** | starting bring-up on a target that doesn't already have an `iron-<target>-log.md` |
 | **Don't use for** | one-off bugs on a target with an existing log (just append to that log) |
 | **Outputs you produce** | `iron-<target>-log.md` (Attempts 1..N), `iron-<target>-photos/` |
-| **Prior art** | [`uefi-boot-prior-art.md`](uefi-boot-prior-art.md) (industry comparison), [`path-c-sovereign-uefi.md`](path-c-sovereign-uefi.md) (current canonical handoff), [`path-a-elf64-multiboot2.md`](path-a-elf64-multiboot2.md) (dead-end, prior art only) |
+| **Prior art** | [`uefi-boot-prior-art.md`](uefi-boot-prior-art.md) (industry comparison), [`path-c-sovereign-uefi.md`](path-c-sovereign-uefi.md) (current canonical handoff), [`path-a-elf64-multiboot2.md`](prior-art/path-a-elf64-multiboot2.md) (dead-end, prior art only) |
 
 ---
 
@@ -190,7 +190,7 @@ The cycle's CHANGELOG should fold all in-flight repair letters back into release
 
 - [`uefi-boot-prior-art.md`](uefi-boot-prior-art.md) — how Linux, FreeBSD, OpenBSD, Windows, Limine boot under UEFI. AGNOS converged on the same architectural shape via Path C. Read first.
 - [`path-c-sovereign-uefi.md`](path-c-sovereign-uefi.md) — the AGNOS sovereign UEFI handoff design (gnoboot → kernel via 80-byte boot-info struct in RDI). This is the current production path.
-- [`path-a-elf64-multiboot2.md`](path-a-elf64-multiboot2.md) — the abandoned approach (GRUB + multiboot2 + ELF64 + EFI64 entry tag). Useful as prior-art reference for *why* Path C exists; do not start a new bring-up here.
+- [`path-a-elf64-multiboot2.md`](prior-art/path-a-elf64-multiboot2.md) — the abandoned approach (GRUB + multiboot2 + ELF64 + EFI64 entry tag). Useful as prior-art reference for *why* Path C exists; do not start a new bring-up here.
 - [`iron-nuc-zen-log-mvp.md`](iron-nuc-zen-log-mvp.md) — the canonical example arc, Attempts 1–29. Read § *Diagnosis 1*, § *Diagnosis 2*, and § *Attempt 28 / MVP BOOT SPINE ALIVE ON IRON* for the highest-density lessons.
 
 ---

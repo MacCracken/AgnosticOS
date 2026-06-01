@@ -1,6 +1,6 @@
 # AGNOS — Project History & Timeline
 
-> **Status**: Active | **Last Updated**: 2026-05-28
+> **Status**: Active | **Last Updated**: 2026-05-31
 
 ---
 
@@ -92,6 +92,8 @@ The shared crate ecosystem now spans 80+ crates (most at v1.0+ stable), with 19+
 | **W5 demo→base iron burn PASS** (Attempt 91 / agnos 1.33.1) — `persist.txt` survives reboot on unmodified default `mkfs.ext4`; **demo→base maturity exit on real NAND**. `fsync` FLUSH-CACHE barrier at 1.33.5 | 2026-05-26 | 104 |
 | **FAT-family arc COMPLETE** (1.34.0–1.34.6 across FAT12/16/32 + exFAT read+write + LFN + dir growth + Unicode names + ESP-write guard; `fsck`-clean in QEMU). **1.35.x networking-comms arc COMPLETE** (DNS + ICMP + TCP hardening B0-B4 + NTP + anonymous mmap/munmap + RTC boot clock + DNS cache + arc-close hardening). **1.36.x refactor cycle COMPLETE** (net.cyr split, main.cyr selftest extraction). **1.37.x ext4 extent-allocation arc OPENS** | 2026-05-27 | 105 |
 | **Iron Attempt 1373 PASS — ext4 extent allocation iron-validated** (agnos 1.37.3 depth-2 PASS + e2fsck-clean on real NVMe). **1.37.5 arc-close: kashi 0.6.0 vendored into kernel** (retires inline glyph tables). **kashi v1.0.0 API freeze** later same day. **1.38.x JBD2 journaling arc COMPLETE in a single day** — 9 bites: probe → probe-deepen → log reader → replay → lifecycle → write path → integration → crash smoke → hardening + iron-burn audit. AGNOS now both *consumes* Linux-left journals AND *produces* its own; sync-checkpoint with 3 FLUSH-CACHE barriers; `jbd2-crash-smoke.sh` 4/4 e2fsck-clean across SIGKILL points | 2026-05-28 | 106 |
+| **JBD2 crash-safe journaling iron-validated** (13810 burn — CSUM_V3 write-side commit + 100-tx crash stress + mid-cycle power-cut recovery, host `e2fsck -fn` clean throughout). **1.39.x VFS generic-write lift COMPLETE** (FAT/exFAT shell verbs + subdir paths + mount-namespace routing). | 2026-05-30 | 107 |
+| **🎯 exec-from-disk iron-validated — base-maturity exec leg closed on real Zen** (1409 burn: `/bin/prog2` + `/bin/argv` run in ring 3, `run: exit 42`/`90`). The `14013_final*` burn validated the whole 1.40.x arc in one boot — exec (1.40.9) + scheduler-reset fix (1.40.10) + boot-stack relocation (1.40.12) + VFS mount routing (1.40.13): FAT shell verbs pass with ext2 at `/`, clean boot past scheduler to kybernet. **1.40.14 process teardown/reaping.** **1.41.0 shell-separation arc OPENS** (interactive shell → userland `agnoshi`; cyrius-gated `CYRIUS_TARGET_AGNOS` syscall-ABI prereq). | 2026-05-31 | 108 |
 | **Target: Closed beta cut** | **early June 2026** | ~115 |
 
 ---
@@ -112,4 +114,4 @@ Four renames total across four language-major transitions. The `cc5` → `cycc` 
 
 ---
 
-*Last Updated: 2026-05-28*
+*Last Updated: 2026-05-31*

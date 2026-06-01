@@ -12,7 +12,7 @@
 
 | Subsystem | Repo | Port | Role |
 |-----------|------|------|------|
-| **agnos** | [MacCracken/agnos](https://github.com/MacCracken/agnos) | Native | AGNOS kernel (35+ subsystems, 26 syscalls; iron-validated 2026-05-15) |
+| **agnos** | [MacCracken/agnos](https://github.com/MacCracken/agnos) | Native | AGNOS kernel (40+ subsystems, sovereign syscall surface; iron-validated 2026-05-15) |
 | **cyrius** | [MacCracken/cyrius](https://github.com/MacCracken/cyrius) | Native | Sovereign compiler + stdlib + toolchain |
 | **kybernet** | [MacCracken/kybernet](https://github.com/MacCracken/kybernet) | Cyrius | PID 1 (140 tests, 46 benchmarks) |
 | **argonaut** | [MacCracken/argonaut](https://github.com/MacCracken/argonaut) | Cyrius | Init system, service management |

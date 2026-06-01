@@ -360,7 +360,7 @@ Possible outcomes:
 ## Doc trail
 
 - Path A history + GRUB diagnosis (the *why* for Path C):
-  - `docs/development/path-a-elf64-multiboot2.md` § *Status update — 2026-05-13*
+  - `docs/development/prior-art/path-a-elf64-multiboot2.md` § *Status update — 2026-05-13*
   - `docs/development/iron-nuc-zen-log-mvp.md` § *Diagnosis 2 — 2026-05-13 GRUB relocator W^X*
 - Cyrius dependency: `cyrius/docs/development/issues/2026-05-13-gnoboot-uefi-application-emit.md`
 - Memory pins:

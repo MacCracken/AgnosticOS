@@ -125,7 +125,7 @@ AGNOS uses **two kernels** depending on profile — the AGNOS kernel is primary;
 
 ### AGNOS Kernel (sovereign, primary)
 
-- **Version**: Cyrius-native, 40+ subsystems, 26 syscalls, iron-validated on NUC AMD (current version + size in [`development/state.md`](../development/state.md))
+- **Version**: Cyrius-native, 40+ subsystems, a small sovereign syscall surface (no socket/splice/AF_ALG layer), iron-validated on NUC AMD (current version + size + syscall count in [`development/state.md`](../development/state.md))
 - **Repo**: `MacCracken/agnos`
 - **Multi-arch split** (v1.1.0): `kernel/arch/x86_64/`, `kernel/arch/aarch64/`, `kernel/core/`, `kernel/user/`
 - **Boot**: multiboot1; boots in QEMU via `make boot-test` from the genesis repo

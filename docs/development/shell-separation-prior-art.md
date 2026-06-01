@@ -4,9 +4,10 @@
 > interactive shell out of the kernel and into the userland `agnsh` (agnoshi) binary, exec'd from
 > disk via the 1.40.x exec path. Engineering bites 1.41.1+ implement against this map.
 >
-> **Companion**: [`agnos-userland-abi.md`](agnos-userland-abi.md) (**the frozen syscall contract** both the
-> agnos kernel and the cyrius `CYRIUS_TARGET_AGNOS` peer code against — numbers, calling convention, struct
-> layouts); [`exec-from-disk-prior-art.md`](exec-from-disk-prior-art.md) (the exec path this rides on);
+> **Companion**: agnos [`agnos-userland-abi.md`](https://github.com/MacCracken/agnos/blob/main/docs/development/agnos-userland-abi.md)
+> (**the frozen syscall contract** both the agnos kernel and the cyrius `CYRIUS_TARGET_AGNOS` peer code against
+> — numbers, calling convention, struct layouts — lives in the agnos repo since it's normative kernel spec);
+> [`exec-from-disk-prior-art.md`](prior-art/exec-from-disk-prior-art.md) (the exec path this rides on);
 > agnos roadmap § *1.41.x — Shell Separation Arc* (the bite ladder + commitments).
 
 ## 1. Goal

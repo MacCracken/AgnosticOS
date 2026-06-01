@@ -298,7 +298,7 @@ The thing AGNOS *did* abandon — GRUB-multiboot2-EFI — is the path that *ever
 ## Related AGNOS docs
 
 - [`iron-nuc-zen-log.md`](iron-nuc-zen-log.md) — active append-only attempt log (post-MVP). MVP-era arc (Attempts 1–68) at [`iron-nuc-zen-log-mvp.md`](iron-nuc-zen-log-mvp.md).
-- [`path-a-elf64-multiboot2.md`](path-a-elf64-multiboot2.md) — the abandoned multiboot2-via-GRUB plan
+- [`path-a-elf64-multiboot2.md`](prior-art/path-a-elf64-multiboot2.md) — the abandoned multiboot2-via-GRUB plan
 - [`path-c-sovereign-uefi.md`](path-c-sovereign-uefi.md) — the current gnoboot-as-MVP plan
 - gnoboot repo: `/home/macro/Repos/gnoboot/` (handoff protocol spec lives there once Step 7's `docs/handoff-protocol.md` is written)
 - Memory pin `project_grub_mb2_efi_wx_blocker` — concise W^X analysis

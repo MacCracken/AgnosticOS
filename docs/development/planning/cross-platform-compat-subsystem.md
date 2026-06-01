@@ -40,7 +40,7 @@ The OS must accommodate other platforms' work or it never gains users.
 But naive compat *erases* the structural-immunity argument that makes
 AGNOS interesting. If the kernel grows 200+ Linux syscalls to run Linux
 binaries, then AGNOS is just Linux with extra steps. The CVE class that
-the 26-syscall surface was structurally immune to becomes reachable
+the sovereign syscall surface was structurally immune to becomes reachable
 again.
 
 **The trade-off the user shouldn't have to think about:** AGNOS-native
@@ -61,7 +61,7 @@ Linux syscall semantics. The host AGNOS kernel never sees Linux
 syscalls directly — the subsystem intermediates everything.
 
 ```
-┌────────────────── AGNOS host (26 syscalls, sovereign) ──────────────────┐
+┌────────────────── AGNOS host (sovereign syscall surface) ───────────────┐
 │                                                                          │
 │  ┌── kybernet (PID 1) ──┐  ┌── daimon ──┐  ┌── agnoshi ──┐              │
 │  │ AGNOS-native         │  │ orchestrator│  │ AGNOS shell │   ← native, │
@@ -81,7 +81,7 @@ syscalls directly — the subsystem intermediates everything.
 │  │  ↕ Subsystem boundary: Linux syscalls → AGNOS syscalls (kavach)    ││
 │  └──────────────────────────────────────────────────────────────────────┘│
 │                                                                          │
-│  ↕ AGNOS kernel — 26 syscalls, **unchanged**                            │
+│  ↕ AGNOS kernel — sovereign syscalls, **unchanged**                     │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -106,7 +106,7 @@ syscalls directly — the subsystem intermediates everything.
 **Native ports remain the preferred path.** Software that's been ported
 to Cyrius targets the AGNOS kernel directly and gets:
 
-- Structural immunity to the bug classes the 26-syscall surface
+- Structural immunity to the bug classes the sovereign syscall surface
   excludes
 - Smaller binaries, faster startup, lower memory
 - Audit-trail integration with libro
@@ -171,13 +171,13 @@ run as ordinary AGNOS processes against the host kernel.
 
 **Rejected**: erases the structural-immunity argument completely.
 Every Linux CVE that targets one of the now-supported syscalls becomes
-reachable on AGNOS too. The 26-syscall surface is the load-bearing
+reachable on AGNOS too. The sovereign syscall surface is the load-bearing
 sovereignty claim; this trades it for compat convenience.
 
 ### Option B — Per-process Linux personality flag + userspace shim
 
 Each process carries a personality bit. AGNOS-native processes use the
-26-syscall surface. linux-personality processes route through a
+sovereign syscall surface. linux-personality processes route through a
 userspace translation library (LD_PRELOAD style) that maps Linux ABI
 calls to AGNOS syscalls.
 

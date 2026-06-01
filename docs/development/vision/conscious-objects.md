@@ -16,7 +16,7 @@
 
 AGNOS at the current ladder owns:
 
-- **Kernel** (Cyrius-native, 26-syscall sovereign surface) — owns the classical compute layer
+- **Kernel** (Cyrius-native, sovereign syscall surface) — owns the classical compute layer
 - **Language** (Cyrius, self-hosting, multi-platform byte-identical) — owns the abstraction layer
 - **Empire-defense layers** (compat / wire / trust / governance — Phases 20–23) — owns the boundary with the wider ecosystem
 

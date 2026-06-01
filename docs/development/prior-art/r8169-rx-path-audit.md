@@ -514,8 +514,8 @@ The "discard + continue" inner loop could in principle starve the caller — if 
 
 - `agnos/kernel/core/r8169.cyr` lines 428–503 (`r8169_init_rx`), 507–552 (`r8169_poll`), 545–548 (re-arm — extract to helper per Part C)
 - `agnos/kernel/core/net.cyr` lines 540–574 (`net_poll`) — consumes the single-frame return; unaffected by Part A (Part A preserves the single-frame return semantic, just drops + advances internally on bad slots)
-- `agnosticos/docs/development/r8169-iron-burn-audit.md` — CMOS slot map (§10.5)
-- `agnosticos/docs/development/dhcp-end-to-end-audit.md` — FIX #7 (IDR write-back after reset), FIX #10 (link preservation)
+- `agnosticos/docs/development/prior-art/r8169-iron-burn-audit.md` — CMOS slot map (§10.5)
+- `agnosticos/docs/development/prior-art/dhcp-end-to-end-audit.md` — FIX #7 (IDR write-back after reset), FIX #10 (link preservation)
 
 ### AGNOS memory anchors
 

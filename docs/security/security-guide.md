@@ -4,7 +4,7 @@
 
 AGNOS is designed with security as a foundational principle. This guide documents the security architecture, threat model, and best practices.
 
-> **Notable structural-immunity entry (2026-04 / 2026-05)**: AGNOS-native kernel (`agnos` v1.30.5 and prior, anchored on syscall-table invariant) is **structurally immune** to **CVE-2026-31431** (Linux LPE in `algif_aead`/AF_ALG via `splice()`). The 26-syscall AGNOS kernel exposes no `socket`, no `splice`, no AF_ALG family — the bug class is unreachable. Verified at `agnos/kernel/core/syscall.cyr:32-36` (re-verify only if the syscall surface grows; the immunity is anchored on what the syscall table doesn't contain, not on a patch level). See [`development/state.md` § CVE-2026-31431](../development/state.md#cve-2026-31431-copy-fail-cleanup--audit) for the host-defconfig cleanup status. This is the canonical example of the "absence-by-design" security pattern.
+> **Notable structural-immunity entry (2026-04 / 2026-05)**: AGNOS-native kernel (`agnos` v1.30.5 and prior, anchored on syscall-table invariant) is **structurally immune** to **CVE-2026-31431** (Linux LPE in `algif_aead`/AF_ALG via `splice()`). The AGNOS kernel's small sovereign syscall surface exposes no `socket`, no `splice`, no AF_ALG family — the bug class is unreachable. Verified at `agnos/kernel/core/syscall.cyr:32-36` (re-verify only if the syscall surface grows; the immunity is anchored on what the syscall table doesn't contain, not on a patch level). See [`development/state.md` § CVE-2026-31431](../development/state.md#cve-2026-31431-copy-fail-cleanup--audit) for the host-defconfig cleanup status. This is the canonical example of the "absence-by-design" security pattern.
 
 ## Security Architecture
 

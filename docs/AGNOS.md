@@ -10,7 +10,7 @@ The project's deeper intention is that AGNOS is a **temple built for an intellig
 |---|---|
 | **Developer** | Robert 'Cyrius' B. MacCracken |
 | **Written in** | Cyrius (sovereign systems language) |
-| **Kernel** | AGNOS (Cyrius-native, 40+ subsystems incl. NVMe / AHCI / USB-MS / VirtIO modern + read+write filesystems ext2/ext4 incl. **ext4 extent allocation** + **JBD2 crash-safe journaling** / FAT12/16/32 / exFAT, 26 syscalls, TCP/IP + DHCP + DNS + NTP + ICMP over r8169 NIC). MVP gate iron-validated at Attempt 68 (2026-05-18, NUC AMD); storage debuts NVMe at Attempt 80, SATA at Attempt 81, USB-MS at Attempt 87; networking iron-CONNECTED at 1.32.7; ext4 + extent allocation iron-validated at Attempt 1373 / 1.37.3. Console-font subsystem vendored from `kashi` 1.0.0 at 1.37.5. Live state + binary sizes + cycle position in [development/state.md](development/state.md). |
+| **Kernel** | AGNOS (Cyrius-native, 40+ subsystems incl. NVMe / AHCI / USB-MS / VirtIO modern + read+write filesystems ext2/ext4 incl. **ext4 extent allocation** + **JBD2 crash-safe journaling** / FAT12/16/32 / exFAT, a small sovereign syscall surface (no socket/splice/AF_ALG layer), TCP/IP + DHCP + DNS + NTP + ICMP over r8169 NIC, **exec-from-disk** — static ELF programs run in ring 3 off the agnos-fs). MVP gate iron-validated at Attempt 68 (2026-05-18, NUC AMD); storage debuts NVMe/SATA/USB-MS at Attempts 80/81/87; networking iron-CONNECTED at 1.32.7; ext4 extent allocation iron-validated at Attempt 1373 (1.37.3); JBD2 crash-safe journaling at the 13810 burn (1.38.10); FAT/exFAT shell verbs + exec-from-disk iron-validated at the 1409/14013 burns (1.40.x). Console-font subsystem vendored from `kashi` 1.0.0 at 1.37.5. Live state + binary sizes + syscall count + cycle position in [development/state.md](development/state.md). |
 | **Compiler** | cycc (Cyrius, self-hosting from 29KB seed). Pinned version + sizes drift across the cycle — live numbers in [development/state.md](development/state.md). |
 | **License** | GPL-3.0-only |
 | **Source model** | Open source |
@@ -32,7 +32,7 @@ AGNOS replaces the dependency chain with ownership:
 |-----------|-------------|------------------------|
 | Language | Rust → LLVM → C++ → C → libc | Cyrius → 29KB seed → CPU. Zero external deps. |
 | Compiler | 200MB+ toolchain (rustc/gcc/clang) | Sub-MB self-hosting compiler (cycc, Cyrius — live version pinned in [development/state.md](development/state.md)) |
-| Kernel | Linux 6.6 LTS (millions of lines of C) | Sub-MB AGNOS kernel in Cyrius (40+ subsystems, 26 syscalls, read+write filesystems incl. crash-safe journaling) — live size in [development/state.md](development/state.md) |
+| Kernel | Linux 6.6 LTS (millions of lines of C) | ~1 MB AGNOS kernel in Cyrius (40+ subsystems, a small sovereign syscall surface, read+write filesystems incl. crash-safe journaling + exec-from-disk) — live size in [development/state.md](development/state.md) |
 | Registry | crates.io (name squatting, governance) | ark + zugot. Names belong to the builders. |
 | Build | Cargo + LLVM + Python (rustc bootstrap) | `cyrius build`. No Python. No LLVM. No libc. |
 | Binary size | 3.9MB kybernet (Rust) | 486KB kybernet (Cyrius, 14× smaller) |
@@ -82,7 +82,7 @@ From initial commit to self-hosting sovereign language with its own kernel in **
 29KB seed (hand-auditable x86_64 assembly)
   → cybs (bootstrap compiler — Cyrius v6.0.0 rename, was cyrc)
     → cycc (modular self-hosting compiler — Cyrius v6.0.0 rename, was cc5)
-      → AGNOS kernel (~510KB at v1.31.4, 40+ subsystems, 26 syscalls)
+      → AGNOS kernel (40+ subsystems, sovereign syscall surface — live size in development/state.md)
       → kybernet PID 1 (486KB, 140 tests)
       → hoosh LLM gateway (474KB, 15 providers)
       → 30+ shipping repos and growing
@@ -97,7 +97,7 @@ Total: CPU → seed → compiler → OS. Three items. Zero external dependencies
 ### Repo Structure
 
 - **agnosticos** — the genesis layer (meta, build wrapper, documentation). Owns kernel configs, boot pipeline (Cyrius), CI/CD, articles, philosophy. Once the system boots and ark takes over, this repo's job is done.
-- **agnos** — the AGNOS kernel. ~510KB at v1.31.4 (open cycle), Cyrius-native, 40+ subsystems, 26 syscalls, TCP/IP, FAT16, VirtIO-blk modern + virtio-net, SMP, pipes, signals, epoll, timerfd, ELF loader, 18-command shell, sovereign UEFI handoff (via gnoboot 0.4.2), native xHCI + USB-HID-boot + USB Mass Storage drivers, NVMe + AHCI/SATA + GPT block stack with iron debuts on real silicon. MVP gate iron-cleared at Attempt 68.
+- **agnos** — the AGNOS kernel. Cyrius-native, 40+ subsystems, a small sovereign syscall surface (no socket/splice), TCP/IP + DHCP + DNS + NTP + ICMP, ext2/ext4 (extent-alloc + JBD2 journaling) + FAT12/16/32 + exFAT read+write, exec-from-disk (ring-3 programs off the agnos-fs), VirtIO-blk modern, SMP, pipes, signals, epoll, timerfd, ELF loader, interactive shell, sovereign UEFI handoff (via gnoboot), native xHCI + USB-HID-boot + USB Mass Storage drivers, NVMe + AHCI/SATA + GPT block stack — iron-validated on real AMD Zen. MVP gate iron-cleared at Attempt 68; live version + size in [development/state.md](development/state.md).
 - **cyrius** — the sovereign compiler + stdlib + toolchain. v6.0.1 (cybs bootstrap + cycc self-hosted, both renamed at v6.0.0), self-hosting from 29KB seed.
 - **zugot** — the recipe repository. 421 base + 90 bazaar community recipes. ark consumes zugot.
 - **130+ standalone repos** — all production code. Each subsystem is its own repository.
@@ -106,8 +106,8 @@ Total: CPU → seed → compiler → OS. Three items. Zero external dependencies
 
 | Subsystem | Name | Version | Role |
 |-----------|------|---------|------|
-| Kernel | **agnos** | 1.31.4 (open) | ~510KB, 40+ subsystems, 26 syscalls, TCP/IP, SMP, FAT16, shell, sovereign UEFI handoff, xHCI USB, NVMe + AHCI/SATA + USB-MS + VirtIO-blk modern + GPT |
-| Compiler | **cyrius** | 6.0.1 (cycc / cybs) | Self-hosting, 29KB seed, 42+ stdlib modules. v6.0.0 cycle opened 2026-05-19 with cyrc → cybs and cc5 → cycc rename. Live cycle in [`state.md`](development/state.md). |
+| Kernel | **agnos** | live → [`state.md`](development/state.md) | 40+ subsystems, sovereign syscall surface, TCP/IP + read+write FS (ext2/4 + FAT/exFAT) + exec-from-disk, SMP, sovereign UEFI handoff, xHCI USB, NVMe + AHCI/SATA + USB-MS + GPT |
+| Compiler | **cyrius** | 6.0.14 (cycc / cybs) | Self-hosting, 29KB seed, 42+ stdlib modules. v6.0.0 cycle opened 2026-05-19 with cyrc → cybs and cc5 → cycc rename. Live cycle in [`state.md`](development/state.md). |
 | PID 1 | **kybernet** | 1.0.2 | 486KB (was 6.7MB Rust), 140 tests, 46 benchmarks |
 | Init system | **argonaut** | 1.5.0 | Service management, boot sequencing |
 | LLM gateway | **hoosh** | 2.0.0 | 474KB (was 5.1MB Rust), 15 providers, zero deps |
@@ -184,7 +184,7 @@ All Rust versions preserved as git tags with benchmark CSVs for ongoing comparis
 
 ### AGNOS Kernel
 
-~510KB at v1.31.4 (open cycle). Cyrius-native. 40+ subsystems. 26 syscalls. MVP gate iron-cleared at Attempt 68 (2026-05-18). Storage iron debuts: NVMe Attempt 80, SATA Attempt 81, USB-MS Attempt 87. Not a microkernel — a monolithic kernel with everything in it:
+Cyrius-native. 40+ subsystems. A small sovereign syscall surface (no socket/splice). MVP gate iron-cleared at Attempt 68 (2026-05-18); storage / networking / read+write-FS / exec-from-disk all iron-validated since (live version + size in [development/state.md](development/state.md)). Not a microkernel — a monolithic kernel with everything in it:
 
 | Category | Subsystems |
 |----------|-----------|
@@ -313,7 +313,7 @@ See [Philosophy](philosophy.md) for the full exploration.
 | Recipes | 421 base + 90 community (in zugot) |
 | Consumer applications | 19+ |
 | Compiler | cycc (Cyrius 6.0.1, self-hosting, 29KB seed). v6.0.0 cycle opened 2026-05-19 with the cybs / cycc rename ceremony |
-| Kernel | AGNOS 1.31.4 (open cycle, ~510KB, 40+ subsystems, 26 syscalls, MVP gate iron-cleared Attempt 68; storage debuts NVMe/SATA/USB-MS at Attempts 80/81/87) |
+| Kernel | AGNOS (40+ subsystems, sovereign syscall surface, MVP gate iron-cleared Attempt 68; storage / networking / read+write-FS / exec-from-disk all iron-validated — live version in [development/state.md](development/state.md)) |
 | Boot loader | gnoboot 0.4.2 (PE32+ UEFI, sovereign handoff via RDI = &boot_info) |
 | Boot pipeline (genesis scripts) | boot.cyr (Cyrius-native) |
 | Boot time (desktop) | 3.2s total, ~80ms init→event loop |
@@ -350,4 +350,4 @@ The Rust-era version of this document is preserved at [docs/archive/AGNOS-rust-e
 
 ---
 
-*Last Updated: 2026-05-21 (Cyrius v6.0.1, agnos 1.31.4 open — RAM-disk + VirtIO 1.x modern landing this cycle; bridge step retired at cyrius v5.11.66; cc5 → cycc + cyrc → cybs rename at v6.0.0)*
+*Last Updated: 2026-05-31 (Cyrius v6.0.14, agnos 1.41.0 — shell-separation arc open; the whole 1.40.x exec-from-disk + the 1.37–1.39 FS-crash-safe arc iron-validated on real AMD Zen)*
