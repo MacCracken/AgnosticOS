@@ -1,5 +1,7 @@
 # Port Ledger Volume 2
 
+> **STATUS — FROZEN.** Mid-arc snapshot captured **2026-05-15** (Cyrius v5.10/v5.11 era; kernel iron-validated at agnos 1.30.1). Immutable — its "in flight" statements are true *as of the capture date* and are not updated in place. The post-arc re-measurement is the scope of [**Volume 3**](port-ledger-volume-3.md) (open, accreting). Frozen 2026-06-01.
+
 > **Volume 2: Mid-Arc State of Things.** Cyrius v5.10/v5.11 era. Kernel iron-validated. Four new native subsystems shipped. Pin-cluster review across the ecosystem. Volume 1's "Where Rust Still Wins" gaps reviewed for *direction of motion* — no comprehensive re-measurement (that's Volume 3's scope). Captured 2026-05-15.
 
 ---

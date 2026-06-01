@@ -1,5 +1,7 @@
 # Port Ledger Volume 1
 
+> **STATUS — FROZEN.** Locked to Cyrius **v5.5.4** (April 2026; pre-optimization-arc, language 17 days old). This is an immutable measurement snapshot — its numbers are never refreshed in place. The series moves forward instead: mid-arc state in [Volume 2](port-ledger-volume-2.md); the post-arc re-measurement against these numbers is the scope of [**Volume 3**](port-ledger-volume-3.md) (open, accreting). Frozen 2026-06-01.
+
 > Every claim has a receipt. Ten production crates ported from Rust to Cyrius, each one with the Rust side preserved as a git tag and the benchmarks preserved as a CSV. Anyone can clone the repos, check out the Rust tag, run the benches, then switch to Cyrius main and re-run.
 >
 > The language turned seventeen days old the week these receipts were frozen. It has not yet had its first optimization sprint. Read these numbers with that in mind — and then read the forward trajectory, because the gaps we show are enumerated, scheduled, and already known to the compiler team.
@@ -22,7 +24,7 @@ The rule exists because "trust me, it got faster" isn't a receipt. A git tag + a
 
 ## The State of the Language
 
-> **This Volume is locked to Cyrius v5.5.4.** All numbers below were captured at that pin and are not refreshed in place. The optimization arc and subsequent stdlib-fold cycles have shifted the picture; the post-arc re-measurement is the explicit scope of **Volume 2** (see *What Comes Next*). Treating Volume 1 as a frozen snapshot is intentional — the comparison Volume 2 makes against it only works if the snapshot stays still.
+> **This Volume is locked to Cyrius v5.5.4.** All numbers below were captured at that pin and are not refreshed in place. The optimization arc and subsequent stdlib-fold cycles have shifted the picture; the post-arc re-measurement is the explicit scope of **Volume 3** (see *What Comes Next*). Treating Volume 1 as a frozen snapshot is intentional — the comparison the later volumes make against it only works if the snapshot stays still.
 
 - **Cyrius v5.5.4** — self-hosting from a 29 KB assembly seed, zero external dependencies, bootstrap chain of four items (CPU → seed → compiler → output)
 - **Age:** 17 days old when Volume 1 was cut. First commit 2026-04-03. Kernel solid 2026-04-04 23:16 PDT (44 hours in)
@@ -196,18 +198,18 @@ This is a coordination pattern, not a language pattern. It shows up in Volume 2 
 Four categories, all of them enumerated and scheduled:
 
 **1. Zero-copy micro-ops** — `&str` slicing avoids allocation on single-value hot paths. Cyrius's bump allocator + `str_builder` wins when the path allocates + formats + frees, but loses when the path barely touches memory. Examples: ark `cmd_create` 4×, ark `recent_10` 8×, agnostik `sandbox_config` 37×, kybernet `vec_push_get_len` 8×, kybernet `seccomp_build` 44×.
-**Targeted by the O2 (peephole) + O3 (IR-driven) passes scheduled for the v5.6.x optimization arc. Re-measurement is Volume 2 scope.**
+**Targeted by the O2 (peephole) + O3 (IR-driven) passes scheduled for the v5.6.x optimization arc. Re-measurement is Volume 3 scope.**
 
 **2. Constant folding on pure compute** — Rust's LLVM -O3 evaluates `classify_signal` (2 ns), `notify_parse` (2 ns), and `sigset` ops (1 ns) at *compile time* because the inputs are literals in the benchmark. Cyrius computes them at runtime. The 2–19× gaps on these benchmarks are not runtime differences — they are "Rust runs the benchmark in the compiler, Cyrius runs it in the CPU."
-**Targeted by O1 (instrumentation + constant-folding) + O3 IR passes. Re-measurement is Volume 2 scope.**
+**Targeted by O1 (instrumentation + constant-folding) + O3 IR passes. Re-measurement is Volume 3 scope.**
 
 **3. Inlining on sub-nanosecond DSP** — LLVM inlines entire scalar DSP functions at -O3; Cyrius currently emits a call through the benchmark harness. The "300–700× gap" on abaco DSP scalar ops is almost entirely the call overhead. The batch numbers (`sanitize_4096` 4.4×, `poly_blep` 9.6×) show the real gap without SIMD.
-**Targeted by O4 (linear-scan regalloc + Poletto-Sarkar picker) + O5 (codebuf compaction with NOP harvest). Re-measurement is Volume 2 scope.**
+**Targeted by O4 (linear-scan regalloc + Poletto-Sarkar picker) + O5 (codebuf compaction with NOP harvest). Re-measurement is Volume 3 scope.**
 
 **4. serde string serialization** — Rust's serde is the most-optimized serialization path in any systems language. Cyrius currently emits general-purpose string code for the same work. agnostik shows 5.8–6.8× gaps on string roundtrip.
-**Targeted by stdlib work + IR passes. Stdlib-fold maturity will re-shape the surface. Re-measurement is Volume 2 scope.**
+**Targeted by stdlib work + IR passes. Stdlib-fold maturity will re-shape the surface. Re-measurement is Volume 3 scope.**
 
-These are not excuses. They are a backlog with named optimization phases — Volume 2 is where the gaps either close or persist with specific reasons.
+These are not excuses. They are a backlog with named optimization phases — Volume 3 is where the gaps either close or persist with specific reasons.
 
 ---
 
@@ -227,9 +229,9 @@ Cyrius v5.6.x opened the compiler-optimization arc. Six phases as originally pla
 
 The arc closes the four gaps above by construction. It also does something Rust cannot: **every new Cyrius port shipped after the arc inherits these optimizations automatically, on the same compiler that's 783 KB and still bootstraps from 29 KB of assembly.** Rust's LLVM is a 20-year codebase of millions of lines. The Cyrius compiler fits in a browser tab.
 
-**Cycle sequencing as it actually went** — v5.6.x (optimization arc opens) → v5.7.x (sandhi-fold + cyrius-ts) → v5.8.x (audit closeout + language vocabulary + stdlib foldins) → v5.9.x (catchup + niyama-fold + consumer-rollup; closed 2026-05-08 at 5.9.43 after 44 patches in 3 days) → **v5.10.x REAL TYPE SYSTEM arc** (per-phase compile-time profiling instrumentation + cstring/Result/Option/Tagged vocabulary + call-site type checking; in flight at v5.10.24 with 24 patches in 2 days) → v5.11.x reserved for type-system testing suite + agnosys-agent-surfaced bug sweep → **v5.12.x reserved for bare-metal AGNOS target + RISC-V rv64** (the reservation slipped twice: v5.10 → v5.11 → v5.12 as foldin and type-system work compounded). Surface Rust cannot reach without shelling out to external toolchains.
+**Cycle sequencing as it actually went** — v5.6.x (optimization arc opens) → v5.7.x (sandhi-fold + cyrius-ts) → v5.8.x (audit closeout + language vocabulary + stdlib foldins) → v5.9.x (catchup + niyama-fold + consumer-rollup; closed 2026-05-08 at 5.9.43 after 44 patches in 3 days) → **v5.10.x REAL TYPE SYSTEM arc** (per-phase compile-time profiling instrumentation + cstring/Result/Option/Tagged vocabulary + call-site type checking; in flight at v5.10.24 with 24 patches in 2 days) → v5.11.x reserved for type-system testing suite + agnosys-agent-surfaced bug sweep → the bare-metal AGNOS target + RISC-V rv64 reservation (which slipped repeatedly as foldin and type-system work compounded, and ultimately landed in the **v6.x** platform-expansion arc — v5.x closed at v5.11.69 with no v5.12.x ever cut). Surface Rust cannot reach without shelling out to external toolchains.
 
-The ledger in Volume 1 shows a young language at near-parity or ahead after seventeen days and zero compiler optimization. Volume 2 measures what happened after the arc.
+The ledger in Volume 1 shows a young language at near-parity or ahead after seventeen days and zero compiler optimization. Volume 3 measures what happened after the arc.
 
 ---
 
@@ -272,7 +274,7 @@ cyrius bench
 diff docs/rust-v2.0-bench-history.csv bench-history.csv
 ```
 
-The ledger is the code. The numbers are the receipts. Volume 2 ships when the sprint closes.
+The ledger is the code. The numbers are the receipts. Volume 2 captured the mid-arc state; Volume 3 closes the comparison.
 
 ---
 
