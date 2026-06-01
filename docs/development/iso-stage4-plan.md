@@ -1,178 +1,167 @@
-# ISO Stage-4-Only Plan — First Bootable AGNOS Image
+# ISO Stage-4-Only Plan — First Distributable AGNOS Image
 
-> **Status**: Drafted 2026-04-27 | Approach: live-image first | Scope: x86_64 headless
-> **Supersedes**: the LFS-style "Phase 1" framing in `iso-pipeline.md`
-> **Defers**: Stages 1–2 (cross-toolchain + chroot build of glibc/coreutils) to a later phase
+> **Status**: Drafted 2026-04-27 · **Rebaselined 2026-06-01** (post-iron-boot, post-gnoboot pivot) | Approach: package the proven `install-usb.sh` boot media as a file artifact | Scope: x86_64 headless
+> **Supersedes**: the original GRUB + Linux-`vmlinuz` + `pivot_root` + squashfs framing of this same document (now obsolete — see *What changed since the 2026-04-27 draft*)
+> **Defers**: LFS-style cross-toolchain + chroot-from-source build (`iso-pipeline.md` Stages 1–2) to a later phase
 >
-> **NEXT AGENT — START HERE.** This is the next active work item after the
-> 2026-04-27 boot-pipeline updates. Read this document, then resolve the
-> "Open decisions" section with Robert before writing any code.
+> **NEXT AGENT — START HERE.** D1/D2 are resolved by what shipped on iron. The
+> live decisions are now **N1–N3** (artifact format / rootfs writability /
+> rootfs FS). Resolve those with Robert before writing `iso.cyr`.
+
+---
+
+## What changed since the 2026-04-27 draft
+
+The original draft predates the entire iron-boot arc. It assumed a **Linux
+live-CD shape**: GRUB loads a Linux `vmlinuz` + initramfs, initramfs mounts a
+squashfs and `pivot_root`s into it, then execs kybernet. **None of that is how
+AGNOS boots anymore.** What actually shipped and is iron-validated on
+archaemenid (Zen) through the 1.40.x arc:
+
+- **gnoboot** (sovereign UEFI PE32+ app) replaced GRUB entirely — the GRUB
+  MB2-EFI W^X blocker killed that path. UEFI firmware loads
+  `EFI/BOOT/BOOTX64.EFI`; gnoboot loads `/boot/agnos` via
+  SimpleFileSystemProtocol and hands off through the sovereign boot-info
+  struct (`RDI = &boot_info`, magic `0x41474E4F = 'AGNO'`).
+- **agnos is the kernel**, direct — no Linux kernel anywhere in the chain. It
+  drives real hardware (NVMe/AHCI/USB-MS storage, r8169 networking, ext2/4
+  read+write+extents+jbd2, FAT/exFAT) on iron.
+- **PID 1 comes from exec-from-disk**: the kernel mounts the ext4 `agnos-fs`
+  partition at `/` and execs kybernet/agnoshi from it (1.40.x exec-from-disk
+  + mount-namespace routing, iron-validated on the `14013_final*` burn).
+- **The ESP `initramfs.cpio.gz` is currently vestigial.** gnoboot's boot-info
+  struct reserves `initramfs_phys`/`initramfs_size` (offsets 0x10/0x18) but
+  sets them to **0 for MVP** (`gnoboot/src/main.cyr`); `install-usb.sh` notes
+  it is "not consumed by gnoboot v0.1.0." The kernel's `core/initrd.cyr`
+  RAM-disk reader exists but isn't fed at boot. (This matters for N1 — a
+  read-only live ISO would *resurrect* this path.)
+
+**The working boot media today** (`install-usb.sh`, iron-proven):
+
+```
+GPT  p1  256 MiB  FAT32 ESP (label AGNOSBOOT)  → EFI/BOOT/BOOTX64.EFI (gnoboot)
+                                                  /boot/agnos (kernel)
+                                                  /boot/initramfs.cpio.gz (vestigial)
+     p2   25 GiB  ext4 agnos-fs                 → rootfs the kernel mounts at /
+     rest unallocated
+```
+
+**This plan's job is therefore much smaller than the original draft implied**:
+produce that same layout as a distributable *file* (a `.img` or `.iso`),
+not a Linux live-CD pipeline. `install-usb.sh` is effectively the reference
+assembly already — `iso.cyr` is its file-artifact sibling.
 
 ---
 
 ## What this plan is
 
-A focused first-cut path to an actual bootable `.iso` artifact for AGNOS,
-using **only the binaries already built across the ecosystem** (the 26-of-26
-components currently READY per `boot --iso-check`). It deliberately **skips**
-the LFS-style toolchain bootstrap and chroot-builds-from-source work that
-the original `iso-pipeline.md` Phase 1 calls for.
+A focused first-cut path to a distributable AGNOS boot artifact, using **only
+the binaries already built across the ecosystem**, assembled into the
+gnoboot + agnos + ext4-rootfs layout that already boots on iron.
 
-**Goal in one line**: produce `agnos-x86_64.iso` that boots in QEMU and runs
-kybernet as PID 1 from already-built artifacts.
+**Goal in one line**: produce `agnos-x86_64.{img,iso}` that boots in QEMU
+(OVMF/UEFI) and reaches the agnoshi shell from already-built artifacts —
+the same outcome `install-usb.sh` produces on a physical USB, but as a
+shippable file.
 
-**NOT a goal yet**: rebuilding AGNOS from source on a clean machine (that's
-the eventual self-hosting story; deferred to a later phase).
-
----
-
-## Why this cut first
-
-The original `iso-pipeline.md` correctly sets the full Phase 1 as a Linux
-From Scratch–style bootstrap: download GCC / glibc / binutils sources,
-build a cross-toolchain, chroot, build the base system from zugot recipes
-in dependency order. That's an **honest reproducible distro**, and we want
-it eventually — but it's *months* of recipe-driven build work, not days.
-
-The Stage-4-only cut is **live-image-first**: take what's already built,
-package it into a bootable squashfs + GRUB ISO, prove it boots. This:
-
-- Produces a real artifact in days, not weeks
-- Demonstrates AGNOS booting on real hardware (the May 1 V1 headline)
-- Validates the whole component chain end-to-end at runtime
-- Defers the hard "rebuild from source" question to a later phase, when
-  takumi is Cyrius-ported and zugot recipes are exercised at scale
-
-**The trade-off**: the early ISO is *not* yet self-bootstrapping — it
-carries pre-built binaries from the dev host. Most distros took years to
-get to self-bootstrap; we don't need it on day one.
+**NOT a goal yet**: rebuilding AGNOS from source on a clean machine (the
+self-hosting story; deferred). Persistent install onto target hardware (that's
+**agnova**, the native installer — server-stage work, tracked separately).
 
 ---
 
-## Inputs (verified READY 2026-04-27 via `boot --iso-check`)
+## Inputs
 
-```
-=== Summary ===
-  Total:    26
-  Ready:    26
-  Missing:  0 required
-PASS: All required ISO components present.
-```
+The component set is whatever `install-usb.sh` already consumes plus the
+ecosystem binaries for a headless profile. **Re-run `boot --iso-check`** to
+refresh the readiness snapshot — the 2026-04-27 "26/26 READY" capture is stale
+(it predates agnos 1.30.5 → **1.41.1**, gnoboot 0.2.0 → **0.4.3**, cyrius
+5.11.55 → **6.0.24**, and the whole storage/net/exec arc). Authoritative
+versions: `state.md` + each repo's `VERSION`.
 
-| Layer | Components |
-|---|---|
-| Boot Chain | kernel (agnos 1.30.5), kybernet 1.2.1, cyrius 5.11.55, gnoboot 0.2.0, ark 0.8.0, nous 1.1.1 |
-| Security | sigil 2.9.4, kavach 3.0.0 |
-| Agent Layer | daimon 1.1.4, hoosh 2.0.0, agnoshi 1.0.0, bote 2.5.1, t-ron 2.0.0 |
-| Infrastructure | agnostik 1.0.0, agnosys 1.0.2, argonaut 1.5.0, libro 2.0.5, itihas 2.2.0, sankoch 2.1.0 |
-| Recipes | zugot (build-order.txt) |
-| Optional | shravan 2.3.2, hadara 1.0.0, avatara 2.3.0, ai-hwaccel 2.0.0, abaco 2.1.0, bsp 1.1.2, mabda 2.5.0 |
-| Host Tools | qemu, grub-mkrescue, mksquashfs, xorriso 1.5.8 |
-
-All artifact paths under `../../<repo>/build/<repo>` from `scripts/`.
+Minimum to boot (proven): **gnoboot** `BOOTX64.EFI`, **agnos** kernel,
+**kybernet** (PID 1), **agnoshi** (shell). Everything else (daimon, hoosh,
+ark/nous, the libs) layers onto the ext4 rootfs for a fuller profile.
 
 ---
 
-## Open decisions — RESOLVE BEFORE CODING
+## Open decisions
 
-These are not implementation details; they shape the plan. Each needs an
-explicit answer from Robert before the next agent writes `iso.cyr`.
+### Resolved by what shipped on iron — no longer open
 
-### D1. Kernel choice — what kernel does the ISO carry?
+- **D1. Kernel choice → RESOLVED: agnos kernel, direct.** The original
+  host-`vmlinuz` (D1a) and custom-Linux (D1c) options are dead; agnos drives
+  real hardware on iron. gnoboot loads it; no Linux kernel in the chain.
+- **D2. C runtime → RESOLVED: fully sovereign, no glibc.** AGNOS binaries are
+  statically-linked Cyrius using Linux syscalls via `agnosys`; the ext4 rootfs
+  needs no `/lib`, no libc. (Confirm with a spot `ldd` on the shipped binaries
+  — expected "not a dynamic executable" across the board.)
+- **D4. Where the new code lives → RESOLVED: new `scripts/src/iso.cyr`.**
+  Separate entry point; clean separation from `boot.cyr` (the QEMU launcher).
+  Two binaries (`build/boot` + `build/iso`).
 
-Three candidates:
+### D3 (reframed) — the boot-to-PID1 contract
 
-- **D1a — Host vmlinuz**: copy `/boot/vmlinuz-*` from the dev host into the
-  ISO. Fastest path. Minor reproducibility concern (kernel comes from the
-  build host's distro). *Pragmatic default for a first artifact.*
-- **D1b — agnos kernel as multiboot**: AGNOS already boots in QEMU via
-  multiboot1 (`make boot-test` works today). Use the agnos binary directly
-  as the bootable kernel. **Clean sovereignty story** — but agnos is a
-  sovereign kernel that doesn't yet drive the full hardware stack a Linux
-  kernel does. May be too thin for "boots on real hardware that isn't QEMU."
-- **D1c — Custom-built Linux kernel**: cross-build a stripped Linux kernel
-  pinned to AGNOS's needs, package as `vmlinuz`. More work; better story
-  than D1a; honest reproducibility.
+No `pivot_root`, no Linux initramfs flow. The contract is: gnoboot → agnos →
+kernel mounts `agnos-fs` at `/` → exec PID 1 from disk. The open sub-question
+is narrow: **confirm the exact on-disk PID-1 source** (kybernet path on the
+ext4 rootfs, and whether argonaut must spin up first) by reading kybernet's
+startup contract before laying out the rootfs. The vestigial `initramfs.cpio.gz`
+should be **dropped from the artifact** unless N1 chooses the read-only-ISO
+path below.
 
-**Recommended path**: D1a for the *very first artifact* (proves the pipeline),
-then D1c for the May 1 V1 release (proves reproducibility), then D1b becomes
-available as the kernel matures. **Robert's call.**
+### New decisions — RESOLVE BEFORE CODING
 
-### D2. C runtime — do AGNOS binaries need glibc?
+- **N1. Artifact format — writable `.img` vs bootable `.iso`?**
+  - **N1a — raw `.img`** (recommended first cut): a GPT disk image that is a
+    byte-for-byte mirror of what `install-usb.sh` writes (ESP + writable ext4
+    rootfs). `qemu-img` + loopback assembly; `dd` to a USB to physically boot.
+    **Trivial** — it's `install-usb.sh` targeting a file instead of `/dev/sdX`.
+    Writable rootfs, no new kernel features needed.
+  - **N1b — bootable `.iso`** (optical/El-Torito + EFI System Partition image):
+    the classic "live CD." But optical media is **read-only**, so the ext4
+    rootfs can't be written in place. That forces *either* a read-only root
+    mount (kernel must mount ext4 `ro` and tolerate it — verify) *or* the
+    **RAM-rootfs path**: gnoboot loads the initramfs into memory and fills
+    `initramfs_phys`, kernel runs root from RAM. **That gnoboot feature is not
+    built yet** (it's `0 for MVP`) — so N1b has a real upstream dependency that
+    N1a does not.
+- **N2. Rootfs writability — writable or read-only?** Ties to N1. N1a gives
+  writable for free. A live-ISO wants read-only base (+ optional tmpfs/overlay
+  for `/var`, `/etc` — overlay support is itself a kernel question).
+- **N3. Rootfs filesystem — ext4 or squashfs?** The current media uses **ext4**
+  (kernel reads+writes it, iron-proven). The original draft assumed squashfs —
+  but the kernel has **no squashfs read support** (deferred, `roadmap.md`
+  row 23). So ext4 is the only proven option today; squashfs would be a new
+  kernel-side port. Recommend **ext4** for the first cut.
 
-AGNOS binaries are Cyrius-compiled. They use Linux syscalls directly via
-`agnosys`. Question: do any of them link against glibc / dynamic-link
-anything from `/lib/`? Or are they fully statically linked sovereign
-binaries that need *no* libc in the rootfs?
-
-If fully sovereign — squashfs rootfs is just AGNOS binaries + minimal
-`/etc` and `/usr` layout. Tiny image.
-
-If glibc-dependent — rootfs needs glibc (either copied from the dev host's
-`/lib/`, or pulled from a Linux distro base). Larger image, more
-reproducibility caveats.
-
-**Need to verify** by running `ldd build/<binary>` on each AGNOS-native
-binary and checking for dynamic libraries.
-
-### D3. Init / initramfs — what gets to PID 1?
-
-kybernet is the design's PID 1 — but the ISO boot flow is:
-
-1. GRUB loads kernel + initramfs
-2. Kernel runs initramfs `/init` to mount the squashfs as `/`
-3. `pivot_root` to the squashfs
-4. Exec PID 1 (kybernet)
-
-Two questions:
-- What does `/init` in the initramfs look like? Minimal busybox + mount
-  commands? Or a tiny custom shell-or-Cyrius binary that does the
-  mount-and-pivot dance?
-- Does kybernet handle the post-pivot init flow today, or does it need
-  argonaut spinning up first?
-
-**Need to read kybernet's startup expectations** before writing initramfs.
-
-### D4. Where the new code lives — extend `boot.cyr` or new `iso.cyr`?
-
-`scripts/src/boot.cyr` is currently a thin QEMU launcher + status reporter.
-ISO assembly is a different concern (build pipeline, not runtime launcher).
-
-- **D4a — extend `boot.cyr`** with `--iso` mode. Single binary, fewer
-  files. Mixes concerns slightly.
-- **D4b — new `scripts/src/iso.cyr`** as a separate entry point. Clean
-  separation. Two binaries (`build/boot` + `build/iso`). The Makefile
-  already advertises `make boot-iso` so wiring an `iso` binary into that
-  target is natural.
-
-**Recommended path**: D4b. Cleaner separation, easier to evolve the
-ISO pipeline independently from the QEMU launcher.
+**Recommended path**: **N1a (.img) + N2 writable + N3 ext4** for the first
+artifact — it's the proven media as a file, needs zero new kernel/gnoboot work,
+and ships in days. The read-only live `.iso` (N1b) becomes a clean follow-on
+once gnoboot grows initramfs-load (or the kernel grows ro-root + overlay).
 
 ---
 
-## Pipeline stages (Stage 4 only — Stages 1–3 deferred)
+## Pipeline stages (Stage 4 only)
 
-Numbering matches the existing `iso-pipeline.md` so the relationship is
-clear.
+Numbering matches `iso-pipeline.md`. Stages 1–3 deferred / implicit as before.
 
-- **Stage 0 — Resolve Components**: ✅ DONE. `boot --iso-check` reports
-  26-of-26 READY.
-- **Stage 1 — Bootstrap Cross-Toolchain**: ❌ DEFERRED. Not needed for
-  live-image cut.
-- **Stage 2 — Build Base System in chroot**: ❌ DEFERRED. Not needed.
-- **Stage 3 — Install AGNOS Components**: ✅ implicit (we use the
-  already-built artifacts in place; no install step beyond copying into
-  the rootfs layout).
-- **Stage 4a — Assemble initramfs**: NEW. Pack a minimal initramfs that
-  mounts the squashfs and execs into the squashfs `/sbin/init` (kybernet).
-- **Stage 4b — Build squashfs rootfs**: NEW. Lay out `/usr/bin`,
-  `/usr/lib/agnos`, `/etc`, `/var`, install AGNOS binaries, write
-  `/etc/os-release` + `/etc/hostname` + service files.
-- **Stage 4c — Assemble ISO**: NEW. Generate GRUB config (boot menu:
-  AGNOS / AGNOS recovery), `grub-mkrescue` + `xorriso` to produce the
-  bootable image, generate SHA256.
-- **Stage 5 — Validate**: NEW. Boot the ISO in QEMU, scrape serial output
-  for AGNOS banner, exit 0 on banner match.
+- **Stage 0 — Resolve components**: re-run `boot --iso-check` for a fresh
+  readiness snapshot.
+- **Stage 4a — Build the ext4 rootfs image**: lay out `/usr/bin`, `/etc`,
+  `/var`; install the agnos-native binaries (kybernet, agnoshi, + chosen
+  profile); write `/etc/os-release`, `/etc/hostname`, kybernet/argonaut service
+  files; `mkfs.ext4` into a sized image file. (Mirrors `install-usb.sh`'s
+  agnos-fs seeding, but into a file.)
+- **Stage 4b — Build the ESP image**: FAT32 image with
+  `EFI/BOOT/BOOTX64.EFI` (gnoboot) + `/boot/agnos` (kernel). No GRUB config —
+  gnoboot reads `/boot/agnos` directly. (Drop the initramfs unless N1b.)
+- **Stage 4c — Assemble the artifact**: GPT-combine the ESP + ext4 images into
+  `agnos-x86_64.img` (N1a) — or build an El-Torito UEFI `.iso` carrying the ESP
+  image (N1b). Emit SHA256.
+- **Stage 5 — Validate**: boot the artifact in QEMU under OVMF/UEFI; scrape
+  the framebuffer/serial smoke harness (`qemu-fb-smoke.sh`) for the agnoshi
+  banner; exit 0 on match.
 
 ---
 
@@ -181,112 +170,97 @@ clear.
 ```
 scripts/
 ├── src/
-│   ├── boot.cyr           (existing — leave alone)
-│   └── iso.cyr            (NEW — Stage 4 pipeline)
+│   ├── boot.cyr           (existing — QEMU launcher; leave alone)
+│   ├── install.cyr        (existing — STALE: header still says "GRUB snippet";
+│   │                        update or supersede — its initramfs build is now
+│   │                        vestigial for the default path)
+│   └── iso.cyr            (NEW — Stage 4: rootfs + ESP + artifact assembly)
 ├── templates/             (NEW)
-│   ├── grub.cfg.tmpl      (GRUB config template)
-│   ├── init.tmpl          (initramfs /init script)
-│   └── os-release.tmpl    (system identity)
+│   ├── os-release.tmpl    (system identity)
+│   └── hostname.tmpl
 ├── tests/
-│   ├── boot.tcyr          (existing)
-│   └── iso.tcyr           (NEW — Stage 4 test cases)
-└── cyrius.cyml            (add second [build] entry for iso.cyr if dual-binary)
+│   └── iso.tcyr           (NEW — Stage 4/5 test cases)
+└── cyrius.cyml            (add a second [build] entry for iso.cyr)
 
-config/                    (existing or NEW per repo state)
-└── agnos/
-    ├── services/          (kybernet → argonaut service files)
-    ├── sysctl/            (kernel tunables)
-    └── hostname           (default hostname)
+config/agnos/              (NEW or per-repo — service files, hostname)
 
 docs/development/
 ├── iso-stage4-plan.md     (THIS DOCUMENT)
-└── iso-pipeline.md        (existing — keep as long-term reference)
+└── iso-pipeline.md        (long-term reference — update Stage 4 to gnoboot model)
 ```
+
+Note: much of Stage 4a/4b duplicates logic already in `install-usb.sh`
+(partition layout, mkfs, file placement). Consider whether `iso.cyr` and
+`install-usb.sh` should share a single source of truth for the media layout so
+they can't drift.
 
 ---
 
 ## Tasks for the next agent (sequenced)
 
-1. **Resolve D1–D4 with Robert.** Don't code until decisions are made.
-2. **Verify AGNOS binaries' dynamic-linkage state** (D2 follow-up).
-   Run `ldd` on each AGNOS-native binary; document findings.
-3. **Read `kybernet`'s startup contract** (D3 follow-up).
-   Read `kybernet/CLAUDE.md` + relevant src to understand PID 1 expectations
-   and whether it handles squashfs-pivot-root or needs an init wrapper.
-4. **Draft `iso.cyr` skeleton** with stub functions for Stage 4a/4b/4c.
-5. **Implement Stage 4a (initramfs)**: dependency-light first cut.
-6. **Implement Stage 4b (squashfs rootfs)**: lay out the filesystem, copy
-   binaries, write `/etc` files from templates.
-7. **Implement Stage 4c (ISO assembly)**: GRUB config generation,
-   grub-mkrescue invocation, SHA256.
-8. **Wire `make boot-iso`** to invoke `./build/iso` (or the chosen entry
-   point per D4).
-9. **Implement Stage 5 (QEMU validation)**.
-10. **CHANGELOG entry** in `agnosticos/CHANGELOG.md` under a new dated
-    section. Bump VERSION.
-11. **Update roadmap** Active Work table — mark Stage-4-only ISO ✅ DONE,
-    pivot to Phase 2 (LFS bootstrap) as the next item.
+1. **Resolve N1–N3 with Robert** (D1/D2/D4 already settled above). Don't code
+   until the artifact-format decisions are made.
+2. **Re-run `boot --iso-check`**; refresh the component inventory.
+3. **Spot-`ldd` the shipped binaries** to confirm the D2 sovereign assumption.
+4. **Read kybernet's startup contract** (D3 follow-up) — exact PID-1 path on
+   the rootfs; whether argonaut must precede it.
+5. **Draft `iso.cyr` skeleton** with stub functions for Stage 4a/4b/4c.
+6. **Implement Stage 4a (ext4 rootfs image)** — the bulk of the work.
+7. **Implement Stage 4b (ESP image)** — gnoboot + kernel; no GRUB.
+8. **Implement Stage 4c (artifact assembly)** — `.img` (N1a) or `.iso` (N1b).
+9. **Implement Stage 5 (QEMU/OVMF validation)** via `qemu-fb-smoke.sh`.
+10. **Wire `make boot-iso`** to `./build/iso`.
+11. **CHANGELOG + VERSION** bump (per the no-unprompted-bump rule: on Robert's
+    go); **update roadmap** (mark Stage-4 ISO done; ISO becomes a shipping
+    distribution path) and `iso-pipeline.md` (Stage 4 → gnoboot model).
 
 ---
 
 ## Scope discipline
 
-**In scope** (Stage-4-only first cut):
-- x86_64 only
-- Headless minimal profile only
-- QEMU boot validation only (real-hardware testing comes later)
-- Already-built binaries from sibling repos
-- GRUB + squashfs + initramfs assembly via host tools
+**In scope** (Stage-4-only first cut): x86_64 only · headless profile only ·
+QEMU/OVMF validation · already-built binaries · gnoboot + agnos + ext4 layout ·
+`.img` artifact (N1a default).
 
-**Out of scope** (deferred or separate work):
-- LFS Stage 1 (cross-toolchain bootstrap) — Phase 2
-- LFS Stage 2 (chroot recipe build of glibc/coreutils/bash) — Phase 2
-- aarch64 / RISC-V multi-arch — Phase 4 (unblocked by Cyrius 5.0+;
-  defer to later)
-- Desktop profile (aethersafha / Mesa / PipeWire) — Phase 3
-- Persistent storage / installable mode — separate work
-- Self-bootstrapping (ISO can rebuild itself from source) — Phase 2 with
-  takumi Cyrius port
-- aegis / aethersafha Cyrius ports — pending repo work
+**Out of scope** (deferred / separate work): LFS cross-toolchain + chroot build
+(Phase 2) · self-bootstrapping ISO (Phase 2 w/ takumi port) · read-only live
+`.iso` w/ RAM-rootfs (blocked on gnoboot initramfs-load) · squashfs rootfs
+(blocked on kernel squashfs read, roadmap row 23) · persistent install onto
+hardware (**agnova**, server stage) · aarch64/RISC-V multi-arch (Phase 4) ·
+desktop profile (aethersafha — Phase 3).
 
 ---
 
 ## Relation to `iso-pipeline.md`
 
-`iso-pipeline.md` is the **long-term reference document** describing all
-stages and the eventual self-hosting endpoint. This document is the
-**near-term execution plan** for the *first* deliverable. The two
-documents are not in conflict; this one carves a smaller scope out of the
-larger one and ships it first.
-
-When Stage-4-only ISO is shipping, both documents should be updated:
-- `iso-pipeline.md`: mark Stage 4 as **implemented** (Stage-4-only cut);
-  reframe the LFS bootstrap as Phase 2.
-- `iso-stage4-plan.md`: archive or mark as completed; subsequent phases
-  get their own focused plan docs as needed.
+`iso-pipeline.md` is the long-term reference (all stages → eventual
+self-hosting). This is the near-term execution plan for the *first* artifact.
+When the Stage-4 `.img` ships, update both: `iso-pipeline.md` Stage 4 → the
+gnoboot model (not GRUB); this doc → mark the `.img` cut complete and split the
+read-only `.iso` follow-on into its own plan when gnoboot grows initramfs-load.
 
 ---
 
 ## Timeline estimate
 
-Days, not weeks — IF D1–D4 get clear answers up front. Indicative:
+Days, not weeks — and shorter than the original estimate because `install-usb.sh`
+already proves the assembly and N1a is "the same thing, to a file."
 
-- D1–D4 resolution: 1 session with Robert
-- iso.cyr skeleton + Stage 4a: 1 day
-- Stage 4b (rootfs layout + binary copy): 1–2 days (most of the work)
-- Stage 4c (ISO assembly): 1 day
-- Stage 5 (QEMU validation): 0.5 day
-- Polish / CHANGELOG / roadmap update: 0.5 day
+- N1–N3 resolution: 1 session with Robert
+- iso.cyr skeleton + Stage 4b (ESP, small): 0.5 day
+- Stage 4a (ext4 rootfs layout + binaries): 1–2 days (most of the work)
+- Stage 4c (.img assembly): 0.5 day
+- Stage 5 (QEMU/OVMF validation): 0.5 day
+- Polish / CHANGELOG / roadmap: 0.5 day
 
-**Total**: ~4–5 working days from decision-resolution to first booting
-ISO artifact.
+**Total**: ~3–4 working days from decision-resolution to a booting `.img`.
 
 ---
 
 ## Final note for the next agent
 
-If the user pushes for "just start building it," the four open decisions
-(D1–D4) need answers before any line of `iso.cyr` is written. Cyrius is
-strict; manifest pins are real; pick wrong on D1 and the build pipeline
-gets reshaped twice. Brief the user on the four questions, get answers,
-then code.
+D1/D2 are settled by iron — do not reopen "what kernel / does it need glibc."
+The live fork is N1 (`.img` vs `.iso`), and it carries a real dependency: the
+read-only `.iso` path needs gnoboot to load the initramfs (a feature still at
+`0 for MVP`). Default to the writable `.img` first cut; it needs no new
+upstream work and mirrors the media that already boots on hardware.

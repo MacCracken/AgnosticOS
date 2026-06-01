@@ -122,82 +122,57 @@ cycc self-host **874,240 B** at v6.0.0 (was cc5 874,232 B at v5.11.69 close; +8 
 
 ## Pin-lag spectrum
 
-Each repo's `cyrius = "X.Y.Z"` pin (verified 2026-05-11 eve from local clones, with leading-edge spot updates). **Most pre-CYML consumers migrated**: agnoshi, bote, t-ron, kavach, itihas, nein all moved from `cyrius.toml` v3.x/v4.x to `cyrius.cyml` 5.10.44+. Only `hoosh` and `shravan` remain on pre-CYML format in the local-verified set. **The v5.11.x leading-edge bedrock is now where consumers will pause** — back-compat symlinks (`cc5 → cycc`, `cyrc → cybs`) keep them building unchanged through the v6.0.x window; natural-next-touch will graduate each consumer to v6.0.x and re-pin then.
+Each repo's `cyrius = "X.Y.Z"` pin (verified **2026-06-01** from local clones). **The deep-lag tail has nearly fully collapsed onto 6.0.x** — the old v5.7.x cluster (hisab, abaco, nous, bazaar, shakti) and most of the v5.7.48 held-cluster (mabda, cyrius-doom) have all graduated. What remains is a thin set of old-pin holdouts plus a 5.10.x bedrock that graduates on natural-next-touch. Two repos (`hoosh`, `shravan`) are still pre-CYML (`cyrius.toml`).
 
 ```
-PRE-CYML format / no pin field (remaining tail):
-  hoosh (cyrius.toml, no pin field visible in snapshot)
-  shravan (cyrius.toml, no pin field visible in snapshot)
+Current pins (local clones, 2026-06-01). Format = cyrius.cyml unless noted; entries show (version / pin).
 
-CYML format — DEEP LAG (didn't roll forward; may carry latent stdlib breakage):
-  v5.1.x:  ark (5.1.10)                              ← extreme lag, port pre-dates pin convention
-  v5.6.x:  yantra (5.6.17)
-  v5.7.x:  hisab (5.7.10), agnova (5.7.12),
-           abaco (5.7.23), nous (5.7.29),
-           bazaar (5.7.30), shakti (5.7.33)
-  v5.7.48: mabda (3.0.0-rc.2), cyrius-doom (0.26.2),
-           samvada (0.2.2)                           ← held-cluster (was 4; phylax exited)
+PRE-CYML (cyrius.toml — migrate to cyrius.cyml + 6.0.x):
+  hoosh (2.0.0 / 4.5.0), shravan (2.3.2 / 4.10.3)
 
-CYML format — WARM CLUSTERS:
-  v5.9.x:  sit (5.9.37), vidya (5.9.43)
-  v5.10.x: vyakarana (5.10.5), owl (5.10.10),
-           cyim (5.10.10), cyim-lsp (5.10.10),
-           cyim-lsp (5.10.20),
-           aegis (5.10.34)
-           — darshana graduated to v6.0.1 cluster 2026-05-20 (color primitives bump)
+CYML — DEEP LAG (re-port to 6.0.x before any re-measurement):
+  v5.1.x:   ark (0.8.0 / 5.1.10)        ← extreme; port pre-dates the pin convention
+  v5.6.x:   yantra (0.1.0 / 5.6.17)
+  v5.7.x:   agnova (0.1.0 / 5.7.12)
+  v5.7.48:  samvada (0.2.2 / 5.7.48)    ← last of the old 5.7.48 held-cluster
 
-CYML format — LIVE 5.10.44 BEDROCK (~14 repos, the boot path minus agnos + agnoshi):
-  v5.10.44: agnostik (1.2.2), argonaut (1.7.0),
-            bote (2.7.2), daimon (1.2.3),
-            kavach (3.2.1), kybernet (1.2.1),
-            libro (2.6.3) — exited 5.4.x deep-lag,
-            majra (2.4.4) — exited 5.4.x deep-lag,
-            nein (1.5.1), phylax (1.1.1) — exited 5.7.48 held cluster,
-            t-ron (2.1.4)
-            — agnoshi graduated to v6.0.1 cluster 2026-05-20 (1.3.2 → 1.3.3)
+CYML — 5.10.x BEDROCK (~10 repos; runtime/boot path, graduate on natural-next-touch):
+  v5.10.10: owl (1.3.6)
+  v5.10.20: cyim-lsp (1.5.0)
+  v5.10.34: aegis (1.0.0)
+  v5.10.44: kavach (3.2.1), daimon (1.2.3), bote (2.7.2), t-ron (2.1.4),
+            nein (1.5.1), phylax (1.1.1), majra (2.4.4)
 
-CYML format — 5.11.x post-burst sub-cluster (trailing; no leading-edge holdouts):
-  v5.11.4:  agnosys (1.2.6), sigil (3.1.1), sankoch (2.2.5),
-            sandhi (1.3.4), niyama (1.0.2), patra (1.9.4),
-            sakshi (2.2.4), vani (0.9.3), yukti (2.2.3)
-  v5.11.8:  ai-hwaccel (2.2.2)
+CYML — 5.11.55 (trailing pair):
+  sit (0.8.5), vidya (2.7.1)
 
-CYML format — LEADING-EDGE 6.0.x cluster (post-v5.11.x graduations):
-  v6.0.14: agnos (1.39.0)   ← re-pinned at the 1.39.0 cycle-open 2026-05-28
-                              (6.0.1 mid-1.31.x → 6.0.3 at 1.35.5, held through
-                              the 1.37/1.38 big-write arcs → 6.0.14; A/B
-                              byte-identical, all gates green)
-  v6.0.1:  agnoshi (1.3.3), mihi (1.0.0), iam (1.0.0),
-           chakshu (0.6.0), bannermanor (1.0.0), darshana (0.3.5),
-           hapi (0.5.0)
-           — agnos originally graduated mid-1.31.x cycle for binary fixes
-             in cycc 6.0.1 (was 5.11.64, the gvar-init-order anchor), then
-             advanced to 6.0.14 at 1.39.0 (above). The 2026-05-20 terminal-
-             aesthetics burst brought six: mihi + iam cut as NEW 1.0.0
-             repos straight on v6.0.1; chakshu jumped 0.3.0 → 0.6.0 +
-             5.10.20 → 6.0.1; bannermanor (`bnrmr` figlet-equivalent) +
-             hapi (stow-equivalent) cut at 0.5.0 straight on v6.0.1;
-             darshana graduated from
-             v5.10.20 → v6.0.1 with the 0.3.0 → 0.3.5 color-primitives
-             bump that bannermanor's banner colors needed.
+CYML — 6.0.x LEADING EDGE (the bulk of the ecosystem, ~32 repos):
+  v6.0.0:   ai-hwaccel (2.2.6)
+  v6.0.1:   abaco (2.2.4), cyim (1.7.1), sandhi (1.4.0), niyama (1.0.3),
+            sankoch (2.3.0), sakshi (2.2.5), yukti (2.2.4), vani (0.9.4),
+            cyrius-doom (0.27.3), darshana (0.5.3), chakshu (0.6.1),
+            mihi (1.0.0), iam (1.0.0), kii (1.0.0), hapi (1.0.1),
+            bannermanor (1.0.1)
+  v6.0.3:   nous (1.2.5), bazaar (1.0.2), shakti (0.4.0), patra (1.10.3),
+            vyakarana (2.2.2)
+  v6.0.14:  agnos (1.41.1), agnoshi (1.3.4), agnosys (1.2.8), agnostik (1.2.3),
+            kybernet (1.2.3), argonaut (1.7.1), sigil (3.5.9), libro (2.6.5),
+            hisab (2.6.5)
+  v6.0.16:  mabda (3.0.0-rc.3)
 
-CYRIUS TOOLCHAIN itself: 6.0.1 (v6.0.0 cycle opened 2026-05-19, same-day .1 patch for UEFI fncall ud2 emit regression; v5.11.x closed at 5.11.69)
+CYRIUS TOOLCHAIN: 6.0.24. The agnos + boot-path core pins 6.0.14 deliberately
+  (held-known-working; do not chase the toolchain number).
 
-NOT VERIFIED LOCALLY (remote-only, presumed pre-CYML or scaffolded):
-  avatara, hadara, itihas, takumi, aethersafha, aethersafta, mela,
-  seema, samay, kiran, joshua, salai, murti, tanur, encom-hits,
-  cyrius-{bb,brynns-tale,stellar-swarm,sunset-drive,super-plumber-twins,
-  grapevine,chellys-beach-adventure,nba-jam}
+ABSENT from this devbox clone (not surveyable here): avatara, hadara, itihas,
+  takumi, aethersafha, mela, seema, samay, + the scaffolded cyrius-* game repos.
 ```
 
-**Bands of attention (2026-05-20 PM — post-MVP-gate, post-v6.0.0 cycle-open, agnos + agnoshi graduated mid-1.31.x storage cycle):**
-- **6.0.1 leading-edge cluster** (2026-05-20 → -22, **9 repos**): **agnos (1.32.1)** + **agnoshi (1.3.3)** + mihi (1.0.0), iam (1.0.0), chakshu (0.6.0), bannermanor (1.0.0), darshana (0.3.5), hapi (0.5.0), **kii (0.1.0)** (added 2026-05-22 — Hawaiian Polynesian micro-cluster joins via image→ANSI/ASCII converter). The morning brought sys-info substrate (mihi/iam/chakshu) and afternoon brought terminal-aesthetics (bannermanor / hapi / darshana). The 2026-05-20 evening MVP-path graduation pair (agnos + agnoshi) onto cycc 6.0.1 was the load-bearing change; agnos has since rolled through the storage arc and ext2/4 cycle on the same pin: 1.31.2 → 1.31.3 (USB MS Phase 2.8) → 1.31.4 (RAM-disk + VirtIO modern) → 1.31.5 (ext2/4 Phase 1-4) → 1.31.6 (cleanup cycle close) → **1.31.7** (FS follow-ups + shell UX close). The darshana 0.3.0 → 0.3.5 bump was demand-driven (bannermanor needed color escape sequences) — same shared-lib-evolves-to-second-consumer pattern as mihi's cyim → chakshu extraction.
-- **5.11.x cluster**: now empty of leading-edge holdouts — agnosticos/scripts graduated 5.11.59 → 6.0.14 on 2026-05-30 (boot-side sweep; see toolchain banner above), joining agnos on the leading edge. agnos had already vacated 5.11.64 mid-1.31.x cycle. (genesis-repo VERSION flipped CalVer → SemVer at 0.1.0 cycle-open 2026-05-21.) The .4/.8 post-burst sub-cluster below still trails.
-- **5.11.x post-burst cluster** (~10 repos at .4/.8) — sandhi, niyama, patra, sakshi, vani, yukti, agnosys, sigil, sankoch, ai-hwaccel. Ahead of the bedrock but trailing the leading-edge.
-- **5.10.44 live bedrock** (~14 repos: kybernet, argonaut, kavach, daimon, bote, t-ron, libro, etc.) — agnoshi exited 2026-05-20, narrowing the MVP-path holdouts to **kybernet + argonaut** (these still pin 5.10.44 and still boot AGNOS on iron). Rest of the bedrock graduates to v6.0.x on natural-next-touch.
-- **Deep-lag tail** shrank but didn't vanish: ark (5.1.10) extreme, hisab/agnova/abaco/nous/bazaar/shakti in v5.7.x cluster, yantra (5.6.17). The 5.4.x cluster (libro, majra) FULLY EXITED at 5.10.44.
-- **Held cluster at 5.7.48** now **3 repos** (mabda, cyrius-doom, samvada) — phylax exited during v5.10.x. mabda is at 3.0.0-rc.2 (soak before GA fold to Cyrius stdlib); cyrius-doom is at 0.26.2 (gated on Cyrius optimization-arc closeout retroactive verification).
-- **Pre-CYML format tail**: only `hoosh` and `shravan` remain in the local-verified set. The previous 11-repo tail collapsed in the v5.10–v5.11 window.
+**Bands of attention (2026-06-01):**
+- **6.0.x leading edge is now the bulk of the ecosystem** (~32 repos across .0/.1/.3/.14/.16). The agnos + boot-path core (agnos, agnoshi, agnosys, agnostik, kybernet, argonaut, sigil, libro, hisab) holds the deliberate **6.0.14** pin; mabda sits a touch ahead at 6.0.16; toolchain ships **6.0.24** (don't chase it — held-known-working).
+- **5.10.x bedrock** down to ~10 — kavach, daimon, bote, t-ron, nein, phylax, majra (.44) + aegis (.34), cyim-lsp (.20), owl (.10). Graduate on natural-next-touch; none are blockers.
+- **5.11.55 pair**: sit, vidya.
+- **Deep-lag tail nearly gone** — only ark (5.1.10, extreme), yantra (5.6.17), agnova (5.7.12), samvada (5.7.48) remain on old CYML pins; hoosh (4.5.0) + shravan (4.10.3) are the last pre-CYML holdouts. The old v5.7.x cluster (hisab/abaco/nous/bazaar/shakti) and the v5.7.48 held-cluster (mabda/cyrius-doom) have otherwise fully graduated to 6.0.x — only samvada stayed behind.
+- **Port-ledger / Volume 3 relevance**: of the ten Vol 1 ports, **eight are on 6.0.x** — abaco done (in the V3 seed); nous + agnosys have fresh CSVs (write-up only); kybernet, agnostik, ai-hwaccel, kavach need a bench run (± a small pin bump for kavach). **hoosh** (4.5.0, pre-CYML) and **ark** (5.1.10) are the two needing a real re-port before re-measurement; **avatara** is absent from this clone. See the Volume 3 *Receipts Pending — The Wave* list.
 
 ### New repos / milestone bumps since last refresh
 

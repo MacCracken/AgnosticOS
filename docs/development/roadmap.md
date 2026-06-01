@@ -8,7 +8,7 @@
 >
 > 🟡 **Iron-boot running log**: [`iron-nuc-zen-log.md`](iron-nuc-zen-log.md) (active, post-MVP) + [`iron-nuc-zen-log-mvp.md`](iron-nuc-zen-log-mvp.md) (Attempts 1–68, capped at the MVP gate). Append-only per-attempt log (symptom / root cause / repair / verification).
 >
-> 🔴 **NEXT distribution gate**: ISO Stage-4-only first cut — see [`iso-stage4-plan.md`](iso-stage4-plan.md) (four open decisions D1–D4 need user input). Packages kernel + gnoboot + userland into a distributable live image. The kernel already boots iron-direct via gnoboot + USB stick today; the ISO is the *distribution* path, not a boot blocker. Closed-beta first-tester sessions run on the NUC AMD (primary); Intel (Skytech) + Pi 4 queued after AMD proves out.
+> 🔴 **NEXT distribution gate**: ISO Stage-4-only first cut — see [`iso-stage4-plan.md`](iso-stage4-plan.md), **rebaselined 2026-06-01** to the gnoboot + agnos + ext4 model (the old GRUB/`vmlinuz`/`pivot_root`/squashfs framing is obsolete). D1/D2/D4 are resolved by the iron-boot arc; the live decisions are now **N1–N3** (artifact format `.img` vs `.iso` / rootfs writability / rootfs FS — recommended first cut: writable `.img` mirroring `install-usb.sh`). Packages kernel + gnoboot + userland into a distributable image. The kernel already boots iron-direct via gnoboot + USB stick today; the ISO is the *distribution* path, not a boot blocker. Closed-beta first-tester sessions run on the NUC AMD (primary); Intel (Skytech) + Pi 4 queued after AMD proves out.
 
 ---
 
