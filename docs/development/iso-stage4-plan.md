@@ -29,19 +29,23 @@ archaemenid (Zen) through the 1.40.x arc:
 - **PID 1 comes from exec-from-disk**: the kernel mounts the ext4 `agnos-fs`
   partition at `/` and execs kybernet/agnoshi from it (1.40.x exec-from-disk
   + mount-namespace routing, iron-validated on the `14013_final*` burn).
-- **The ESP `initramfs.cpio.gz` is currently vestigial.** gnoboot's boot-info
-  struct reserves `initramfs_phys`/`initramfs_size` (offsets 0x10/0x18) but
-  sets them to **0 for MVP** (`gnoboot/src/main.cyr`); `install-usb.sh` notes
-  it is "not consumed by gnoboot v0.1.0." The kernel's `core/initrd.cyr`
-  RAM-disk reader exists but isn't fed at boot. (This matters for N1 — a
-  read-only live ISO would *resurrect* this path.)
+- **The ESP `\boot\initramfs` is filled by gnoboot but not yet consumed.** As of
+  **gnoboot v0.5.0** the bootloader loads `\boot\initramfs` (format-neutral path,
+  optional) into an `EfiLoaderData` region and fills `initramfs_phys`/`size`
+  (offsets 0x10/0x18) — previously **0 for MVP**. The remaining gap is kernel-side:
+  `core/initrd.cyr` mounts a synthetic INDR image from a fixed `0x6000` and does
+  **not** yet read the boot-info field. (This matters for N1 — a read-only live
+  ISO needs the kernel wired to read `initramfs_phys` AND the initramfs **format**
+  settled: gnoboot is format-neutral, the kernel's sovereign **INDR** is the
+  AGNOS-native direction — *not* Linux `cpio.gz`.)
 
 **The working boot media today** (`install-usb.sh`, iron-proven):
 
 ```
 GPT  p1  256 MiB  FAT32 ESP (label AGNOSBOOT)  → EFI/BOOT/BOOTX64.EFI (gnoboot)
                                                   /boot/agnos (kernel)
-                                                  /boot/initramfs.cpio.gz (vestigial)
+                                                  /boot/initramfs (optional; gnoboot fills
+                                                       boot_info, kernel not yet wired)
      p2   25 GiB  ext4 agnos-fs                 → rootfs the kernel mounts at /
      rest unallocated
 ```
@@ -70,18 +74,46 @@ self-hosting story; deferred). Persistent install onto target hardware (that's
 
 ---
 
-## Inputs
+## Base-OS manifest (what ships in the rootfs)
 
-The component set is whatever `install-usb.sh` already consumes plus the
-ecosystem binaries for a headless profile. **Re-run `boot --iso-check`** to
-refresh the readiness snapshot — the 2026-04-27 "26/26 READY" capture is stale
-(it predates agnos 1.30.5 → **1.41.1**, gnoboot 0.2.0 → **0.4.3**, cyrius
-5.11.55 → **6.0.24**, and the whole storage/net/exec arc). Authoritative
-versions: `state.md` + each repo's `VERSION`.
+> **Decided 2026-06-01**: the first Stage-4 base ISO ships the **T0–T3 "base
+> stage" profile** (minimal + CLI + self-extension + security). The **T4
+> AI-native layer is deferred to a fast-follow profile** (it needs a bundled
+> model + network and brings the most moving parts).
 
-Minimum to boot (proven): **gnoboot** `BOOTX64.EFI`, **agnos** kernel,
-**kybernet** (PID 1), **agnoshi** (shell). Everything else (daimon, hoosh,
-ark/nous, the libs) layers onto the ext4 rootfs for a fuller profile.
+**Critical correction to the original 2026-04-27 "26 components" table:** AGNOS
+binaries are **statically-linked sovereign** (D2). So **libraries do not ship as
+rootfs files** — they are compiled *into* their consuming tools. The rootfs
+manifest is the **tool binaries only**; libraries are build-time dependencies.
+(Re-run `boot --iso-check` for a freshness snapshot, and verify each repo's
+`VERSION` — the old "26/26 READY" capture predates agnos 1.30.5 → **1.41.1**,
+gnoboot 0.2.0 → **0.4.3**, cyrius 5.11.55 → **6.0.24**.)
+
+### On the ESP (firmware boot, not rootfs)
+
+- **gnoboot** → `EFI/BOOT/BOOTX64.EFI`
+- **agnos** (kernel) → `/boot/agnos`
+
+### On the rootfs (ext4 `agnos-fs`) — T0–T3 tool binaries
+
+| Tier | Projects (binary) | Role |
+|---|---|---|
+| **T0 — minimal bootable** | `kybernet` (PID 1) · `agnoshi`/`agnsh` (shell) · `kriya` (coreutils) · `commandress`/`cmdrs` (prompt) | boot → usable shell |
+| **T1 — base CLI** | `owl` (cat) · `cyim` + `cyim-lsp` (editor) · `sit` (git) · `hapi` (dotfiles) · `iam` (sysinfo) · `chakshu`/`shu` (monitor) · `bannermanor`/`bnrmr` + `kii` (banner/MOTD) | working environment |
+| **T2 — self-extension** | `ark` (package mgr) · `nous` (resolver; may be ark-internal — verify) | install/update more (maturity-arc "base stage" gate) |
+| **T3 — security/system** | `aegis` (security daemon) · `shakti` (privesc) · `kavach` (sandbox) · `phylax` (threat detection) | system-service substrate |
+
+### Deferred to the fast-follow AI profile (NOT in the first base ISO)
+
+**T4 — AI-native layer**: `daimon` (agent orchestrator) · `hoosh` (LLM gateway)
+· `bote` (MCP core) · `t-ron` (MCP security). Plus a bundled model. This is the
+"AI-Native OS" differentiator; it ships once the base image is proven.
+
+### Build-time libraries (statically linked — NOT rootfs files)
+
+`agnostik`, `agnosys`, `argonaut`, `sigil`, `libro`, `itihas`, `sankoch`,
+`mihi`, `darshana`, `abaco`, `hisab`, `mabda`, `bsp`. Needed to *build* the
+tools above; they leave no separate artifact on the rootfs.
 
 ---
 
@@ -106,8 +138,9 @@ No `pivot_root`, no Linux initramfs flow. The contract is: gnoboot → agnos →
 kernel mounts `agnos-fs` at `/` → exec PID 1 from disk. The open sub-question
 is narrow: **confirm the exact on-disk PID-1 source** (kybernet path on the
 ext4 rootfs, and whether argonaut must spin up first) by reading kybernet's
-startup contract before laying out the rootfs. The vestigial `initramfs.cpio.gz`
-should be **dropped from the artifact** unless N1 chooses the read-only-ISO
+startup contract before laying out the rootfs. The optional `\boot\initramfs`
+(gnoboot fills the boot-info field as of v0.5.0, but the kernel doesn't read it
+yet) can be **omitted from the artifact** unless N1 chooses the read-only-ISO
 path below.
 
 ### New decisions — RESOLVE BEFORE CODING

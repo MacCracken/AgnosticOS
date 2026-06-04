@@ -78,7 +78,7 @@ EFI/BOOT/BOOTX64.EFI  ← gnoboot
     │
     │  1. Open ESP via SimpleFileSystemProtocol
     │  2. Read /boot/agnos (ELF64) into AllocatePages buffer
-    │  3. Read /boot/initramfs.cpio.gz
+    │  3. Read /boot/initramfs (optional; format-neutral, kernel owns it)
     │  4. Parse ELF64 program headers, AllocatePages each PT_LOAD at
     │     its physical address, memcpy + zero-fill (BSS)
     │  5. Build sovereign AGNOS boot-info struct (see § Handoff)
@@ -124,13 +124,14 @@ via tag-list (same idea as multiboot2 but our shape).
 struct agnos_boot_info {
     uint32_t magic;          // 0x41474E4F ('AGNO')  — sovereign magic, not 0x36D76289
     uint32_t version;        // 2 (v1 had no inlined fb fields). Bumped on layout-breaking changes.
-    uint32_t struct_size;    // sizeof(this struct including tag stream) for fwd-compat
+    uint32_t struct_size;    // = 120 (0x78): sizeof inlined fields + 8-byte END tag, for fwd-compat
     uint32_t flags;          // bit 0 = serial enabled, bit 1 = framebuffer present, ...
 
     // Inlined critical pointers (no tag-walk needed for these)
-    uint64_t initramfs_phys; // physical address of initramfs.cpio.gz in memory
-    uint64_t initramfs_size; // bytes
-    uint64_t cmdline_phys;   // NUL-terminated kernel cmdline (or 0 if none)
+    uint64_t initramfs_phys; // phys addr of \boot\initramfs (raw bytes; kernel owns
+                             //   the format — sovereign INDR, not Linux cpio.gz). 0 if absent.
+    uint64_t initramfs_size; // bytes (0 if absent)
+    uint64_t cmdline_phys;   // NUL-terminated kernel cmdline from \boot\cmdline (or 0 if none)
 
     uint64_t memmap_phys;    // physical address of memmap_entry[] array
     uint32_t memmap_count;   // number of entries
@@ -144,12 +145,15 @@ struct agnos_boot_info {
     // #1, before stack setup and before any cyrius fn call. Walking a
     // tag stream in raw asm is brutal; inlining at fixed offsets makes
     // the canary 26 bytes total (see agnos boot_shim.cyr ELF64 path).
-    uint64_t fb_phys;        // physical address of linear framebuffer (0 if absent)
-    uint32_t fb_pitch;       // bytes per scanline (PixelsPerScanLine × 4 for 32 bpp)
-    uint32_t fb_width;       // pixels (HorizontalResolution)
-    uint32_t fb_height;      // pixels (VerticalResolution)
-    uint32_t fb_pixel_format;// 0 = RGB888x, 1 = BGR888x, 2 = bitmask, 3 = blt-only (no direct fb)
-    uint64_t _reserved_fb;   // alignment + future fb fields
+    uint64_t fb_phys;        // 0x48 physical address of linear framebuffer (0 if absent)
+    uint32_t fb_pitch;       // 0x50 bytes per scanline (PixelsPerScanLine × 4 for 32 bpp)
+    uint32_t fb_width;       // 0x54 pixels (HorizontalResolution)
+    uint32_t fb_height;      // 0x58 pixels (VerticalResolution)
+    uint32_t fb_pixel_format;// 0x5C 0 = RGB888x, 1 = BGR888x, 2 = bitmask, 3 = blt-only
+    uint32_t fb_mode_current;// 0x60 GOP Mode->Mode (which mode firmware booted; v2 overlay)
+    uint32_t fb_mode_max;    // 0x64 GOP Mode->MaxMode (mode count available)
+    uint64_t fb_size;        // 0x68 GOP Mode->FrameBufferSize (authoritative FB extent;
+                             //   0 ⇒ kernel falls back to pitch × height)
 
     // Tag stream begins here (8-byte aligned), terminated by tag with type=0.
     // Tag header: { uint32_t type, uint32_t size }. Payload follows.
@@ -257,7 +261,7 @@ at the time of the shim swap, same as Path A had planned.
    - Remove `cat > grub.cfg <<'EOF'` block.
    - Replace with: `cp $GNOBOOT_BUILD/BOOTX64.EFI ${MOUNT_POINT}/EFI/BOOT/BOOTX64.EFI`.
    - Layout becomes: `/EFI/BOOT/BOOTX64.EFI` (gnoboot) + `/boot/agnos`
-     (kernel) + `/boot/initramfs.cpio.gz`. No `/boot/grub/`.
+     (kernel) + `/boot/initramfs` (optional, format-neutral). No `/boot/grub/`.
    - Update the comments and `--update` mode accordingly.
 2. **`scripts/test-uefi-qemu.sh` — drop the grub-mkimage path.**
    - Replace `grub-mkimage` + `grub.cfg` + module copying with a single
