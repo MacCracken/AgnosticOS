@@ -1,7 +1,7 @@
 # AGNOS System Requirements
 
 > Minimum and recommended hardware for running AGNOS across all profiles.
-> Last Updated: 2026-05-09
+> Last Updated: 2026-06-04
 >
 > **Pre-Beta note:** AGNOS is not yet installable as an end-user OS. These figures are the **targets** for the Phase 13A ISO. For what is buildable and testable today, see [README.md](README.md).
 
@@ -125,7 +125,7 @@ AGNOS uses **two kernels** depending on profile — the AGNOS kernel is primary;
 
 ### AGNOS Kernel (sovereign, primary)
 
-- **Version**: Cyrius-native, 40+ subsystems, a small sovereign syscall surface (no socket/splice/AF_ALG layer), iron-validated on NUC AMD (current version + size + syscall count in [`development/state.md`](../development/state.md))
+- **Version**: Cyrius-native, 40+ subsystems, a small sovereign syscall surface (no socket/splice/AF_ALG layer); the exec-from-disk baseline (1.40.x through 1.40.13) is iron-validated on NUC AMD, with the in-flight shell-separation arc software-complete and QEMU-validated, iron burn pending (current version + size + syscall count in [`development/state.md`](../development/state.md))
 - **Repo**: `MacCracken/agnos`
 - **Multi-arch split** (v1.1.0): `kernel/arch/x86_64/`, `kernel/arch/aarch64/`, `kernel/core/`, `kernel/user/`
 - **Boot**: multiboot1; boots in QEMU via `make boot-test` from the genesis repo
@@ -181,7 +181,7 @@ The oldest hardware that can run AGNOS, by profile:
 ## Software Dependencies (Host Build)
 
 Building AGNOS from source requires:
-- **Cyrius toolchain** — version pinned in `scripts/.cyrius-toolchain`; install from release tarball or build from source (`cyrius` repo)
+- **Cyrius toolchain** — version pinned in `scripts/cyrius.cyml` (the `cyrius = "<version>"` field); install from release tarball or build from source (`cyrius` repo)
 - **QEMU** — `qemu-system-x86_64` (≥ 7.0) for `make boot-test`
 - **GNU Make** — `make boot`, `make iso-check`, `make boot-test`
 

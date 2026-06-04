@@ -15,7 +15,7 @@ Security updates are provided for the following versions:
 
 ## Notable Hardening — Structural Immunity
 
-The AGNOS-native kernel (`agnos` v1.26.1, 248KB, 26 syscalls) is **structurally immune** to **CVE-2026-31431** (Linux LPE in `algif_aead`/AF_ALG via `splice()`, disclosed 2026-04-29). The 26-syscall AGNOS table exposes no `socket`, no `splice`, no AF_ALG family — the bug class is unreachable. Verified at `agnos/kernel/core/syscall.cyr:32-36`.
+The AGNOS-native kernel is **structurally immune** to **CVE-2026-31431** (Linux LPE in `algif_aead`/AF_ALG via `splice()`, disclosed 2026-04-29). The sovereign AGNOS syscall table exposes no `socket`, no `splice`, no AF_ALG family — the bug class is unreachable. This is a durable property of the *shape* of the surface, not its size: the table has grown (26 → 34 calls) as the kernel matured and the immunity holds regardless, which is why this section anchors on the absent families rather than a count that drifts. Verified in `agnos/kernel/core/syscall.cyr`; live syscall count + kernel size in [`docs/development/state.md`](docs/development/state.md).
 
 This is the canonical example of the **absence-by-design** security pattern: the kernel doesn't *patch* the vulnerability, doesn't *contain* the vulnerable subsystem — whole categories of Linux kernel CVEs become structurally inapplicable. Linux host defconfigs in this repo (`kernel/{6.6-lts,6.x-stable,7.0-devel}/configs/` and `kernel/configs/edge-*.config`) pin `# CONFIG_CRYPTO_USER_API{,_HASH,_SKCIPHER,_AEAD,_RNG} is not set` to remove the equivalent surface from host kernels used in the bootstrap path. See [`docs/development/state.md` § CVE-2026-31431](docs/development/state.md#cve-2026-31431-copy-fail-cleanup--audit) for current sweep status.
 

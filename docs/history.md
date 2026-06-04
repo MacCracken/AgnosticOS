@@ -1,6 +1,6 @@
 # AGNOS — Project History & Timeline
 
-> **Status**: Active | **Last Updated**: 2026-05-31
+> **Status**: Active | **Last Updated**: 2026-06-04
 
 ---
 
@@ -49,7 +49,7 @@ AGNOS went from initial commit to first bootable ISO in **39 days** (2026-02-11 
 
 From first commit to sovereign self-hosting language with its own kernel in **53 days** (2026-02-11 to 2026-04-04).
 
-The Cyrius language went from nothing to a self-hosting compiler with a kernel in **one day** (2026-04-04), and through major-version cuts (1.0 → 2.0 → 3.0 → 4.0 → 5.0) reaching the v5.x stdlib-foldin cycle (sandhi v5.7.0, vani v5.8.0, niyama v5.9.0) by week 12, then the **REAL TYPE SYSTEM arc** at v5.10.x (24 patches in 2 days). The AGNOS kernel hardened from 143KB (with 14 buffer overflows — "The 143KB Lie") through 220KB (v1.21.0) → 260KB (v1.22.0) → 248KB (v1.26.1, current). 30+ subsystems ported from Rust to Cyrius, each measured against its Rust predecessor.
+The Cyrius language went from nothing to a self-hosting compiler with a kernel in **one day** (2026-04-04), and through major-version cuts (1.0 → 2.0 → 3.0 → 4.0 → 5.0) reaching the v5.x stdlib-foldin cycle (sandhi v5.7.0, vani v5.8.0, niyama v5.9.0) by week 12, then the **REAL TYPE SYSTEM arc** at v5.10.x (24 patches in 2 days). The AGNOS kernel hardened from 143KB (with 14 buffer overflows — "The 143KB Lie") through 220KB (v1.21.0) → 260KB (v1.22.0) → 248KB (v1.26.1), then past 1 MB through the 1.3x–1.4x storage / networking / filesystem / exec-from-disk / shell-separation arcs (live size in [state.md](development/state.md)). 30+ subsystems ported from Rust to Cyrius, each measured against its Rust predecessor.
 
 The shared crate ecosystem now spans 80+ crates (most at v1.0+ stable), with 19+ consumer applications developed in parallel. Live counts and per-repo versions in [`development/state.md`](development/state.md) and [`development/planning/shared-crates.md`](development/planning/shared-crates.md).
 
@@ -92,8 +92,9 @@ The shared crate ecosystem now spans 80+ crates (most at v1.0+ stable), with 19+
 | **W5 demo→base iron burn PASS** (Attempt 91 / agnos 1.33.1) — `persist.txt` survives reboot on unmodified default `mkfs.ext4`; **demo→base maturity exit on real NAND**. `fsync` FLUSH-CACHE barrier at 1.33.5 | 2026-05-26 | 104 |
 | **FAT-family arc COMPLETE** (1.34.0–1.34.6 across FAT12/16/32 + exFAT read+write + LFN + dir growth + Unicode names + ESP-write guard; `fsck`-clean in QEMU). **1.35.x networking-comms arc COMPLETE** (DNS + ICMP + TCP hardening B0-B4 + NTP + anonymous mmap/munmap + RTC boot clock + DNS cache + arc-close hardening). **1.36.x refactor cycle COMPLETE** (net.cyr split, main.cyr selftest extraction). **1.37.x ext4 extent-allocation arc OPENS** | 2026-05-27 | 105 |
 | **Iron Attempt 1373 PASS — ext4 extent allocation iron-validated** (agnos 1.37.3 depth-2 PASS + e2fsck-clean on real NVMe). **1.37.5 arc-close: kashi 0.6.0 vendored into kernel** (retires inline glyph tables). **kashi v1.0.0 API freeze** later same day. **1.38.x JBD2 journaling arc COMPLETE in a single day** — 9 bites: probe → probe-deepen → log reader → replay → lifecycle → write path → integration → crash smoke → hardening + iron-burn audit. AGNOS now both *consumes* Linux-left journals AND *produces* its own; sync-checkpoint with 3 FLUSH-CACHE barriers; `jbd2-crash-smoke.sh` 4/4 e2fsck-clean across SIGKILL points | 2026-05-28 | 106 |
-| **JBD2 crash-safe journaling iron-validated** (13810 burn — CSUM_V3 write-side commit + 100-tx crash stress + mid-cycle power-cut recovery, host `e2fsck -fn` clean throughout). **1.39.x VFS generic-write lift COMPLETE** (FAT/exFAT shell verbs + subdir paths + mount-namespace routing). | 2026-05-30 | 107 |
-| **🎯 exec-from-disk iron-validated — base-maturity exec leg closed on real Zen** (1409 burn: `/bin/prog2` + `/bin/argv` run in ring 3, `run: exit 42`/`90`). The `14013_final*` burn validated the whole 1.40.x arc in one boot — exec (1.40.9) + scheduler-reset fix (1.40.10) + boot-stack relocation (1.40.12) + VFS mount routing (1.40.13): FAT shell verbs pass with ext2 at `/`, clean boot past scheduler to kybernet. **1.40.14 process teardown/reaping.** **1.41.0 shell-separation arc OPENS** (interactive shell → userland `agnoshi`; cyrius-gated `CYRIUS_TARGET_AGNOS` syscall-ABI prereq). | 2026-05-31 | 108 |
+| **JBD2 crash-safe journaling iron-validated** (13810 burn — CSUM_V3 write-side commit + 100-tx crash stress + mid-cycle power-cut recovery, host `e2fsck -fn` clean throughout). **1.39.x VFS generic-write lift COMPLETE** (FAT/exFAT shell verbs + subdir paths + mount-namespace routing). | 2026-05-30 | 108 |
+| **🎯 exec-from-disk iron-validated — base-maturity exec leg closed on real Zen** (1409 burn: `/bin/prog2` + `/bin/argv` run in ring 3, `run: exit 42`/`90`). The `14013_final*` burn validated the whole 1.40.x arc in one boot — exec (1.40.9) + scheduler-reset fix (1.40.10) + boot-stack relocation (1.40.12) + VFS mount routing (1.40.13): FAT shell verbs pass with ext2 at `/`, clean boot past scheduler to kybernet. **1.40.14 process teardown/reaping.** **1.41.0 shell-separation arc OPENS** (interactive shell → userland `agnoshi`; cyrius-gated `CYRIUS_TARGET_AGNOS` syscall-ABI prereq). | 2026-05-31 | 109 |
+| **Shell-separation arc software-complete (agnos 1.41.1 → 1.41.11)** — the interactive shell left the kernel: `kybernet` now execs `/bin/agnsh` in ring 3, and the in-kernel shell shrank to a recovery-only REPL (`shell.cyr` 1149 → 813 LOC at 1.41.9). The `CYRIUS_TARGET_AGNOS` leap (pin 6.0.14 → 6.0.56 at 1.41.4) landed `args_agnos`/`process_agnos` so `agnsh` could run; FS syscall group (getdents/unlink/rename/link/stat) brought the surface to 0-33 (34 calls) at 1.41.3. **Permanent kernel↔userland boundary locked.** QEMU-validated (sweep.sh 7/7, fssys ALL PASS, shsys ALL PASS, agnsh-smoke PASS, check.sh 11/11); current build size + per-repo versions in [`development/state.md`](development/state.md). **Iron burn PENDING** (first hardware validation of the arc staged at `iron-nuc-zen-log.md` [#tracker-141x-cycle], A1-A4 rubric; not yet booted on real hardware). | 2026-06-04 | 113 |
 | **Target: Closed beta cut** | **early June 2026** | ~115 |
 
 ---
@@ -114,4 +115,4 @@ Four renames total across four language-major transitions. The `cc5` → `cycc` 
 
 ---
 
-*Last Updated: 2026-05-31*
+*Last Updated: 2026-06-04*

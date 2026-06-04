@@ -1,6 +1,6 @@
 # AGNOS — Project Timeline
 
-> **Status**: Active | **Last Updated**: 2026-05-31
+> **Status**: Active | **Last Updated**: 2026-06-04
 >
 > All dates verified from git commit history (`git log --format="%ai"`).
 > Times are Pacific (PT).
@@ -160,6 +160,7 @@
 | **2026-05-28** | 107 | **Iron Attempt 1373 PASS — ext4 extent allocation iron-validated** at 1.37.3 (depth-2 PASS + e2fsck-clean on real NVMe). **1.37.5 arc-close: kashi 0.6.0 vendored into kernel** (retires inline VGA 8x16 tables in `fb_console.cyr`; consumes via `[deps.kashi]`). **kashi v1.0.0 (API freeze)** later same day. **1.38.x JBD2 journaling arc COMPLETE in a single day** — 9 bites (probe / probe-deepen / log reader / replay / lifecycle / write path / integration / crash smoke / hardening + iron-burn audit). AGNOS now both *consumes* Linux-left journals AND *produces* its own; sync-checkpoint with 3 FLUSH-CACHE barriers; `jbd2-crash-smoke.sh` 4/4 e2fsck-clean across SIGKILL points | `agnos/CHANGELOG.md` `[1.37.x]` / `[1.38.x]`, `iron-nuc-zen-log` tracker 1373, `kashi/CHANGELOG.md` `[1.0.0]` |
 | **2026-05-30** | 108 | **JBD2 crash-safe journaling iron-validated** (13810 burn — CSUM_V3 write-side commit + 100-tx crash stress + mid-cycle power-cut recovery; host `e2fsck -fn` clean throughout). **1.39.x VFS generic-write lift COMPLETE** — FAT/exFAT shell verbs + subdir paths, capped by 1.40.13 mount-namespace routing | `agnos/CHANGELOG.md` `[1.38.10]`–`[1.39.9]`, `iron-nuc-zen-log` 13810 burn |
 | **2026-05-31** | 109 | **🎯 exec-from-disk iron-validated — base-maturity exec leg closed on real Zen** (1409 burn: `/bin/prog2` + `/bin/argv` ring-3, exit 42/90). `14013_final*` burn validated the whole 1.40.x arc in one boot — exec + scheduler-reset fix + boot-stack relocation + VFS mount routing; FAT shell verbs pass with ext2 at `/`, clean boot past scheduler to kybernet. **1.40.14 process teardown/reaping.** **1.41.0 shell-separation arc OPENS** (interactive shell → userland `agnoshi`; cyrius-gated `CYRIUS_TARGET_AGNOS` ABI prereq) | `agnos/CHANGELOG.md` `[1.40.x]`–`[1.41.0]`, `iron-nuc-zen-log` 1409/14013 burns |
+| **2026-05-31 → 2026-06-04** | 109–113 | **Shell-separation arc software-complete** across 1.41.1 → 1.41.11. FS syscalls land (getdents 29 / unlink 30 / rename 31 / link 32 / stat 33 — surface now 0–33) at **1.41.3**; **boot-to-`agnsh`** ring-3 userland shell at **1.41.4** (cyrius pin leaps 6.0.14 → 6.0.56 to land `lib/args_agnos.cyr` + `lib/process_agnos.cyr` under `CYRIUS_TARGET_AGNOS`); syscall-ingress hardening at **1.41.5**; kernel shell shrinks to a recovery-only REPL at **1.41.9** (`shell.cyr` 1149 → 813 LOC, −336); **software-complete at 1.41.11** (build 1,070,720 B). QEMU-green (`sweep.sh` 7/7, `fssys` ALL PASS, `shsys` ALL PASS, `agnsh-smoke` PASS, `check.sh` 11/11) — **iron burn PENDING** (A1–A4 rubric staged at `iron-nuc-zen-log` `#tracker-141x-cycle`; not yet booted on real hardware) | `agnos/CHANGELOG.md` `[1.41.1]`–`[1.41.11]`, `iron-nuc-zen-log` `#tracker-141x-cycle` |
 
 ### Pace
 
@@ -169,8 +170,9 @@
 - **Cyrius era week 5** (May 7–9, 3 days): v5.9.x close (44 patches; consumer-rollup catchup; aegis graduates; darshana extracted) → v5.10.x REAL TYPE SYSTEM arc opens (24 patches in 2 days)
 - **Iron-boot week 6** (May 13–18, 5 days): GRUB MB2-EFI W^X blocker → Path-C sovereign UEFI ladder → Attempt 28 MVP spine → Attempt 68 typeable-shell MVP gate (9 xhci silent-absorb letters + 19 attempts closed by cyrius v5.11.64)
 - **Arc-series surge** (May 19–31, 13 days): cyrius v6.0.0 + binary renames → kashi extracted → storage (1.31.x) → networking (1.32.x) → ext2/4 WRITE (1.33.x) → FAT-family (1.34.x) → networking-comms (1.35.x) → refactor ops (1.36.x) → extent allocation (1.37.x) + kashi fold-in + kashi v1.0 → JBD2 journaling (1.38.x) → VFS generic-write lift (1.39.x) → exec-from-disk (1.40.x) → shell-separation arc opens (1.41.0). **11 minor arcs in 13 days**; the FS-crash-safe (1.37–1.39) + exec-from-disk (1.40.x) base-maturity legs both iron-validated on real Zen.
+- **Shell-separation arc** (May 31 – Jun 4, ~5 days): 1.41.1 → 1.41.11 — FS syscalls (surface 0–33) → boot-to-`agnsh` ring-3 userland shell (cyrius pin 6.0.14 → 6.0.56) → ingress hardening → kernel shell shrunk to recovery-only REPL (`shell.cyr` 1149 → 813 LOC). **Software-complete + QEMU-validated; iron burn PENDING** (`#tracker-141x-cycle`) — has not yet booted on real hardware.
 - **Language versions in ~16 weeks**: 1.0 → 2.0 → 3.0 → 4.0 → 5.0 → 5.5.x → 5.6.x → 5.7.x → 5.8.x → 5.9.x → 5.10.x → 5.11.x → 6.0.x
 
 ---
 
-*All timestamps from `git log` or canonical CHANGELOG/state.md sources. No estimates, no approximations. Last updated 2026-05-31.*
+*All timestamps from `git log` or canonical CHANGELOG/state.md sources. No estimates, no approximations. Last updated 2026-06-04.*

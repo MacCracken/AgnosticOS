@@ -2,7 +2,7 @@
 
 > **Last Updated**: 2026-03-07
 >
-> **Fossil notice (2026-04-14, links flagged 2026-05-25):** These benchmarks are from the Rust era. Cyrius port receipts (with comparative benchmarks) live in each repo's `docs/benchmarks-rust-v-cyrius.md`. See the port receipts in memory/MEMORY.md for the summary ratios. **All `userland/…` file paths below are dead by design** — the monolith was extracted into standalone repos on 2026-04-01; the links are historical and intentionally not repointed.
+> **Fossil notice (2026-04-14, links flagged 2026-05-25):** These benchmarks are from the Rust era. Cyrius port receipts (with comparative benchmarks) live in each repo's `docs/benchmarks-rust-v-cyrius.md`, and the **consolidated re-measurement is the Port Ledger**: [Vol 1](../../articles/port-ledger-volume-1.md) (frozen v5.5.4 baseline) · [Vol 2](../../articles/port-ledger-volume-2.md) (mid-arc) · [Vol 3](../../articles/port-ledger-volume-3.md) (6.0.x re-measurement — accreting, with per-port CSV-backed receipts). **All `userland/…` file paths below are dead by design** — the monolith was extracted into standalone repos on 2026-04-01; the links are historical and intentionally not repointed.
 
 ## Overview
 

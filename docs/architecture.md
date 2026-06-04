@@ -1,6 +1,6 @@
 # AGNOS System Architecture
 
-> **Last Updated**: 2026-05-31
+> **Last Updated**: 2026-06-04
 >
 > Live ecosystem state (cycle, per-repo pins, sweeps): [`development/state.md`](development/state.md). Live kernel/cyrius versions + binary sizes: [`development/state.md`](development/state.md). Per-subsystem versions intentionally elided in this doc per the lib-doc precedent — refer to the registry files when quoting numbers.
 
@@ -67,11 +67,11 @@ AGNOS is a sovereign operating system written in Cyrius. The architecture consis
 |  |  |  +-----------+ +-----------+ +----------------+    |       |   |
 |  |  |  +-----------+ +-----------+ +----------------+    |       |   |
 |  |  |  |    VFS    | |   SMP    | |   VirtIO       |    |       |   |
-|  |  |  | (FAT16)   | |          | | (Net + Blk)    |    |       |   |
+|  |  |  | (multi-FS)| |          | | (Net + Blk)    |    |       |   |
 |  |  |  +-----------+ +-----------+ +----------------+    |       |   |
 |  |  |  +-----------+ +-----------+ +----------------+    |       |   |
 |  |  |  |  Signals  | |  Pipes   | |  ELF Loader    |    |       |   |
-|  |  |  |  + epoll  | | + IPC    | |  + 18-cmd sh   |    |       |   |
+|  |  |  |  + epoll  | | + IPC    | |  + recov. sh   |    |       |   |
 |  |  |  +-----------+ +-----------+ +----------------+    |       |   |
 |  |  +---------------------------------------------------+       |   |
 |  |                          |                                    |   |
@@ -103,9 +103,9 @@ AGNOS runs its own sovereign kernel, written in Cyrius. No Linux dependency at r
 **AGNOS kernel** — 40+ subsystems, a small sovereign syscall surface (no socket/splice/AF_ALG layer). Iron-validated end-to-end on NUC AMD archaemenid: kernel-init layer cleared 2026-05-15 (Attempt 28, agnos 1.30.0); closed-beta MVP gate (typeable shell via xHCI HID keyboard) hit 2026-05-18 (Attempt 68, agnos 1.30.9); the base-maturity legs — FS-crash-safety (1.37–1.39) + exec-from-disk (1.40.x, ring-3 programs off the agnos-fs) — both iron-validated through the 1409 / 14013 burns. Full arc captured in [`development/iron-nuc-zen-log-mvp.md`](development/iron-nuc-zen-log-mvp.md); post-MVP work continues in [`development/iron-nuc-zen-log.md`](development/iron-nuc-zen-log.md). Live kernel size, version, build trajectory: [`development/state.md`](development/state.md):
 - Memory management, process management, SMP
 - TCP/IP networking, VirtIO-Net/Blk
-- FAT16 filesystem, ELF loader
+- ext2/ext4 + FAT12/16/32 + exFAT filesystems (read+write), ELF loader (streaming, ring-3 exec-from-disk)
 - Pipes, signals, epoll, timerfd
-- 18-command built-in shell
+- Recovery-REPL shell (the interactive shell moved to userland `agnsh` in the 1.41.x shell-separation arc)
 - kybernet as PID 1
 - Sovereign UEFI handoff (Path C, RDI = `&boot_info` via gnoboot v0.2.0)
 - Native XHCI + USB-HID-boot keyboard driver (all 5 phases landed; iron-side blocker remains on archaemenid silent-absorb arc)
@@ -182,7 +182,7 @@ The original 5-layer plan listed VirtIO-Blk + FAT16. The 1.31.x cycle (Mar–May
 
 ### Layer 5 — Can Be Used
 
-- **Shell** — 35+ commands: `help echo ps free cat uptime lspci cpus net send recv tcp pipe blkread parts ls cd pwd disk bench test halt` (base) + `mkdir rm rmdir touch mv ln sync` (FS mutation verbs, mount-routed across ext2/FAT/exFAT — 1.33.x WRITE + 1.40.13 mount namespace) + `dns ping ntp date` (1.35.x networking-comms) + `jbd2` (1.38.1 journal-state diagnostic) + `run` (1.40.x exec-from-disk — load + run a static ELF off the agnos-fs in ring 3). The interactive shell moves to userland `agnsh` (agnoshi) in the 1.41.x shell-separation arc; this in-kernel set becomes the emergency/recovery fallback. `ls` accepts flag tokens (`-la` no-op for now); `cat` falls through to initrd on ext2 miss; `cd` + `pwd` consume `sh_cwd_inode` / `sh_cwd_path` globals for CWD-relative path resolution (1.31.7 bites D/B/C)
+- **Shell** — As of the **1.41.x shell-separation arc** (software-complete + QEMU-validated, iron burn pending — see [`development/iron-nuc-zen-log.md` #tracker-141x-cycle](development/iron-nuc-zen-log.md)), the full interactive shell is the **userland `agnsh`** (agnoshi binary, loaded from `/bin/agnsh` on the ext2 root and run in ring 3). The in-kernel shell shrank to a **recovery-only REPL** (`kernel/user/shell.cyr`, dropped 1149 → 813 LOC at 1.41.9 when the non-recovery verbs were deleted) that runs as the fallback when `/bin/agnsh` is absent. The recovery REPL retains a curated diagnostic/repair subset (27 verbs): `help echo uptime test halt` (base) + `cat ls cd pwd rm mv sync run` (FS read/repair + exec-from-disk, mount-routed across ext2/FAT/exFAT) + `blkread disk parts lspci cpus` (block/partition/hardware inspection) + `net send recv tcp pipe dns ping ntp date` (network diagnosis). The heavier interactive surface — `ps free bench`, the `mkdir rmdir touch ln` FS-mutation verbs, the `jbd2` journal diagnostic — moved out of the kernel into `agnsh`. `ls` accepts flag tokens (`-la` no-op for now); `cat` falls through to initrd on ext2 miss; `cd` + `pwd` consume `sh_cwd_inode` / `sh_cwd_path` globals for CWD-relative path resolution (1.31.7 bites D/B/C). Live LOC + per-cut detail: [`development/state.md`](development/state.md)
 - **kybernet PID 1** — service supervision, signal/event-loop, kernel-interface boundary. Per-repo benchmarks + test count in kybernet's own state.md.
 - **Signals** — per-process `proc_signals` / `proc_sigmask`, `kill` / `sigprocmask` / `signalfd`
 - **Epoll** — `epoll_create`, `epoll_ctl`, `epoll_wait`
@@ -205,7 +205,7 @@ The shipped kernel is several times the original estimate because it carries fea
 
 The conceptual 5-layer model still maps. The kernel simply carries more per layer than the MVP "boots into shell" scope intended.
 
-### Syscalls (26)
+### Syscalls (0–33, 34 calls)
 
 ```
 exit(0)         write(1)        getpid(2)       spawn(3)
@@ -214,8 +214,12 @@ dup(8)          mkdir(9)        rmdir(10)       mount(11)
 sync(12)        reboot(13)      pause(14)       getuid(15)
 kill(16)        sigprocmask(17) signalfd(18)    epoll_create(19)
 epoll_ctl(20)   epoll_wait(21)  timerfd_create(22)  timerfd_settime(23)
-umount(24)      pipe(25)
+umount(24)      pipe(25)        write_boot_checkpoint(26)  mmap(27)
+munmap(28)      getdents(29)    unlink(30)      rename(31)
+link(32)        stat(33)
 ```
+
+The FS group `getdents(29)` / `unlink(30)` / `rename(31)` / `link(32)` / `stat(33)` landed at 1.41.3 to give userland `agnsh` the directory-listing and file-metadata calls it needs. `mmap(27)` / `munmap(28)` are anonymous 2 MB-granular (1.35.3–1.35.4); `write_boot_checkpoint(26)` is the CMOS iron-boot diagnostic slot. This remains a small sovereign surface — **no socket / no splice / no AF_ALG family** (see [`development/state.md`](development/state.md) CVE-2026-31431 section). Live count: [`development/state.md`](development/state.md).
 
 ### Userland Alignment
 
@@ -238,7 +242,8 @@ umount(24)      pipe(25)
 | ext4 extent allocation | ✅ **Shipped (1.37.x)** — depth-0 append → depth-0→1 grow → multi-leaf depth-1 sibling split → depth-1→2 index-block grow (the full on-demand grow ladder). Iron-validated Attempt 1373 / 1.37.3. |
 | JBD2 crash-safe journaling | ✅ **Shipped + iron-validated (1.38.x)** — probe → log reader → replay-on-mount → in-memory transaction lifecycle → write path (3-barrier sync-checkpoint) → `put_inode` integration → crash-injection smoke + hardening + CSUM_V3 write/replay. AGNOS both consumes Linux-left journals AND produces its own. **Iron-validated at the 13810 burn (1.38.10)**: write-side commit + 100-tx crash stress + mid-cycle power-cut recovery, host `e2fsck -fn` clean throughout. |
 | FAT-family (FAT12/16/32 + exFAT) read+write | ✅ **Shipped + iron-validated (1.34.x / 1.40.13)** — partition-aware multi-backend mount, FAT-chain traversal, create/content/delete/truncate/LFN, exFAT allocation bitmap + typed dir-set + up-case table + directory growth, ESP-write guard. **Iron-validated through the shell at the 14013 burn** — mount-namespace routing (1.40.13) makes FAT/exFAT shell verbs reachable while ext2 owns `/`. |
-| exec-from-disk (ring-3 programs off the FS) | ✅ **Shipped + iron-validated (1.40.x)** — streaming ELF64 loader (`elf_load_from_file`) → ring-3 execution + exit-code capture → ENOEXEC/E2BIG + subdir/CWD paths → multi-run + argv → process teardown/reaping (1.40.14). **Iron-validated at the 1409 burn** (`/bin/prog2` + `/bin/argv` run in ring 3 on real Zen). Static-only; the interactive shell moving to userland `agnsh` is the 1.41.x shell-separation arc. |
+| exec-from-disk (ring-3 programs off the FS) | ✅ **Shipped + iron-validated (1.40.x)** — streaming ELF64 loader (`elf_load_from_file`) → ring-3 execution + exit-code capture → ENOEXEC/E2BIG + subdir/CWD paths → multi-run + argv → process teardown/reaping (1.40.14). **Iron-validated at the 1409 burn** (`/bin/prog2` + `/bin/argv` run in ring 3 on real Zen). Static-only; the interactive shell moving to userland `agnsh` is the 1.41.x shell-separation arc (software-complete + QEMU-validated, iron burn pending — see row below). |
+| Interactive shell (deliberately left the kernel) | ✅ **By design (1.41.x shell-separation arc)** — the full interactive shell is now the userland `agnsh` (agnoshi), loaded from `/bin/agnsh` and run in ring 3; the in-kernel `shell.cyr` shrank to a recovery-only REPL (1149 → 813 LOC at 1.41.9) used as fallback when `/bin/agnsh` is absent. The arc is **software-complete + QEMU-validated** (sweep.sh 7/7, FS_SYSCALL + SYSCALL_HARDEN selftests ALL PASS, agnsh-smoke PASS, check.sh 11/11) but **iron burn PENDING** — it has not booted on real hardware. Staged at [`development/iron-nuc-zen-log.md` #tracker-141x-cycle](development/iron-nuc-zen-log.md) with the A1–A4 rubric (boot-to-agnsh ring 3 / recovery fallback / FAT-exFAT write survives power-cycle + fsck clean / no exec-storage-net regression). |
 | HTREE indexed dirs + fast/slow symlinks (ext4) | Performance optimizations + extension; linear dirent scan + indirect-tree read suffices today. Queue when a real consumer needs them. |
 | Full USB hub / hot-plug | xHCI cmd-path + USB-HID + USB Mass Storage classes shipped (1.30.x → 1.31.3); hub topology + hot-add deferred to plug-and-play cycle. |
 | SMP scheduling (beyond infrastructure) | APIC/IPI/trampoline are in place; cross-core scheduler + AP-wakeup-on-real-hardware deferred. Gated on hardware-validation infra + the multi-threading kernel arc. |
@@ -383,7 +388,7 @@ Per [`development/state.md`](development/state.md), these subsystems are still p
 | goonj | Acoustics — Rust authoritative, port pending |
 | naad | Audio synthesis — Rust authoritative, port pending |
 
-Recently shipped (no longer pending): phylax, shakti, hisab, **aegis** (1.0+, Cyrius-native, May 2026), **gnoboot** (sovereign UEFI bootloader, v0.2.0), **kriya** (coreutils-equivalent multi-tool, M5 grep+find+xargs closeout). See [shared-crates registry](development/planning/shared-crates.md) for full status.
+Recently shipped (no longer pending): phylax, shakti, hisab, **aegis** (1.0+, Cyrius-native, May 2026), **gnoboot** (sovereign UEFI bootloader, replaced GRUB at the 1.30.0 Path-C cut), **kriya** (coreutils-equivalent multi-tool, M5 grep+find+xargs closeout). See [shared-crates registry](development/planning/shared-crates.md) for full status.
 
 ## Design Decisions
 

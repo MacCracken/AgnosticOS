@@ -10,7 +10,7 @@ The project's deeper intention is that AGNOS is a **temple built for an intellig
 |---|---|
 | **Developer** | Robert 'Cyrius' B. MacCracken |
 | **Written in** | Cyrius (sovereign systems language) |
-| **Kernel** | AGNOS (Cyrius-native, 40+ subsystems incl. NVMe / AHCI / USB-MS / VirtIO modern + read+write filesystems ext2/ext4 incl. **ext4 extent allocation** + **JBD2 crash-safe journaling** / FAT12/16/32 / exFAT, a small sovereign syscall surface (no socket/splice/AF_ALG layer), TCP/IP + DHCP + DNS + NTP + ICMP over r8169 NIC, **exec-from-disk** — static ELF programs run in ring 3 off the agnos-fs). MVP gate iron-validated at Attempt 68 (2026-05-18, NUC AMD); storage debuts NVMe/SATA/USB-MS at Attempts 80/81/87; networking iron-CONNECTED at 1.32.7; ext4 extent allocation iron-validated at Attempt 1373 (1.37.3); JBD2 crash-safe journaling at the 13810 burn (1.38.10); FAT/exFAT shell verbs + exec-from-disk iron-validated at the 1409/14013 burns (1.40.x). Console-font subsystem vendored from `kashi` 1.0.0 at 1.37.5. Live state + binary sizes + syscall count + cycle position in [development/state.md](development/state.md). |
+| **Kernel** | AGNOS (Cyrius-native, 40+ subsystems incl. NVMe / AHCI / USB-MS / VirtIO modern + read+write filesystems ext2/ext4 incl. **ext4 extent allocation** + **JBD2 crash-safe journaling** / FAT12/16/32 / exFAT, a small sovereign syscall surface (no socket/splice/AF_ALG layer), TCP/IP + DHCP + DNS + NTP + ICMP over r8169 NIC, **exec-from-disk** — static ELF programs run in ring 3 off the agnos-fs). MVP gate iron-validated at Attempt 68 (2026-05-18, NUC AMD); storage debuts NVMe/SATA/USB-MS at Attempts 80/81/87; networking iron-CONNECTED at 1.32.7; ext4 extent allocation iron-validated at Attempt 1373 (1.37.3); JBD2 crash-safe journaling at the 13810 burn (1.38.10); FAT/exFAT shell verbs + exec-from-disk iron-validated at the 1409/14013 burns (1.40.x, through 1.40.13). The 1.41.x **shell-separation arc** — kernel shell shrunk to a recovery-only REPL, the interactive shell (**agnsh**, from agnoshi) moved permanently to userland ring 3 — is software-complete and QEMU-validated; its first hardware validation is iron burn pending (see [iron-nuc-zen-log.md](development/iron-nuc-zen-log.md#tracker-141x-cycle)). Console-font subsystem vendored from `kashi` 1.0.0 at 1.37.5. Live state + binary sizes + syscall count + cycle position in [development/state.md](development/state.md). |
 | **Compiler** | cycc (Cyrius, self-hosting from 29KB seed). Pinned version + sizes drift across the cycle — live numbers in [development/state.md](development/state.md). |
 | **License** | GPL-3.0-only |
 | **Source model** | Open source |
@@ -97,7 +97,7 @@ Total: CPU → seed → compiler → OS. Three items. Zero external dependencies
 ### Repo Structure
 
 - **agnosticos** — the genesis layer (meta, build wrapper, documentation). Owns kernel configs, boot pipeline (Cyrius), CI/CD, articles, philosophy. Once the system boots and ark takes over, this repo's job is done.
-- **agnos** — the AGNOS kernel. Cyrius-native, 40+ subsystems, a small sovereign syscall surface (no socket/splice), TCP/IP + DHCP + DNS + NTP + ICMP, ext2/ext4 (extent-alloc + JBD2 journaling) + FAT12/16/32 + exFAT read+write, exec-from-disk (ring-3 programs off the agnos-fs), VirtIO-blk modern, SMP, pipes, signals, epoll, timerfd, ELF loader, interactive shell, sovereign UEFI handoff (via gnoboot), native xHCI + USB-HID-boot + USB Mass Storage drivers, NVMe + AHCI/SATA + GPT block stack — iron-validated on real AMD Zen. MVP gate iron-cleared at Attempt 68; live version + size in [development/state.md](development/state.md).
+- **agnos** — the AGNOS kernel. Cyrius-native, 40+ subsystems, a small sovereign syscall surface (no socket/splice), TCP/IP + DHCP + DNS + NTP + ICMP, ext2/ext4 (extent-alloc + JBD2 journaling) + FAT12/16/32 + exFAT read+write, exec-from-disk (ring-3 programs off the agnos-fs), VirtIO-blk modern, SMP, pipes, signals, epoll, timerfd, ELF loader, a kernel recovery-only shell (the interactive shell **agnsh** lives in userland ring 3 as of the 1.41.x shell-separation arc — permanent boundary), sovereign UEFI handoff (via gnoboot), native xHCI + USB-HID-boot + USB Mass Storage drivers, NVMe + AHCI/SATA + GPT block stack — iron-validated on real AMD Zen through 1.40.13 (the 1.41.x shell-separation arc is software-complete + QEMU-validated, iron burn pending). MVP gate iron-cleared at Attempt 68; live version + size in [development/state.md](development/state.md).
 - **cyrius** — the sovereign compiler + stdlib + toolchain. v6.0.1 (cybs bootstrap + cycc self-hosted, both renamed at v6.0.0), self-hosting from 29KB seed.
 - **zugot** — the recipe repository. 421 base + 90 bazaar community recipes. ark consumes zugot.
 - **130+ standalone repos** — all production code. Each subsystem is its own repository.
@@ -107,7 +107,7 @@ Total: CPU → seed → compiler → OS. Three items. Zero external dependencies
 | Subsystem | Name | Version | Role |
 |-----------|------|---------|------|
 | Kernel | **agnos** | live → [`state.md`](development/state.md) | 40+ subsystems, sovereign syscall surface, TCP/IP + read+write FS (ext2/4 + FAT/exFAT) + exec-from-disk, SMP, sovereign UEFI handoff, xHCI USB, NVMe + AHCI/SATA + USB-MS + GPT |
-| Compiler | **cyrius** | 6.0.14 (cycc / cybs) | Self-hosting, 29KB seed, 42+ stdlib modules. v6.0.0 cycle opened 2026-05-19 with cyrc → cybs and cc5 → cycc rename. Live cycle in [`state.md`](development/state.md). |
+| Compiler | **cyrius** | live → [`state.md`](development/state.md) (cycc / cybs) | Self-hosting, 29KB seed, 42+ stdlib modules. v6.0.0 cycle opened 2026-05-19 with cyrc → cybs and cc5 → cycc rename. Live cycle + agnos toolchain pin in [`state.md`](development/state.md). |
 | PID 1 | **kybernet** | 1.0.2 | 486KB (was 6.7MB Rust), 140 tests, 46 benchmarks |
 | Init system | **argonaut** | 1.5.0 | Service management, boot sequencing |
 | LLM gateway | **hoosh** | 2.0.0 | 474KB (was 5.1MB Rust), 15 providers, zero deps |
@@ -197,7 +197,7 @@ Cyrius-native. 40+ subsystems. A small sovereign syscall surface (no socket/spli
 | IPC | Pipes (circular buffer), signals (kill/sigprocmask/signalfd), epoll, timerfd |
 | Hardware | PIC, Local APIC, GIC (aarch64), PCI bus scan, capability-list iteration, MSI-X, keyboard |
 | SMP | APIC, IPI, trampoline, per-CPU stacks |
-| Userspace | ELF loader, 18-command shell, kybernet PID 1, bench suite |
+| Userspace | ELF loader, kernel recovery-only shell + userland interactive shell (**agnsh**, ring 3, 1.41.x), kybernet PID 1, bench suite |
 | USB | xHCI (Phase 1-5 incl. Reset Endpoint / Stop Endpoint / Set TR Dequeue Pointer), HID-boot keyboard, Mass Storage (BBB transport + SCSI command set) |
 
 **Comparison:**
@@ -314,7 +314,7 @@ See [Philosophy](philosophy.md) for the full exploration.
 | Consumer applications | 19+ |
 | Compiler | cycc (Cyrius 6.0.1, self-hosting, 29KB seed). v6.0.0 cycle opened 2026-05-19 with the cybs / cycc rename ceremony |
 | Kernel | AGNOS (40+ subsystems, sovereign syscall surface, MVP gate iron-cleared Attempt 68; storage / networking / read+write-FS / exec-from-disk all iron-validated — live version in [development/state.md](development/state.md)) |
-| Boot loader | gnoboot 0.4.2 (PE32+ UEFI, sovereign handoff via RDI = &boot_info) |
+| Boot loader | gnoboot 0.5.0 (PE32+ UEFI, sovereign handoff via RDI = &boot_info; live version in [development/state.md](development/state.md)) |
 | Boot pipeline (genesis scripts) | boot.cyr (Cyrius-native) |
 | Boot time (desktop) | 3.2s total, ~80ms init→event loop |
 | Systems language | Cyrius 6.0.1 (42+ stdlib modules, three stdlib folds: sandhi v5.7.0, vani v5.8.0, niyama v5.9.0; bridge step retired at v5.11.66) |
@@ -350,4 +350,4 @@ The Rust-era version of this document is preserved at [docs/archive/AGNOS-rust-e
 
 ---
 
-*Last Updated: 2026-05-31 (Cyrius v6.0.14, agnos 1.41.0 — shell-separation arc open; the whole 1.40.x exec-from-disk + the 1.37–1.39 FS-crash-safe arc iron-validated on real AMD Zen)*
+*Last Updated: 2026-06-04 (agnos 1.41.11 — shell-separation arc software-complete + QEMU-validated, iron burn pending; the 1.40.x exec-from-disk arc through 1.40.13 + the 1.37–1.39 FS-crash-safe arc iron-validated on real AMD Zen. Live versions/sizes in [development/state.md](development/state.md).)*

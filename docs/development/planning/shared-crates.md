@@ -1,15 +1,15 @@
 # Shared Crates — Registry & Status
 
-> **Status**: Active | **Last Updated**: 2026-05-26 (cyrius-polyomino 0.1.0 scaffold added — IP-clear falling-block puzzle)
+> **Status**: Active | **Last Updated**: 2026-06-04 (**full version + membership reconciliation against the VERSION files.** (1) **Plain-format rows synced** — 17 bumps incl. sigil 3.7.2 / kavach 3.4.0 / libro 2.7.1 / avatara 2.7.0 / hisab 2.6.5 / mabda 3.0.1. (2) **Linked `[name](url)` rows synced** — 18 more (the prior sync had missed them), incl. agnos 1.41.11 / kybernet 1.3.3 / argonaut 1.8.2 / sandhi 1.4.1 / gnoboot 0.5.0 / cyrius-doom 0.27.5 / samvada 0.4.0 / yantra 0.6.2; **forward-only** (a stale local checkout can't downgrade the registry). (3) **Membership:** `agora` 1.0.0 added (BBS → v1.0+ Binaries); `hapi` 1.0.1 + `kii` 1.0.0 **graduated** pre-1.0 → v1.0+ Binaries; section counts updated (v1.0+ index 89→92, v1.0+ binaries 13→16, pre-1.0 binaries 11→9). **Residuals (flagged, not auto-fixed):** encom-hits registry 1.0.0 > local checkout 0.6.1 (left as-is — local likely behind GitHub); a few In-Progress rows are now ≥0.5.0 (yantra 0.6.2, darshana 0.5.3, sit 0.8.5) and belong in Near-Stable; `secureyeoman` (a Rust/TS product *consuming* AGNOS crates, AGPL) is intentionally not rowed here. Prior 2026-05-26: cyrius-polyomino 0.1.0 scaffold added.)
 >
-> **122 entries** — 91 at v1.0+ stable (76 libs + 14 binaries — `mihi` joined libs as system-info probe substrate; `iam` + `bannermanor` joined binaries — + **2 stdlib-folded**; aegis 1.0.0 graduated v5.10.x; **kriya 1.0.0** + **commandress 1.0.0** graduated 2026-05-18; **mihi 1.0.0 + iam 1.0.0** graduated 2026-05-20 morning; **bannermanor 1.0.0** graduated same day PM after CLI surface + CYML font format + default font set frozen as the v1.0 contract), 20 pre-1.0 libs, **12 pre-1.0 binaries/tools** (gnoboot 0.4.2 + **hapi 0.5.0** added 2026-05-20 PM; **kii 0.1.0** added 2026-05-22 — image→ANSI/ASCII converter, triple-layered name play: Hawaiian *image* + back-half of *a-scii* + functional convergence), 10 non-library (cyrius-polyomino added 2026-05-26; note: this headline count drifts — the Non-Library Projects table itself now holds 14 game rows), **2 planned** (krishi + prakriti + darshini — terminal-aesthetics quintet shipped 4 of 5 by 2026-05-20 PM; only darshini queued), plus the Audio I/O / Video Codec / GitHub-only sub-sections (overlap with the v1.0+/pre-1.0 counts above where applicable).
+> **123 entries** — 94 at v1.0+ stable (76 libs + 16 binaries — `mihi` joined libs as system-info probe substrate; `iam` + `bannermanor` joined binaries; **agora** + graduated **hapi** + **kii** added 2026-06-04 — + **2 stdlib-folded**; aegis 1.0.0 graduated v5.10.x; **kriya 1.0.0** + **commandress 1.0.0** graduated 2026-05-18; **mihi 1.0.0 + iam 1.0.0** graduated 2026-05-20 morning; **bannermanor 1.0.0** graduated same day PM after CLI surface + CYML font format + default font set frozen as the v1.0 contract), 20 pre-1.0 libs, **10 pre-1.0 binaries/tools** (gnoboot 0.5.0; **hapi 1.0.1 + kii 1.0.0 graduated to v1.0+ Binaries 2026-06-04**), 10 non-library (cyrius-polyomino added 2026-05-26; note: this headline count drifts — the Non-Library Projects table itself now holds 14 game rows), **2 planned** (krishi + prakriti + darshini — terminal-aesthetics quintet shipped 4 of 5 by 2026-05-20 PM; only darshini queued), plus the Audio I/O / Video Codec / GitHub-only sub-sections (overlap with the v1.0+/pre-1.0 counts above where applicable).
 >
 > **Classification rule**: pre-v1.0 crates are tracked in [`docs/development/planning/`](README.md). v1.0+ stable crates have their docs in [`docs/applications/libs/`](../../applications/libs/) (libraries) or [`docs/applications/`](../../applications/) (consumer apps).
 > See [First-Party Standards](first-party-standards.md) for versioning and publishing conventions.
 
 ---
 
-## v1.0+ Stable Index (89 entries)
+## v1.0+ Stable Index (92 entries)
 
 Full documentation for each library: [docs/applications/libs/](../../applications/libs/README.md). Consumer apps live one level up at [docs/applications/](../../applications/README.md).
 
@@ -19,37 +19,37 @@ Full documentation for each library: [docs/applications/libs/](../../application
 |-------|---------|--------|
 | aegis | 1.0.0 | Security daemon — graduated from pre-1.0 in the v5.10.x window |
 | agnosai | 1.1.0 | AI orchestration |
-| agnostik | 1.2.2 | Shared types & domain primitives (Cyrius, GitHub-release only) — foundation for all AGNOS crates |
-| agnosys | 1.2.7 | Kernel interface — Landlock, seccomp, syscall bindings (Cyrius, GitHub-release only) |
-| ai-hwaccel | 2.2.6 | GPU detection |
+| agnostik | 1.3.0 | Shared types & domain primitives (Cyrius, GitHub-release only) — foundation for all AGNOS crates |
+| agnosys | 1.3.2 | Kernel interface — Landlock, seccomp, syscall bindings (Cyrius, GitHub-release only) |
+| ai-hwaccel | 2.3.7 | GPU detection |
 | bote | 2.7.2 | MCP core (~5us/message, streamable HTTP) |
 | daimon | 1.2.3 | Agent orchestrator (144 MCP tools, GitHub-release only) |
-| hoosh | 2.0.0 | LLM gateway (15 providers) |
+| hoosh | 2.1.3 | LLM gateway (15 providers) |
 | ifran | 1.3.0 | LLM inference/training |
-| kavach | 3.2.1 | Sandbox execution |
-| libro | 2.6.3 | Cryptographic audit chain |
-| mabda | 3.0.0-rc.2 | GPU foundation |
+| kavach | 3.4.0 | Sandbox execution |
+| libro | 2.7.1 | Cryptographic audit chain |
+| mabda | 3.0.1 | GPU foundation |
 | majra | 2.4.4 | Queue/pub-sub |
 | mihi | 1.0.0 | System-info probe library (CPU / RAM / GPU / kernel / uptime / distro / hostname). Sanskrit-Hindi/Polynesian semantic lane (Maori: formal self-introduction ceremony). Substrate for iam, chakshu, and any tool that needs "tell me about this box." First of the 2026-05-20 v6.0.x graduations cut. |
 | nein | 1.5.1 | Programmatic nftables firewall |
-| patra | 1.9.4 | Structured storage & SQL — B+ tree, WAL (Cyrius-native) |
+| patra | 1.10.3 | Structured storage & SQL — B+ tree, WAL (Cyrius-native) |
 | phylax | 1.1.1 | Threat detection — YARA, entropy, magic bytes, ML |
-| sakshi | 2.2.4 | Tracing, error handling, structured logging (Cyrius-native) |
-| sankoch | 2.2.6 | Lossless compression — LZ4, DEFLATE, zlib, gzip |
-| sigil | 3.2.6 | Trust verification & crypto — AES-NI + SHA-NI hardware accel |
+| sakshi | 2.2.6 | Tracing, error handling, structured logging (Cyrius-native) |
+| sankoch | 2.3.0 | Lossless compression — LZ4, DEFLATE, zlib, gzip |
+| sigil | 3.7.2 | Trust verification & crypto — AES-NI + SHA-NI hardware accel |
 | soorat | 1.0.0 | GPU rendering |
 | stiva | — | Container runtime — **Rust-era scaffold; Cyrius port pending** (GitHub remote `MacCracken/stiva` last pushed 2026-04-29; no version pin until ported) |
 | szal | 1.1.0 | Workflow engine |
 | t-ron | 2.1.4 | MCP security |
 | vidya | 2.7.1 | Programming reference |
-| yukti | 2.2.3 | Device abstraction (USB, block, udev) |
+| yukti | 2.2.4 | Device abstraction (USB, block, udev) |
 
 ### Science & Knowledge (27 crates)
 
 | Crate | Version | Domain |
 |-------|---------|--------|
-| abaco | 2.2.0 | Math engine |
-| avatara | 2.3.0 | Divine archetype overlay |
+| abaco | 2.2.4 | Math engine |
+| avatara | 2.7.0 | Divine archetype overlay |
 | badal | 1.1.0 | Weather/atmosphere |
 | bhava | 2.0.0 | Emotion/personality |
 | bijli | 1.1.0 | Electromagnetism |
@@ -58,9 +58,9 @@ Full documentation for each library: [docs/applications/libs/](../../application
 | dravya | 1.2.0 | Material science |
 | falak | 1.0.0 | Orbital mechanics |
 | hadara | 1.0.0 | Culture modeling (Cyrius-native, 50 cultures) |
-| hisab | 2.2.2 | Higher math |
+| hisab | 2.6.5 | Higher math |
 | hisab-mimamsa | 1.0.0 | Theoretical physics |
-| itihas | 2.2.0 | World history |
+| itihas | 2.3.4 | World history |
 | jantu | 1.1.0 | Ethology/behavior |
 | jivanu | 1.0.0 | Microbiology |
 | jyotish | 1.0.0 | Astronomical computation |
@@ -107,7 +107,7 @@ Full documentation for each library: [docs/applications/libs/](../../application
 |-------|---------|--------|
 | raasta | 1.0.0 | Pathfinding |
 | varna | 1.0.0 | Multilingual language engine |
-| vyakarana | 2.2.1 | Source-code grammar + tokenizer (Cyrius-native, ten-kind palette, CYML grammars) |
+| vyakarana | 2.2.2 | Source-code grammar + tokenizer (Cyrius-native, ten-kind palette, CYML grammars) |
 
 ### Physics & Engineering (6 crates)
 
@@ -120,28 +120,31 @@ Full documentation for each library: [docs/applications/libs/](../../application
 | tanmatra | 1.2.1 | Atomic physics |
 | ushma | 1.3.0 | Thermodynamics |
 
-### Binaries & Tools (13 crates)
+### Binaries & Tools (16 crates)
 
 | Crate | Version | Domain |
 |-------|---------|--------|
-| [agnos](https://github.com/MacCracken/agnos) | 1.31.7 | AGNOS kernel (Cyrius-native, ELF64 + sovereign UEFI handoff via gnoboot v0.4.2). **MVP gate cleared on iron at Attempt 68 (1.30.9); storage arc closed 1.31.6 at Attempt 90 (2026-05-22) — five iron debuts (NVMe @ 80 / SATA @ 81 / USB MS @ 87 / RAM-disk+VirtIO @ 88 QEMU + iron no-regression / ext4 @ 90 partition-aware-on-NVMe).** 1.31.x = storage arc (NVMe Phase 1-5 + AHCI/SATA Phase 1-4 + USB MS BBB+SCSI Phase 1-2.8 + RAM-disk + VirtIO 1.x modern + GPT Phase 1-3 with CRC32 + backup-header + type-GUID classifier + 5-backend block-layer dispatch with multi-backend probe + partition-aware mount + ext2/ext4 read-only Phase 1-5). **Cyrius pin lifted 5.11.64 → 6.0.1 mid-1.31.x cycle.** 1.31.7 OPEN 2026-05-22 (filesystem follow-ups + shell UX: `ls -la` flag dispatch + bare-name `cat` ext2 fall-through + `cd`/`pwd`/CWD scoping + ext4 64BIT Phase 5; 4/5 code bites landed; Attempt 91 PENDING). |
-| [agnoshi](https://github.com/MacCracken/agnoshi) | 1.3.3 | AI shell (Cyrius) — depends on hoosh, daimon. Cyrius pin lifted 5.10.44 → 6.0.1 mid-1.31.x cycle (followed agnos in the MVP-path graduation pair). |
-| [argonaut](https://github.com/MacCracken/argonaut) | 1.7.1 | Init system library (Cyrius) — depends on agnosys. v1.7.0 adds BOOT_MINIMAL agnoshi-as-no-deps-console-service (unblocks closed-beta MVP without aethersafha). |
-| [bannermanor](https://github.com/MacCracken/bannermanor) | 1.0.0 | `figlet`-equivalent ASCII-art banner generator (binary `bnrmr` — vowel-dropped per the `commandress`→`cmdrs` compression pattern). English-wordplay naming lane. Drives login MOTDs, script intros, splash text. **Graduated to v1.0+ 2026-05-20 PM** — CLI flag surface, CYML font format (schema=1), and default in-tree font set (block / slim / big) all frozen as the v1.0 contract. Drove the 2026-05-20 darshana 0.3.0 → 0.3.5 color-primitives bump (banner colors). Cyrius pin 6.0.1. Consumers: end-user shells; agnoshi MOTD; iam (logo rendering); darshana, mihi. |
+| [agnos](https://github.com/MacCracken/agnos) | 1.41.11 | AGNOS kernel (Cyrius-native, ELF64 + sovereign UEFI handoff via gnoboot v0.4.2). **MVP gate cleared on iron at Attempt 68 (1.30.9); storage arc closed 1.31.6 at Attempt 90 (2026-05-22) — five iron debuts (NVMe @ 80 / SATA @ 81 / USB MS @ 87 / RAM-disk+VirtIO @ 88 QEMU + iron no-regression / ext4 @ 90 partition-aware-on-NVMe).** 1.31.x = storage arc (NVMe Phase 1-5 + AHCI/SATA Phase 1-4 + USB MS BBB+SCSI Phase 1-2.8 + RAM-disk + VirtIO 1.x modern + GPT Phase 1-3 with CRC32 + backup-header + type-GUID classifier + 5-backend block-layer dispatch with multi-backend probe + partition-aware mount + ext2/ext4 read-only Phase 1-5). **Cyrius pin lifted 5.11.64 → 6.0.1 mid-1.31.x cycle.** 1.31.7 OPEN 2026-05-22 (filesystem follow-ups + shell UX: `ls -la` flag dispatch + bare-name `cat` ext2 fall-through + `cd`/`pwd`/CWD scoping + ext4 64BIT Phase 5; 4/5 code bites landed; Attempt 91 PENDING). |
+| [agnoshi](https://github.com/MacCracken/agnoshi) | 1.3.5 | AI shell (Cyrius) — depends on hoosh, daimon. Cyrius pin lifted 5.10.44 → 6.0.1 mid-1.31.x cycle (followed agnos in the MVP-path graduation pair). |
+| [agora](https://github.com/MacCracken/agora) | 1.0.0 | Telnet-served BBS (Greek ἀγορά — *civic marketplace / public assembly*), Cyrius-native. Multi-user, multi-board threaded boards; sigil-backed Ed25519 challenge/response auth; per-board posting policy; fork-per-connection concurrency; audit-hardened input; frozen ABI; full RFC 854/1143/1073/1091/1184 telnet conformance. **v1.0.0 shipped 2026-05-23 — iron-validated on archaemenid** (telnet round-trip + 8-user concurrent fanout green). Server-stage app; anchors the BBS/MUD aesthetic cluster (consumes the network-tools family, kii, anuenue, bnrmr). |
+| [argonaut](https://github.com/MacCracken/argonaut) | 1.8.2 | Init system library (Cyrius) — depends on agnosys. v1.7.0 adds BOOT_MINIMAL agnoshi-as-no-deps-console-service (unblocks closed-beta MVP without aethersafha). |
+| [bannermanor](https://github.com/MacCracken/bannermanor) | 1.0.1 | `figlet`-equivalent ASCII-art banner generator (binary `bnrmr` — vowel-dropped per the `commandress`→`cmdrs` compression pattern). English-wordplay naming lane. Drives login MOTDs, script intros, splash text. **Graduated to v1.0+ 2026-05-20 PM** — CLI flag surface, CYML font format (schema=1), and default in-tree font set (block / slim / big) all frozen as the v1.0 contract. Drove the 2026-05-20 darshana 0.3.0 → 0.3.5 color-primitives bump (banner colors). Cyrius pin 6.0.1. Consumers: end-user shells; agnoshi MOTD; iam (logo rendering); darshana, mihi. |
 | [commandress](https://github.com/MacCracken/commandress) | 1.0.1 | Structured shell prompt renderer for agnoshi, bash, and zsh via per-shell adapters. Sovereign-stack equivalent of starship, in Cyrius. Binary name `cmdrs` (short for *commandress*). Stateless, segment-based, config-driven, zero non-stdlib deps. **Graduated to v1.0+ 2026-05-18** — segment renderer + config layer stabilized after the 2026-05-15 scaffold. Cyrius pin 5.11.64. Consumers: agnoshi, bash, zsh (prompt-hook adapters). |
 | [cyim](https://github.com/MacCracken/cyim) | 1.7.1 | Sovereign modal text editor (Cyrius-native, VIM-inspired, zero attack surface, no embedded scripting). Consumes vyakarana + niyama (regex via stdlib fold v5.9.0); consumers: agnoshi, aethersafha, daimon-orchestrated agents. |
 | [cyim-lsp](https://github.com/MacCracken/cyim-lsp) | 1.5.0 | Language Server Protocol companion to cyim (Cyrius-native). Editor-agnostic LSP backend serving cyim's grammar/regex/symbol surfaces over LSP. |
+| [hapi](https://github.com/MacCracken/hapi) | 1.0.1 | GNU `stow`-equivalent — dotfile / symlink farm manager. Dual-read name: Hawaiian हपी (*happy*) + **H**ome **A**sset **P**rovisioning **I**nterface; first Pacific Islands word in the AGNOS naming surface. CYML manifest per package, capability-bounded execution (`$HOME` only by default), lightweight audit trail. **Graduated to v1.0+.** Consumers: end-user shells; agnova (dotfile bootstrap); mihi. |
 | [iam](https://github.com/MacCracken/iam) | 1.0.0 | fastfetch/neofetch-equivalent system-info display for login MOTD + screenshot flex. Pure inverse of `whoami` — whoami says who the user is, iam says what the system is. Thin presentation layer over the mihi probe library. **Graduated to v1.0+ 2026-05-20** straight to 1.0.0 on cyrius 6.0.1 — second v6.0.x graduation. English-wordplay/trickster naming lane. Consumes mihi (probe) + darshana (color/TTY). |
+| [kii](https://github.com/MacCracken/kii) | 1.0.0 | `chafa`/`jp2a`/`viu`-equivalent — image → ANSI/ASCII-art converter for terminal display. Four-layered name (Hawaiian *image* + East Asian *ki* 気 *life-force* + back-half of *a-scii* + functional convergence). Reads PNG/JPEG/GIF/BMP, quantizes to a terminal palette + glyph set, emits ANSI sized to cols × rows. **Graduated to v1.0+.** Consumers: bannermanor (logo rendering), iam (system splash), BBS MOTD pipeline, MUD room illustrations, anuenue. |
 | [kriya](https://github.com/MacCracken/kriya) | 1.0.0 | Coreutils-equivalent for AGNOS (Sanskrit क्रिया — *action, operation, verb*). One repo, many small static utilities (`cp`, `mv`, `rm`, `mkdir`, `echo`, `wc`, `find`, `grep`, `xargs`, …) sharing infrastructure. BusyBox-style dispatcher + symlinks per utility. **Graduated to v1.0+ 2026-05-18** after M5 closeout (grep + find + xargs); dispatcher + sovereign-boundary surface stabilized. Sovereign-replacement boundaries: owl owns `cat`, cyim owns `vim`, sit owns `git`, chakshu owns `htop`, agnoshi owns shell builtins; kriya fills the gaps. Cyrius pin 5.11.61. Consumers: agnoshi (PATH lookup), zugot (install-time symlinks). |
-| [kybernet](https://github.com/MacCracken/kybernet) | 1.2.2 | PID 1 init binary (Cyrius, 140 tests) — depends on argonaut. v1.2.1 consumer pin bump for argonaut 1.7.0 BOOT_MINIMAL. |
-| [nous](https://github.com/MacCracken/nous) | 1.1.2 | Package resolver (Cyrius) |
+| [kybernet](https://github.com/MacCracken/kybernet) | 1.3.3 | PID 1 init binary (Cyrius, 140 tests) — depends on argonaut. v1.2.1 consumer pin bump for argonaut 1.7.0 BOOT_MINIMAL. |
+| [nous](https://github.com/MacCracken/nous) | 1.2.5 | Package resolver (Cyrius) |
 | [owl](https://github.com/MacCracken/owl) | 1.3.6 | Watchful file viewer — `cat`/`bat` replacement (Cyrius-native, **O**bservant **W**atcher of **L**ines). `-p` byte-identical cat drop-in; decorated mode adds token highlighting + VCS gutter + paging. Consumes vyakarana for tokenization. |
 
 ### Stdlib-Folded (2 crates)
 
 | Crate | Version | Domain |
 |-------|---------|--------|
-| [sandhi](https://github.com/MacCracken/sandhi) | 1.3.5 | Service-boundary layer (HTTP client+server, HTTP/2, streaming, JSON-RPC, service discovery, TLS policy). **Folded into Cyrius stdlib at v5.7.0** as `lib/sandhi.cyr` (vendored byte-identical, 376,037 B / 9,649 lines / 469 fns). Sandhi repo entered maintenance mode per [ADR 0002](https://github.com/MacCracken/sandhi/blob/main/docs/adr/0002-clean-break-fold-at-cyrius-v5-7-0.md); subsequent surface patches land via Cyrius release cycle. |
+| [sandhi](https://github.com/MacCracken/sandhi) | 1.4.1 | Service-boundary layer (HTTP client+server, HTTP/2, streaming, JSON-RPC, service discovery, TLS policy). **Folded into Cyrius stdlib at v5.7.0** as `lib/sandhi.cyr` (vendored byte-identical, 376,037 B / 9,649 lines / 469 fns). Sandhi repo entered maintenance mode per [ADR 0002](https://github.com/MacCracken/sandhi/blob/main/docs/adr/0002-clean-break-fold-at-cyrius-v5-7-0.md); subsequent surface patches land via Cyrius release cycle. |
 | [niyama](https://github.com/MacCracken/niyama) | 1.0.3 | Regex engines — bre / re2 / pcre / fuzzy / vim. **Folded into Cyrius stdlib at v5.9.0** as `lib/niyama.cyr` (vendored byte-identical, 6,664 lines / 7 modules: posix_classes, unicode_props, bre, re2, pcre, fuzzy, vim). Multi-consumer gate met by cyim (#1) + queued AGNOS bare-metal kernel (#2 → v5.10.x trigger). Public API frozen per [niyama ADR 0010](https://github.com/MacCracken/niyama); fold pattern documented in [niyama ADR 0011](https://github.com/MacCracken/niyama). |
 
 ---
@@ -160,11 +163,11 @@ Full documentation for each library: [docs/applications/libs/](../../application
 | Crate | Version | Description | Key Consumers |
 |-------|---------|-------------|---------------|
 | [selah](https://github.com/MacCracken/selah) | 0.29.4 | Screenshot capture, annotation, PII redaction | taswir, soorat |
-| [cyrius-doom](https://github.com/MacCracken/cyrius-doom) | 0.26.2 | DOOM engine in Cyrius — hardened, 5 CVEs fixed, 2.59ms/frame | standalone game / kernel demo |
+| [cyrius-doom](https://github.com/MacCracken/cyrius-doom) | 0.27.5 | DOOM engine in Cyrius — hardened, 5 CVEs fixed, 2.59ms/frame | standalone game / kernel demo |
 | [muharrir](https://github.com/MacCracken/muharrir) | 0.23.5 | Editor primitives — text buffer, undo/redo, command pattern | rasa, tazama, shruti |
-| [samvada](https://github.com/MacCracken/samvada) | 0.2.2 | DBus client (Cyrius-native) — C-shim wrapping `sd_bus`, minimal logind subset (`TakeDevice` for DRM master delegation, `Pause`/`ResumeDevice` signals). v1.0 retires the libsystemd shim alongside mabda v4.0's wgpu-native retirement. | mabda (Phase D `gpu_surface_configure_native_logind`) |
-| [vani](https://github.com/MacCracken/vani) | 0.9.3 | Audio device I/O — direct ALSA/OSS syscalls (Cyrius-native). Full audio stack (ALSA ioctls, ring buffer, XRUN recovery, mixer). **Vendored into Cyrius stdlib at v5.8.0** as `lib/vani.cyr` (replacing legacy `lib/audio.cyr`); standalone repo continues for direct consumers needing newer surface than the folded snapshot. | shravan, dhvani, naad, jalwa, shruti |
-| [yantra](https://github.com/MacCracken/yantra) | 0.1.0 | Sovereign UI automation — browser + mobile, as a Cyrius library (Cyrius-native). `.tcyr` files include `lib/yantra.cyr` and drive Chromium / Firefox / WebKit / Android / iOS. Not a framework — `cyrius test` stays the runner. Planned backends: CDP, W3C WebDriver, Appium. | AGNOS E2E consumers (owl, agnoshi, tanur when GUI lands) |
+| [samvada](https://github.com/MacCracken/samvada) | 0.4.0 | DBus client (Cyrius-native) — C-shim wrapping `sd_bus`, minimal logind subset (`TakeDevice` for DRM master delegation, `Pause`/`ResumeDevice` signals). v1.0 retires the libsystemd shim alongside mabda v4.0's wgpu-native retirement. | mabda (Phase D `gpu_surface_configure_native_logind`) |
+| [vani](https://github.com/MacCracken/vani) | 0.9.4 | Audio device I/O — direct ALSA/OSS syscalls (Cyrius-native). Full audio stack (ALSA ioctls, ring buffer, XRUN recovery, mixer). **Vendored into Cyrius stdlib at v5.8.0** as `lib/vani.cyr` (replacing legacy `lib/audio.cyr`); standalone repo continues for direct consumers needing newer surface than the folded snapshot. | shravan, dhvani, naad, jalwa, shruti |
+| [yantra](https://github.com/MacCracken/yantra) | 0.6.2 | Sovereign UI automation — browser + mobile, as a Cyrius library (Cyrius-native). `.tcyr` files include `lib/yantra.cyr` and drive Chromium / Firefox / WebKit / Android / iOS. Not a framework — `cyrius test` stays the runner. Planned backends: CDP, W3C WebDriver, Appium. | AGNOS E2E consumers (owl, agnoshi, tanur when GUI lands) |
 | [joshua](https://github.com/MacCracken/joshua) | 0.1.0 | Game manager — AI NPCs, headless simulation | end user |
 | [murti](https://github.com/MacCracken/murti) | 0.1.0 | Model runtime — registry, store, inference backends | hoosh, ifran, tanur |
 | [salai](https://github.com/MacCracken/salai) | 0.1.0 | Game editor — egui visual editor for kiran | kiran |
@@ -176,16 +179,16 @@ Full documentation for each library: [docs/applications/libs/](../../application
 | [kshetra](https://github.com/MacCracken/kshetra) | 0.1.0 | Temporal geography — spatiotemporal database | itihas, badal, khanij, vanaspati |
 | [leela](https://github.com/MacCracken/leela) | 0.1.0 | Sport — rules, athletes, tournaments, records | hadara, itihas, avatara, jnana |
 | [nyaya](https://github.com/MacCracken/nyaya) | 0.1.0 | Structured legal knowledge — statutes, precedents, IP | hadara, itihas, jnana |
-| [darshana](https://github.com/MacCracken/darshana) | 0.5.2 | TTY/raw-mode primitives (Sanskrit दर्शन — *viewing/showing*). Linux termios + ANSI + cursor positioning + alt-screen + color escape sequences (0.3.5, 2026-05-20 — added so bannermanor's banners can render colored). Extracted from cyim's `src/tty.cyr` once chakshu became a second consumer. **Not a TUI framework** — just the syscalls and escape sequences below the framework. | cyim, chakshu, bannermanor |
+| [darshana](https://github.com/MacCracken/darshana) | 0.5.3 | TTY/raw-mode primitives (Sanskrit दर्शन — *viewing/showing*). Linux termios + ANSI + cursor positioning + alt-screen + color escape sequences (0.3.5, 2026-05-20 — added so bannermanor's banners can render colored). Extracted from cyim's `src/tty.cyr` once chakshu became a second consumer. **Not a TUI framework** — just the syscalls and escape sequences below the framework. | cyim, chakshu, bannermanor |
 | [sit](https://github.com/MacCracken/sit) | 0.8.5 | Sovereign version control — Cyrius-native git replacement (smriti, स्मृति — memory). Deps: sankoch (compression), sigil (hashing), patra (object store). No libgit2, no C, no FFI. | end user, owl (git-marker integration), ark |
 
 ---
 
-## Binaries & Tools (pre-1.0, 11 entries)
+## Binaries & Tools (pre-1.0, 9 entries)
 
 | Binary | Version | Description | Depends On |
 |--------|---------|-------------|------------|
-| [shakti](https://github.com/MacCracken/shakti) | 0.3.0 | Privilege escalation (`sudo` replacement) | agnosys, sigil |
+| [shakti](https://github.com/MacCracken/shakti) | 0.6.2 | Privilege escalation (`sudo` replacement) | agnosys, sigil |
 | [ark](https://github.com/MacCracken/ark) | 0.8.0 | Package manager (Cyrius) | nous, sigil |
 | [takumi](https://github.com/MacCracken/takumi) | 0.8.0 | Build system — Cyrius port in progress (toolchain pinned 5.5.23; `rust-old/` authoritative until parity) | sigil |
 | [aethersafha](https://github.com/MacCracken/aethersafha) | 0.1.0 | Wayland compositor | aethersafta, mabda |
@@ -194,9 +197,7 @@ Full documentation for each library: [docs/applications/libs/](../../application
 | [seema](https://github.com/MacCracken/seema) | 0.1.0 | Edge fleet management | daimon, bote |
 | [samay](https://github.com/MacCracken/samay) | 0.1.0 | Task scheduler | szal |
 | [chakshu](https://github.com/MacCracken/chakshu) | 0.6.1 | AI-augmented system monitor (Sanskrit चक्षु — *the eye*; binary `shu` — **S**ystem **H**ealth **U**tility, per ADR 0001). Cyrius-native, reads `/proc` directly. Replaces htop/btop Bazaar packages at v1.0; adds AI explanations via daimon/hoosh at M3+. Cyrius pin 6.0.1. | mihi, darshana, sandhi (M3), niyama (M3), daimon (M3) |
-| [gnoboot](https://github.com/MacCracken/gnoboot) | 0.4.2 | Sovereign UEFI bootloader (Cyrius-native PE32+ EFI Application, ~33 KB) — replaces GRUB on the AGNOS boot path. Locates kernel at `\boot\agnos`, parses ELF64 program headers, allocates pages as `EfiLoaderCode`, zeroes BSS gap, captures GOP framebuffer + FrameBufferSize, builds 88-byte sovereign boot-info struct (magic `'AGNO'`), calls `ExitBootServices`, jumps with `RDI = &boot_info`. 0.4.x added GOP FrameBufferSize capture + SetMode arc (Attempts 73-74). Pairs with agnos 1.31.x. | agnos (kernel handoff consumer) |
-| [hapi](https://github.com/MacCracken/hapi) | 0.7.0 | GNU `stow`-equivalent — dotfile / symlink farm manager. Dual-read name: Hawaiian हपी (*happy*) + **H**ome **A**sset **P**rovisioning **I**nterface. First Pacific Islands word in the AGNOS naming surface. CYML manifest per package, capability-bounded execution (`$HOME` only by default), lightweight audit trail. | end-user shells; possibly agnova for dotfile bootstrap; mihi |
-| [kii](https://github.com/MacCracken/kii) | 0.1.0 | `chafa` / `jp2a` / `viu`-equivalent — image → ANSI/ASCII-art converter for terminal display. **Four-layered name** across three language families: (1) **Hawaiian** *image / picture / likeness* — what the tool produces; (2) **East Asian** *ki* (気) / *chi* (氣) — life-force / vital energy: kii is the *ki of the terminal*, the animating force that brings the screen to life via images; (3) **English-phonetic** — back-half of **a-scii** — what the tool emits; (4) **functional convergence** — produces images via ASCII to animate the terminal, all three language angles describe the same operation. Rare triple-lane crossover: Polynesian-direct semantic + East Asian metaphysical + English-phonetic-wordplay all fit because they describe the same function. Reads raster input (PNG, JPEG, GIF, BMP planned), quantizes to terminal-renderable color palette + glyph set, emits ANSI escape sequences sized to terminal cols × rows. Polynesian Hawaiian micro-cluster with `hapi`, `anuenue`. Cut at 0.1.0 on cyrius 6.0.1 (2026-05-22). | bannermanor (logo rendering inside ASCII-art banners); iam (system splash images); future BBS MOTD pipeline; future MUD room-illustration renderer; `anuenue` (image → ASCII → rainbow-tint chain) |
+| [gnoboot](https://github.com/MacCracken/gnoboot) | 0.5.0 | Sovereign UEFI bootloader (Cyrius-native PE32+ EFI Application, ~33 KB) — replaces GRUB on the AGNOS boot path. Locates kernel at `\boot\agnos`, parses ELF64 program headers, allocates pages as `EfiLoaderCode`, zeroes BSS gap, captures GOP framebuffer + FrameBufferSize, builds 88-byte sovereign boot-info struct (magic `'AGNO'`), calls `ExitBootServices`, jumps with `RDI = &boot_info`. 0.4.x added GOP FrameBufferSize capture + SetMode arc (Attempts 73-74). Pairs with agnos 1.31.x. | agnos (kernel handoff consumer) |
 
 ---
 
@@ -208,8 +209,8 @@ Full documentation for each library: [docs/applications/libs/](../../application
 | [encom-hits](https://github.com/MacCracken/encom-hits) | 1.0.0 | ENCOM retro arcade collection in Cyrius | standalone game |
 | [cyrius-brynns-tale](https://github.com/MacCracken/cyrius-brynns-tale) | 0.1.0 | ***Brynn's Tale*** — original mythic-modern game in Cyrius. A wife uses a time-rewind power to save her husband from dying; the cost is herself. **Three-act diptych-becoming-triptych**: Act 1 backward-narrative descent (Memento-form, six rewind variants per world); Act 2 forward-irreversible survival (Bleed mechanic + every choice final); Act 3 NG+ as the integrated being THEM (alchemical *rebis* after Phoenix-rebirth, full toolkit, climaxes in cosmic-test rubedo). Selectively Souls-like (soft-fail everyday + hard-fail bosses). Pivoted 2026-04-26 from `cyrius-braid` Braid-reimplementation; original IP per ADR 0003. Formerly registered as `cyrius-braid`. | standalone game |
 | [cyrius-super-plumber-twins](https://github.com/MacCracken/cyrius-super-plumber-twins) | 0.1.0 | 2.5D platformer with ragdoll-physics (homage to *Super Mario Bros*, Nintendo 1985 — reimplementation from observation, not a port). Stars **The Royals** (Royal/midnight Blue + Purple plumber **twins — boy + girl**, peer protagonists) who work for the Castle. Original cast: The Boy (the girl-twin's crush; jester/scribe dual-role with forest-green scribe attire + motley jester attire — **gender-flipped love-interest archetype inverts the Mario princess-rescuee trope**), Cousin Job (trade-rival trying to prove he's the better plumber, equal antagonism toward both twins), Mouser (GC / Head of Facilities final boss — three-layer name including Disney wink), Facility Sub-Managers (Koopalings × Mega Man Robot Masters hybrid). Nintendo-IP distinctiveness bar is the strictest in the retro-port series. Formerly `cyrius-super-plumber-bros`; renamed per [ADR 0004](https://github.com/MacCracken/cyrius-super-plumber-twins/blob/main/docs/adr/0004-twins-pivot.md). | standalone game |
-| [cyrius-bb](https://github.com/MacCracken/cyrius-bb) | 0.1.0 | *Break-breaker* — 2.5D brick-breaker in Cyrius. 50-year homage to *Breakout* (Atari, 1976 — Bushnell / Wozniak-adjacent lineage). Atari-IP distinctiveness bar is relaxed (Atari SA tolerates respectful homages). | standalone game |
-| [cyrius-polyomino](https://github.com/MacCracken/cyrius-polyomino) *(scaffolded locally 2026-05-26; not yet pushed to GitHub)* | 0.1.0 | Original falling-block puzzle in Cyrius — generic homage to the 1984-era falling-block genre (Alexey Pajitnov / *Tetris*). **Deliberately IP-clear**: a *polyomino* is the mathematical term for unit cells joined edge-to-edge (the four-cell **tetromino** — I/O/T/S/Z/J/L — is the genre primitive), so the name + core mechanics sit in the mathematical/public domain. **The Tetris Company trademark + branded assets hard-excluded** — not branded as the title, original assets only ([ADR 0002](https://github.com/MacCracken/cyrius-polyomino/blob/main/docs/adr/0002-original-assets-only.md)), reimplemented from documented public mechanics ([ADR 0001](https://github.com/MacCracken/cyrius-polyomino/blob/main/docs/adr/0001-original-puzzle-from-observation.md)); the canonical branded theme tune is *not* shipped. Pure integer 10×20-well grid sim — bit-deterministic / seed-replayable, fully unit-testable headless — with renderer/input/framebuffer self-rolled on bare stdlib ([ADR 0003](https://github.com/MacCracken/cyrius-polyomino/blob/main/docs/adr/0003-self-rolled-primitives.md)), same cyrius-doom / cyrius-bb lineage (no engine, no GPU, no FFI). MVP-first ramp: classic core (M1–M2 — gravity, line clears, classic scoring, per-level speed curve, DAS/lock-delay) then the **modern guideline layer** (M3 — SRS wall-kicks, 7-bag, hold, ghost, hard drop) layered on the proven core; vani audio (M4) + sankoch/sigil high-score save (M5) follow. Sibling self-rolled accessible-scope 2D entry alongside cyrius-bb. | standalone game |
+| [cyrius-bb](https://github.com/MacCracken/cyrius-bb) | 0.7.2 | *Break-breaker* — 2.5D brick-breaker in Cyrius. 50-year homage to *Breakout* (Atari, 1976 — Bushnell / Wozniak-adjacent lineage). Atari-IP distinctiveness bar is relaxed (Atari SA tolerates respectful homages). | standalone game |
+| [cyrius-polyomino](https://github.com/MacCracken/cyrius-polyomino) *(scaffolded locally 2026-05-26; not yet pushed to GitHub)* | 0.3.0 | Original falling-block puzzle in Cyrius — generic homage to the 1984-era falling-block genre (Alexey Pajitnov / *Tetris*). **Deliberately IP-clear**: a *polyomino* is the mathematical term for unit cells joined edge-to-edge (the four-cell **tetromino** — I/O/T/S/Z/J/L — is the genre primitive), so the name + core mechanics sit in the mathematical/public domain. **The Tetris Company trademark + branded assets hard-excluded** — not branded as the title, original assets only ([ADR 0002](https://github.com/MacCracken/cyrius-polyomino/blob/main/docs/adr/0002-original-assets-only.md)), reimplemented from documented public mechanics ([ADR 0001](https://github.com/MacCracken/cyrius-polyomino/blob/main/docs/adr/0001-original-puzzle-from-observation.md)); the canonical branded theme tune is *not* shipped. Pure integer 10×20-well grid sim — bit-deterministic / seed-replayable, fully unit-testable headless — with renderer/input/framebuffer self-rolled on bare stdlib ([ADR 0003](https://github.com/MacCracken/cyrius-polyomino/blob/main/docs/adr/0003-self-rolled-primitives.md)), same cyrius-doom / cyrius-bb lineage (no engine, no GPU, no FFI). MVP-first ramp: classic core (M1–M2 — gravity, line clears, classic scoring, per-level speed curve, DAS/lock-delay) then the **modern guideline layer** (M3 — SRS wall-kicks, 7-bag, hold, ghost, hard drop) layered on the proven core; vani audio (M4) + sankoch/sigil high-score save (M5) follow. Sibling self-rolled accessible-scope 2D entry alongside cyrius-bb. | standalone game |
 | [cyrius-stellar-swarm](https://github.com/MacCracken/cyrius-stellar-swarm) | 0.1.0 | 2.5D fixed-shooter (homage to *Galaga*, Namco 1981 — reimplementation from observation). Preserves formation-attack + tractor-beam capture-and-rescue + bonus challenging stages. Original ship + three-tier original enemy creatures + original chiptune-era synth music. Namco-IP distinctiveness bar moderate. | standalone game |
 | [cyrius-sunset-drive](https://github.com/MacCracken/cyrius-sunset-drive) | 0.1.0 | 2.5D arcade coastal-racer (homage to *Outrun*, Sega / Yu Suzuki 1986 — reimplementation from observation). Pick-a-route + pick-a-track signature mechanics. Initial routes: Sunset Drive / Coastal Run / Ridgeline. Initial music selects: Yacht Rock / Smooth Jazz / Dance-Hi-Energy. Original convertible-coupe car (NOT a Ferrari Testarossa — Sega-IP moderate + Ferrari IP hard-excluded). | standalone game |
 | [cyrius-grapevine](https://github.com/MacCracken/cyrius-grapevine) | 0.1.0 | 2.5D cozy meta-casual vineyard sim. Genre-synthesis of *My Vineyard* (Metaplace, 2010) + *Animal Crossing* (Nintendo, 2001) + *Stardew Valley* (ConcernedApe, 2016). First cozy-sim slot in the library. Vineyard-focused (grapes + 2-3 crops max), 8-12 Stardew-grade NPCs with schedules and dialogue, real-time seasonal rhythm, four seasonal festivals. **Trusted-pair multiplayer co-op as M3 core scope** (not stretch) — async-visit + real-time co-op via sandhi networking. Hard rules: no combat / mining / dungeons / bachelor-catalog. Save-format versioned from day one (players invest years). Three-tier distinctiveness bar: Nintendo-strict on AC-adjacent / Metaplace-defunct-relaxed / ConcernedApe-respect on Stardew-adjacent. | standalone game |
