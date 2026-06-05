@@ -37,7 +37,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 KERNEL_SRC="${KERNEL_SRC:-${REPO_ROOT}/../agnos/build/agnos}"
 GNOBOOT_SRC="${GNOBOOT_SRC:-${REPO_ROOT}/../gnoboot/build/BOOTX64.EFI}"
-INITRAMFS_SRC="${INITRAMFS_SRC:-${SCRIPT_DIR}/build/initramfs.cpio.gz}"
+# Sovereign initramfs ONLY (gnoboot loads \boot\initramfs, INDR format, OPTIONAL). NEVER a Linux
+# cpio.gz. Default points at a non-.gz sovereign artifact; if it doesn't exist the boot proceeds
+# without an initramfs (gnoboot: absent → phys/size 0; the kernel mounts the agnos-fs from NVMe).
+INITRAMFS_SRC="${INITRAMFS_SRC:-${SCRIPT_DIR}/build/initramfs}"
 ROOTFS_STAGE="${ROOTFS_STAGE:-${REPO_ROOT}/../agnos/build/rootfs}"   # stage-agnsh.sh → build/rootfs/bin/agnsh
 MOUNT_POINT="/mnt/agnos-esp"
 MOUNT_POINT_DATA="/mnt/agnos-fs"
@@ -84,6 +87,8 @@ refuse_system_disk() {
         [[ "$target_disk" == "$boot_disk" ]] \
             && die "refusing: $1 is on /dev/$boot_disk, which holds the running /boot ($boot_src)."
     fi
+    return 0   # MUST be explicit: a trailing short-circuited `&& die` would otherwise leave the
+               # function's status non-zero on the SAFE path and set -e would kill the script silently.
 }
 
 # Abort if the whole disk backing $1 has ANY mounted partition. Fails closed on enumeration error.
@@ -97,6 +102,7 @@ refuse_if_mounted() {
         echo "Mounted partitions on /dev/$disk:" >&2; echo "$m" >&2
         die "refusing — /dev/$disk has mounted partitions (unmount them first if you really mean it)."
     fi
+    return 0
 }
 
 # Resolve a filesystem label to exactly one partition, or die. Refuses ambiguity (the USB+NVMe
@@ -138,6 +144,22 @@ mount_at() {
 
 umount_safe() { umount "$1" 2>/dev/null || { sync; sleep 1; umount -l "$1" 2>/dev/null || true; }; }
 
+# Install the SOVEREIGN initramfs onto an ESP mount and PURGE any stale Linux cpio.gz a prior
+# install left behind. gnoboot loads \boot\initramfs (INDR format) and treats it as OPTIONAL —
+# AGNOS is not Linux, so this never ships a cpio.gz.
+install_initramfs() {
+    local mp="$1"
+    rm -f "${mp}/boot/initramfs.cpio.gz"        # purge Linux garbage from older installs
+    if [[ -f "$INITRAMFS_SRC" ]]; then
+        cp "$INITRAMFS_SRC" "${mp}/boot/initramfs"
+        echo "  + sovereign \\boot\\initramfs ($(stat -c%s "$INITRAMFS_SRC") bytes)"
+    else
+        rm -f "${mp}/boot/initramfs"
+        echo "  (no sovereign initramfs — boot proceeds without one; gnoboot \\boot\\initramfs is optional)"
+    fi
+    return 0
+}
+
 # --- ESP refresh (kernel + gnoboot + initramfs), no wipe ---
 
 esp_update() {
@@ -145,28 +167,23 @@ esp_update() {
     [[ -b "$esp" ]] || die "ESP partition not found: $esp (provision first, or pass the right partition)."
     refuse_system_disk "$esp"
     refuse_mounted_elsewhere "$esp" "$MOUNT_POINT"
-    require_file "$KERNEL_SRC"    "AGNOS kernel"
-    require_file "$GNOBOOT_SRC"   "gnoboot binary"
-    require_file "$INITRAMFS_SRC" "initramfs"
+    require_file "$KERNEL_SRC"  "AGNOS kernel"
+    require_file "$GNOBOOT_SRC" "gnoboot binary"
 
     echo "=== ESP refresh ==="
     echo "Target ESP: $esp  (disk /dev/$(disk_base_of "$esp"))"
     lsblk -o NAME,SIZE,FSTYPE,LABEL,MOUNTPOINTS "$esp" 2>/dev/null || true
     echo "  gnoboot:   $GNOBOOT_SRC ($(stat -c%s "$GNOBOOT_SRC") bytes)"
     echo "  kernel:    $KERNEL_SRC ($(stat -c%s "$KERNEL_SRC") bytes)"
-    echo "  initramfs: $INITRAMFS_SRC ($(stat -c%s "$INITRAMFS_SRC") bytes)"
-    if [[ "$INITRAMFS_SRC" -ot "$KERNEL_SRC" ]]; then
-        echo "  ⚠ initramfs is OLDER than the kernel — regenerate it if this kernel needs a fresh one."
-    fi
 
     mount_at "$esp" "$MOUNT_POINT"
     [[ -d "${MOUNT_POINT}/EFI/BOOT" ]] || die "$esp has no /EFI/BOOT — not a provisioned AGNOS ESP. Full-provision first."
     cp "$GNOBOOT_SRC" "${MOUNT_POINT}/EFI/BOOT/BOOTX64.EFI"
     mkdir -p "${MOUNT_POINT}/boot"
-    cp "$KERNEL_SRC"    "${MOUNT_POINT}/boot/agnos"
-    cp "$INITRAMFS_SRC" "${MOUNT_POINT}/boot/initramfs.cpio.gz"
+    cp "$KERNEL_SRC"  "${MOUNT_POINT}/boot/agnos"
+    install_initramfs "$MOUNT_POINT"
     sync
-    echo "✓ ESP refreshed on $esp (gnoboot + kernel + initramfs)."
+    echo "✓ ESP refreshed on $esp (gnoboot + kernel)."
     umount_safe "$MOUNT_POINT"
 }
 
@@ -208,7 +225,7 @@ case "${1:-}" in
         cat <<EOF
 Usage:
   sudo $0 /dev/sdX            full provision (WIPES the whole disk) — guarded
-  sudo $0 --update [DEV]      ESP refresh (gnoboot+kernel+initramfs), no wipe   [default: label AGNOSBOOT]
+  sudo $0 --update [DEV]      ESP refresh (gnoboot + kernel; optional sovereign initramfs), no wipe   [default: label AGNOSBOOT]
   sudo $0 --update-fs [PART]  agnos-fs refresh (/bin/agnsh + staged rootfs), no wipe   [default: label agnos-fs]
   sudo $0 --update-all        ESP + agnos-fs, both by label, no wipe
 
@@ -264,9 +281,8 @@ refuse_if_mounted "$DEV"
 for tool in parted mkfs.fat mkfs.ext4 wipefs partprobe; do
     command -v "$tool" >/dev/null 2>&1 || die "required tool '$tool' not found"
 done
-require_file "$KERNEL_SRC"    "AGNOS kernel"
-require_file "$GNOBOOT_SRC"   "gnoboot binary"
-require_file "$INITRAMFS_SRC" "initramfs"
+require_file "$KERNEL_SRC"  "AGNOS kernel"
+require_file "$GNOBOOT_SRC" "gnoboot binary"
 
 case "$DEV" in
     *nvme*|*mmcblk*|*loop*) P1="${DEV}p1"; P2="${DEV}p2"; P3="${DEV}p3" ;;
@@ -281,7 +297,7 @@ lsblk -o NAME,SIZE,TYPE,FSTYPE,LABEL,MOUNTPOINTS,MODEL "$DEV" 2>/dev/null || tru
 udevadm info --query=property --name="$DEV" 2>/dev/null | grep -E "ID_BUS|ID_MODEL|ID_VENDOR" || true
 echo ""
 echo "Will create: p1 256MiB FAT32 AGNOSBOOT (ESP) | p2 25GiB ext4 agnos-fs | p3 512MiB FAT32 fstest"
-echo "ESP gets: gnoboot + kernel ($(stat -c%s "$KERNEL_SRC") B) + initramfs."
+echo "ESP gets: gnoboot + kernel ($(stat -c%s "$KERNEL_SRC") B)  [+ sovereign \\boot\\initramfs if present]."
 if [[ -f "${ROOTFS_STAGE}/bin/agnsh" ]]; then
     echo "agnos-fs gets: /bin/agnsh ($(stat -c%s "${ROOTFS_STAGE}/bin/agnsh") B) + seed files."
 else
@@ -315,12 +331,12 @@ mkfs.ext4 -F -L agnos-fs "$P2"
 echo "      Formatting $P3 FAT32 (label fstest)..."
 mkfs.fat -F32 -n fstest "$P3"
 
-echo "[5/8] Mounting ESP + copying gnoboot + kernel + initramfs..."
+echo "[5/8] Mounting ESP + copying gnoboot + kernel..."
 mount_at "$P1" "$MOUNT_POINT"
 mkdir -p "${MOUNT_POINT}/EFI/BOOT" "${MOUNT_POINT}/boot"
-cp "$GNOBOOT_SRC"   "${MOUNT_POINT}/EFI/BOOT/BOOTX64.EFI"
-cp "$KERNEL_SRC"    "${MOUNT_POINT}/boot/agnos"
-cp "$INITRAMFS_SRC" "${MOUNT_POINT}/boot/initramfs.cpio.gz"
+cp "$GNOBOOT_SRC" "${MOUNT_POINT}/EFI/BOOT/BOOTX64.EFI"
+cp "$KERNEL_SRC"  "${MOUNT_POINT}/boot/agnos"
+install_initramfs "$MOUNT_POINT"
 sync; umount_safe "$MOUNT_POINT"
 
 echo "[6/8] Mounting agnos-fs + seeding /bin/agnsh + sample files..."
