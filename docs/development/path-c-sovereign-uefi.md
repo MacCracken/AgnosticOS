@@ -254,6 +254,8 @@ at the time of the shim swap, same as Path A had planned.
 
 ### Agnosticos (this repo)
 
+> **✓ Superseded (C1, 2026-06-06).** Steps 1–2 below landed by a different route than written: `install-usb.sh` is now a thin shim to the fully de-GRUB'd `install-media.sh` (step 1), and `test-uefi-qemu.sh` was **deleted** rather than rewritten (step 2) — sovereign OVMF smoke is covered by `gnoboot/tests/ovmf_smoke.sh` + `scripts/qemu-fb-smoke.sh`. The prose below is retained as the original plan record.
+
 **This agent handles:**
 
 1. **`scripts/install-usb.sh` — strip GRUB entirely.**
@@ -297,8 +299,8 @@ at the time of the shim swap, same as Path A had planned.
 | 8 | Agnos shim swap MB2 → sovereign struct (cross-repo agnos edit) | agnos 1.30.0 builds clean; kernel reads `RDI` instead of `RBX` at entry; kernel boots through 10 init checkpoints under gnoboot Step 7 | agnos | ✓ 2026-05-13 — 6 edits in agnos repo: `mbi.cyr` asm byte 0x18→0x38 (mov [rax],rbx → mov [rax],rdi), fn rename `mbi_capture_rbx → boot_info_capture_rdi`, global rename `mb_info_ptr → boot_info_ptr`, boot_shim.cyr comments + call-site update, VERSION 1.29.1 → 1.30.0, cyrius pin 5.11.43 → 5.11.53. |
 | 8 | Agnos shim swap: replace MBI parse with sovereign struct read (RDI = &boot_info, magic check) | agnos kernel build still compiles; agnos `1.29.x → 1.30.0` bump | agnos | pending |
 | 9 | End-to-end QEMU OVMF: gnoboot → agnos kernel → scheduler + tier3 test serial output | clean serial trace through "=== done ===" | gnoboot + agnos + scripts | pending |
-| 10 | `scripts/install-usb.sh` — drop GRUB, copy gnoboot.efi into `/EFI/BOOT/` | `install-usb.sh` produces a USB with no `/boot/grub/`, just `/EFI/BOOT/BOOTX64.EFI` + `/boot/agnos` + initramfs | agnosticos | pending |
-| 11 | `scripts/test-uefi-qemu.sh` — drop grub-mkimage, mcopy gnoboot.efi directly | `test-uefi-qemu.sh` boots gnoboot under OVMF without any GRUB on the image | agnosticos | pending |
+| 10 | `scripts/install-usb.sh` — drop GRUB, copy gnoboot.efi into `/EFI/BOOT/` | `install-usb.sh` produces a USB with no `/boot/grub/`, just `/EFI/BOOT/BOOTX64.EFI` + `/boot/agnos` + initramfs | agnosticos | ✓ superseded — `install-usb.sh` is now a thin shim to `install-media.sh`, which is fully de-GRUB'd (gnoboot ESP + kernel + optional sovereign initramfs, no `/boot/grub/`). |
+| 11 | `scripts/test-uefi-qemu.sh` — drop grub-mkimage, mcopy gnoboot.efi directly | `test-uefi-qemu.sh` boots gnoboot under OVMF without any GRUB on the image | agnosticos | ✓ superseded (C1, 2026-06-06) — `test-uefi-qemu.sh` was **deleted**, not rewritten: the sovereign-path OVMF smoke it wanted already exists as `gnoboot/tests/ovmf_smoke.sh` (gnoboot EFI under OVMF) + `scripts/qemu-fb-smoke.sh` (full gnoboot→kernel Path-C handoff to shell under OVMF). |
 | 12 | Iron Attempt 5 — full re-provision + boot NUC AMD with gnoboot in the chain | scheduler + tier3 serial output OR new failure mode (further than Attempts 1-4) | scripts | pending |
 
 **Each step is a separate verification gate.** Step 1 (cyrius UEFI emit)
@@ -340,9 +342,10 @@ now so they don't ambush implementation:
 
 ## Test plan
 
-**QEMU OVMF** (steps 3, 5, 7, 9): existing
-`agnosticos/scripts/test-uefi-qemu.sh`, post-step-11 form (no GRUB).
-Boot under OVMF firmware (same `grub_relocator64_efi_boot`-equivalent
+**QEMU OVMF** (steps 3, 5, 7, 9): `gnoboot/tests/ovmf_smoke.sh` (gnoboot EFI
+under OVMF) + `agnosticos/scripts/qemu-fb-smoke.sh` (full gnoboot→kernel handoff
+to shell under OVMF) — the sovereign, no-GRUB replacements for the deleted
+`test-uefi-qemu.sh`. Boot under OVMF firmware (same `grub_relocator64_efi_boot`-equivalent
 firmware path that NUC AMD uses — without GRUB, there's no relocator,
 firmware calls gnoboot directly). Serial → stdout.
 

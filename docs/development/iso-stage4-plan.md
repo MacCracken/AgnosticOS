@@ -204,10 +204,10 @@ Numbering matches `iso-pipeline.md`. Stages 1–3 deferred / implicit as before.
 scripts/
 ├── src/
 │   ├── boot.cyr           (existing — QEMU launcher; leave alone)
-│   ├── install.cyr        (existing — STALE: header still says "GRUB snippet";
-│   │                        update or supersede — its initramfs build is now
-│   │                        vestigial for the default path)
 │   └── iso.cyr            (NEW — Stage 4: rootfs + ESP + artifact assembly)
+│                           (note: the old install.cyr Linux-cpio/GRUB installer
+│                            was deleted 2026-06-06 per roadmap C1 — gnoboot +
+│                            install-media.sh own provisioning; no initramfs needed)
 ├── templates/             (NEW)
 │   ├── os-release.tmpl    (system identity)
 │   └── hostname.tmpl

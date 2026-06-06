@@ -23,9 +23,11 @@
 #                                                        no wipe. Targets agnos-fs by label unless PART given.
 #   sudo ./scripts/install-media.sh --update-all         ESP + agnos-fs, both by label, no wipe.
 #
-# Stage /bin/agnsh first:  (cd ../agnos && ./scripts/stage-agnsh.sh --build)
+# Stage first:  (cd ../agnos && ./scripts/stage-agnsh.sh --build && ./scripts/stage-tools.sh --build)
 #
-# Host-side bash; destructive disk ops need root. Cyrius-native install.cyr builds the initramfs.
+# Host-side bash; destructive disk ops need root. No Linux initramfs is built — gnoboot loads an
+# OPTIONAL sovereign INDR \boot\initramfs if one is staged at build/initramfs; otherwise the kernel
+# mounts agnos-fs straight off NVMe (see install_initramfs below).
 
 set -euo pipefail
 
@@ -200,16 +202,21 @@ fs_update() {
     echo "=== agnos-fs refresh (no wipe) ==="
     echo "Target agnos-fs: $part  (disk /dev/$(disk_base_of "$part"))"
     lsblk -o NAME,SIZE,FSTYPE,LABEL,MOUNTPOINTS "$part" 2>/dev/null || true
-    echo "  /bin/agnsh ← ${ROOTFS_STAGE}/bin/agnsh ($(stat -c%s "${ROOTFS_STAGE}/bin/agnsh") bytes)"
+    echo "  staged /bin ← ${ROOTFS_STAGE}/bin/ :"
+    for f in "${ROOTFS_STAGE}/bin/"*; do
+        [[ -f "$f" ]] && echo "    $(basename "$f") ($(stat -c%s "$f") bytes)"
+    done
 
     mount_at "$part" "$MOUNT_POINT_DATA"
     # Merge the staged tree in (cp -a is overwrite-matching-paths, never a mirror/delete — existing
-    # write-test artifacts + seed files survive). agnsh stays executable on the ext4 agnos-fs.
+    # write-test artifacts + seed files survive). cp -a preserves the +x bits stage-*.sh set; the
+    # explicit chmod is belt-and-suspenders across the whole /bin — agnsh (PID 1) + the AGNOS-tic
+    # tools (bnrmr/cmdrs/…) must all stay executable on the ext4 agnos-fs for exec-from-disk.
     cp -a "${ROOTFS_STAGE}/." "${MOUNT_POINT_DATA}/"
-    chmod +x "${MOUNT_POINT_DATA}/bin/agnsh"
+    chmod +x "${MOUNT_POINT_DATA}/bin/"*
     sync
-    echo "  on-disk /bin/agnsh now $(stat -c%s "${MOUNT_POINT_DATA}/bin/agnsh") bytes"
-    echo "✓ agnos-fs refreshed on $part — /bin/agnsh updated, data partition NOT wiped."
+    echo "  on-disk /bin now: $(ls "${MOUNT_POINT_DATA}/bin/" 2>/dev/null | tr '\n' ' ')"
+    echo "✓ agnos-fs refreshed on $part — /bin (agnsh + staged tools) updated, data partition NOT wiped."
     umount_safe "$MOUNT_POINT_DATA"
 }
 
@@ -229,7 +236,7 @@ Usage:
   sudo $0 --update-fs [PART]  agnos-fs refresh (/bin/agnsh + staged rootfs), no wipe   [default: label agnos-fs]
   sudo $0 --update-all        ESP + agnos-fs, both by label, no wipe
 
-Stage /bin/agnsh first:  (cd ../agnos && ./scripts/stage-agnsh.sh --build)
+Stage first:  (cd ../agnos && ./scripts/stage-agnsh.sh --build && ./scripts/stage-tools.sh --build)
 
 Block devices:
 EOF
