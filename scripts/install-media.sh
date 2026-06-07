@@ -69,6 +69,18 @@ disk_base_of() {
     echo "$d"
 }
 
+# Refuse a WHOLE-DISK target for the update modes — they expect a PARTITION (the
+# ESP / agnos-fs), and mounting a disk fails with a cryptic "bad superblock". A
+# whole disk's disk_base_of equals its own basename (no parent). Die with the fix:
+# omit the arg (label auto-resolve) or pass the partition. Belt for the common
+# `--update /dev/nvme0n1` (disk) vs the needed /dev/nvme0n1p1 (ESP) slip.
+refuse_whole_disk() {
+    local node="$1" label="$2"
+    if [[ "$(basename "$(readlink -f "$node")")" == "$(disk_base_of "$node")" ]]; then
+        die "$node is a whole disk, not a partition. Omit the argument to auto-resolve the $label label, or pass the partition (e.g. ${node}p1)."
+    fi
+}
+
 # Abort if $1 resolves to the disk holding the running / or /boot. FAILS CLOSED: if the system
 # disk can't be determined, refuse rather than allow. Gates every mount-and-write path, not just
 # the wipe — a cp onto the dev root/boot is destructive too.
@@ -167,6 +179,7 @@ install_initramfs() {
 esp_update() {
     local esp="$1"
     [[ -b "$esp" ]] || die "ESP partition not found: $esp (provision first, or pass the right partition)."
+    refuse_whole_disk "$esp" AGNOSBOOT
     refuse_system_disk "$esp"
     refuse_mounted_elsewhere "$esp" "$MOUNT_POINT"
     require_file "$KERNEL_SRC"  "AGNOS kernel"
@@ -194,6 +207,7 @@ esp_update() {
 fs_update() {
     local part="$1"
     [[ -b "$part" ]] || die "agnos-fs partition not found: $part (provision first, or pass the right partition)."
+    refuse_whole_disk "$part" agnos-fs
     refuse_system_disk "$part"
     refuse_mounted_elsewhere "$part" "$MOUNT_POINT_DATA"
     [[ -d "$ROOTFS_STAGE" ]] || die "staged rootfs not found at $ROOTFS_STAGE — run: (cd ../agnos && ./scripts/stage-agnsh.sh --build)"
