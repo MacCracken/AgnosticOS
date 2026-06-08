@@ -44,6 +44,8 @@ GNOBOOT_SRC="${GNOBOOT_SRC:-${REPO_ROOT}/../gnoboot/build/BOOTX64.EFI}"
 # without an initramfs (gnoboot: absent → phys/size 0; the kernel mounts the agnos-fs from NVMe).
 INITRAMFS_SRC="${INITRAMFS_SRC:-${SCRIPT_DIR}/build/initramfs}"
 ROOTFS_STAGE="${ROOTFS_STAGE:-${REPO_ROOT}/../agnos/build/rootfs}"   # stage-agnsh.sh → build/rootfs/bin/agnsh
+DOOM_BIN="${DOOM_BIN:-${REPO_ROOT}/../cyrius-doom/build/doom_agnos}" # cyrius-doom --agnos build → /bin/doom (1.43.6)
+DOOM_WAD="${DOOM_WAD:-${REPO_ROOT}/../cyrius-doom/wad/DOOM1.WAD}"    # shareware IWAD → /DOOM1.WAD (doom's default path)
 MOUNT_POINT="/mnt/agnos-esp"
 MOUNT_POINT_DATA="/mnt/agnos-fs"
 
@@ -202,6 +204,29 @@ esp_update() {
     umount_safe "$MOUNT_POINT"
 }
 
+# Stage cyrius-doom (the first real userland app) + its WAD onto a mounted agnos-fs.
+# Optional: silently skipped if no --agnos build is present, so non-doom installs
+# are unaffected. doom defaults to /DOOM1.WAD; BOTH the binary and the WAD must be
+# on the agnos-fs for `run /bin/doom` to render (else WadOpenFailed). The WAD is
+# ~4.2 MB; the data partition has room. Render needs kernel >= 1.43.6 (the PMM
+# 128 MB pool + the PD[8..63] high-region map).
+stage_doom() {
+    local mnt="$1"
+    if [[ ! -f "$DOOM_BIN" ]]; then
+        echo "  doom: skipped (no --agnos build at $DOOM_BIN — cd ../cyrius-doom && cyrius build --agnos src/main.cyr build/doom_agnos)"
+        return 0
+    fi
+    mkdir -p "${mnt}/bin"
+    cp "$DOOM_BIN" "${mnt}/bin/doom"; chmod +x "${mnt}/bin/doom"
+    echo "    staged /bin/doom ($(stat -c%s "$DOOM_BIN") bytes)"
+    if [[ -f "$DOOM_WAD" ]]; then
+        cp "$DOOM_WAD" "${mnt}/DOOM1.WAD"
+        echo "    staged /DOOM1.WAD ($(stat -c%s "$DOOM_WAD") bytes)"
+    else
+        echo "    WARNING: no WAD at $DOOM_WAD — /bin/doom staged WITHOUT it; 'run /bin/doom' will WadOpenFailed"
+    fi
+}
+
 # --- agnos-fs refresh (stage /bin/agnsh + rootfs files), no wipe ---
 
 fs_update() {
@@ -228,6 +253,8 @@ fs_update() {
     # tools (bnrmr/cmdrs/…) must all stay executable on the ext4 agnos-fs for exec-from-disk.
     cp -a "${ROOTFS_STAGE}/." "${MOUNT_POINT_DATA}/"
     chmod +x "${MOUNT_POINT_DATA}/bin/"*
+    echo "  staged doom + WAD:"
+    stage_doom "${MOUNT_POINT_DATA}"
     sync
     echo "  on-disk /bin now: $(ls "${MOUNT_POINT_DATA}/bin/" 2>/dev/null | tr '\n' ' ')"
     echo "✓ agnos-fs refreshed on $part — /bin (agnsh + staged tools) updated, data partition NOT wiped."
@@ -369,6 +396,8 @@ if [[ -f "${ROOTFS_STAGE}/bin/agnsh" ]]; then
     chmod +x "${MOUNT_POINT_DATA}/bin/agnsh"
     echo "      seeded /bin/agnsh ($(stat -c%s "${MOUNT_POINT_DATA}/bin/agnsh") bytes)"
 fi
+echo "      staging doom + WAD..."
+stage_doom "${MOUNT_POINT_DATA}"
 printf 'hello from agnos ext4 seed   provisioned %s\n' "$PROV_DATE" > "${MOUNT_POINT_DATA}/hello.txt"
 printf 'welcome — secondary hello on agnos-fs root   provisioned %s\n' "$PROV_DATE" > "${MOUNT_POINT_DATA}/welcome.txt"
 mkdir -p "${MOUNT_POINT_DATA}/agnos"
