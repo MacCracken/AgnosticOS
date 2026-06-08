@@ -7,12 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed — 0.1.0 clean+prep: doc currency + ecosystem release-readiness (2026-06-04)
+### Changed — 0.1.0 clean+prep: doc currency + ecosystem release-readiness (2026-06-07)
 
-Genesis docs swept current through agnos **1.41.11** (detail in [`docs/doc-health.md`](docs/doc-health.md)). Kept brief here on purpose — the 0.1.0 cycle is prep, and the point is an accurate **release-readiness** picture across the repos:
+Genesis docs swept current through agnos **1.43.2** (detail in [`docs/doc-health.md`](docs/doc-health.md)). Kept brief here on purpose — the 0.1.0 cycle is prep, and the point is an accurate **release-readiness** picture across the repos:
 
-- **Iron-validated / shippable now:** agnos kernel **base maturity** — FS-crash-safe (extent → jbd2 → VFS) + exec-from-disk, iron-validated 2026-05-31; **cyrius 6.0.62** toolchain; **94 crates at v1.0+** (registry reconciled); **agora 1.0.0** (telnet BBS, iron-validated on archaemenid); **gnoboot 0.5.0** (sovereign UEFI boot).
-- **Software-complete, iron burn pending:** agnos **1.41.x shell-separation** — `agnsh` is the userland interactive shell, in-kernel shell is a recovery REPL; QEMU-green, staged at [`#tracker-141x-cycle`](docs/development/iron-nuc-zen-log.md).
+- **Iron-validated / shippable now:** agnos kernel **base maturity** — FS-crash-safe (extent → jbd2 → VFS) + exec-from-disk, iron-validated 2026-05-31; **1.41.x shell-separation iron-complete** (burn `14115`, 2026-06-06 — `agnsh` types/echoes/dispatches on archaemenid); cyrius pin **6.0.56** (toolchain latest 6.0.88); **94 crates at v1.0+** (registry reconciled); **agora 1.0.0** (telnet BBS, iron-validated on archaemenid); **gnoboot 0.5.0** (sovereign UEFI boot).
+- **Landed since (QEMU-validated, rides the next burn):** agnos **1.42.x** perf+hardening + **1.43.x** (execwait #37 → userland `run`; FB-console ANSI/SGR color interpreter — renders the anuenue rainbow; kernel line-discipline EOF/Ctrl-D). First AGNOS-tic userland tools on `/bin` (`bnrmr`/`cmdrs`/`klug`/`anuenue`). agnoshi **1.4.5** (`verb_abspath` — `ls`/`ls .` see the FS, QEMU-validated); anuenue **1.1.1** (positional-text mode).
 - **0.1.0 close still gates on:** the combined kernel **iron burn** + **ISO** assembly ([`iso-stage4-plan.md`](docs/development/iso-stage4-plan.md)) + Docker images — the `monolith-extraction` → `main` merge waits on these, not on the doc work.
 
 Docs touched: README / AGNOS / architecture / history / timeline / roadmap / SECURITY / state.md (anchor) + the crate registries (`shared-crates.md` / `libs/README.md`) + `port-ledger-volume-3.md` (7/10 Volume 1 ports now carry 6.0.x receipts).

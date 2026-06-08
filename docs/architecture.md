@@ -107,7 +107,7 @@ AGNOS runs its own sovereign kernel, written in Cyrius. No Linux dependency at r
 - Pipes, signals, epoll, timerfd
 - Recovery-REPL shell (the interactive shell moved to userland `agnsh` in the 1.41.x shell-separation arc)
 - kybernet as PID 1
-- Sovereign UEFI handoff (Path C, RDI = `&boot_info` via gnoboot v0.2.0)
+- Sovereign UEFI handoff (Path C, RDI = `&boot_info` via gnoboot v0.5.0)
 - Native XHCI + USB-HID-boot keyboard driver (all 5 phases landed; iron-side blocker remains on archaemenid silent-absorb arc)
 
 The `kernel/` directory in this repo contains Linux kernel configs for **host bootstrap only** — building the cross-compiler toolchain on an existing Linux host before AGNOS can self-host.
@@ -116,7 +116,7 @@ The `kernel/` directory in this repo contains Linux kernel configs for **host bo
 
 > Conceptual decomposition. Layers 1–5 shipped. Live per-subsystem status: [agnos repo](https://github.com/MacCracken/agnos). Live size: [`development/state.md`](development/state.md).
 
-The kernel was originally planned as five layers — *boots*, *runs programs*, *storage*, *talks to the world*, *usable*. All five landed inside a ~7-week window (Cyrius scaffold 2026-04-03 → kernel v1.22.0 on 2026-04-14, hardened to v1.26.1 by 2026-04-28). Subsequent 1.27.x → 1.30.x work has been bring-up and hardening: KASLR data-only shipped at 1.28.0 (closed the security-track gate 13/13), sovereign-struct kernel ABI shipped 1.30.0 (Path-C UEFI handoff via gnoboot v0.2.0), native XHCI + USB-HID-boot driver across 1.30.1 → 1.30.5, xHCI cmd-path repair arc 1.30.6 (Repairs FF through QQ, MSI-X table programming closeout). The decomposition below reflects where each layer sits today; live per-version detail in [`development/state.md`](development/state.md).
+The kernel was originally planned as five layers — *boots*, *runs programs*, *storage*, *talks to the world*, *usable*. All five landed inside a ~7-week window (Cyrius scaffold 2026-04-03 → kernel v1.22.0 on 2026-04-14, hardened to v1.26.1 by 2026-04-28). Subsequent 1.27.x → 1.30.x work has been bring-up and hardening: KASLR data-only shipped at 1.28.0 (closed the security-track gate 13/13), sovereign-struct kernel ABI shipped 1.30.0 (Path-C UEFI handoff via gnoboot v0.5.0), native XHCI + USB-HID-boot driver across 1.30.1 → 1.30.5, xHCI cmd-path repair arc 1.30.6 (Repairs FF through QQ, MSI-X table programming closeout). The decomposition below reflects where each layer sits today; live per-version detail in [`development/state.md`](development/state.md).
 
 ### Layer 1 — Can Boot and Respond
 

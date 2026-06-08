@@ -260,6 +260,30 @@ The 1.39.x VFS generic-write lift gave every shell verb a FAT/exFAT path, but th
 
 ---
 
+## 1.41.x shell-separation arc on iron (14111 → 14115) — agnsh types on hardware 🎯
+
+The interactive shell left the kernel: PID 1 kybernet execs the userland `/bin/agnsh` in ring 3 from the ext2 root; the in-kernel `shell()` shrank to a recovery REPL. Four burns took it from "boot looks hung" to "agnsh types, echoes, and dispatches on archaemenid." Per-attempt narrative: [`iron-nuc-zen-log.md#tracker-141x-cycle`](../iron-nuc-zen-log.md#tracker-141x-cycle); root-cause detail in the issue doc `issue/2026-06-04-agnsh-ring3-pf-pmm-fragmentation.md`.
+
+| Photo | Date | What it shows |
+|-------|------|---------------|
+| `14111-agnos-1.41.12-ring3-stdout-serial-only-boot-looks-hung.jpg` | 2026-06-04 | **Burn #1 — the ring-3-stdout regression.** Phone-label `14111_stallout`. Boot *looked* hung at `kybernet: exec /bin/agnsh` because agnsh's `write(1,…)` routed through the serial-only console device (`serial_dev_write`→`serial_print`), invisible on the serial-less box though agnsh was alive in ring 3. Fix at 1.41.12: `serial_dev_write`→`kprint` (serial+fb mirror). |
+| `14112-agnos-1.41.13-banner-fb-visible-typing-dead-pt1.jpg` | 2026-06-04 | **Burn #2 pt1 — banner now FB-visible, typing dead.** Phone-label `14112_140_boot_no_typing`. The 1.41.12 stdout fix made the agnsh banner render on the framebuffer, but keystrokes did nothing (pre-IRQ1 input path). Also surfaced the intermittent PMM `#PF` (KASLR bottom-up first-fit scattered the userland 2 MB region) → fixed top-down `pmm_alloc` at 1.41.12. |
+| `14112-agnos-1.41.13-shell-no-echo-pt2.jpg` | 2026-06-04 | **Burn #2 pt2 — shell prompt, no echo.** Phone-label `14112_shell_no_echo`. Companion shot of the same burn: prompt present, typed characters not echoed — the input-path work that drove 1.41.13 (i8042-poll, falsified) → 1.41.14 (IRQ1 + `sti`). |
+| `14114-agnos-1.41.14-keyboard-read-stuck-command-d-no-echo.jpg` | 2026-06-05 | **Burn #3 — keyboard READ, but every line collapsed to `Command: D`.** Phone-label `14114_no_echo_but_input_enter_works`. 1.41.14 read the keyboard (Enter worked) but each line became a stuck `Command: D`: the per-byte read returned after the first char, and ring 3 runs IF=0 between syscalls, so the SHIFT-RELEASE break landed in the inter-byte gap and was dropped (`kb_shift` latched). Fixed 1.41.15: `read(0)` made continuous-IF, line-disciplined, with kernel-side echo+backspace. |
+| `14115-agnos-1.41.15-agnsh-types-echoes-dispatches-arc-close.jpg` | 2026-06-06 | **🎯 Burn #4 — ARC HARDWARE-CLOSE.** Phone-label `14115_141_miss_labeled` (mislabeled on the phone; this is the 1.41.15 close). agnsh types + echoes + dispatches correctly on archaemenid: `help`/`mode`/`version` all worked at `[ASSIST] >` past a real DHCP lease (`ip=192.168.1.163`). The 1.41.x core claim — a userland AI shell, typeable on iron — is met. |
+
+---
+
+## 1.43.x userland tools + ls-fix on iron (14314)
+
+The first AGNOS-tic userland tools (`bnrmr`/`cmdrs`/`klug`/`anuenue`) banked onto the agnos-fs `/bin`, exec'd from the `[ASSIST] >` prompt. This burn surfaced two userland bugs since fixed in this dev cycle (agnoshi 1.4.5 + anuenue 1.1.1). Per-attempt narrative: [`iron-nuc-zen-log.md#tracker-143x-cycle`](../iron-nuc-zen-log.md#tracker-143x-cycle).
+
+| Photo | Date | What it shows |
+|-------|------|---------------|
+| `14314-agnos-1.43.2-agnsh-ls-no-file-dir-anuenue-hang-bnrmr-ok.jpg` | 2026-06-07 | **agnos 1.43.2 userland-tools burn — two bugs captured + a pass.** Phone-label `14314_144_no_file_dir`. (1) `ls .` → `ls: .: No such file or directory` — agnsh's verbs passed the relative `"."` straight to the kernel, which requires absolute paths (no per-process CWD); **fixed agnoshi 1.4.5** via `verb_abspath` (QEMU-validated). (2) `run /bin/anuenue` hangs — anuenue is a pure stdin pipe filter and agnos has no pipes/EOF; **fixed anuenue 1.1.1** with a positional-text mode (`anuenue TEXT…`). (3) `run /bin/bnrmr` (no args) correctly prints its figlet usage — the exec-from-disk path + arg-less tool works. |
+
+---
+
 Anticipated photo themes for 1.30.12+ (Attempt 72 forward):
 
 - **Framebuffer refresh — before/after scroll perf fix** — bench output capturing visible refresh quality before and after the chunked block-copy rewrite of `fb_scroll_up`.
