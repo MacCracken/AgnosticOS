@@ -7,12 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Milestone — DOOM renders on AGNOS (2026-06-08)
+
+The first real userland application runs on the AGNOS kernel: **cyrius-doom 0.28.2 `--agnos` boots to the DOOM title screen** at agnos **1.43.6**. The 584 KB ELF exec's from disk in ring 3, reads the 4.2 MB DOOM1.WAD off the ext2 root, parses it, and blits a 240-colour frame via the kernel's `fbinfo`#38/`blit`#39 syscalls. *"agnsh launches DOOM."*
+
+Kernel-side enablers (detail in `agnos/CHANGELOG.md` `[1.43.6]` + `agnos/docs/development/planning/doom-on-agnos-render-blockers.md`): the 1.43.x graphics path (`fbinfo`/`blit` framebuffer, `uptime_ms`/`sleep_ms` ring-3 timing) plus two 1.43.6 fixes — PMM 2 MB pool 16 MB → 128 MB and `proc_create` mapping `PD[8..63]` 16–128 MB identity-supervisor (the WAD-alloc ring-0 #PF→#DF fix). Validated by `agnos/scripts/doom-smoke.sh` (PASS); QEMU sweep 7/7; cyrius pin held 6.0.56; production kernel (no DOOM_SELFTEST).
+
+**Known bug (workaround-only):** the first `mmap` from a freshly-exec'd ring-3 process corrupts the ring-3 return state (fault at RIP=0); cyrius-doom carries a one-line warm-up-mmap workaround. agnsh unaffected.
+
+**Provisioning:** `scripts/install-media.sh` now stages `/bin/doom` + `/DOOM1.WAD` onto agnos-fs via `--update-fs` (and full provision; `stage_doom`). The DOOM milestone is **NOT yet iron-burned on archaemenid** — the 128 MB PMM + `PD[8..63]` map meet the box's real UEFI memory map for the first time (primary risk: a reserved-region collision in 16–128 MB; PMM hardcodes `pmm_total`, reads no E820/UEFI map — the old 16 MB pool proved 4–16 MB clean).
+
 ### Changed — 0.1.0 clean+prep: doc currency + ecosystem release-readiness (2026-06-07)
 
 Genesis docs swept current through agnos **1.43.2** (detail in [`docs/doc-health.md`](docs/doc-health.md)). Kept brief here on purpose — the 0.1.0 cycle is prep, and the point is an accurate **release-readiness** picture across the repos:
 
 - **Iron-validated / shippable now:** agnos kernel **base maturity** — FS-crash-safe (extent → jbd2 → VFS) + exec-from-disk, iron-validated 2026-05-31; **1.41.x shell-separation iron-complete** (burn `14115`, 2026-06-06 — `agnsh` types/echoes/dispatches on archaemenid); cyrius pin **6.0.56** (toolchain latest 6.0.88); **94 crates at v1.0+** (registry reconciled); **agora 1.0.0** (telnet BBS, iron-validated on archaemenid); **gnoboot 0.5.0** (sovereign UEFI boot).
-- **Landed since (QEMU-validated, rides the next burn):** agnos **1.42.x** perf+hardening + **1.43.x** (execwait #37 → userland `run`; FB-console ANSI/SGR color interpreter — renders the anuenue rainbow; kernel line-discipline EOF/Ctrl-D). First AGNOS-tic userland tools on `/bin` (`bnrmr`/`cmdrs`/`klug`/`anuenue`). agnoshi **1.4.5** (`verb_abspath` — `ls`/`ls .` see the FS, QEMU-validated); anuenue **1.1.1** (positional-text mode).
+- **Landed since (QEMU-validated, rides the next burn):** agnos **1.42.x** perf+hardening + the **1.43.x** graphics/userland arc (execwait #37 → userland `run`; FB-console ANSI/SGR color; `fbinfo`#38/`blit`#39 framebuffer; `uptime_ms`#40/`sleep_ms`#41 timing) — culminating in **DOOM rendering on AGNOS (agnos 1.43.6 / cyrius-doom 0.28.2)**: the first real userland app, exec'd from disk in ring 3, blitting the 240-colour title screen (`doom-smoke.sh` PASS). First AGNOS-tic userland tools on `/bin` (`bnrmr`/`cmdrs`/`klug`/`anuenue`). agnoshi **1.4.6** (`verb_abspath` + envp `$HOME` walk). **NOT yet iron-burned** — the 128 MB PMM pool meets archaemenid's real UEFI map for the first time.
 - **0.1.0 close still gates on:** the combined kernel **iron burn** + **ISO** assembly ([`iso-stage4-plan.md`](docs/development/iso-stage4-plan.md)) + Docker images — the `monolith-extraction` → `main` merge waits on these, not on the doc work.
 
 Docs touched: README / AGNOS / architecture / history / timeline / roadmap / SECURITY / state.md (anchor) + the crate registries (`shared-crates.md` / `libs/README.md`) + `port-ledger-volume-3.md` (7/10 Volume 1 ports now carry 6.0.x receipts).
