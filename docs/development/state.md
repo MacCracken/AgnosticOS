@@ -165,13 +165,17 @@ CYML — 6.0.x LEADING EDGE (the bulk of the ecosystem, ~32 repos):
   v6.0.87:  agnoshi (1.4.6)    ← advanced 6.0.56→6.0.87 (2026-06-08) for the
             agnos getenv()/envp walk; consumer-only feature bump, NOT drift.
             The kernel + the other agnos-target binaries hold 6.0.56.
+  v6.1.6:   attn11 (0.5.1)       ← leading edge — the from-scratch *trained*
+            GPT-style transformer (the ecosystem's ML/training reference);
+            tracks current cyrius, well ahead of the agnos boot-path band.
 
 CYRIUS TOOLCHAIN: 6.0.61. The agnos boot-path core moved into the 6.0.5x band
   during the 1.41.x shell-separation arc (CYRIUS_TARGET_AGNOS landed at
   6.0.55/56); agnos pins 6.0.56 deliberately (held-known-working; do not chase
   the toolchain number). hisab alone still trails at 6.0.14. agnoshi advanced
   to 6.0.87 on 2026-06-08 to consume the agnos getenv()/envp walk (cyrius latest
-  released: 6.0.91) — a targeted consumer feature bump, not a cohort move.
+  released: 6.1.6 — confirmed by attn11's pin) — a targeted consumer feature bump,
+  not a cohort move.
 
 ABSENT from this devbox clone (not surveyable here): avatara, hadara, itihas,
   takumi, aethersafha, mela, seema, samay, + the scaffolded cyrius-* game repos.

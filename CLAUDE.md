@@ -70,6 +70,7 @@ The role map below is for orientation. **Versions are intentionally omitted** â€
 | **itihas** | History / versioning | **Ported** |
 | **bsp** | BSP geometry library | **Ported** |
 | **cyrius-doom** | DOOM engine in Cyrius | **Native** |
+| **attn11** | GPT-style transformer (**trained**, not just inference) in Cyrius â€” hand-written forward + backprop + Adam on raw `f64` arrays (no BLAS / libc / autodiff). The ecosystem's reference that gradient-based learning is expressible in the sovereign "everything-is-i64" language; gradients gated by finite-difference checks. Binary. | **Native** |
 | **sankoch** | Lossless compression (LZ4, DEFLATE, zlib, gzip) | **Ported** |
 | **bhava** | Emotion / sentiment modeling | Pending |
 | **hisab** | Higher math | **Ported** |
