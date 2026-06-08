@@ -71,6 +71,7 @@ The role map below is for orientation. **Versions are intentionally omitted** �
 | **bsp** | BSP geometry library | **Ported** |
 | **cyrius-doom** | DOOM engine in Cyrius | **Native** |
 | **attn11** | GPT-style transformer (**trained**, not just inference) in Cyrius — hand-written forward + backprop + Adam on raw `f64` arrays (no BLAS / libc / autodiff). The ecosystem's reference that gradient-based learning is expressible in the sovereign "everything-is-i64" language; gradients gated by finite-difference checks. Binary. | **Native** |
+| **agora** | Telnet-served BBS (Greek ἀγορά — *civic marketplace / public assembly*) in Cyrius — server-stage app. Sigil-backed Ed25519 auth, multi-board threaded boards, fork-per-connection concurrency, full telnet RFC conformance; three door games (PA / Smuggler / The Handler) with `flock`'d Persistent-Universe shared-world multiplayer. Iron-validated on archaemenid. Anchors the BBS/MUD aesthetic cluster (1.3.0 Eliza+chat, 1.4.0 `descent` door → cyrius-yeomans-descent planned). | **Native** |
 | **sankoch** | Lossless compression (LZ4, DEFLATE, zlib, gzip) | **Ported** |
 | **bhava** | Emotion / sentiment modeling | Pending |
 | **hisab** | Higher math | **Ported** |
