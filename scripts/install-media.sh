@@ -247,6 +247,19 @@ fs_update() {
     done
 
     mount_at "$part" "$MOUNT_POINT_DATA"
+    # Snapshot the sizes already on the agnos-fs BEFORE we overwrite, so we can show old→new per
+    # /bin file. A size delta is the cheap "did this binary actually change?" signal — the stale-stage
+    # class of wasted burn (1.4.7 agnsh: staged binary 3 hrs behind the fix) shows up here as
+    # "= unchanged" on a file you expected to move. (Size match ≠ proof of identity, but a size CHANGE
+    # is proof a write landed; an unchanged size on a file you just fixed is the red flag to chase.)
+    declare -A _old_sz _old_md5
+    for f in "${MOUNT_POINT_DATA}/bin/"*; do
+        [[ -f "$f" ]] || continue
+        local b; b="$(basename "$f")"
+        _old_sz["$b"]="$(stat -c%s "$f")"
+        _old_md5["$b"]="$(md5sum "$f" | cut -d' ' -f1)"   # captured BEFORE overwrite, for the equal-size tiebreak
+    done
+
     # Merge the staged tree in (cp -a is overwrite-matching-paths, never a mirror/delete — existing
     # write-test artifacts + seed files survive). cp -a preserves the +x bits stage-*.sh set; the
     # explicit chmod is belt-and-suspenders across the whole /bin — agnsh (PID 1) + the AGNOS-tic
@@ -256,6 +269,32 @@ fs_update() {
     echo "  staged doom + WAD:"
     stage_doom "${MOUNT_POINT_DATA}"
     sync
+
+    echo "  /bin size diff (old → new):"
+    for f in "${MOUNT_POINT_DATA}/bin/"*; do
+        [[ -f "$f" ]] || continue
+        local name new old delta
+        name="$(basename "$f")"
+        new="$(stat -c%s "$f")"
+        old="${_old_sz[$name]:-}"
+        if [[ -z "$old" ]]; then
+            echo "    + $name  (new, $new B)"
+        elif [[ "$old" != "$new" ]]; then
+            delta=$(( new - old ))
+            [[ $delta -gt 0 ]] && delta="+$delta"
+            echo "    ~ $name  $old → $new B  ($delta)"
+        else
+            # Same size — ambiguous. Fall back to md5 (old captured pre-overwrite) to tell a
+            # same-size content change from a genuinely-unchanged (possibly stale) stage.
+            local nmd5="$(md5sum "$f" | cut -d' ' -f1)"
+            if [[ "${_old_md5[$name]}" != "$nmd5" ]]; then
+                echo "    ~ $name  $new B  (size same, CONTENT CHANGED — md5 ${_old_md5[$name]:0:8} → ${nmd5:0:8})"
+            else
+                echo "    = $name  $new B  (unchanged, md5 match — if you expected a change, the stage is stale)"
+            fi
+        fi
+    done
+
     echo "  on-disk /bin now: $(ls "${MOUNT_POINT_DATA}/bin/" 2>/dev/null | tr '\n' ' ')"
     echo "✓ agnos-fs refreshed on $part — /bin (agnsh + staged tools) updated, data partition NOT wiped."
     umount_safe "$MOUNT_POINT_DATA"
