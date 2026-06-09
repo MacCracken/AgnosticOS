@@ -125,12 +125,14 @@ Cyrius is the AGNOS systems language. It has its own build tool and dep system.
 - `cyrius build` auto-resolves deps from `scripts/cyrius.cyml` and auto-prepends includes
 - Toolchain version pinned in `scripts/cyrius.cyml` via the `cyrius = "<version>"` field
 - If stdout/println doesn't work, you're missing includes — use `cyrius build`, not raw cycc
-- **Programs must call main() at top level** — Cyrius executes top-level code, not fn main() automatically:
+- **Programs must call main() at top level** — Cyrius executes top-level code, not fn main() automatically. Call main from a **bare statement** (NOT `var r = main();`) and exit via **`SYS_EXIT`** (NOT a literal `60`). This form is correct on host AND agnos:
   ```cyrius
-  fn main() { ... return 0; }
-  var exit_code = main();
-  syscall(60, exit_code);
+  fn main(): i64 { ... return 0; }
+  fn _entry(): i64 { var r = main(); syscall(SYS_EXIT, r); return 0; }
+  _entry();                 # BARE call — do NOT write `var r = main();`
   ```
+  - **Why bare-call, not `var r = main();`** (agnos): a module-scope `var r = main()` runs `main` during the **gvar-init** phase — *before* cycc emits the init-rsp capture (`_agnos_capture_rsp`, placed after gvar-inits as of cyrius 6.1.14) — so `argc()`/`argv()` read **0/null** and arg-reading tools see no args (`bnrmr agnos` printed help instead of rendering). A bare top-level statement runs in `PARSE_PROG`, *after* the capture. Filed as a cyrius issue (`agnos/docs/development/issue/2026-06-08-cyrius-agnos-argv-init-rsp-capture.md`); the `var r = main()` form may become valid again if cyrius moves the capture ahead of the main-gvar-init.
+  - **Why `SYS_EXIT`, not `60`** (agnos): agnos redefines the `Sys` enum to its own numbers — `exit` is syscall **0**, not Linux's 60. A literal `syscall(60, …)` is a **no-op** on agnos (it only terminates because cycc auto-emits `EEXIT` at end of top-level). `SYS_EXIT` resolves to 0 on agnos and 60 on Linux — correct on both.
 - **`var X[N]` allocation unit differs by scope**: **module-global** `var X[N]` = N×u64 (8N bytes); **function-local** `var X[N]` = N bytes. See `agnos/kernel/core/ext2.cyr:28-44` for canonical inline-commented examples. When porting Linux/BSD drivers, a module-scope `u8 buf[4096]` becomes `var buf[512]` in Cyrius. Memory: [[cyrius-var-array-u64-units]].
 - **Study working programs** before writing new code — see `cyrius/programs/*.cyr` (65+ examples)
 - **Binary names**: `cycc` (self-hosting compiler, was `cc5`) + `cybs` (bootstrap compiler, was `cyrc`) — renamed at cyrius v6.0.0 cycle-open 2026-05-19. Names are now permanent — no `cycc6` at v7.0.0, etc. `~/.cyrius/bin/` ships symlinks `cc5 → cycc` + `cyrc → cybs` through the v6.0.x window (drop at v6.1.0). The bridge step in the bootstrap chain was retired at cyrius v5.11.66 — chain is `seed → cybs → cycc`.
