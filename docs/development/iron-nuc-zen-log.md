@@ -39,7 +39,20 @@ back. Status is one of `FAIL` / `PASS` / `PARTIAL` / `PENDING`.
 >
 > **State.md cycle headers link to these anchors via `iron-nuc-zen-log.md#tracker-1373-cycle` style.** Archived (MVP2.0-era) trackers live in [`iron-nuc-zen-log-mvp2.md`](iron-nuc-zen-log-mvp2.md).
 
-### Tracker: 1.44.x cycle — userland coreutils delegation (OPEN 2026-06-09 — agnsh delegation WIRED + QEMU-validated; two kriya/owl agnos gaps found, no iron burn yet. NO auto-run per [[feedback_iron_burns_block_other_work]].) {#tracker-144x-cycle}
+### Tracker: 1.44.x cycle — multi-threading / preemptive scheduling (OPEN 2026-06-09 — opening kernel bite landed + QEMU-green; userland delegation surface also green; iron rides the next burn. NO auto-run per [[feedback_iron_burns_block_other_work]].) {#tracker-144x-cycle}
+
+**Arc.** The deep cooperative→preemptive scheduler transition ([[project_multithreading_future_arc]]): interrupt-safe context save/restore, reentrant-or-gated syscalls, preemptive ring-3 time-slicing, concurrent `spawn`+`waitpid` (DOOM while the shell stays live), SMP-AP wakeup. Multi-patch line; absorbs the 1.43.x carry-forward (per-process env, FB scaling, zero-copy FB-mmap; first-`mmap` RIP=0 already repaired at 1.43.8).
+
+**Opening kernel bite (agnos 1.44.0) — QEMU-GREEN (`agnos/scripts/thread-smoke.sh`).**
+- ✅ **`kthread_create`** (`core/proc.cyr`) — a schedulable kernel thread on the shared AS (CR3 0x1000, IF=1) from a static stack pool; generalizes the hand-rolled 1.40.10 idle proc into a spawn API.
+- ✅ **Preempt gate** (`core/proc.cyr` + `core/sched.cyr`) — `preempt_count` + `preempt_disable`/`preempt_enable`, wired into `do_context_switch` (a timer tick with `preempt_count>0` is a no-op switch). The "reentrant-or-gated" foundation that lets the single-core no-lock invariant (shared scratch buffers, FS code) survive preemption; formalizes the ad-hoc syscall-path guard.
+- ✅ **`THREAD_SELFTEST`** — two kthreads tight-loop bumping counters (never yielding); both reach the **tens of millions** while the timer round-robins them (`thr: preempt OK` — preemptive time-slicing PROVEN), and under `preempt_disable()` the counters **freeze** (`thr: gate held`). `sweep.sh` **7/7** (production `do_context_switch` byte-identical — the gate is inert at `preempt_count=0`).
+- **Next bites:** per-process-AS preemptive ring-3 time-slicing (different-CR3 mid-slice) · the FS-scratch reentrancy audit/gating · `kthread_yield` · concurrent ring-3 `spawn`+`waitpid` · SMP-AP wakeup.
+- **Iron rubric (rides the next burn):** `thr: preempt OK` + `thr: gate held` on real Zen (the timer-IRQ context-switch path was iron-proven since Attempt 16; this adds the gate + the spawn API on top, so the iron risk is low). Falsifies if a kthread starves (no round-robin) or the gate leaks (counters advance under `preempt_disable`) on hardware.
+
+---
+
+**Userland testing surface (the concurrent-tools story this arc unlocks) — coreutils delegation, also QEMU-GREEN.**
 
 **Scope.** agnoshi **1.5.0** removed its 12 in-process FS verbs (the 1.42.6 stopgap "until ring-3 execwait") + `src/verbs.cyr`; agnsh is now a pure launcher. A bareword `cp`/`mv`/`rm`/`ls`/`mkdir`/`rmdir`/`touch`/`echo`/`wc`/`find`/`grep` falls through `sh_try_bareword_launch` → `/bin/<verb>` (a symlink → the **kriya** dispatcher) → `execwait`#37; `cat` is nudged to **owl** (no `/bin/cat`). kriya (`kriya_agnos`) + owl (`owl_agnos`) are staged onto the agnos-fs `/bin` with 11 `/bin/<verb>` → `kriya` relative symlinks (`agnos/scripts/stage-tools.sh`). Kernel needs no new syscall (`symlink`#43 for kriya `ln -s` is deferred to backlog).
 
