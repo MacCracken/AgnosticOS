@@ -3,7 +3,7 @@
 > **A**rtificial **G**eneral **N**etwork **O**perating **S**ystem
 
 [![License](https://img.shields.io/badge/license-GPLv3-blue)](LICENSE)
-[![Kernel](https://img.shields.io/badge/kernel-AGNOS%201.44.12-orange)](https://github.com/MacCracken/agnos)
+[![Kernel](https://img.shields.io/badge/kernel-AGNOS%201.44.20-orange)](https://github.com/MacCracken/agnos)
 [![Language](https://img.shields.io/badge/Cyrius-6.0.56-red)](https://github.com/MacCracken/cyrius)
 [![Status](https://img.shields.io/badge/status-pre--beta-yellow)](docs/development/roadmap.md)
 
