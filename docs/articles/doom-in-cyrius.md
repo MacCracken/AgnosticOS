@@ -1,6 +1,6 @@
 # DOOM in Cyrius: Two Sprints to v1.0
 
-> Empty repo to hardened, playable DOOM in two sprints, six days of wall-clock. Written in a language that began life as 29KB of assembly eleven days before the first DOOM commit. Part three — the Black Book audit — ships v1.0.
+> DOOM is the ecosystem's complexity proof: can a young sovereign language hold a real engine — BSP traversal, renderer, gameplay, hostile-input parsing, hardening — well enough to build on? Two sprints answered yes. Part three — the Black Book audit — ships v1.0. The clock was never the point; the point is proving the language can carry this class of problem before scaling out to harder ones.
 
 ---
 
@@ -36,7 +36,7 @@ Fabien Sanglard's *Game Engine Black Book: DOOM* is the authoritative reference.
 
 ## What The Two Sprints Prove
 
-**Cyrius is a real systems language, not a toy.** A 23-hour DOOM engine is a demo. A second sprint that *plays, hardens, and accelerates* the same engine is a working relationship with a language. The second sprint didn't rediscover the first — it extended it.
+**Cyrius is a real systems language, not a toy.** Honesty about sprint 1: what shipped at dawn was a demo, and a badly performing one — the original window's output matched the genre's early unoptimized demo builds, if not worse. That's expected, and it's also not the claim. The claim is that the language *held the complexity* — BSP traversal, fixed-point projection, texture mapping, WAD parsing — without buckling, and that a second sprint could *extend* the first rather than rediscover it: play, harden, accelerate. Proving the language can carry an engine of this shape is the gate to harder problems; how few hours the first draft took is trivia.
 
 **Compilers can co-evolve with their downstreams in real time.** Short-circuit `&&`, file:line errors, LASE, and DCE all landed in Cyrius while cyrius-doom was using the language. Workarounds collapsed as features shipped. The 32% render speedup required no engine work. This isn't a pattern most languages can produce — it requires owning the stack.
 
@@ -65,7 +65,7 @@ Fabien Sanglard's *Game Engine Black Book: DOOM* is the authoritative reference.
 
 Every OS, every language, every platform eventually answers the question: can it run DOOM?
 
-Cyrius doesn't just run DOOM. It rewrites DOOM smaller, hardens it against its own historical CVEs, runs it at 2.66ms/frame on a ten-day-old language — and the compiler keeps improving under it. The walls render. The WAD parser refuses malicious input. The frame finishes in 2.66ms. The compiler weighs less than the game it compiled. v1.0 is one more sprint away.
+The question matters not as a stunt but as a complexity gate: DOOM is close to the smallest program that exercises a renderer, a real-time game loop, binary parsing of hostile input, and a hard frame budget all at once. Cyrius holds all of it — and hardened the engine against the genre's historical CVEs while the compiler kept improving underneath. The walls render. The WAD parser refuses malicious input. The compiler weighs less than the game it compiled. A language that can carry DOOM can be trusted with the next, harder problem. That's the thesis — and v1.0 is one more sprint away.
 
 ---
 

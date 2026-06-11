@@ -12,6 +12,8 @@
 
 Project A was built as a capability demonstration. Project B was built out of necessity.
 
+One framing note before the comparison: this is not a race report, and AGNOS is not competing with Anthropic — or any frontier lab. Both projects ran on the same public model family, while the labs additionally hold internal models, frontier-scale compute, and coming chip generations whose gains compound exponentially. Any "David beat Goliath" reading of the numbers below has a shelf life measured in months. What doesn't expire is the methodology question: given a fixed budget and a hard systems problem, what does each working method yield? That is the comparison this article makes — two different goals, two different methods, two different artifacts.
+
 ---
 
 ## Why Cyrius Exists
@@ -121,7 +123,7 @@ Two contemporaneous data points from the compiler's bring-up:
 
 Same developer, same agent, same compiler, same week. The only variable was whether the relevant prior art was pre-staged in a form the agent could consume.
 
-This is the mechanism by which one developer plus three sequential agent sessions outperformed sixteen parallel agents on a harder problem. Parallelism scales throughput. Reference coverage scales *correctness per token spent*. Most "AI pair programming" workflows treat the model as a fresh apprentice on every session; vidya treats the agent as a senior engineer who needs the right reference open on the desk. The cost difference between Project A and Project B isn't primarily about parallelism — it's about how much rediscovery each token has to fund.
+This is the mechanism that let one developer plus three sequential agent sessions produce a self-hosting language and kernel at all — work that would otherwise need a team. Parallelism scales throughput. Reference coverage scales *correctness per token spent*. Most "AI pair programming" workflows treat the model as a fresh apprentice on every session; vidya treats the agent as a senior engineer who needs the right reference open on the desk. The cost difference between Project A and Project B isn't primarily about parallelism — it's about how much rediscovery each token has to fund.
 
 Vidya is an emerging pattern, not a finished science: 36 topics is a small library and the curation cost is real. But the leverage was visible from the first comparable feature pair, and every ported subsystem since has benefited from the same effect.
 
@@ -239,7 +241,7 @@ Both projects represent genuine engineering achievements with different trade-of
 | Ratio | 50x | 1x |
 | Output | C compiler (capability demo) | Language + OS kernel (production infrastructure) |
 
-The 50x cost difference reflects the difference between parallel brute-force and incremental, documentation-driven development.
+The 50x spend difference is not a scoreboard — the two projects bought different things. Project A bought breadth (99% GCC torture compliance, real-world C codebases) at demonstration scale; Project B bought a complete sovereign chain at subscription scale. What the gap does show is that method, not model, determines what a fixed budget yields — and that incremental, documentation-driven development is the shape that fits a one-developer budget.
 
 ---
 

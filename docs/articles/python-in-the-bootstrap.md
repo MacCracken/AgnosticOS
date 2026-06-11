@@ -24,9 +24,9 @@ Cargo, the Rust package manager, validates package names against crates.io even 
 
 Five names. Five squatters. Five placeholder repos holding namespace real estate a 108-repo OS needed. The project wasn't asking for permission to publish. It was being denied the ability to *use* code it already had, because someone else had reserved the letters.
 
-That is a different kind of problem than a payment processor rejection. A payment processor rejection is business friction. A package manager enforcing a registry on code you never submitted to it is **structural adversary** — the ecosystem asserting ownership over your work even when you've opted out.
+That is a different kind of problem than a payment processor rejection. A payment processor rejection is business friction. A package manager enforcing a registry on code you never submitted to it is a **structural mismatch** — the ecosystem's governance assumes the registry owns the namespace, even for code that opted out. No malice required; it's a design choice that serves the ecosystem's coherence, and it happens to be incompatible with full ownership.
 
-There is no workaround inside the ecosystem for a structural adversary. You either accept the ownership claim or you leave.
+There is no workaround inside the ecosystem for a structural mismatch. You either accept the governance's terms or you leave. Neither answer is wrong — they price ownership differently.
 
 ---
 
@@ -51,6 +51,8 @@ The orchestration of that chain is handled by a build system called `x.py`. It's
 This is not a bug. Python is a reasonable choice for an orchestration layer. The Rust project is not doing anything wrong. The problem is that **when the goal is sovereignty, the fork you produce inherits every dependency of the chain it forked from.** A Rust++ compiler that still needs Python to bootstrap still depends on Python. Which still depends on libc. Which still depends on a C compiler. Which still depends on whatever built the C compiler.
 
 Sovereignty is not a property you can add at one layer. It's a property of the *entire chain* from the CPU upward. If any layer in the chain depends on something you don't own, no layer above it is sovereign either. The ownership claim at layer N is negated by the dependency at layer N-1.
+
+None of this is a criticism of Rust. Every language starts somewhere — C started on B's infrastructure, Rust on OCaml, and Cyrius itself ran its first hours on a Rust-bootstrapped bridge compiler before the assembly seed retired it. Bootstrap inheritance is the norm, and for almost every project it's the right trade. The question sovereignty forces isn't "did you start clean" — nobody does. It's "what does it cost to *finish* clean, and is that cost worth paying for what you're building." For most software the answer is no, and that's a sound engineering judgment, not a compromise. For an operating system whose premise is complete ownership of its own chain, the answer was yes — and the rest of this article is the receipt for what that cost.
 
 This is the moment the plan changed. Not "I'll fork Rust" — that's still inside the problem. The moment was seeing that the problem was recursive, and recursive problems don't have finite-depth solutions. You can only escape them by going to the bottom.
 

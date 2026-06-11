@@ -1,8 +1,8 @@
-# Why Do LLMs Need Gigacenters? They Don't.
+# Why Do LLMs Need Gigacenters? Not for Everything.
 
 > **Status**: Held outline. Thesis captured; article promotes when the **murti + seema distributed-inference demo** ships with benchmarked results. Triage 2026-05-06: hold (not stub-demote, not promote — receipts don't exist yet, but the thesis is durable enough to keep on file). Last verified 2026-05-22 — held-outline status unchanged; body figures (kernel size, version, boot time) in § 2 + § 3 are pinned to article-write date. Kernel has since grown organically through the iron-validated storage trio (NVMe + AHCI + USB MS), filesystem (ext2 / ext4 read-only + 64BIT), and networking (TCP/UDP server primitives + DHCP + first real NIC driver) arcs — feature surface, not bloat. The thesis ("every byte the model doesn't load is compute freed for actual thinking") works identically at the larger size; current state in [`development/state.md`](../development/state.md).
 >
-> The assumption that inference requires datacenter-scale hardware is an infrastructure argument, not a math argument. A distributed network of sovereign nodes on commodity hardware can match or exceed centralized compute. Bitcoin proved the model works. AGNOS is the substrate that makes it work for inference.
+> The assumption that *all* inference requires datacenter-scale hardware is an infrastructure argument, not a math argument. And the gigacenter is not a neutral default — it's a compounding bet: component prices rising up the whole stack from GPUs through RAM, environmental costs measured in gigawatts and water tables, and facilities that open already running silicon specced two to three years before the ribbon was cut. Meanwhile the technology frontier — quantum unlocks, superposition computing, frictionless energy, relentless shrinkage — points the same direction computing has always gone: smaller, cooler, closer to the user. A distributed network of sovereign nodes on commodity hardware serves the workloads that never needed the gigacenter, on hardware the operator owns, with no permission required. Bitcoin proved distributed-commodity coordination works at planet scale. AGNOS is the substrate that applies it to inference.
 
 ---
 
@@ -169,16 +169,21 @@ AGNOS:      "What's the orbital decay of a 400km LEO satellite?"
 
 ---
 
-## 9. Why the Narrative Says Otherwise
+## 9. Why the Narrative Says Otherwise — and What the Bet Doesn't Price In
 
-NVIDIA's stock price depends on the assumption that inference requires H100s.
-OpenAI's business model depends on the assumption that you need their API.
-Google's cloud revenue depends on the assumption that you can't run this locally.
-AWS's margin depends on the assumption that infrastructure is their job, not yours.
+The industry narrative centers the gigacenter because the industry's business models are built on centralized infrastructure — NVIDIA sells the GPUs, the labs sell the APIs, the hyperscalers sell the racks. That's not deception; it's incentive. Nobody whose margin lives in the datacenter has a reason to map the workloads that don't need one.
 
-**None of them will tell you** that a distributed network of sovereign nodes on commodity hardware could match or exceed their centralized compute. That's the argument that makes their business model irrelevant.
+But the gigacenter is not a settled answer. It's a compounding bet, and the costs compound faster than the narrative admits:
 
-It's the same structural adversary pattern as crates.io: the ecosystem asserts ownership over your compute by making you believe you need their infrastructure. You need **compute**, not **their compute**.
+- **Component inflation up the whole stack.** AI demand pushed GPU prices first; now it's RAM, as fabs pivot to HBM and the DRAM everyone else buys gets scarce. Every scale-up raises the floor for the next one, and everyone downstream — including the consumer who just wants a laptop — pays the externality.
+- **Environmental load.** Gigawatt power draws, water-cooled campuses sited in drought basins, grid buildouts underwritten by ratepayers. The costs land on communities that never consumed the inference.
+- **Obsolete at the ribbon-cutting.** A gigacenter takes years to permit, build, and energize. The silicon inside was specced when construction began — the facility opens running two-to-three-year-old technology and immediately enters a forced refresh cycle that re-pays the capital and environmental costs on a treadmill. This is a compounding problem wearing the costume of a simple solution.
+
+And the technology frontier cuts against the bet, not for it. Quantum unlocks, superposition-based computing, frictionless-energy materials, and plain transistor shrinkage all point the direction computing has pointed for seventy years: smaller, cooler, closer to the hand. Mainframe → mini → PC → phone — every previous "center" of computing was diffused by the next shrink. Commodity nodes inherit each of those advances incrementally, the week they ship. A five-year-old gigacenter inherits them as a write-down.
+
+This is not an us-versus-them argument — AGNOS doesn't need the gigacenter to fail, and the labs' frontier work isn't the target. The argument is about what the "commodity" actually costs and who pays it. Inference sold as a commodity hides its externalities the way cheap goods always have: the price on the API invoice doesn't include the ratepayer's grid bill, the drained aquifer, the RAM the next laptop buyer can't afford, or the refresh-cycle landfill. A commodity whose true costs are paid by people who never consumed it isn't cheap — it's subsidized by communities that never agreed to the trade.
+
+It's the same structural mismatch as crates.io: the ecosystem's defaults assume you need its infrastructure, even for workloads that don't. The difference is that this mismatch compounds — every year the centralized bet gets more expensive for everyone underneath it, while sovereign nodes get cheaper to run. You need **compute**, not **their compute** — and your community shouldn't have to underwrite the difference.
 
 ---
 
@@ -203,7 +208,7 @@ The sovereign OS (AGNOS) + the sovereign language (Cyrius) + the sovereign model
 
 One node is a personal AI. A thousand nodes are a sovereign network. A million nodes are a datacenter that no single authority controls, no single point of failure can bring down, and no export control can restrict.
 
-The gigacenter exists because nobody questioned whether it had to. AGNOS is the question. The distributed mesh is the answer. The $2 SD card is the datacenter.
+The gigacenter exists, and for frontier training — today — it has to. But it is a compounding bet against the oldest trend in computing, underwritten by communities that never consumed the inference. What nobody questioned is how much of everyday inference ever needed it. AGNOS is that question. The distributed mesh is the answer for the workloads that don't — run on hardware the operator owns, at a price the neighborhood doesn't pay. For those, the $2 SD card is the datacenter.
 
 ---
 
