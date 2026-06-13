@@ -520,6 +520,8 @@ Detailed roadmaps tracked in respective repos:
 | **18** | Immersive communication | `MacCracken/dhvani`, `MacCracken/goonj`, `MacCracken/soorat` |
 | **19** | Computational architecture | `MacCracken/murti`, `MacCracken/agnosys`, `MacCracken/ai-hwaccel` |
 
+**Multimodal ML substrate** (vision + audio model frontends built on the attn11 transformer core) underpins Phases 17–18 — forward design + reference map in [`planning/multimodal-substrate.md`](planning/multimodal-substrate.md). attn11 reaching v1.0 fired the attn11→libs extraction trigger; the gating new primitives are `conv2d`/`conv1d` fwd+bwd and a sovereign FFT/mel frontend.
+
 ### Future Shared Crates — Demand-Gated
 
 | Domain | Trigger | Likely Consumers | Priority |
@@ -529,6 +531,7 @@ Detailed roadmaps tracked in respective repos:
 | **sit** (smriti / स्मृति — memory) | Sovereign version control — git replacement. Deps: sankoch (compression), sigil (crypto), patra (storage). *When-I-have-time* project; deep storyline with sankoch → stdlib fold. | AGNOS-wide | Low (when-ready) |
 | **Geography / GIS** | joshua terrain, edge fleet, raasta pathfinding | joshua, kiran, raasta, nazar | Medium |
 | **Music theory** | shruti or 3rd consumer needs shared scales/rhythm | shruti, naad, jalwa, kiran | Medium |
+| **Multimodal ML substrate** (sight + hearing) | attn11 v1.0 fired the attn11→libs extraction trigger; `conv2d`/`conv1d` fwd+bwd + a sovereign FFT/mel frontend are the gating primitives. Design + references: [`planning/multimodal-substrate.md`](planning/multimodal-substrate.md). | attn11→libs, hoosh, murti, daimon, mela; drishti, shravan/naad/dhvani | Medium (post-beta; substrate-gated) |
 | **Typography / font metrics** | sahifa (PDF suite) needs font layout | sahifa, aethersafha, scriba | Low |
 | ~~**Grammar / tokenizer**~~ | ~~owl M3b, cyim~~ | ~~owl, cyim, vidya, agnoshi~~ | **Satisfied** by `vyakarana` (2026-04-23) |
 

@@ -4,7 +4,7 @@
 >
 > Volatile state stays in [`../state.md`](../state.md). Crate registries: [`shared-crates.md`](shared-crates.md) (full, incl. pre-1.0) and [`../../applications/libs/README.md`](../../applications/libs/README.md) (v1.0+ stable).
 >
-> **Last Updated**: 2026-05-23 — added `usb-hardening.md` (beta-phase USB defensive stack — pre-descriptor validation, class-policy enforcement, in-kernel per-device authorization via aegis, behavioral sandboxing via kavach/phylax, IOMMU DMA isolation; cross-cuts xhci + aegis + kavach + libro + phylax)
+> **Last Updated**: 2026-06-13 — added `multimodal-substrate.md` (forward design + reference map for sight/hearing ML on the attn11 transformer core; gating primitives conv2d/1d fwd+bwd + sovereign FFT/mel; Phases 17–18). Prior: 2026-05-23 `usb-hardening.md` (beta-phase USB defensive stack — pre-descriptor validation, class-policy enforcement, in-kernel per-device authorization via aegis, behavioral sandboxing via kavach/phylax, IOMMU DMA isolation; cross-cuts xhci + aegis + kavach + libro + phylax)
 
 ---
 
@@ -55,6 +55,7 @@ System-level capabilities that touch multiple repos / aren't owned by any single
 | [dpi-resistance.md](dpi-resistance.md) | Phase 21 | Network stack normalizes to mainstream-browser fingerprint by default |
 | [parallel-pki.md](parallel-pki.md) | Phase 22 | Trust root in physical artifacts (sticker / SD / paper QR); CAs as opportunistic bridges only |
 | [identity-and-authorization-model.md](identity-and-authorization-model.md) | Phase 24 | Recognition over interrogation; authorization > authentication; four-layer model |
+| [multimodal-substrate.md](multimodal-substrate.md) | Phases 17–18 | Sight + hearing models on the attn11 transformer core; gating primitives (conv2d/1d fwd+bwd, sovereign FFT/mel) + reference map (papers / prior-art / in-ecosystem) |
 | [hadara.md](hadara.md) | — (shipped v1.0) | Fossil reference — culture-as-entity design that drove hadara v1.0; for shipped capabilities, see hadara repo |
 
 ---
