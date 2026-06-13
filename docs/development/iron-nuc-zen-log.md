@@ -39,7 +39,7 @@ back. Status is one of `FAIL` / `PASS` / `PARTIAL` / `PENDING`.
 >
 > **State.md cycle headers link to these anchors via `iron-nuc-zen-log.md#tracker-1373-cycle` style.** Archived (MVP2.0-era) trackers live in [`iron-nuc-zen-log-mvp2.md`](iron-nuc-zen-log-mvp2.md).
 
-### Tracker: 1.44.x cycle — multi-threading / preemptive scheduling (OPEN 2026-06-09, **ARC CLOSING at 1.44.22 (2026-06-11)** — the whole preemptive-sched stack + SMP-AP wake+park + the 1.44.21-22 arc-closing security/hardening + clarity sweep, all QEMU-green; iron rides the next burn (the **SMP wake is the riskiest item**, now fail-safe per 1.44.21). **FIRST IRON BURN 2026-06-12 — reached agnsh (so SMP wake PASSED on real Zen) but LOCKED UP at the `agnoshi 1.7.0` banner; root-caused to the BSP TSS.RSP0 sitting in live kernel .bss, FIXED (RSP0 `0x200000`→`0x3C0000`), re-burn pending — see the burn-1 block immediately below.** NO auto-run per [[feedback_iron_burns_block_other_work]].) {#tracker-144x-cycle}
+### Tracker: 1.44.x cycle — multi-threading / preemptive scheduling (OPEN 2026-06-09, **ARC CLOSING at 1.44.22 (2026-06-11)** — the whole preemptive-sched stack + SMP-AP wake+park + the 1.44.21-22 arc-closing security/hardening + clarity sweep, all QEMU-green; iron rides the next burn (the **SMP wake is the riskiest item**, now fail-safe per 1.44.21). **BURN 1 (2026-06-12, 1.44.22): froze at the agnsh banner → root-caused to BSP TSS.RSP0 in live .bss, FIXED at 1.44.23 (RSP0 `0x200000`→`0x3C0000`).** **BURN 2 (2026-06-12, 1.44.23): the RSP0 fix is SOUND but the failure MOVED EARLIER — cold boot now freezes at `kybernet: exec /bin/agnsh` with zero ring-3 output, and warm reboots stick at `dhcp: DISCOVER`. Both symptoms NARROWED, NOT yet fingerprinted; the gating next step is a FREE `read-boot-log` of CMOS (the kernel already stamps the fault) — see the burn-2 block.** NO auto-run per [[feedback_iron_burns_block_other_work]].) {#tracker-144x-cycle}
 
 **🎯 IRON BURN 1 (2026-06-12) — FAIL → ROOT-CAUSED + FIXED: BSP TSS.RSP0 sat in live kernel .bss; the first ring-3 IF=1 timer tick corrupted kernel globals → triple-fault lockup at the agnoshi banner.**
 
@@ -59,6 +59,46 @@ back. Status is one of `FAIL` / `PASS` / `PARTIAL` / `PENDING`.
 - ⚠️ If the banner + prompt show but a `&` bg-job input line truncates: unrelated (the 1.44.21 nbread clamp; byte-identical for the foreground prompt — not expected).
 
 NO auto-run per [[feedback_iron_burns_block_other_work]] — the user flashes + burns.
+
+---
+
+**🎯 IRON BURN 2 (2026-06-12, agnos 1.44.23) — RSP0 FIX HELD, FAILURE MOVED EARLIER. Two symptoms, both NARROWED via a 44-agent diagnostic workflow (5 readers + 12 hypotheses + adversarial 3-lens verify; verify phase truncated by a session-token limit, key verdicts re-derived against source). Neither is yet fingerprinted — but the kernel ALREADY stamps the answer to CMOS. The gating next step is a FREE read-boot-log, NOT another burn.**
+
+**Burn result (user report + the two `14423_*.jpg` photos):**
+- **Symptom A — cold (first) boot:** full green boot through GPT/VFS/ext2(seq=82)/FAT, SYSCALL/SYSRET, stack canary, interrupts, `Timer ticks before sched: 7`, **`smp: cpus online: 4`** (so SMP-AP wake PASSED again on real Zen), `Activating scheduler...`, full DHCP DORA (lease .171), ARP reply, `net: L2 OK`, `Launching kybernet...`, `kybernet: 2 processes`, `kybernet: 31622 free pages`, **`kybernet: exec /bin/agnsh` — then frozen, zero ring-3 output.** At burn 1 (.22) the agnsh banner PRINTED then froze; now the freeze is EARLIER (the user's "regressed more").
+- **Symptom B — every warm reboot after:** green to `Activating scheduler...` → **`dhcp: DISCOVER`** and apparently never an OFFER. Cold boot DHCP worked perfectly; warm boots don't.
+
+**The RSP0 relocation itself is SOUND (re-derived from source, not assumed).** At 1.44.23 the first CPL3→CPL0 timer tick is a **verified no-op**: agnsh is the only ready non-idle proc, so `do_context_switch` returns at `sched.cyr:171` before saving/restoring anything (agnsh never even transitions to state-2). `0x3C0000` is in PD[1] (identity-supervisor-mapped into every per-proc CR3), ~500 KB clear of AP3's stack top `0x340000`. So the .23 freeze is **not** the first-tick path the .22 fix targeted — the relocation cured what it was meant to cure, and unmasked the next thing.
+
+**Symptom B — UNDERSTOOD (CONFIRMED, incl. a live QEMU repro of the production kernel).** Two layers:
+1. **No OFFER on warm boot = r8169 RX-wedge.** The crashed cold-boot session leaves the NIC fully ARMED (CR.RE/TE set, 64-desc RX ring DMA live). The user warm-resets (no power cycle); RTL8168-class MACs preserve DMA/PHY state across a warm reset. Next boot, `r8169_reset` (`r8169.cyr:322-329`) issues a **bare `CR.RST` + poll with no pre-reset quiesce** — unlike Linux's `rtl_rx_close` + RXDV-gate-before-reset on 8168G+. The repo's OWN audit already flagged this (`docs/development/prior-art/r8169-iron-burn-audit.md:74`; the `r8169.cyr:597-617` RXDV_GATED comment cites U-Boot's "DHCP failures after kernel reboots"). **This is NOT a regression:** the ONLY pure AGNOS→AGNOS warm reboot ever logged (1373 boot-2/3, `iron-nuc-zen-log.md:606`) ALSO flaked DHCP; every "multi-boot worked" session interleaved a Linux flash/e2fsck that re-init'd the NIC. Warm-boot DHCP was simply never cleanly exercised before.
+2. **The "hangs forever" SHAPE is an observation artifact, not an execution death.** The OFFER wait is a **bounded 800-iteration hlt-paced loop** (`net_dhcp.cyr:153-201`) that prints `dhcp: OFFER timeout`, falls back to static IP (`main.cyr:2955-2957`), and **continues the boot** (boot does NOT gate on net). A verifier booted the actual 1.44.23 `build/agnos` under QEMU `-smp 4` with a dead netdev: `DISCOVER → 16.0 s → OFFER timeout → static fallback → ARP fail → kybernet → agnsh`. On iron the timeout is ~16–21 s (the 1.32.x-era ~8 s, doubled by the new kmain↔idle 2-ticks-per-iteration rotation; LAPIC is human-scale, the "uncalibrated → minutes" idea was refuted by 1.32.x history). **So the warm boot is alive in a ~16–21 s countdown — the user reset before it elapsed.** If left to run it would fall through to static IP and hit Symptom A again at exec.
+
+**Symptom A — NARROWED, not fingerprinted. The two leading mechanisms were adversarially REFUTED; the kernel already holds the discriminator.** The deterministic-looking pre-banner freeze is one of: a caught CPU exception somewhere in the newly-reached ring-3 startup, OR a non-faulting hang in the exec/load pipeline now running under the armed scheduler. The seductive **ring-0-selector SMEP race** (the `init.cyr` launch window between `elf_load_from_file` creating agnsh's slot READY with default ring-0 CS=0x08 and `proc_current = pid`, with no `proc_set_ring3`) is a REAL, QEMU-proven-lethal landmine — but it was **REFUTED as the cause** on two independent grounds: (1) its failure shape is a **triple-fault RESET** (SMEP #PF → SMAP-blocked frame push on the U=1 user stack → #DF → #DF, every IDT gate IST=0), not the observed hang-with-log-on-screen; (2) it is **RSP0/delta-independent** (CPL0 throughout) so it cannot explain a regression that tracks the .22→.23 delta, and the same window was traversed cleanly on ≥6 prior iron boots. It stays a justified one-line hardening, NOT the diagnosis.
+
+**THE GATING NEXT STEP — FREE, no burn, no instrumentation-add, no reflash (the burned binary already carries it):** the kernel stamps every caught exception to CMOS (`idt.cyr`): `0x55=0xE5` magic, `0x54=`vector (`0x0D` #GP / `0x0E` #PF / `0x06` #UD / `0x08` #DF), and for #PF the full 48-bit CR2 (`0x5C-0x62`) + faulting RIP low-32 (`0x63-0x66`); plus a boot-progress byte `CMOS[0x50]` (`0x20`=entered ring 3 via `ring3.cyr:145`, `0x15`=kybernet launch, `0x10`=scheduler armed). **Do ONE power-cycle cold boot** (power cycle, not reset — also clears the NIC wedge so DORA works again, re-confirming Symptom B), let it freeze at exec, then from Linux on archaemenid run `sudo ./scripts/read-boot-log.sh`. Decode:
+
+| `0x50` | `0x55` | `0x54` / CR2 | Verdict |
+|--------|--------|--------------|---------|
+| `0x20` | `0xE5` | `0x0E`, CR2≈`0x400078` | entered ring 3, #PF fetching agnsh's first instruction (mapping/perms or the SMEP-race cousin) |
+| `0x20` | `0xE5` | `0x0E`, CR2≥4 GB or stack VA | ring-3 #PF on data/stack — different fix |
+| `0x15` | `0xE5` | any vector | died IN the exec/elf-load pipeline before ring 3 (a caught fault under the armed scheduler) |
+| `0x20` or `0x15` | **≠`0xE5`** | — | **non-faulting hang** (spin / IF=0 wait / livelock), not an exception — points at first-CPL3-tick territory or a load-path deadlock |
+| `0x10` | ≠`0xE5` | — | (stale from the last warm boot — re-read after a clean cold-only boot) |
+
+This partitions the entire Symptom-A space in one read. (Note `0x50` is last-write-wins, so a fresh cold-only boot gives the cleanest `0x50`; `0x54/0x55` survive warm boots since those don't except.)
+
+**Two prior-art-converged fixes are staged-ready to ride the SAME next burn, regardless of the CMOS read (both independently justified):**
+1. **r8169 pre-reset quiesce** (Symptom B root) — port Linux's `rtl_rx_close` + RXDV-gate + ~2 ms settle BEFORE `CR.RST` into `r8169_reset` (`r8169.cyr:322-329`), so a warm boot recovers DHCP without a power cycle.
+2. **`proc_set_ring3(pid)` in the kybernet launch window** (latent landmine) — add it in `init.cyr` before `proc_current = pid`, mirroring the #43 path's compensation at `syscall.cyr:1457-1462`; closes the ~1e-5/boot SMEP-race triple-fault.
+
+Neither is bundled with a *Symptom-A behavioral repair* — that waits for the CMOS fingerprint, per [[feedback_iron_burns_block_other_work]] / [[feedback_known_knowledge_first]] (the instrument already exists; read it before writing more).
+
+**Re-burn / read falsification.**
+- ✅ **Symptom B confirmed** if the CMOS read shows the cold boot reached `0x20`/`0x15` (CPU alive past net), or a power-cycle cold boot gets a clean DORA while a warm reset does not.
+- The CMOS read **fingerprints Symptom A**; only then is the precise behavioral fix written. If `0x55≠0xE5` everywhere (non-faulting hang), the next suspect is the exec/elf-load pipeline under preemption (a disk-poll path suspended by a context switch), NOT an exception.
+
+NO auto-run per [[feedback_iron_burns_block_other_work]] — the user power-cycles, boots once, and reads the log.
 
 ---
 
