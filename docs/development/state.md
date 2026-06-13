@@ -156,16 +156,18 @@ CYML — 6.0.x LEADING EDGE (the bulk of the ecosystem, ~32 repos):
   v6.1.5:   agora (1.2.0)        ← telnet BBS (door games + Persistent Universe);
             pin lifted 6.0.52→6.1.5 — the ≥6.0.53 sigil/sha256 SIGILL blocker
             cleared on 6.1.x (was the gate on the 1.2.0 crypto path).
-  v6.1.6:   attn11 (0.5.1)       ← leading edge — the from-scratch *trained*
+  v6.2.2:   attn11 (1.4.3)       ← leading edge — the from-scratch *trained*
             GPT-style transformer (the ecosystem's ML/training reference);
             tracks current cyrius, well ahead of the agnos boot-path band.
+            1.x sequence-mixer arc (MoE, gated-linear, selective SSM, hybrid);
+            now TRAINS in ring 3 on agnos (checkpoint bit-identical to native).
 
 CYRIUS TOOLCHAIN: 6.0.61. The agnos boot-path core moved into the 6.0.5x band
   during the 1.41.x shell-separation arc (CYRIUS_TARGET_AGNOS landed at
   6.0.55/56); agnos pins 6.0.56 deliberately (held-known-working; do not chase
   the toolchain number). hisab alone still trails at 6.0.14. agnoshi advanced
   to 6.0.87 on 2026-06-08 to consume the agnos getenv()/envp walk (cyrius latest
-  released: 6.1.6 — confirmed by attn11's pin) — a targeted consumer feature bump,
+  released: 6.2.2 — confirmed by attn11's pin) — a targeted consumer feature bump,
   not a cohort move.
 
 ABSENT from this devbox clone (not surveyable here): avatara, hadara, itihas,
