@@ -2,52 +2,54 @@
 
 > Reusable library crates that form the AGNOS stack. Consumer [applications](../README.md) depend on these — they should never depend on external libraries when an AGNOS crate covers the domain.
 >
-> **79 libraries at v1.0+** (77 standalone + 2 stdlib-folded: sandhi v5.7.0, niyama v5.9.0; aegis 1.0.0 graduated from pre-1.0 during v5.10.x; **mihi 1.0.0 graduated 2026-05-20** as system-info probe substrate for the terminal-aesthetics cohort) — pre-1.0 libs tracked in [development/planning/](../../development/planning/README.md). Binary tools at v1.0+ (agnos, agnoshi, argonaut, **bannermanor**, **commandress**, cyim, cyim-lsp, **iam**, **kriya**, kybernet, nous, owl) are listed separately in the [full registry](../../development/planning/shared-crates.md#binaries--tools-13-crates). **2026-05-20 cohort**: mihi 1.0.0 (OS & Infrastructure, probe lib), iam 1.0.0 (Binaries & Tools, fastfetch-equivalent), bannermanor 1.0.0 (Binaries & Tools, figlet-equivalent — graduated PM after CLI surface + CYML font format + default font set frozen).
+> **81 libraries at v1.0+** (79 standalone + 2 stdlib-folded: sandhi v5.7.0, niyama v5.9.0; **ganita + bayan added 2026-06-14**; aegis 1.0.0 graduated from pre-1.0 during v5.10.x; **mihi 1.0.0 graduated 2026-05-20** as system-info probe substrate for the terminal-aesthetics cohort) — pre-1.0 libs tracked in [development/planning/](../../development/planning/README.md). Binary tools at v1.0+ (agnos, agnoshi, agora, argonaut, **bannermanor**, **commandress**, cyim, cyim-lsp, **darshini**, hapi, **iam**, kii, **kriya**, kybernet, nous, owl, **sit**) are listed separately in the [full registry](../../development/planning/shared-crates.md#binaries--tools-17-crates). **2026-05-20 cohort**: mihi 1.0.0 (OS & Infrastructure, probe lib), iam 1.0.0 (Binaries & Tools, fastfetch-equivalent), bannermanor 1.0.0 (Binaries & Tools, figlet-equivalent — graduated PM after CLI surface + CYML font format + default font set frozen).
 > Full registry: [Shared Crates Registry](../../development/planning/shared-crates.md) — that doc is the authoritative source; refresh from there.
 >
-> **Last Updated**: 2026-06-04 (version columns re-synced to the VERSION files — 17 stable-crate bumps, the same set as shared-crates.md. Prior 2026-05-22: post-1.31.6 close drift sweep.)
+> **Last Updated**: 2026-06-14 (full local-VERSION sweep — OS/Infra + Science + Language lib bumps synced to the 6.0→6.2 cyrius arc; **ganita + bayan added** as v1.0+ libs; binary-tools pointer refreshed for the sit + darshini graduations. GitHub-only science/media/physics libs not in the local clone left as-is. Prior 2026-06-04: version columns re-synced to the VERSION files — 17 stable-crate bumps. Prior 2026-05-22: post-1.31.6 close drift sweep.)
 
 See also: [First-Party Standards — Own the Stack](../../development/first-party/first-party-standards.md#own-the-stack) | [Science Crate Specs](../../development/guides/science-crate-specs.md)
 
 ---
 
-## OS & Infrastructure (26)
+## OS & Infrastructure (27)
 
 | Crate | Version | Domain |
 |-------|---------|--------|
 | aegis | 1.0.0 | Security daemon — graduated from pre-1.0 in the v5.10.x window |
 | agnosai | 1.1.0 | AI orchestration |
 | agnostik | 1.3.0 | Shared types & domain primitives (Cyrius, GitHub-release only) |
-| agnosys | 1.3.2 | Kernel interface — Landlock, seccomp, syscall bindings (Cyrius) |
-| ai-hwaccel | 2.3.7 | GPU detection |
-| bote | 2.7.2 | MCP core (~5us/message, streamable HTTP) |
-| daimon | 1.2.3 | Agent orchestrator (144 MCP tools) |
-| hoosh | 2.1.3 | LLM gateway (15 providers) |
+| agnosys | 1.4.2 | Kernel interface — Landlock, seccomp, syscall bindings (Cyrius) |
+| ai-hwaccel | 2.3.9 | GPU detection |
+| bayan | 1.0.1 | Data-format & big-integer distfile — json/toml/cyml/csv/base64/bigint/u128 (foldable per sandhi pattern) |
+| bote | 2.7.5 | MCP core (~5us/message, streamable HTTP) |
+| daimon | 1.2.8 | Agent orchestrator (144 MCP tools) |
+| hoosh | 2.4.5 | LLM gateway (15 providers) |
 | ifran | 1.3.0 | LLM inference/training |
-| kavach | 3.4.0 | Sandbox execution |
-| libro | 2.7.1 | Cryptographic audit chain |
-| mabda | 3.0.1 | GPU foundation |
-| majra | 2.4.4 | Queue/pub-sub |
-| mihi | 1.0.0 | System-info probe library (CPU / RAM / GPU / kernel / uptime / distro / hostname) — substrate for iam, chakshu |
-| nein | 1.5.1 | Programmatic nftables firewall |
-| patra | 1.10.3 | Structured storage & SQL — B+ tree, WAL (Cyrius-native) |
-| phylax | 1.1.1 | Threat detection — YARA, entropy, magic bytes, ML |
-| sakshi | 2.2.6 | Tracing, error handling, structured logging (Cyrius-native) |
-| sankoch | 2.3.0 | Lossless compression — LZ4, DEFLATE, zlib, gzip |
-| sigil | 3.7.2 | Trust verification & crypto — AES-NI + SHA-NI hardware accel |
+| kavach | 3.4.1 | Sandbox execution |
+| libro | 2.7.3 | Cryptographic audit chain |
+| mabda | 3.0.2 | GPU foundation |
+| majra | 2.4.6 | Queue/pub-sub |
+| mihi | 1.1.0 | System-info probe library (CPU / RAM / GPU / kernel / uptime / distro / hostname) — substrate for iam, chakshu |
+| nein | 1.5.2 | Programmatic nftables firewall |
+| patra | 1.11.2 | Structured storage & SQL — B+ tree, WAL (Cyrius-native) |
+| phylax | 1.2.0 | Threat detection — YARA, entropy, magic bytes, ML |
+| sakshi | 2.3.0 | Tracing, error handling, structured logging (Cyrius-native) |
+| sankoch | 2.3.1 | Lossless compression — LZ4, DEFLATE, zlib, gzip |
+| sigil | 3.7.13 | Trust verification & crypto — AES-NI + SHA-NI hardware accel (TLS 1.3 live-verified) |
 | soorat | 1.0.0 | GPU rendering |
 | stiva | — | Container runtime — **Rust-era scaffold; Cyrius port pending** (GitHub remote `MacCracken/stiva` last pushed 2026-04-29) |
-| szal | 1.1.0 | Workflow engine |
-| t-ron | 2.1.4 | MCP security |
-| vidya | 2.7.1 | Programming reference |
-| yukti | 2.2.4 | Device abstraction (USB, block, udev) |
+| szal | 2.0.0 | Workflow engine — step/flow/DAG + branching/retry/rollback |
+| t-ron | 2.1.5 | MCP security |
+| vidya | 2.7.3 | Programming reference |
+| yukti | 2.2.5 | Device abstraction (USB, block, udev) |
 
-## Science & Knowledge (27)
+## Science & Knowledge (28)
 
 | Crate | Version | Domain |
 |-------|---------|--------|
 | abaco | 2.2.4 | Math engine |
-| avatara | 2.7.0 | Divine archetype overlay |
+| avatara | 2.7.1 | Divine archetype overlay |
+| ganita | 1.0.1 | Linear algebra (matrix, linalg) + advanced math (transcendental + number theory); foldable per sandhi pattern |
 | badal | 1.1.0 | Weather/atmosphere |
 | bhava | 2.0.0 | Emotion/personality |
 | bijli | 1.1.0 | Electromagnetism |
@@ -105,7 +107,7 @@ See also: [First-Party Standards — Own the Stack](../../development/first-part
 |-------|---------|--------|
 | raasta | 1.0.0 | Pathfinding |
 | varna | 1.0.0 | Multilingual language engine |
-| vyakarana | 2.2.2 | Source-code grammar + tokenizer (Cyrius-native, ten-kind palette, CYML grammars) |
+| vyakarana | 2.2.3 | Source-code grammar + tokenizer (Cyrius-native, ten-kind palette, CYML grammars) |
 
 ## Physics & Engineering (6)
 
