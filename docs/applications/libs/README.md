@@ -38,7 +38,7 @@ See also: [First-Party Standards — Own the Stack](../../development/first-part
 | sigil | 3.7.13 | Trust verification & crypto — AES-NI + SHA-NI hardware accel (TLS 1.3 live-verified) |
 | soorat | 1.0.0 | GPU rendering |
 | stiva | — | Container runtime — **Rust-era scaffold; Cyrius port pending** (GitHub remote `MacCracken/stiva` last pushed 2026-04-29) |
-| szal | 2.0.0 | Workflow engine — step/flow/DAG + branching/retry/rollback |
+| szal | 2.0.0 | Workflow engine — step/flow/DAG + branching/retry/rollback. **Cyrius-native (2.0.0 = Rust → Cyrius port graduation)** |
 | t-ron | 2.1.5 | MCP security |
 | vidya | 2.7.3 | Programming reference |
 | yukti | 2.2.5 | Device abstraction (USB, block, udev) |
