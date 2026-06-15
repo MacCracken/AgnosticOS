@@ -1,8 +1,8 @@
 # AGNOS Development Roadmap
 
-> **Status**: Pre-Beta — Closed Beta targeting **June 2026** | **Last Updated**: 2026-06-14. This roadmap is **forward-facing** — shipped arcs live in [`state.md`](state.md) + the per-repo CHANGELOGs, not re-narrated here. Refer to state.md for current kernel / Cyrius / per-repo versions.
+> **Status**: Pre-Beta — Closed Beta targeting **Late June / Early July 2026** (gated on reaching **server base work**) · Desktop **mid-to-late summer 2026** | **Last Updated**: 2026-06-14. This roadmap is **forward-facing** — shipped arcs live in [`state.md`](state.md) + the per-repo CHANGELOGs, not re-narrated here. Refer to state.md for current kernel / Cyrius / per-repo versions.
 >
-> 🔴 **BETA RESCOPED (2026-05-06)**: Two-stage beta. **Closed beta** targets early June 2026 — Phase 13A complete, exercised by a small private cohort of trusted testers (friend-network), no formal community-program enrollment. **Public beta** retains the original Q4 2026 window and adds the third-party security audit + community testing program. This is a deliberate compression: previously-mandatory beta gates (audit, community program) move to the public-beta gate so the closed-beta line is honest about what shipped.
+> 🔴 **BETA RESCOPED (2026-06-14)**: the whole **summer-2026 arc stays CLOSED beta**, in two phases, with the kernel arcs accelerating the timeline hard. **Phase 1 — closed beta opens Late June / Early July 2026** gated on reaching **server base work**: founder-driven — stand up **Docker AGNOS builds running the server-stage services** (BBS / MUD / remote-shell / web / `ark`+`nous` server-side) and **sweep-test them myself to find the weak points** (server workloads need no humans-at-a-screen). **Phase 2 — Desktop, mid-to-late summer 2026** (pulled forward from the old v1.0 Q2 2027): brings in **external testers** because GUI / daily-driver workloads genuinely need humans at the screen — but the program **stays invite-only / closed, NOT public**. **Public beta is DEFERRED to post-summer** (the original ~Q4 2026 window holds): formal public enrollment + third-party security audit + community program open only after the closed desktop phase proves out. *(Supersedes the 2026-05-06 rescope, which had closed beta early June + public beta Q4 2026 with no desktop-in-summer track.)*
 >
 > 🟢 **MVP GATE CLEARED on iron** — Attempt 68 / agnos 1.30.9 / 2026-05-15: kernel + kybernet (PID 1) + agnoshi reach a **typeable shell** on archaemenid (NUC AMD Beelink SER). Since then the kernel shipped the storage stack (NVMe / AHCI / USB-MS / RAM-disk / GPT), the **r8169 networking stack** (iron-COMPLETE — DHCP real lease), **ext2/4 + FAT-family read+write** + the crash-safe FS stack (extent→jbd2→VFS), **exec-from-disk + VFS routing** (1.40), the **shell→userland-agnsh separation** (1.41, iron burn `14115`), **graphics + DOOM** (1.43, in-game on iron, burn `1439`), **multi-threading / preemptive scheduling** (1.44 — schedulable `&` jobs, SMP-AP wake), and is now in the **1.45.x TLS → HTTPS → `ark`-fetch** arc (ring-3 net syscalls #45-#55). **Iron (2026-06-13/14): boot-to-shell with a live multi-command keyboard on real Zen.** Current kernel + active cycle: [`state.md`](state.md).
 >
@@ -24,7 +24,7 @@ AGNOS capability follows a **5-stage arc** that anchors what "the next stage" me
 | **desktop** | aethersafha (Wayland compositor — currently Pending in CLAUDE.md table) + display drivers (mabda + iGPU/dGPU) + user-facing app ports + GUI userland. Absorbs the daily-driver / GUI / browser workloads that server stage couldn't. | **Not started.** | Compat sandbox + non-native-workload absorption. |
 | **swallow** | **Compat sandbox layer** — AGNOS hosts non-AGNOS-native apps (Windows binaries, Linux binaries, web apps) inside a sovereign sandbox so endusers can move to AGNOS without giving up their existing app ecosystem. Connects directly to **Phase 20 — Cross-Platform Compat Subsystem** below. Sovereignty via **universal hosting**, not eviction — AGNOS becomes the host that can run anything, removing the last reason anyone would keep a separate non-AGNOS install. | **End-state.** No fixed date; trigger is final-workload capability parity. | (Terminal — no exit.) |
 
-**The arc is sequential.** Don't skip stages: desktop work doesn't open before server lands; swallow doesn't open before desktop lands. Stage exits map loosely to release milestones — demo→base ≈ MVP entry maturation, base→server ≈ Public Beta, server→desktop ≈ v1.0, desktop→swallow ≈ post-v1.0 horizon.
+**The arc is sequential.** Don't skip stages: desktop work doesn't open before server lands; swallow doesn't open before desktop lands. Stage exits map to release milestones — **rescoped 2026-06-14 to a compressed summer-2026 track** as the kernel arcs accelerated: demo→base ≈ MVP entry (✅ 2026-05-15), **reaching server base work ≈ Closed Beta (Late June / Early July 2026)**, **server→desktop ≈ Desktop completeness (mid-to-late summer 2026)**, desktop→swallow ≈ post-desktop horizon. (Was: base→server ≈ Public Beta / server→desktop ≈ v1.0 Q2 2027 — superseded; public beta now slots between the closed-beta cohort and desktop.)
 
 **Distributed swallowing.** The "swallow" eviction events are distributed *across* stages 3-4-5 based on each workload's nature: server stage absorbs most Linux workloads (native replacements); desktop stage absorbs daily-driver / GUI workloads (native GUI apps via aethersafha); swallow stage absorbs the long-tail niche workloads via compat sandbox (no per-app native port needed). This is why "swallow" is small as a capability-construction stage despite being the terminal stage — most work is already done by stages 3+4.
 
@@ -72,16 +72,20 @@ Phase 13A items 1–3 (boot → shell on hardware) ──→ CLOSED BETA (MVP)
 
 **MVP scope: AGNOS boots to a shell prompt on real hardware.** That's the *entry* line. Closed beta is not a single cut date — it's a **selective rolling program through summer 2026**, opening with the first hardware boot (achieved 2026-05-15) and running through the summer with a growing-but-curated cohort. Self-hosting, package builds from source, and full userland validation against the AGNOS kernel ABI are NOT required for closed beta — they're Public Beta concerns.
 
-**Opening gate** (target early June 2026):
+**Opening gate** (target **Late June / Early July 2026** — rescoped 2026-06-14, gated on reaching **server base work** so the cohort lands on a server-capable base, not a bare shell):
 - [x] **Boot-to-Shell MVP (13A items 1–3.5)** — ✅ Iron-validated 2026-05-15 on archaemenid (NUC AMD Beelink SER). Kernel completes full init spine → kybernet (PID 1) launches → agnoshi (`AGNOS shell v1.30.0`) prompt rendered on framebuffer. Twenty-nine attempts across three weeks of bring-up; full arc in [`iron-nuc-zen-log-mvp.md`](iron-nuc-zen-log-mvp.md); generic process pattern in [`iron-bring-up-process.md`](iron-bring-up-process.md). **The shell prompt is visible. The base OS is real.**
 - [x] **USB-keyboard input** — ✅ **typeable on iron at Attempt 68** (agnos 1.30.9). Native XHCI + USB-HID-boot driver, all 5 phases shipped across agnos 1.30.0 → 1.30.5. Root cause of the long silent-absorb arc was a cyrius-side kmode gvar-init-order bug (fixed cyrius v5.11.64), not an AGNOS-side spec gap. Historical detail: [`../archive/usb-hid-keyboard-driver-shipped.md`](../archive/usb-hid-keyboard-driver-shipped.md).
 - [ ] First hardware boot session — **non-founder tester sits at the prompt**. Kernel is typeable on the NUC AMD; awaits the ISO Stage-4 cut + tester schedule.
 
-**Through summer 2026** (closed-beta program proper):
-- [ ] Initial cohort: friend-network, 5–15 testers, sitting at a shell on iron
-- [ ] Selective expansion: invites only, no public enrollment, no marketing campaign
+**Phase 1 — founder sweep-test (Late June / Early July, server base):**
+- [ ] **Docker AGNOS service-sweep harness** — stand up the server-stage workload suite (agora BBS / descent MUD / remote-shell / web server / `ark`+`nous` server-side) in Docker AGNOS containers and **sweep-test them myself to find the weak points** (connection floods, fuzzed input, auth-boundary, soak/leak, resource-exhaustion incl. the kernel's 8-conn TCP / 8-listener UDP caps, lock contention on agora's flock'd shared-world). Automated/founder-driven — server workloads exercise without humans at a screen, so this phase needs no external cohort. The "where are we weak" pass that hardens the server base before anyone else sits down; surfaces the P1 list. **Socket-gated — ✅ the gate is now CLEARED:** "sockets are the major hurdle to container usage" — AGNOS can only *host* networked services in a container once it can `accept()`. The client surface (#47-55) landed 1.45.0-4, and **the Phase-B server sockets `sock_listen`#56 + `sock_accept`#57 landed at agnos 1.45.5** (`tcp-listen-smoke` 2/2 host→AGNOS) — AGNOS is now container-network-capable. Plan doc: [`planning/docker-service-sweep-harness.md`](planning/docker-service-sweep-harness.md). Remaining build steps (per the plan): cyrius `CYRIUS_TARGET_AGNOS` peer for #56/#57 (hands-off, in flight) → AGNOS-in-QEMU-in-Docker boot container → harness drivers + per-service sweep matrix → findings ledger.
+  > **Strategic weight — the validation surface climbs the ladder of realism: iron → QEMU → containers.** *Iron* answered "does it boot on bare metal?"; *QEMU* answered "does it run portably under virtualization?"; **containers answer "does it run where the majority of modern services actually live?"** Docker/OCI/K8s is the dominant deployment substrate in 2026 — a sovereign OS that only runs on bare metal is a curiosity; one that drops into the container ecosystem is a **participant**. Container-capability (the moment AGNOS can `accept()` over its own sockets) is therefore both the **biggest, most-realistic test surface the project has had** *and* a real **deployment path**, not just a test path. This is the strategic payoff behind the socket arc.
+
+**Phase 2 — external testers (mid-to-late summer, at Desktop, STILL CLOSED):**
+- [ ] Initial cohort: friend-network, 5–15 **external** testers — brought in at the **desktop** phase, where GUI / daily-driver workloads genuinely need humans at the screen (unlike the server sweep above)
+- [ ] Selective expansion: invites only, **no public enrollment, no marketing campaign** — public beta stays deferred (see *Public Beta — DEFERRED* below)
 - [ ] Cohort feedback drives hardening: bug reports, hardware-matrix gap-fill, kybernet/argonaut/agnoshi P1 issue closeout
-- [ ] **DEF CON August 2026** (contingent — see cadence table): if Phase 22 paper-PKI ships in time, this becomes the *credible public introduction event during closed beta* — stickers as cryptographic root distribution, not as marketing. Aug 2027 baseline if not ready.
+- [ ] **DEF CON — targeting August 2027** (moved off the Aug-2026 contingency 2026-06-14): **~2 months from a summer-2026 closed beta is not enough lead time to be prepped for that crowd.** DEF CON is an expert/adversarial security audience that will hammer the sovereignty + Phase-22 parallel-PKI claims hard — showing up under-hardened is worse than not showing up. **Aug 2027 gives a full year of closed-beta hardening receipts + paper-PKI maturity before facing them.** When it lands it's the *credible introduction event* — stickers as cryptographic root-of-trust distribution, not marketing.
 
 **Closeout** (early fall 2026):
 - [ ] Cohort report consolidated; critical-bug list cleared
@@ -92,18 +96,50 @@ Phase 13A items 1–3 (boot → shell on hardware) ──→ CLOSED BETA (MVP)
 
 **Cadence dependency**: opening gate is **toolchain-independent** — the kernel already builds and boots against the current Cyrius pin (in [`state.md`](state.md); held deliberately on a known-working version). The dependency reduces to *agnosticos-side work* (ISO Stage-4 cut via `iso.cyr` + first hardware boot session). The earlier framing that gated MVP on the Cyrius v6.0.x bare-metal target was conceptual residue from pre-monolith-extraction days; corrected 2026-05-12. Opening slips by week, not by month. **The summer-long program then runs independently of Cyrius cycles** — it's hardware-and-cohort-paced, not toolchain-paced. Cyrius work continues in parallel (v6.0.x active — bare-metal target + RISC-V rv64 among its gains) but does not gate the MVP ship.
 
-### Public Beta — Q4 2026
+### Desktop — Mid-to-Late Summer 2026 (external testers, STILL CLOSED) *(rescoped 2026-06-14; was v1.0 Q2 2027)*
 
-- [ ] Closed beta exited cleanly (cohort report + critical-bug closeout)
+The whole summer-2026 arc **stays closed beta** — public enrollment does **not** open here. Desktop is the phase that needs **a bunch of external testers** (GUI / daily-driver workloads can't be swept by automated services the way server workloads can — they need humans at the screen), but the program remains **invite-only / closed**, not public. This is the v1.0 / Phase-16 desktop-completeness content, pulled forward as the kernel arcs accelerated.
+
+- [ ] aethersafha + display drivers + GUI userland landed (the desktop maturity stage)
+- [ ] External-tester cohort expanded (still invite-only — closed, not public)
+- [ ] Phase 13C — Documentation, community (closed-cohort scope)
+- [ ] Consumer apps published to mela
+- [ ] Sustained soak with no critical bugs
+
+### Public Demonstrations — the base OS goes PUBLIC (games + server), while the beta program stays closed
+
+**Public *demonstration* ≠ public *beta*.** The hands-on beta program stays closed through summer (founder sweep → external desktop testers), but the **base OS itself — with games + server functionality — can be shown PUBLICLY as demonstrations** well before public enrollment opens. Demonstrating capability is a proof / introduction move; it doesn't hand anyone a daily-driver install. The demo content is real and already shipping:
+
+- **"It runs DOOM."** cyrius-doom renders **in-game on real Zen** (iron burn `1439`) — the visceral, universally-legible proof that a from-scratch sovereign OS is a real machine, not a slide deck. (Plus the wider games stable: encom-hits, cyrius-bb, the cyrius-* catalog.)
+- **A sovereign language built from assembly up.** Cyrius — a **29 KB assembly seed** that bootstraps to a self-hosting compiler — **produced both the AGNOS kernel AND an entire ecosystem of ~100+ projects** (compiler, stdlib, libs, tools, games, servers).
+- **The ecosystem is portable to any system — *save the kernel itself*.** Every Cyrius project runs cross-platform byte-identical (x86_64 / aarch64 / Apple Silicon Mach-O / Windows PE32+); only the AGNOS **kernel** is platform-bound (it boots bare metal). So the public story isn't "a toy OS" — it's "a sovereign toolchain + 100-project ecosystem that runs *anywhere*, plus a kernel it can also boot natively."
+- **Server functionality demonstrates headless.** agora (telnet BBS, iron-validated) + cyrius-yeomans-descent (MUD) + a web server run as **publicly-reachable services** — a live, pokeable demonstration that needs no desktop and no tester at a screen.
+
+This is what justifies a **public face during the closed beta**: the demonstrations *are* the public introduction; the formal public-beta enrollment (below) still trails post-summer. Aligns with the **base+server maturity stage** (summer 2026) — the games + server are demonstrable the moment the server base is swept.
+
+> **🎯 The headline (a REAL one — true today, not aspirational; dig into it in parallel while the next engineering efforts run):**
+> *"It runs DOOM — on a sovereign OS built from a 29 KB assembly seed. That seed bootstraps to a self-hosting language, which produced not just the kernel but a ~100-project ecosystem that runs byte-identical on every platform. Only the kernel is bound to the metal; everything else is portable."*
+>
+> **And the pace is part of the story:** ~**5–6 months** from the Cyrius kernel (2026-04-04) → boot-to-shell on iron (2026-05-15) → a server-capable, DOOM-running base with GA targeted Late Fall / Early Winter 2026. A *functional sovereign OS* — kernel + language + ecosystem, assembly-up — in roughly half a year. That's fast even **with** AI in the loop (AI accelerated it; it didn't write a sovereign OS by itself — the architecture, the from-assembly bootstrap, the sovereignty discipline are the human spine). The velocity is a legitimate, defensible headline element, not hype.
+>
+> This is the **public-demonstration narrative / launch headline** — a parallel **content deliverable** (feeds the agnosticos.org DOOM article + Cyrius mention in the website P0 list, the articles queue, and the eventual public introduction). Develop it alongside, not instead of, the next engineering efforts. The proof points are all shipped + verifiable (DOOM iron burn `1439`; the 29 KB seed → self-host; the cross-platform byte-identical cadence beat; the ~129-entry shared-crates registry; the ~5–6-month arc itself).
+
+### Public Beta — DEFERRED (post-summer; formal enrollment, distinct from the public demos above)
+
+**Public enrollment is NOT a summer-2026 milestone.** It comes *after* the closed desktop phase has proven out across the external-tester cohort. Until then the program is closed end-to-end: founder Docker-service sweep (closed-beta open) → external desktop testers (still closed). Public beta + third-party security audit + formal community enrollment slot here, post-desktop. *No fixed date — gated on the closed desktop phase clearing.*
+
+- [ ] Closed (founder-sweep + external-desktop) phases exited cleanly
 - [ ] Third-party security audit complete
-- [ ] Community testing program active (formal enrollment)
+- [ ] Community testing program active (formal public enrollment — the line where it stops being closed)
 
-### v1.0 — Q2 2027
+### True Open Public OS (General Availability) — Late Fall / Early Winter 2026 (gated on Desktop + most of the porting)
 
-- [ ] Phase 13C complete — Documentation, community
-- [ ] Phase 16 complete — Full desktop experience
-- [ ] All consumer apps published to mela
-- [ ] 6 months of beta testing with no critical bugs
+**The real public release — AGNOS as an open OS anyone runs as their actual machine — is the *furthest* milestone, NOT summer 2026.** Target: **Late Fall / Early Winter 2026** (user, 2026-06-14 — "still fast"; was v1.0 Q2 2027, pulled in ~2 quarters by the current pace). Date-targeted but still **capability-gated** on two fronts — **(1) desktop is worked out AND (2) most of the porting backlog is cleared**:
+
+- **Desktop worked out** — the desktop maturity stage complete (aethersafha + display drivers + GUI userland), proven across the closed external-tester cohort.
+- **Most of the porting done** — the Rust→Cyrius port backlog mostly cleared. This is the registry's deep-lag / pending-port tail: `szal` 2.0.0 was the newest port graduation; **ark, agnova, yantra, hoosh, takumi (in port), the pre-CYML holdouts, and the rest of the not-yet-native crates** still need a "bring-down + port." (Live port status: [`planning/shared-crates.md`](planning/shared-crates.md) + the [Named Subsystems](#named-subsystems-30) Port column.) A *true* sovereign public OS can't ship a half-Rust ecosystem — GA is when the stack is overwhelmingly Cyrius-native.
+
+So the ladder is: **public demonstrations** (base+server showcase — leads, summer) → **closed beta** (founder sweep → external desktop testers, summer, closed) → **public beta** (formal enrollment, post-summer) → **true open public OS / GA** (desktop done + porting mostly done — the open-to-everyone release, **Late Fall / Early Winter 2026**). Date-targeted but capability-gated on those two fronts.
 
 Long-term vision: [`vision/conscious-objects.md`](vision/conscious-objects.md) — the quantum-substrate / Layer-0 horizon (post-v3.0, multi-year). Foundation governance is now [`planning/foundation-structure.md`](planning/foundation-structure.md) (promoted from vision → planning 2026-05-12). v2.0 Rust-kernel and v3.0 Cyrius-pivot vision sections were retired 2026-05-12 — both happened ahead of schedule (Cyrius kernel shipped 2026-04-04; Cyrius language already well into the v6.x line).
 Creator economy (sovereign distribution, bootable USB media): [`vision/creator-economy.md`](vision/creator-economy.md)
@@ -126,7 +162,7 @@ Each beat is still a release, not a blog post. The beats are the right work; the
 | **Fall 2026 (winter solstice 2026-12-21)** | **Solstice: higher-order items.** TBD gift — agent-tooling article + capstone receipts. (Date shifted from summer to winter solstice given the fall rescope.) | `agnosticos/docs/articles` |
 | **Fall 2026** | **Distribution at scale.** Ark OTA pipeline live; recipes buildable from zugot by third parties. | `ark`, `nous`, `zugot` |
 | **Fall 2026** | **Reproducibility standard.** Every artifact in the stack has an SHA manifest; seed + hash chain published. *Aligns with Phase 22 parallel-PKI work — same hash-chain infrastructure.* | `sigil`, `libro`, `agnosticos` |
-| **August 2026** *(contingent)* or **August 2027** *(baseline)* | **DEF CON / Black Hat distribution.** ~$5K budget: 10K stickers + 500 SD cards + 1K quick-start cards. **Bumper-sticker-as-cryptographic-root-of-trust** — QR-encoded 29KB seed + SHA-256 chain + URL = paper signing authority. **Critical dependency**: [`Phase 22 paper-PKI verification path`](planning/parallel-pki.md) must ship before the print run is meaningful. Aug 2026 if it lands; Aug 2027 if not. | `agnosticos` |
+| **August 2027** *(target; moved off Aug-2026 on 2026-06-14)* | **DEF CON / Black Hat distribution.** ~$5K budget: 10K stickers + 500 SD cards + 1K quick-start cards. **Bumper-sticker-as-cryptographic-root-of-trust** — QR-encoded 29KB seed + SHA-256 chain + URL = paper signing authority. **Critical dependency**: [`Phase 22 paper-PKI verification path`](planning/parallel-pki.md) must ship before the print run is meaningful. **Aug 2027, not 2026** — ~2 months from a summer-2026 closed beta is not enough hardening lead time for an adversarial DEF CON audience; a full year of closed-beta receipts + paper-PKI maturity is the right prep window. | `agnosticos` |
 
 **Cadence discipline (revised)**: dates are *target windows*, not strict biweekly slots. Each beat ships running software when ready. If a beat misses its target window, it goes to "next window" — not "next biweekly." The list tightens (drop beats that become irrelevant) and the windows move, but the *beats themselves* are the right work and stay on the roadmap until shipped or explicitly retired.
 
@@ -414,9 +450,9 @@ Detailed items tracked in respective repos:
 
 **Two principles, never collapsed**: parallel PKI is always the load-bearing trust; commercial CA bridge is convenience layer. Even if 100% of users had commercial-CA-trusted browsers, AGNOS still verifies internally against the paper root. If the bridge ever becomes required, the empire wins by revoking the bridge.
 
-**DEF CON August 2026 cadence beat depends on Phase 2** of this spec — the sticker distribution event is meaningful only if any AGNOS install can actually verify against the printed root. Phase 2 (verification path) must ship before the sticker print run is meaningful — that's the critical dependency.
+**DEF CON (now targeting Aug 2027) cadence beat depends on Phase 2** of this spec — the sticker distribution event is meaningful only if any AGNOS install can actually verify against the printed root. Phase 2 (verification path) must ship before the sticker print run is meaningful — that's the critical dependency. (The Aug-2026 slot was dropped 2026-06-14: ~2 months from the summer closed beta is not enough prep for the DEF CON crowd.)
 
-**Phasing**: sigil substrate (✅ shipping) → parallel-PKI verification path (closed-beta scope) → cross-signing infrastructure → public artifact distribution (DEF CON Aug 2026) → print-at-home tooling → mirror network → key rotation ceremony.
+**Phasing**: sigil substrate (✅ shipping) → parallel-PKI verification path (closed-beta scope) → cross-signing infrastructure → public artifact distribution (DEF CON **Aug 2027**) → print-at-home tooling → mirror network → key rotation ceremony.
 
 ### Phase 23 — Foundation Structure (governance meta-defense)
 
@@ -553,4 +589,4 @@ Unified Consciousness Model paper and bhava roadmap tracked in `MacCracken/bhava
 
 ---
 
-*Last Updated: 2026-06-14 (list-review sweep — refreshed the stale active-work items + maturity arc + post-MVP queue through the 1.44.x/1.45.x arcs: **USB-HID keyboard on iron RESOLVED** (live multi-command keyboard on real Zen, 2026-06-13/14, xHCI keyboard-ring fix at 1.44.25) + RBP-smash closed (1.42.3); **1.44.x multi-threading/preemptive ARC COMPLETE**; **1.45.x TLS→HTTPS→ark-fetch OPEN** (ring-3 net syscalls #45-#55); maturity `server` stage reclassed "Foundation materializing" (agora 1.4.2 + descent MUD 1.0.1 + net-tools); `sit` 1.0.1 demand-gated→shipped. agnos 1.45.4 / agnoshi 1.7.0 / owl 1.4.0. Earlier 2026-06-07: 1.41.x shell-separation iron-complete burn `14115`; 1.42.x/1.43.x perf + graphics/DOOM path.) | Next Review: closed-beta cut (June 2026)*
+*Last Updated: 2026-06-14 (list-review sweep — refreshed the stale active-work items + maturity arc + post-MVP queue through the 1.44.x/1.45.x arcs: **USB-HID keyboard on iron RESOLVED** (live multi-command keyboard on real Zen, 2026-06-13/14, xHCI keyboard-ring fix at 1.44.25) + RBP-smash closed (1.42.3); **1.44.x multi-threading/preemptive ARC COMPLETE**; **1.45.x TLS→HTTPS→ark-fetch OPEN** (ring-3 net syscalls #45-#55); maturity `server` stage reclassed "Foundation materializing" (agora 1.4.2 + descent MUD 1.0.1 + net-tools); `sit` 1.0.1 demand-gated→shipped. agnos 1.45.4 / agnoshi 1.7.0 / owl 1.4.0. **BETA RESCOPED**: summer-2026 stays CLOSED in two phases — closed beta opens **Late June / Early July** (founder Docker-AGNOS-service sweep at server base) → **Desktop mid-to-late summer** (external testers, still invite-only/closed); **public beta DEFERRED post-summer**; **DEF CON moved to Aug 2027** (2 months isn't enough prep for that crowd). Earlier 2026-06-07: 1.41.x shell-separation iron-complete burn `14115`; 1.42.x/1.43.x perf + graphics/DOOM path.) | Next Review: closed-beta open (Late June / Early July 2026)*
