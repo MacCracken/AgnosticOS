@@ -2,16 +2,16 @@
 
 > Reusable library crates that form the AGNOS stack. Consumer [applications](../README.md) depend on these — they should never depend on external libraries when an AGNOS crate covers the domain.
 >
-> **81 libraries at v1.0+** (79 standalone + 2 stdlib-folded: sandhi v5.7.0, niyama v5.9.0; **ganita + bayan added 2026-06-14**; aegis 1.0.0 graduated from pre-1.0 during v5.10.x; **mihi 1.0.0 graduated 2026-05-20** as system-info probe substrate for the terminal-aesthetics cohort) — pre-1.0 libs tracked in [development/planning/](../../development/planning/README.md). Binary tools at v1.0+ (agnos, agnoshi, agora, argonaut, **bannermanor**, **commandress**, cyim, cyim-lsp, **darshini**, hapi, **iam**, kii, **kriya**, kybernet, nous, owl, **sit**) are listed separately in the [full registry](../../development/planning/shared-crates.md#binaries--tools-17-crates). **2026-05-20 cohort**: mihi 1.0.0 (OS & Infrastructure, probe lib), iam 1.0.0 (Binaries & Tools, fastfetch-equivalent), bannermanor 1.0.0 (Binaries & Tools, figlet-equivalent — graduated PM after CLI surface + CYML font format + default font set frozen).
+> **82 libraries at v1.0+** (80 standalone + 2 stdlib-folded: sandhi v5.7.0, niyama v5.9.0; **yantra 1.0.0 graduated 2026-06-18** — UI automation lib; **ganita + bayan added 2026-06-14**; aegis 1.0.0 graduated from pre-1.0 during v5.10.x; **mihi 1.0.0 graduated 2026-05-20** as system-info probe substrate for the terminal-aesthetics cohort) — pre-1.0 libs tracked in [development/planning/](../../development/planning/README.md). Binary tools at v1.0+ (agnos, agnoshi, agora, argonaut, **ark**, **bannermanor**, **commandress**, cyim, cyim-lsp, **darshini**, hapi, **iam**, kii, **kriya**, kybernet, **mela**, nous, owl, **sit**, **takumi**) are listed separately in the [full registry](../../development/planning/shared-crates.md#binaries--tools-20-crates). **2026-05-20 cohort**: mihi 1.0.0 (OS & Infrastructure, probe lib), iam 1.0.0 (Binaries & Tools, fastfetch-equivalent), bannermanor 1.0.0 (Binaries & Tools, figlet-equivalent — graduated PM after CLI surface + CYML font format + default font set frozen).
 > Full registry: [Shared Crates Registry](../../development/planning/shared-crates.md) — that doc is the authoritative source; refresh from there.
 >
-> **Last Updated**: 2026-06-14 (full local-VERSION sweep — OS/Infra + Science + Language lib bumps synced to the 6.0→6.2 cyrius arc; **ganita + bayan added** as v1.0+ libs; binary-tools pointer refreshed for the sit + darshini graduations. GitHub-only science/media/physics libs not in the local clone left as-is. Prior 2026-06-04: version columns re-synced to the VERSION files — 17 stable-crate bumps. Prior 2026-05-22: post-1.31.6 close drift sweep.)
+> **Last Updated**: 2026-06-18 (relocated the 4 v1.0 graduations from the development registry's pre-1.0 sections into the application area: **yantra 1.0.0** added here as an OS & Infrastructure lib; **ark / mela / takumi 1.0.0** added to the binary-tools pointer line — they live in the [full registry](../../development/planning/shared-crates.md#binaries--tools-20-crates). Prior 2026-06-14: full local-VERSION sweep — OS/Infra + Science + Language lib bumps synced to the 6.0→6.2 cyrius arc; **ganita + bayan added** as v1.0+ libs; binary-tools pointer refreshed for the sit + darshini graduations. GitHub-only science/media/physics libs not in the local clone left as-is. Prior 2026-06-04: version columns re-synced to the VERSION files — 17 stable-crate bumps. Prior 2026-05-22: post-1.31.6 close drift sweep.)
 
 See also: [First-Party Standards — Own the Stack](../../development/first-party/first-party-standards.md#own-the-stack) | [Science Crate Specs](../../development/guides/science-crate-specs.md)
 
 ---
 
-## OS & Infrastructure (27)
+## OS & Infrastructure (28)
 
 | Crate | Version | Domain |
 |-------|---------|--------|
@@ -41,6 +41,7 @@ See also: [First-Party Standards — Own the Stack](../../development/first-part
 | szal | 2.0.0 | Workflow engine — step/flow/DAG + branching/retry/rollback. **Cyrius-native (2.0.0 = Rust → Cyrius port graduation)** |
 | t-ron | 2.1.5 | MCP security |
 | vidya | 2.7.3 | Programming reference |
+| yantra | 1.0.0 | Sovereign UI automation (Cyrius library) — browser + mobile; `.tcyr` files include `lib/yantra.cyr` and drive Chromium / Firefox / WebKit / Android / iOS. `cyrius test` stays the runner (not a framework). Graduated 2026-06-18 |
 | yukti | 2.2.5 | Device abstraction (USB, block, udev) |
 
 ## Science & Knowledge (28)
