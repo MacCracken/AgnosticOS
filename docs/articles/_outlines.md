@@ -8,7 +8,7 @@
 
 ## 1. yantra knife article — *"Every other language draws the line before what you can see. Cyrius draws it after."*
 
-**Status**: outline | **Trigger**: yantra M1 (Chromium CDP backend) live + benchmark vs Playwright-Python on identical workload
+**Status**: **WRITTEN** 2026-06-16 → `draw-the-line-after.md` (mirror here; canonical in `yantra/docs/articles/draw-the-line-after.md`). Written at yantra 0.9.0 (all five backends live, API frozen for 1.0.0) — far past the M1 trigger. Receipts delivered: web ~3× vs Playwright (flow), mobile parity vs Appium (structural — both ride Appium), 0 consumer deps. | **Trigger** (met): yantra M1 live + benchmark vs Playwright on identical workload
 
 ### Headline thesis (locked)
 
