@@ -59,7 +59,7 @@ The role map below is for orientation. **Versions are intentionally omitted** â€
 | **aethersafha** | Wayland compositor | Pending |
 | **ark** | Package manager | **Ported** |
 | **nous** | Package resolver | **Ported** |
-| **takumi** | Build system | In port (rust-old/ authoritative until parity) |
+| **takumi** | Build system | **Ported** |
 | **aegis** | Security daemon | **Ported** |
 | **shakti** | Privilege escalation | **Ported** |
 | **kavach** | Sandbox execution | **Ported** |
@@ -76,7 +76,7 @@ The role map below is for orientation. **Versions are intentionally omitted** â€
 | **bhava** | Emotion / sentiment modeling | Pending |
 | **hisab** | Higher math | **Ported** |
 | **agnova** | OS installer | **Ported** |
-| **mela** | Agent marketplace | Pending |
+| **mela** | Agent marketplace | **Ported** |
 | **seema** | Edge fleet management | Pending |
 | **samay** | Task scheduler | Pending |
 | **gnoboot** | Sovereign UEFI bootloader (PE32+ EFI Application, replaces GRUB) | **Native** |
