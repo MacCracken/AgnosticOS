@@ -43,7 +43,7 @@ The role map below is for orientation. **Versions are intentionally omitted** �
 | **cyrius** | Sovereign compiler + stdlib + toolchain | **Native** |
 | **zugot** | Recipe repository (consumed by ark/nous/takumi) | — |
 | **agnostik** | Shared types, domain primitives | **Ported** |
-| **agnosys** | Kernel interface (Landlock, seccomp, syscalls) | **Ported** |
+| **agnodrm** | Device / DRM model (udev enumeration + DRM/KMS device access; error+util support). Was **agnosys** (kernel-interface lib) — decomposed 2026-06-19: trust→sigil, security/mac/audit→kavach, pam→aegis, logging→sakshi, syscall layer→cyrius; udev/drm survive + the Linux-eccentric group (bootloader/update/netns/fuse/journald) parked post-v1 | **Ported** |
 | **kybernet** | PID 1 init binary | **Ported** |
 | **argonaut** | Init system library | **Ported** |
 | **sigil** | Trust / crypto boundary | **Ported** |

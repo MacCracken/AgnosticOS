@@ -49,9 +49,9 @@ AGNOS is a sovereign operating system written in Cyrius. The architecture consis
 |  |         +----------------+------------------------+           |   |
 |  |                          |                                    |   |
 |  |  +-------------+  +-----+------+  +-----------+              |   |
-|  |  |    hoosh    |  |   daimon   |  |  agnosys  |              |   |
-|  |  | LLM gateway |  |   agent    |  |  kernel   |              |   |
-|  |  |             |  |  runtime   |  | interface |              |   |
+|  |  |    hoosh    |  |   daimon   |  |  agnodrm  |              |   |
+|  |  | LLM gateway |  |   agent    |  |  device   |              |   |
+|  |  |             |  |  runtime   |  | DRM model |              |   |
 |  |  +-------------+  +-----+------+  +-----+-----+              |   |
 |  +---------------------------------------------------------------+   |
 |                             |                                         |
@@ -228,7 +228,7 @@ The FS group `getdents(29)` / `unlink(30)` / `rename(31)` / `link(32)` / `stat(3
 | ELF loader (Layer 2) | Cyrius compiler emits ELF directly; no translation layer |
 | Initrd + VFS (Layer 3) | Userspace tools packed into CPIO initrd at build |
 | Signals + epoll + timerfd (Layer 5) | kybernet event loop, service supervision |
-| SYSCALL/SYSRET (Layer 2) | agnosys kernel-interface library (Cyrius, zero deps) |
+| SYSCALL/SYSRET (Layer 2) | cyrius stdlib per-target syscall layer (`syscalls_*.cyr`); the bindings moved here from agnosys in the agnos→agnodrm decomposition — agnodrm is now the device/DRM model, not the syscall layer |
 | Pipes (Layer 3/5) | Shell pipelines, inter-service IPC |
 
 ### What's not yet in the kernel

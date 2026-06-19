@@ -115,7 +115,7 @@ Total: CPU → seed → compiler → OS. Three items. Zero external dependencies
 | Archetypes | **avatara** | 2.3.0 | 362 archetypes, 24 traditions, affinity system |
 | Culture | **hadara** | 1.0.0 | 50 cultures, Cyrius-native, HTTP API |
 | Shared types | **agnostik** | Cyrius | Domain primitives |
-| Kernel interface | **agnosys** | Cyrius | Syscall bindings, Landlock, seccomp |
+| Device / DRM model | **agnodrm** | Cyrius | udev enumeration + DRM/KMS (was **agnosys**; trust/security/syscall/logging decomposed out to sigil/kavach/aegis/cyrius/sakshi, 2026-06-19) |
 | Trust/crypto | **sigil** | Cyrius | Ed25519, integrity, trust delegation |
 | Audit chain | **libro** | Cyrius | SHA-256/BLAKE3 hash-linked logging |
 | Audio codecs | **shravan** | 2.0.0 | Cyrius-native |
@@ -176,7 +176,7 @@ No Rust. No LLVM. No Python. No libc. Just sh + Linux x86_64.
 |-------|------|--------|-------|-------|
 | kybernet (PID 1) | 6.7MB | 486KB | 14× smaller | 140 tests, 46 benchmarks |
 | hoosh (LLM gateway) | 5.1MB, 40 crates | 474KB, 0 deps | 10.8× smaller, 70× faster compile | — |
-| agnosys (kernel interface) | 6.9MB | 117KB | 59× smaller | — |
+| agnodrm — was agnosys (kernel interface) | 6.9MB | 117KB | 59× smaller | — |
 | ai-hwaccel (GPU detection) | 708KB, 131 crates | 217KB, 0 deps | 3.3× smaller | 518 tests, 6 fuzz |
 | avatara (archetypes) | — | — | cached 2,761× faster | 195 tests, 39 benchmarks |
 

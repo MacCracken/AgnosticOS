@@ -59,7 +59,7 @@
 
 | Subsystem | Before | After | Ratio |
 |-----------|--------|-------|-------|
-| agnosys | 6.9MB | 117KB | 59x smaller |
+| agnodrm (was agnosys) | 6.9MB | 117KB | 59x smaller |
 | kybernet | 6.7MB | 486KB | 14x smaller |
 | hoosh | 5.1MB | 474KB | 10.8x smaller |
 | kavach | 2.4MB | 344KB | 7x smaller, 500x faster lifecycle |
