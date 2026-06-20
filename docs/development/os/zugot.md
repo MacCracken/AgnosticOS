@@ -19,10 +19,10 @@ Each recipe is a *zug* — a matched pair of definition and source. Without zugo
 
 ## Consumers
 
-- **[ark](ark.md)** — Package manager (installs from recipes)
-- **[nous](nous.md)** — Resolver (reads dependency graphs from recipes)
-- **[takumi](takumi.md)** — Build system (executes build steps from recipes)
-- **[mela](mela.md)** — Marketplace (distributes marketplace packages)
+- **[ark](../../applications/libs/ark.md)** — Package manager (installs from recipes)
+- **[nous](../../applications/libs/nous.md)** — Resolver (reads dependency graphs from recipes)
+- **[takumi](../../applications/libs/takumi.md)** — Build system (executes build steps from recipes)
+- **[mela](../../applications/libs/mela.md)** — Marketplace (distributes marketplace packages)
 
 ## Structure
 

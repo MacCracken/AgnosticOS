@@ -47,7 +47,7 @@
 
 | Subsystem | Repo | Port | Role |
 |-----------|------|------|------|
-| **agnosys** | [MacCracken/agnosys](https://github.com/MacCracken/agnosys) | Cyrius | Syscall bindings, Landlock, seccomp |
+| **agnodrm** | [MacCracken/agnodrm](https://github.com/MacCracken/agnodrm) | Cyrius | Device/DRM model — udev + DRM/KMS (was **agnosys**; decomposed 2026-06-19 → trust→sigil, sec/mac/audit→kavach, pam→aegis, logging→sakshi, syscalls→cyrius) |
 | **agnostik** | [MacCracken/agnostik](https://github.com/MacCracken/agnostik) | Cyrius | Shared types, domain primitives |
 
 ## Package Management
@@ -119,6 +119,6 @@
 
 **Port status summary** (2026-05-06): 30+ Cyrius-native or fully ported. ~5 still pending (bhava, aegis, aethersafha, takumi parity, mela). Live status: [`state.md`](../state.md).
 
-Detailed dev docs for in-progress subsystems: [aegis](aegis.md), [aethersafha](aethersafha.md), [agnova](agnova.md), [ark](ark.md), [mela](mela.md), [nous](nous.md), [phylax](phylax.md), [samay](samay.md), [seema](seema.md), [takumi](takumi.md), [zugot](zugot.md).
+Detailed dev docs for not-yet-v1.0 subsystems: [aethersafha](aethersafha.md), [agnova](agnova.md), [samay](samay.md), [seema](seema.md), [zugot](zugot.md). Graduated subsystems' docs now live in [docs/applications/libs/](../../applications/libs/) — **aegis**, **ark**, **mela**, **takumi** relocated there 2026-06-19 (joining nous/phylax, whose stale `os/` copies were removed 2026-06-19 — current docs live in `libs/`).
 
 Stable subsystem overview: [`docs/architecture.md` § Named Subsystems](../../architecture.md#named-subsystems). Full crate registry: [`shared-crates.md`](../planning/shared-crates.md).

@@ -202,7 +202,7 @@ Numbers approximate; rolls up from the per-tier tables below.
 | `infrastructure/performance-benchmarks.md` | 2026-06-04 | 📦 Fossil (correctly) | Re-classified 2026-06-04: this is **not stale-needing-refresh** — it's a deliberately-fossilized Rust-era doc with a clear 2026-04-14 notice and dead-by-design `userland/…` paths. The Cyrius-era benchmark home is the per-repo `benchmarks-rust-v-cyrius.md` + the **Port Ledger** articles (V1/V2/V3). Updated its notice to point at the Port Ledger (was pointing only at per-repo docs + MEMORY.md). Leave the body frozen. |
 | `infrastructure/rpi4-runner-setup.md` | 2026-04-14 | 🟠 Read-through | |
 | `os/README.md` | 2026-04-14 | 🟠 Read-through | |
-| `os/aegis.md`, `os/aethersafha.md`, `os/agnova.md`, `os/ark.md`, `os/mela.md`, `os/nous.md`, `os/phylax.md`, `os/samay.md`, `os/seema.md`, `os/takumi.md`, `os/zugot.md` | 2026-04-02 to 2026-04-13 | 🟠 Read-through | 11 files. Most ~5 weeks old. Some subsystems shipped major versions since (ark 0.8.0, nous 1.1.1, phylax 1.0.0). Refresh in batch. |
+| `os/aethersafha.md`, `os/agnova.md`, `os/samay.md`, `os/seema.md`, `os/zugot.md` | 2026-04-02 to 2026-06-19 | 🟠 Read-through | Was 11. 2026-06-19 graduated-doc sweep: **aegis / ark / mela / takumi relocated to `applications/libs/`**, **agnosys→agnodrm renamed**, **16 graduated stubs authored** in `libs/`, and **stale `os/nous.md` + `os/phylax.md` dupes removed** (current docs in `libs/`). Remaining 5 are pre-1.0 / pending subsystems + zugot. |
 
 ---
 
