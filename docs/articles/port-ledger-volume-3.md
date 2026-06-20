@@ -326,20 +326,21 @@ Structural: **392,840-byte** binary, **0** external deps (15 stdlib modules).
 
 ark is Volume 1's package-manager port and the ledger's **longest-running open item**: it sat at 0.8.0 on pin **5.1.10** — the extreme deep-lag tail, a port that pre-dated the pin convention — through the entire optimization arc. Volume 1 named it a "Where Rust Still Wins" example (zero-copy micro-ops: `cmd_create` 4×, `recent_10` 8×). The Volume 3 headline is that **ark has graduated**: as of **1.0.0 (2026-06-18, pin 6.2.21)** the full package manager is Cyrius end-to-end — resolve → plan → execute, native `.ark` packages (SHA-256 + Ed25519, fail-closed), shakti-escalated privileged steps, a mela marketplace path — **172/172 tests green, 0 external deps** (39 stdlib modules). The last deep-lag holdout is now on the leading edge.
 
-The performance receipt is thinner, and the ledger says why. ark retired its `bench-history.sh` wrapper at 1.0 (benchmarking is now `cyrius bench tests/ark.bcyr`), so the committed CSV froze at its 2026-04-16 / 5.1.10 rows. A fresh run (cycc 6.2.26, 2026-06-20) produced current numbers — but they came in **higher** than the 5.1.10 baseline, on a **non-DCE build** (the run reported 3,888 unreachable fns / ~1 MB dead code + a 447 KB static-data warning) under pin-drift (cycc 6.2.26 vs pinned 6.2.21), as a single noisy run:
+The performance receipt needed a fresh run: ark retired its `bench-history.sh` wrapper at 1.0 (benchmarking is now `cyrius bench tests/ark.bcyr`), so the committed CSV had frozen at its 2026-04-16 / 5.1.10 rows. A clean **DCE-on** run (`CYRIUS_DCE=1`, cycc 6.2.26, 2026-06-20) now records a current **three-tier** baseline (`bench-history.csv`, per-iter ns) — and it answers the open question from the first pass: DCE made **no measurable difference** (`cmd_create` 748→714 ns, `db_integrity` 4,357→4,518 ns), so the earlier "non-DCE artifact" hypothesis is *falsified*.
 
-| Benchmark | 5.1.10 `04-16` | 6.2.x `06-20` (non-DCE) |
-|-----------|---------------:|------------------------:|
-| `cmd_create` | 187 ns | 748 ns |
-| `config_default` | 227 ns | 682 ns |
-| `db_search_20` | 1,239 ns | 2,379 ns |
-| `db_integrity_20` | 1,005 ns | 4,357 ns |
-| `txn_begin_commit` | 1,251 ns | 2,788 ns |
-| `group_meta_pkg` | 68 ns | 53 ns |
+| Tier · Benchmark | ark 0.8.0 @ 5.1.10 `04-16` | ark 1.0.0 @ 6.2.x DCE `06-20` |
+|------------------|---------------------------:|------------------------------:|
+| t1 `cmd_create` | 187 ns | 714 ns |
+| t1 `config_default` | 227 ns | 716 ns |
+| t1 `group_meta_pkg` | 68 ns | 56 ns |
+| t2 `db_search_20` | 1,239 ns | 2,447 ns |
+| t2 `db_integrity_20` | 1,005 ns | 4,518 ns |
+| t3 `txn_begin_commit` | 1,251 ns | 2,792 ns |
+| t3 `output_display` | 657 ns | 1,328 ns |
 
-**Reading it.** This is **not** a clean speed verdict and is explicitly not cited as one: two single noisy runs, two different toolchain eras, and a 6.2.x build that never had DCE applied (1 MB of unreachable code is real icache/layout pressure). The honest read is that ark's 1.0 microbench wants a **clean DCE-applied re-run** before any before/after claim — flagged, not buried. (`group_meta_pkg` going *down* on the same run is the tell that the rest is dominated by build/runner conditions, not a uniform algorithmic loss.) Volume 1's "Rust wins zero-copy micro-ops" note stays a pre-port figure.
+**Reading it.** The two columns are **not a before/after — they are different programs.** The left is ark **0.8.0** on Cyrius **5.1.10** (April); the right is ark **1.0.0** — the full resolve→plan→execute backend, typed plans, `.ark` verify, marketplace path — on **6.2.26**, across a year's worth of language development. `cmd_create` and `db_integrity` *do more work* in 1.0.0 than the 0.8.0 stubs did, so the higher numbers are mostly the program growing, not a codegen loss — `group_meta_pkg` (the one path whose work didn't change) is flat/down. The honest framing: **2026-06-20 is a fresh 1.0/6.2.x baseline**, organized into three tiers (construct/format · package-db · transaction/output); the 5.1.10 figures stay a pre-port artifact, not a comparand. (Single manual-timing run on a shared box — `total_us` has resolution; per-iter is direction-of-motion.)
 
-**Verdict for the ledger:** ark's Volume 3 receipt is the **graduation** — the extreme deep-lag holdout reached 1.0.0, full package manager in Cyrius, 172/172 tests, 0 external deps. The microbench has fresh 6.2.x numbers on record but they ran high on a single non-DCE build, so they enter as flagged *direction-needs-a-clean-rerun* telemetry, not a speed receipt. Structural + milestone are the banked half.
+**Verdict for the ledger:** ark's Volume 3 receipt is the **graduation** — the extreme deep-lag holdout reached 1.0.0, full package manager in Cyrius, 172/172 tests, 0 external deps — plus a **fresh three-tier 6.2.x baseline** (DCE-confirmed; `bench-history.csv`). The 0.8.0/5.1.10 numbers are retired as non-comparable (different program + toolchain era), so there is **no regression claim**; the new baseline is what future ark cuts measure against. Structural + milestone banked.
 
 ---
 
@@ -371,7 +372,7 @@ Higher-cost ops (quantized): `route_select_20_providers` / `queue_*` / `batch_sp
 
 Volume 3 is seeded, not finished. What's still owed, and the gate on each:
 
-- **The ten Volume 1 ports, re-benchmarked.** ✅ **All ten now have published receipts.** The 2026-06-04 wave landed seven (`abaco`, `agnosys` → now `agnodrm`, `kybernet`, `ai-hwaccel`, `avatara`, `kavach`, plus `nous` as a stability trail); the **2026-06-20 completion** ran the last three on fresh 6.2.x bench runs — **`agnostik`** (serde `from_json` collapse confirmed: 6,000→803 ns / 3,000→503 ns), **`hoosh`** (n=1 → clean two-point 6.2.x baseline), and **`ark`** (graduated 5.1.10 → 1.0.0; microbench flagged for a clean DCE re-run) — and reframed **`agnosys` → `agnodrm`** as a decomposition. The honesty bar held throughout: stale CSVs were *re-run*, not cited, and no number was published ahead of its measurement.
+- **The ten Volume 1 ports, re-benchmarked.** ✅ **All ten now have published receipts.** The 2026-06-04 wave landed seven (`abaco`, `agnosys` → now `agnodrm`, `kybernet`, `ai-hwaccel`, `avatara`, `kavach`, plus `nous` as a stability trail); the **2026-06-20 completion** ran the last three on fresh 6.2.x bench runs — **`agnostik`** (serde `from_json` collapse confirmed: 6,000→803 ns / 3,000→503 ns), **`hoosh`** (n=1 → clean two-point 6.2.x baseline), and **`ark`** (graduated 5.1.10 → 1.0.0; fresh three-tier 6.2.x baseline, DCE-confirmed) — and reframed **`agnosys` → `agnodrm`** as a decomposition. The honesty bar held throughout: stale CSVs were *re-run*, not cited, and no number was published ahead of its measurement.
 - **The four "Where Rust Still Wins" categories**, as measurement rather than direction-of-motion (Volume 2's conjecture table becomes Volume 3's verdict table). hisab already supplies fresh evidence for categories 1 (zero-copy / heap) and 3 (inlining on sub-ns ops).
 - **The optimization-arc closure verdict** — O5/O6 codebuf compaction: shipped, retired, or still triage? Both Volume 2 and `cyrius-vs-rust-benchmarks.md` leave this open.
 - **The held-cluster three** (mabda, cyrius-doom, samvada) — roll forward onto the 6.0.x surface, or enter Volume 3 with explicit "deliberately held" framing.
