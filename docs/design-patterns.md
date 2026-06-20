@@ -273,7 +273,7 @@ This is *Refusal as Architecture* applied to prompt engineering. The discipline 
 
 **How to apply.** Triage any over-bloated CLAUDE.md against the five-layer surface: move volatile state out (→ `state.md`), move behavioral feedback out (→ memory), move per-decision archaeology out (→ ADRs), trim what's left, and prompt the re-read at task boundaries. The agent will not re-read unprompted; the prompt is the discipline.
 
-**See also.** [*Your CLAUDE.md Isn't Lying. You're Skimming.*](articles/your-claude-md-isnt-lying.md) (deep-dive); [*Docs Go Stale Before the Commit*](articles/docs-go-stale-before-the-commit.md) (the same drift dynamics one doc-layer over); memory: `feedback_claude_md_durable_state_external.md`. Pattern §0 (Refusal as Architecture — master frame) and §9 (Reference Don't Mimic — sibling refusal pattern at the implementation layer rather than the documentation layer).
+**See also.** [*Your CLAUDE.md Isn't Lying. You're Skimming.*](articles/your-claude-md-isnt-lying.md) (deep-dive); [*Development Speed and How It Effects Documentation*](articles/development-speed-and-documentation.md) (the same drift dynamics one doc-layer over); memory: `feedback_claude_md_durable_state_external.md`. Pattern §0 (Refusal as Architecture — master frame) and §9 (Reference Don't Mimic — sibling refusal pattern at the implementation layer rather than the documentation layer).
 
 ---
 

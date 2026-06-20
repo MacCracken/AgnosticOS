@@ -26,7 +26,36 @@ type: state
 >
 > **Relocated 2026-05-09**: previously at `docs/development/doc-health.md`. Moved to `docs/doc-health.md` so the location reflects the actual scope (the whole genesis-repo doc tree, not just `docs/development/`).
 
-This is a **ledger**, not a one-time audit. Rewrite-in-place as docs change. Per [*Docs Go Stale Before the Commit*](articles/docs-go-stale-before-the-commit.md) and [*Your Docs Are About to Rot*](articles/your-docs-are-about-to-rot.md), a doc-set this size needs an explicit health surface or it rots silently.
+This is a **ledger**, not a one-time audit. Rewrite-in-place as docs change. Per [*Development Speed and How It Effects Documentation*](articles/development-speed-and-documentation.md), a doc-set this size needs an explicit health surface or it rots silently.
+
+---
+
+## 🟡 Pre-release re-review queue
+
+> **Added 2026-06-19.** These articles carry known drift that is **deliberately deferred** until closer to a release cut — articles are dated artifacts; batch-refresh at a ship milestone, not continuously. Each row names the specific drift so the re-review is mechanical when it fires. **This is the marker, not the fix.**
+
+### The two ecosystem facts that drive most of this
+
+1. **`agnosys` → `agnodrm` decomposition (2026-06-19) — the honest story, ready to tell straight.** `agnosys` began as AGNOS's **Linux kernel system-hooks layer** — the host-kernel system interface (`sys_*` ABI, raw syscalls, `/proc`, the Linux-flavored "agnostic systems" bindings; bootstrap debt). As AGNOS **deviated from the Linux path** toward its sovereign `agnos` kernel, that framing stopped fitting, and an audit found the lib **doing far more than a system interface should** — it had accreted trust, security/MAC/audit, pam, firmware, and logging. The decomposition is the correction: the **per-arch syscall layer moved into `cyrius` — the language itself became the syscall provider** (sovereignty all the way down — the compiler owns the syscall ABI; nothing calls out to a hooks lib), trust → `sigil` 3.9.0, security/mac/audit → `kavach` 3.5.0, pam → `aegis` 1.1.0, logging → `sakshi` 2.4.0, and the surviving device/DRM model is **`agnodrm` 1.4.4**. *This is on-thesis* — "sovereignty is recursive" (python-in-the-bootstrap) reaching its deepest layer, plus the subtraction / right-sizing pattern. Affects every article that uses `agnosys` as a port example. **Frame it as the discovery it was, not as an error to hide.**
+2. **`yantra` folded into the Cyrius stdlib (cyrius 6.2.26).** UI automation is now *literally* in the stdlib (was a vendored sibling lib). Graduates *draw-the-line-after*'s thesis from "the only language that ships this as a lib" to "ships it in the stdlib," and makes `yantra` a **4th fold instance** alongside sandhi/vani/niyama in *what-justifies-a-stdlib-foldin*.
+
+### Articles flagged (defer to release)
+
+| Article | Drift to fix at re-review |
+|---|---|
+| `cyrius-vs-rust-benchmarks.md` | **agnosys** is the flagship 59× example → reframe per the decomposition (the honest over-scope story above); bootstrap chain `cyrc`/`bridge`/`cc5` → `cybs`/`cycc`; version anchors v5.11 → 6.2.26 |
+| `draw-the-line-after.md` | **yantra fold-in** — thesis graduates from "vendored lib" to "in the stdlib"; **not in this ledger yet** (written 2026-06-16) — add a Tier-4 row |
+| `what-justifies-a-stdlib-foldin.md` | add **yantra as the 4th fold instance**; `cc5`→`cycc`; distlib sizes stale |
+| `entity-vs-skynet-doom.md` | heaviest drift (kernel v1.26.1 / cyrius v5.9 / `cc5` name); DEF CON Aug 2026 → **Aug 2027**; held outline |
+| `the-2-dollar-sd-card.md` | kernel ~603KB/1.32.1 → 1.45.10; DEF CON Aug 2026 → **2027**; bootstrap-chain string |
+| `why-gigacenters.md` | kernel 260KB/v1.26.1 → current; held outline (murti+seema pending) |
+| `memory-should-be-sovereign-too.md` | version table (kernel v1.26.1, `cc5` v5.9, agnoshi v1.0.0, sigil v2.9.4); sit-still-scaffold claim still holds |
+| `python-in-the-bootstrap.md` | footer v5.9.0/v1.26.1 → current; bootstrap chain; "v5.10.x reserved for RISC-V" already shipped |
+| `sovereign-compiler-vs-brute-force.md` | body v1.8.2/v1.1.0 + footer v5.11.24/v1.30.1 → 6.2.26/1.45.10 |
+| `doom-in-cyrius.md` | cyrius-doom 0.27.3 → 0.29.0; cyrius 6.0.1 → 6.2.26; Sprint-3 status |
+| `why-gpu-belongs-in-the-stdlib.md` | mabda v2.5.0; cyrius v5.6/v5.9 → 6.2.26; native-Vulkan-vs-wgpu bridge status |
+
+**Frozen-by-design — do NOT touch at re-review:** `port-ledger-volume-1.md`, `port-ledger-volume-2.md` (immutable snapshots). **Already current (no action):** `your-claude-md-isnt-lying.md`, `micro-work-and-agent-deferment.md`, `development-speed-and-documentation.md`.
 
 ---
 
@@ -200,7 +229,7 @@ Numbers approximate; rolls up from the per-tier tables below.
 
 ## Tier 4 — Articles (`docs/articles/`)
 
-19 files. 11 touched today, balance in April. Articles are **time-stamped artifacts** — they don't go "stale" the way operational docs do; they go *dated*. Don't refresh in place; supersede with a follow-up if the position changes.
+19 files. 11 touched today, balance in April. Articles are **time-stamped artifacts** — they don't go "stale" the way operational docs do; they go *dated*. Don't refresh in place; supersede with a follow-up if the position changes. **⚠️ Several rows below carry deferred drift (agnosys decomposition, yantra fold-in, version anchors) flagged for a ship-milestone refresh — see the *Pre-release re-review queue* near the top of this file before trusting a `✅ Fresh` here.**
 
 | File | Last touched | Status |
 |---|---|---|
@@ -211,20 +240,18 @@ Numbers approximate; rolls up from the per-tier tables below.
 | `entity-vs-skynet-doom.md` | 2026-05-06 | ✅ Fresh |
 | `port-ledger-volume-1.md` | 2026-05-15 | ✅ Fresh — Locked to Cyrius v5.5.4 baseline; accreted in-place body updates stripped; *What Comes Next* expanded to 5-volume narrative arc (V1 baseline → V2 mid-arc state → V3 end-of-5.x/v6.0 re-measurement → V4 post-v6.x platform expansion → V5 synthesis); Where-Rust-Still-Wins markers point at Volume 2 / Volume 3 scope instead of describing in-place arc status. |
 | `port-ledger-volume-2.md` | 2026-05-15 | ✅ Fresh (NEW) — Mid-arc state-of-things snapshot: agnos 1.30.1 iron-validated (the headline V2 receipt), kernel size/walk summary, four new native subsystems inventoried (aegis 1.0.0 graduated, gnoboot 0.2.0, commandress 0.1.0, kriya 0.1.0), pin-cluster review across 7 bands (5.11.55 leading edge → deep-lag tail), Volume 1's "Where Rust Still Wins" categories reviewed for *direction of motion* without claiming closure. Explicit "what shipped is recorded; what hasn't measured stays un-asserted." Comprehensive re-measurement deferred to Volume 3 (end-of-5.x / v6.0). |
-| `port-ledger-volume-3.md` | 2026-06-04 | ✅ Fresh (OPEN/accreting) — Post-arc re-measurement ledger; **seeded 2026-06-01** (abaco + hisab), **expanded 2026-06-04** with six more Volume 1 port receipts (agnosys, kybernet, ai-hwaccel, avatara, kavach, nous) — **seven of the ten Vol 1 ports now have published 6.0.x receipts**. Gathered by a fan-out workflow that read each port's real CSV/bench-doc and adversarially verified every number against source (cardinal rule: **no fabricated numbers**; noisy single-run trails framed as regression-trail/direction-of-motion per the hisab precedent, not absolute speed). Three remain pending on a real run: agnostik (no 6.0.x CSV row yet), hoosh (Cyrius `.bcyr` suite not run), ark (still pre-6.0.x at 5.1.10). Accreting article — each port lands as its receipt exists. |
+| `port-ledger-volume-3.md` | 2026-06-20 | ✅ Fresh (COMPLETE — 10/10 Vol 1 ports) — Post-arc re-measurement ledger; **seeded 2026-06-01** (abaco + hisab), **expanded 2026-06-04** with six more Volume 1 port receipts (agnosys, kybernet, ai-hwaccel, avatara, kavach, nous) — **ALL TEN Vol 1 ports now have published receipts** (completed 2026-06-20). Gathered by fan-out extract+verify workflows reading each port's real CSV/bench-doc + adversarial source-check (cardinal rule: **no fabricated numbers**; noisy single-run trails = direction-of-motion, not absolute speed). The last three were **freshly bench-run at 6.2.x on 2026-06-20** (agnostik serde from_json collapse 6000→803 / 3000→503 ns; hoosh n=1→2-point baseline; ark graduated 5.1.10→1.0.0, microbench flagged non-DCE/needs-clean-rerun), and **agnosys reframed → agnodrm** (decomposition; old syscall benches confirmed gone). Still accreting: held-cluster, cross-arch, opt-arc verdict. |
 | `python-in-the-bootstrap.md` | 2026-05-06 | ✅ Fresh |
 | `sovereign-compiler-vs-brute-force.md` | 2026-05-11 | ✅ Fresh — **2026-05-11**: added "Update 2026-05-11 — direct reply to *Agentic Coding is a Trap*" section as new dated subsection (didn't rewrite the 2026-05-09 snapshot per article-as-dated-artifact convention). Names the four methodology variables ($400 vs $20K), the v5.10.x cycle close (50 patches, three arcs), the locname-staleness three-surfacings catch as institutional-artifact receipt. Carries the "Tools don't make the craftsman; method does" aphorism + points at outline #7 for the standalone reply article. |
 | `the-2-dollar-sd-card.md` | 2026-05-06 | ✅ Fresh |
 | `what-justifies-a-stdlib-foldin.md` | 2026-05-06 | ✅ Fresh — shipped 2026-05-06 per state.md |
 | `why-gigacenters.md` | 2026-05-06 | ✅ Fresh |
-| `your-docs-are-about-to-rot.md` | 2026-05-11 | ✅ Fresh — **2026-05-11** (multi-touch same day): (1) added doc-health ledger as 6th mechanism in *What Sovereign Stacks Get That Most Teams Don't* section (was 5); (2) updated "What to Do Now" item 4 to point at the ledger pattern as concrete institutionalization of audit-pass discipline; (3) appended recursive-irony paragraph to *For the Receipts* — doc-health pattern emerged after the article shipped, article had to drift to acknowledge the tool it prescribed; (4) updated Cyrius version refs (5.6.0 → 5.11.0) + tempo example (v5.5.x close → v5.10.x .50-in-five-days three-arc); (5) **NEW section** *File Types and Lifecycles — Concretely* added after *Scope: Three Different Doc Problems* — 9-row per-file taxonomy table (CLAUDE.md / state.md / CHANGELOG / history+timeline+retros / ADRs / articles / design-patterns / doc-health) with lifecycle + holds + doesn't-hold columns; three conflation-closing rules; doc-health framed as audit-surface for the taxonomy itself. |
+| `development-speed-and-documentation.md` | 2026-06-19 | ✅ Fresh (NEW) — **Consolidation** of `docs-go-stale-before-the-commit.md` (receipts) + `your-docs-are-about-to-rot.md` (argument) into one piece; originals hard-deleted 2026-06-19 (git history authoritative), ~18 inbound links redirected. Merges the Apr-23-2026 drift receipts, the 8-row file-type taxonomy, the GitLab/Knight/Atlassian production-failure cases, the six drift-defense mechanisms, and pattern-over-state recursion. Version anchors refreshed to Cyrius 6.2.26 / AGNOS 1.45.10; the Apr-23 narrative kept period-correct as a dated receipt. |
 | `your-claude-md-isnt-lying.md` | 2026-04-25 | 🔵 Dated artifact |
 | `why-gpu-belongs-in-the-stdlib.md` | 2026-04-24 | 🔵 Dated artifact |
 | `what-5.5.x-taught-5.6.x.md` | 2026-04-24 | 🔵 Dated artifact |
 | `micro-work-and-agent-deferment.md` | 2026-04-24 | 🔵 Dated artifact |
-| `memory-should-be-sovereign-too.md` | 2026-04-24 | 🔵 Dated artifact |
-| `docs-go-stale-before-the-commit.md` | 2026-04-24 | 🔵 Dated artifact |
-| `the-price-of-porting-early.md` | 2026-04-23 | 🔵 Dated artifact |
+| `memory-should-be-sovereign-too.md` | 2026-04-24 | 🔵 Dated artifact || `the-price-of-porting-early.md` | 2026-04-23 | 🔵 Dated artifact |
 | `end-of-4x-independent-audit.md` | 2026-04-15 | 🗄 Archived | **Moved to `docs/archive/` on 2026-05-12** — Kernel-Boot finding was QEMU-only, contradicted on real iron 2026-05-12 (`grub_elf32_get_shnum` rejection; repair in Cyrius v5.11.29/.30/.31). Bootstrap-Chain finding still holds. |
 
 ---

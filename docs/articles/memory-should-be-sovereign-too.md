@@ -131,7 +131,7 @@ Until then, this one states the refusal.
 
 - [*Sovereign Compiler vs Brute Force*](sovereign-compiler-vs-brute-force.md) — the same refusal applied to the compiler layer
 - [*Port Ledger Volume 1*](port-ledger-volume-1.md) — the pattern this article is volume `N+1` of
-- [*Docs Go Stale Before the Commit*](docs-go-stale-before-the-commit.md) — the coordination-doc problem that motivated handoff-as-code, which sit inherits
+- [*Development Speed and How It Effects Documentation*](development-speed-and-documentation.md) — the coordination-doc problem that motivated handoff-as-code, which sit inherits
 - [*The Price of Porting Early*](the-price-of-porting-early.md) — pinning against a moving compiler; applies in spades to sit depending on sankoch/sigil/patra mid-stride
 
 ---

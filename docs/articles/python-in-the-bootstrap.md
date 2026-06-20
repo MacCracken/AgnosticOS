@@ -179,7 +179,7 @@ What it grew from was a compass, a team of two, and the realization that the Pyt
 
 ## Since This Was Written
 
-**Refreshed 2026-05-06 — five weeks past the original cut.** Rewrite-in-place per [*Docs Go Stale Before the Commit*](docs-go-stale-before-the-commit.md) — git history is authoritative for prior figures.
+**Refreshed 2026-05-06 — five weeks past the original cut.** Rewrite-in-place per [*Development Speed and How It Effects Documentation*](development-speed-and-documentation.md) — git history is authoritative for prior figures.
 
 - **Cyrius v5.9.0** — cc5 at 741,048 B; multi-platform self-host closed (x86_64 Linux, aarch64 Linux, Apple Silicon Mach-O, Windows PE32+); still bootstrapping byte-identically from the same 29 KB seed.
 - **AGNOS kernel v1.26.1** — 248 KB, 33 subsystems, 26 syscalls, three hardening passes (14 buffer overflows found and fixed).

@@ -57,7 +57,7 @@ Cyrius doesn't. `lib/yantra.cyr` is first-party stdlib. A `.tcyr` file can drive
 
 - `memory-should-be-sovereign-too.md` (sit / git refusal — same shape)
 - `why-gpu-belongs-in-the-stdlib.md` (mabda / wgpu refusal — same shape)
-- `docs-go-stale-before-the-commit.md` (testing pyramid as context)
+- `development-speed-and-documentation.md` (testing pyramid as context)
 
 ### Captured anchors (won't drift)
 
@@ -398,7 +398,7 @@ So the cycle structure has to be *infrastructure-first* — the foundational arc
 - [`port-ledger-volume-1.md`](port-ledger-volume-1.md) — port sequencing as architecture. This article extends to: ports also *spur deviation* in the compiler cycle, and that's a feature not a bug.
 - [`sovereign-compiler-vs-brute-force.md`](sovereign-compiler-vs-brute-force.md) — cc5 size as discipline. This article uses cc5 cycle-growth (741→804 KB across v5.10.x) as a *visible* signal that infrastructure-first arcs cost real bytes and that's correct.
 - [`what-5.5.x-taught-5.6.x.md`](what-5.5.x-taught-5.6.x.md) — cycle-to-cycle inheritance pattern. Direct ancestor of this article's thesis at a smaller-scope cycle.
-- [`docs-go-stale-before-the-commit.md`](docs-go-stale-before-the-commit.md) — cycle discipline shapes doc currency. Adjacent: the state.md / doc-health.md ledger pattern is itself a manifestation of cycle-aware doc structure.
+- [`development-speed-and-documentation.md`](development-speed-and-documentation.md) — cycle discipline shapes doc currency. Adjacent: the state.md / doc-health.md ledger pattern is itself a manifestation of cycle-aware doc structure.
 - [`design-patterns.md §2 Staged Optimization / No Deferred Debt`](../design-patterns.md#2-staged-optimization--no-deferred-debt) — through-line layer for the pattern.
 - [`design-patterns.md §8 Pain → Procedure`](../design-patterns.md#8-pain--procedure-encode-lessons-as-first-class) — locname-staleness lesson encoded as a slot-discipline rule fits this pattern exactly.
 
@@ -480,7 +480,7 @@ The "trap" Faye names is real. It's just not located where he points it. The fai
 - **[`sovereign-compiler-vs-brute-force.md`](sovereign-compiler-vs-brute-force.md)** — the receipt-piece this article argues *from*. The new article is the methodology argument that the existing piece's numbers already support. (Already updated 2026-05-11 with a direct-reply section pointing here.)
 - **[`your-claude-md-isnt-lying.md`](your-claude-md-isnt-lying.md)** — the surface-discipline piece. Names the five-layer structure that makes the receipt possible.
 - **[`micro-work-and-agent-deferment.md`](micro-work-and-agent-deferment.md)** — the slot-discipline piece. Names "ask, don't slip" as the explicit anti-vibe rule.
-- **[`docs-go-stale-before-the-commit.md`](docs-go-stale-before-the-commit.md)** — the doc-discipline companion. State-doc rot is the same drift class that Faye misdiagnoses as cognitive debt.
+- **[`development-speed-and-documentation.md`](development-speed-and-documentation.md)** — the doc-discipline companion. State-doc rot is the same drift class that Faye misdiagnoses as cognitive debt.
 - **[`memory-should-be-sovereign-too.md`](memory-should-be-sovereign-too.md)** — the cross-tool-vendor sovereignty argument applied at the memory layer. Faye's vendor-lock-in concern lives here.
 - **[`design-patterns.md §8 Pain → Procedure`](../design-patterns.md#8-pain--procedure-encode-lessons-as-first-class)** — through-line. The locname-staleness catch, the "ask, don't slip" rule, the five-layer surface — each is a lesson encoded as procedure.
 
@@ -515,7 +515,7 @@ Four topics that current (2024–2026) AI-engineering blogs are covering where A
 
 **Status**: topical backlog | **Trigger**: libro or phylax ships a named "agent trace format" that differs intentionally from OpenTelemetry's service-trace assumptions. Knife-article shape.
 
-AGNOS runs three coordinated agents and has `libro` (audit chain) + `phylax` (threat detection) as first-party observability infrastructure — but has never framed that as agent-observability publicly. Langfuse / Datadog / OpenTelemetry dominate the 2025 conversation on tracing agent runs; none of them are built against a sovereign stack. Refusal target: "the observability stack we have was designed for request/response services, not for agents that branch, pause, recall memory, and consume context windows." On-thesis adjacent to `docs-go-stale-before-the-commit.md` but deserves its own piece.
+AGNOS runs three coordinated agents and has `libro` (audit chain) + `phylax` (threat detection) as first-party observability infrastructure — but has never framed that as agent-observability publicly. Langfuse / Datadog / OpenTelemetry dominate the 2025 conversation on tracing agent runs; none of them are built against a sovereign stack. Refusal target: "the observability stack we have was designed for request/response services, not for agents that branch, pause, recall memory, and consume context windows." On-thesis adjacent to `development-speed-and-documentation.md` but deserves its own piece.
 
 ### Sequential-not-parallel agents — *"Parallel Agents Were the Wrong Default"*
 
@@ -615,7 +615,7 @@ These are listed in memory ([`project_article_backlog.md`](../../../../.claude/p
 - **Receipts are pre-committed.** The outline lists specific benchmarks / comparisons / metrics the article will carry. When the trigger fires, those receipts are the article's spine.
 - **Trigger is named.** Each article has a specific "this is ready to write when…" condition. No article gets drafted pre-trigger (the refusal-piece counterpart already did that work).
 - **Cross-captures** in ADRs and `design-patterns.md` entries exist so the framing survives outside this file too — this file is the primary index, not the only anchor.
-- **Point at live data, don't mirror figures.** When an article will carry benchmark numbers, version counts, binary sizes, test counts, or other state figures that come from a live canonical source (a project's `benchmarks-X.md`, its `state.md`, a CHANGELOG), the outline **points at that source with a re-run-cadence note** rather than duplicating the current snapshot. Between outline-time and publish-time, those numbers shift; pointing-at-live lets the drafter pull fresh data from the authoritative source. The trade: slightly more work at draft-time. The payoff: no accidentally-outdated figures in published articles. This is the [*Docs Go Stale Before the Commit*](docs-go-stale-before-the-commit.md) thesis applied to the outline layer — lock the durable thing (thesis, section skeleton, architecture observations), float the volatile thing (numbers).
+- **Point at live data, don't mirror figures.** When an article will carry benchmark numbers, version counts, binary sizes, test counts, or other state figures that come from a live canonical source (a project's `benchmarks-X.md`, its `state.md`, a CHANGELOG), the outline **points at that source with a re-run-cadence note** rather than duplicating the current snapshot. Between outline-time and publish-time, those numbers shift; pointing-at-live lets the drafter pull fresh data from the authoritative source. The trade: slightly more work at draft-time. The payoff: no accidentally-outdated figures in published articles. This is the [*Development Speed and How It Effects Documentation*](development-speed-and-documentation.md) thesis applied to the outline layer — lock the durable thing (thesis, section skeleton, architecture observations), float the volatile thing (numbers).
 
 ---
 

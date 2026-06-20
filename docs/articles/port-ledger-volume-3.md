@@ -1,6 +1,6 @@
 # Port Ledger Volume 3
 
-> **STATUS — OPEN / ACCRETING.** This is the post-arc re-measurement cut promised by [Volume 1](port-ledger-volume-1.md) and [Volume 2](port-ledger-volume-2.md): the comparison against Volume 1's frozen v5.5.4 numbers, now that the optimization arc has run and Cyrius has crossed into the **v6.0.x** cycle (v5.x closed at v5.11.69, 2026-05-19). Unlike Volumes 1 & 2 — which are sealed snapshots — **Volume 3 fills in over time**, one port at a time, as each crate's re-benchmark comes online. It opens with **abaco** and **hisab**, and the **2026-06-04 accretion** adds six more Volume 1 ports back on the 6.0.x workflow — **agnosys**, **kybernet**, **ai-hwaccel**, **avatara**, **kavach**, and **nous** — bringing seven of the ten Volume 1 ports to published receipts. Three remain gated on a fresh run (see *Receipts Pending — The Wave*). Seeded 2026-06-01, expanded 2026-06-04.
+> **STATUS — OPEN / ACCRETING.** This is the post-arc re-measurement cut promised by [Volume 1](port-ledger-volume-1.md) and [Volume 2](port-ledger-volume-2.md): the comparison against Volume 1's frozen v5.5.4 numbers, now that the optimization arc has run and Cyrius has crossed into the **v6.0.x** cycle (v5.x closed at v5.11.69, 2026-05-19). Unlike Volumes 1 & 2 — which are sealed snapshots — **Volume 3 fills in over time**, one port at a time, as each crate's re-benchmark comes online. It opens with **abaco** and **hisab**, and the **2026-06-04 accretion** adds six more Volume 1 ports back on the 6.0.x workflow — **agnosys**, **kybernet**, **ai-hwaccel**, **avatara**, **kavach**, and **nous** — bringing seven of the ten Volume 1 ports to published receipts. The **2026-06-20 completion** runs the last three on fresh 6.2.x bench runs — **agnostik**, **hoosh**, and **ark** (graduated all the way from 5.1.10 deep-lag to 1.0.0) — and reframes **agnosys**, now **decomposed into agnodrm** with its syscall layer absorbed into the language: **all ten Volume 1 ports now have published receipts.** Seeded 2026-06-01, expanded 2026-06-04, completed 2026-06-20.
 
 ---
 
@@ -73,39 +73,41 @@ Where Cyrius wins is the structural axis the per-op numbers don't show:
 
 ---
 
-## agnosys — kernel interface library (re-measurement)
+## agnodrm (was agnosys) — kernel-interface lib, decomposed (re-measurement + reframe)
 
-agnosys is Volume 1's port #1 — the kernel-interface library (syscall wrappers, packed error encoding, MAC/SELinux profile checks, version compare, constant-time string ops). Volume 1 froze it at Cyrius v1.0.0 against Rust v0.51.0 with a structural sweep (59× smaller binary, 3.5× fewer lines, 0 deps, 1,462× faster compile) and a one-line hot-path claim: *packed error encoding beats Rust's `Result<T,E>` on `err_from_errno` by 1.8×, syscall-bound ops at parity.* Volume 3's job: re-measure across the live `.bcyr` harness now that agnosys has crossed into the 6.0.x era.
+Volume 1's port #1 was **agnosys** — the kernel-interface library, frozen at Cyrius v1.0.0 against Rust v0.51.0 with the headline structural sweep (59× smaller binary, ~3× fewer lines, 0 deps, 1,462× faster compile) and a packed-error hot-path claim. That entry is now **superseded by a decomposition**, and the honest story is the more interesting receipt.
 
-Source: `agnosys/bench-history.csv` (one `estimate_ns` row per benchmark per commit, same harness throughout) + `agnosys/cyrius.cyml` (working-tree pin `6.0.52`) + `agnosys/VERSION` (1.3.2). Eight measurement points span **2026-05-06** (`f16aaf8`, pin 5.9.1, pre-6.0.x) through **2026-06-03** (`4476c8d`, the latest benched commit, pinned 6.0.24). The 6.0.x window opens at `f47d419` (bench run 2026-06-01, "cyrius 6.0.14") and includes a "tier 0 optimization pass" (`428c68e`) and a refactor (`8201688`). The current working-tree pin (`cyrius.cyml`) is `6.0.52` at commit `4ba7e04`, but that commit carries no bench row yet — the latest *measured* 6.0.x pin is 6.0.24. Structural numbers carried from `agnosys/docs/benchmarks-rust-vs-cyrius.md` (agnosys 0.97.1, Cyrius 3.2.5) and Volume 1.
+agnosys was the project's **Linux kernel system-hooks layer** — the host system interface that, over time, accreted far more than a system interface should: trust, security/MAC/audit, pam, firmware, logging. When AGNOS deviated from the Linux path toward its sovereign kernel, an audit (2026-06-19) found the over-scope and dispersed it: the **per-arch syscall layer moved into `cyrius` itself — the language became the syscall provider** (sovereignty all the way down; nothing calls a hooks lib for syscalls anymore), trust → `sigil`, security/mac/audit → `kavach`, pam → `aegis`, logging → `sakshi`. What remains is **`agnodrm` 1.4.4** — the device/DRM model (udev enumeration + DRM/KMS), the error/util core, and the Linux-eccentric bootloader/update/fuse group parked post-v1.
 
-| Benchmark | baseline `05-06` (`f16aaf8`, 5.9.1) | refactor-peak `06-01` (`8201688`, 6.0.24) | head `06-03` (`4476c8d`, 6.0.24) | character |
-|-----------|----:|----:|----:|-----------|
-| `syserr_pack` | 3 ns | 4 ns | **3 ns** | flat (packed encode) |
-| `validate_pin_invalid` | 14 ns | 14 ns | **11 ns** | stable early-exit |
-| `map_get_hit` | 62 ns | 80 ns | **70 ns** | within band |
-| `ct_streq_equal` | 131 ns | 170 ns | **129 ns** | within band |
-| `compare_versions` | 132 ns | 229 ns | **171 ns** | within band |
-| `validate_pin_valid` | 223 ns | 288 ns | **236 ns** | within band |
-| `getpid` | 274 ns | 329 ns | **284 ns** | syscall-bound noise |
-| `getuid` | 257 ns | 310 ns | **277 ns** | syscall-bound noise |
-| `wrap_syscall_ok` | 286 ns | 344 ns | **300 ns** | syscall-bound noise |
-| `validate_cmdline_safe` | 486 ns | 582 ns | **487 ns** | within band |
+The clearest proof of the decomposition is in the benchmark surface itself. Volume 1's agnosys numbers measured `getpid`/`getuid`/`validate_pin`/`ct_streq`/MAC-profile ops — **none of those survive in agnodrm**, because that work left the repo (the syscall benchmarks went where the syscalls went: into the language). A fresh run on the current 9-module remnant (`bash scripts/bench-history.sh`, cycc 6.2.26, 2026-06-20, commit `ccf352e` — 18 benchmarks across 6 groups) measures what agnodrm *is* now:
 
-**Reading it.** This is a **regression-trail record, not an absolute-speed receipt** — and the trail's shape is the point. Two classes of benchmark behave differently. The **packed-error / early-exit core** is rock-steady: `syserr_pack` holds at 3-4 ns and `validate_pin_invalid` at 11-14 ns across all eight points and both language eras — that stability *is* Volume 1's hot-path claim, surviving the 6.0.x crossing intact. The **syscall-bound and pure-compute rows** swing run-to-run (getpid 274→329→284, getuid 257→344→277, compare_versions 132→229→171) because the kernel call / runner noise dominates a single estimate (the noisiest row, `query_sysinfo`, swings 981→2000 ns across the trail — proof the CSV is a single-estimate-per-commit trail, not a stabilized measurement). The `8201688` column is the high-noise outlier on nearly every row; a later commit (`4476c8d`, pinned 6.0.24) drops back to within a few ns of the 05-06 baseline. Net motion over the whole trail is *flat-within-noise* — no benchmark regressed durably across the 6.0.x crossing (5.9.1 → 6.0.24), and none of the swings exceed the runner's own band. The honest read: agnosys's hot paths held; the syscall rows are at parity with themselves, which is the strongest claim a single-estimate-per-commit CSV can support.
+| Group | Benchmark | time |
+|-------|-----------|-----:|
+| error | `syserr_pack` | 4 ns |
+| error | `from_errno_eperm` | 64 ns |
+| error | `ok_create` | 55 ns |
+| util | `wrap_syscall_ok` | 336 ns |
+| bootloader | `validate_cmdline_safe` | 499 ns |
+| bootloader | `is_dangerous_token_hit` / `miss` | 111 / 117 ns |
+| update | `compare_versions` / `validate_ver_good` | 226 / 170 ns |
+| udev | `parse_subsystem` | 44 ns |
+| fuse | `starts_with_hit` / `miss` | 13 / 6 ns |
+| string | `streq_16ch` / `memeq_16` / `strlen_16ch` | 53 / 31 / 11 ns |
+| string | `map_get_hit` / `map_get_miss` | 68 / 37 ns |
 
-The structural wins are the bankable, non-noisy half of the receipt — durable from Volume 1 and the last Rust-vs-Cyrius head-to-head:
+**Reading it.** The packed-error core that Volume 1 hung its hot-path claim on **survives and is still at the floor** — `syserr_pack` is 4 ns. The one honest movement is the allocator-touching pair, `from_errno_eperm` 64 ns and `ok_create` 55 ns, elevated from their old ~21 / ~14 ns; that is the documented cyrius 6.0.64 allocator-spinlock cost (recorded at agnodrm 1.4.1) — a structural change carried in the open, not noise. (Single-estimate-per-commit on a shared runner — direction-of-motion, not stabilized absolute speed.)
 
-| Metric | Rust | Cyrius | source |
-|--------|------|--------|--------|
-| Source lines | 29,257 | **9,884** (3.0× fewer) | benchmarks-rust-vs-cyrius.md:55 |
-| Binary size | 6.9 MB (rlib) | **55,688 bytes** (130× smaller) | benchmarks-rust-vs-cyrius.md:56 |
-| Compile time | 11.7 s | **35 ms** (334× faster) | benchmarks-rust-vs-cyrius.md:57 |
-| Dependencies | 8 crates | **0** | benchmarks-rust-vs-cyrius.md:58 |
+The structural numbers are where the decomposition shows hardest, and they must **not** inherit agnosys's old 59× headline — that figure belonged to the 20-module library, not this remnant:
 
-(The per-op Rust-vs-Cyrius speed table in that doc is from Cyrius 3.2.5 / agnosys 0.97.1 — a pre-6.0.x toolchain era — so it is *not* cited here as a current head-to-head; only its structural rows, which are toolchain-stable, carry forward. A clean 6.0.x Rust-vs-Cyrius re-bench would need the Rust side rebuilt, and the Rust source was removed at 0.97.1.)
+| Metric | old agnosys (Vol 1) | agnodrm now (v1.4.4) |
+|--------|--------------------:|---------------------:|
+| Scope | ~20 modules | **9 modules** (device/DRM + bootloader/update/udev/fuse + error/util) |
+| Core lib | 55,688 B (whole lib) | **35,892 B** |
+| Source | 9,884 lines | **4,137 lines** |
+| Deps | 0 | **0** |
+| Rust comparand | v0.51.0 head-to-head | **none valid** — the decomposed scope has no Rust twin |
 
-**Verdict for the ledger:** agnosys's Volume 1 hot-path claim *holds* — the packed-error / early-exit core is byte-stable across the 6.0.x crossing (5.9.1 → 6.0.24), and the syscall-bound rows sit at parity-with-themselves inside the runner's noise band. This is a direction-of-motion + structural-wins receipt (flat, no durable regression), not a precise absolute-speed one; the single-estimate-per-commit CSV doesn't support tighter than that. Structural wins (130× binary, 334× compile, 0 deps, 3× source) are banked. Note: the working-tree pin is `6.0.52`, but no benchmark has been run at that pin — the latest *measured* point is `4476c8d` on 6.0.24; a 6.0.52 re-bench is a follow-up.
+**Verdict for the ledger:** agnosys's Volume 1 entry closes by **decomposition, not by a speed delta** — the honest receipt is that an over-scoped lib was audited and dispersed, its syscall surface absorbed into the language itself. agnodrm is the small sovereign device/DRM remnant (35,892-byte lib, 4,137 lines, 0 deps); the packed-error core (`syserr_pack` 4 ns) held, the alloc paths carry the documented 6.0.64 regression, and there is **no current Rust comparand** because the measured scope no longer maps onto the Rust agnosys. The old 59× / 334× structural headline stays in Volume 1 where it was measured — it described a library that no longer exists in that form.
 
 ---
 
@@ -296,11 +298,80 @@ The structural axis, the part the per-op µs don't show:
 
 ---
 
+## agnostik — shared types / domain primitives (re-measurement)
+
+agnostik is Volume 1's shared-types / domain-primitives port, and the spot where Volume 1 named a **"Where Rust Still Wins"** category outright: serde string serialization, 5.8–6.8× on the agnostik roundtrip. Volume 3's job was to re-measure that category on the 6.2.x workflow — and the committed CSV had gone stale (frozen at 5.x-era rows), so the receipt required a **fresh run** (`scripts/bench-history.sh`, cycc 6.2.26, 2026-06-20, commit `b390347`, agnostik 1.3.1 / pin 6.2.11).
+
+The serde tier — the exact Volume 1 weak spot — is where the codegen arc paid off. The CHANGELOG had claimed 6.2.x collapses in prose; the fresh run **confirms them in committed numbers**, against the 5.x-era baseline the CSV used to carry:
+
+| `*_from_json` (deserialize) | 5.x baseline | 6.2.x fresh | net |
+|---------|------------:|-----------:|-----|
+| `accel_flags_from_json` | 6,000 ns | **803 ns** | **−87%** |
+| `resource_limits_from_json` | 3,000 ns | **503 ns** | **−83%** |
+| `injection_scores_from_json` | 2,000 ns | **376 ns** | **−81%** |
+| `agent_stats_from_json` | 1,000 ns | **329 ns** | **−67%** |
+| `token_usage_from_json` | — | **496 ns** | new |
+
+Other tiers, same run: `token_usage_update` 88 ns, `accelerator_device_full` 296 ns, `version_to_str` 292 ns, `version_roundtrip` 666 ns, `security_context_full` 985 ns; the `*_to_json` serialize paths sit at 1–2 µs (whole-µs quantized).
+
+**Reading it.** The deserialize collapse is real and now CSV-committed — the serde category Volume 1 flagged as a Rust win has narrowed sharply on the from_json side (sub-800 ns where it was multiple µs). One honest counter-movement belongs in the same receipt: the 1.0.0 **F-001 CSPRNG migration** moved `agent_id_new` ~65 → ~608 ns — a deliberate security trade (cryptographic IDs) that *inverts* Volume 1's old "Cyrius 1.4× faster on agent_id" headline. Feature cost, not regression. (Single-estimate-per-commit, whole-µs quantization, ±20–30% CI jitter — direction-of-motion, not stabilized speed.) The Rust head-to-head is a pre-1.0 legacy doc (Cyrius v0.95.0/cc2) and is **not** cited as a current comparand.
+
+Structural: **392,840-byte** binary, **0** external deps (15 stdlib modules).
+
+**Verdict for the ledger:** agnostik re-measures its Volume 1 weak category fresh at 6.2.x — the serde *from_json* paths dropped 67–87% off the 5.x baseline (the codegen-arc payoff, now in the CSV, not just the CHANGELOG); `agent_id` is slower **by design** (CSPRNG). Structural wins (sub-400 KB, 0 external deps) banked.
+
+---
+
+## ark — package manager (graduation + re-measurement)
+
+ark is Volume 1's package-manager port and the ledger's **longest-running open item**: it sat at 0.8.0 on pin **5.1.10** — the extreme deep-lag tail, a port that pre-dated the pin convention — through the entire optimization arc. Volume 1 named it a "Where Rust Still Wins" example (zero-copy micro-ops: `cmd_create` 4×, `recent_10` 8×). The Volume 3 headline is that **ark has graduated**: as of **1.0.0 (2026-06-18, pin 6.2.21)** the full package manager is Cyrius end-to-end — resolve → plan → execute, native `.ark` packages (SHA-256 + Ed25519, fail-closed), shakti-escalated privileged steps, a mela marketplace path — **172/172 tests green, 0 external deps** (39 stdlib modules). The last deep-lag holdout is now on the leading edge.
+
+The performance receipt is thinner, and the ledger says why. ark retired its `bench-history.sh` wrapper at 1.0 (benchmarking is now `cyrius bench tests/ark.bcyr`), so the committed CSV froze at its 2026-04-16 / 5.1.10 rows. A fresh run (cycc 6.2.26, 2026-06-20) produced current numbers — but they came in **higher** than the 5.1.10 baseline, on a **non-DCE build** (the run reported 3,888 unreachable fns / ~1 MB dead code + a 447 KB static-data warning) under pin-drift (cycc 6.2.26 vs pinned 6.2.21), as a single noisy run:
+
+| Benchmark | 5.1.10 `04-16` | 6.2.x `06-20` (non-DCE) |
+|-----------|---------------:|------------------------:|
+| `cmd_create` | 187 ns | 748 ns |
+| `config_default` | 227 ns | 682 ns |
+| `db_search_20` | 1,239 ns | 2,379 ns |
+| `db_integrity_20` | 1,005 ns | 4,357 ns |
+| `txn_begin_commit` | 1,251 ns | 2,788 ns |
+| `group_meta_pkg` | 68 ns | 53 ns |
+
+**Reading it.** This is **not** a clean speed verdict and is explicitly not cited as one: two single noisy runs, two different toolchain eras, and a 6.2.x build that never had DCE applied (1 MB of unreachable code is real icache/layout pressure). The honest read is that ark's 1.0 microbench wants a **clean DCE-applied re-run** before any before/after claim — flagged, not buried. (`group_meta_pkg` going *down* on the same run is the tell that the rest is dominated by build/runner conditions, not a uniform algorithmic loss.) Volume 1's "Rust wins zero-copy micro-ops" note stays a pre-port figure.
+
+**Verdict for the ledger:** ark's Volume 3 receipt is the **graduation** — the extreme deep-lag holdout reached 1.0.0, full package manager in Cyrius, 172/172 tests, 0 external deps. The microbench has fresh 6.2.x numbers on record but they ran high on a single non-DCE build, so they enter as flagged *direction-needs-a-clean-rerun* telemetry, not a speed receipt. Structural + milestone are the banked half.
+
+---
+
+## hoosh — LLM inference gateway (re-measurement)
+
+hoosh is Volume 1's LLM-inference-gateway port, whose headline was a dependency collapse (200+ crates → a stdlib-only build, 0 external). Volume 1 left it without a Cyrius-side trend; Volume 3 now has one — and unlike the other three remaining ports, hoosh's committed CSV was already fresh, so the only gap was the single-point problem. A **repeat run** (cycc 6.2.26, 2026-06-20, commit `4e2aae1`) gives hoosh a clean **two-point 6.2.x baseline** (06-16 + 06-20) and resolves the apparent regressions in the first point as runner noise:
+
+| Benchmark | 6.2.x `06-16` (n=1) | 6.2.x `06-20` (repeat) |
+|-----------|-------------------:|----------------------:|
+| `work_queue_push_pop` | 8 ns | **8 ns** |
+| `estimate_tokens_per_provider` | 12 ns | **8 ns** |
+| `route_matches_model` | 36 ns | **33 ns** |
+| `cache_get_miss` | 57 ns | **51 ns** |
+| `latency_bucket_find` | 72 ns | **56 ns** |
+| `pool_available` | 7 ns | **4 ns** |
+| `pool_reserve_commit` | 100 ns | **85 ns** |
+| `cache_insert` | 91 ns | **86 ns** |
+| `cache_get_hit` | 123 ns | **114 ns** |
+
+Higher-cost ops (quantized): `route_select_20_providers` / `queue_*` / `batch_split_4` at 1 µs, `dlp_scan_clean_prompt` / `mcp_tools_list` at 4 µs, `mcp_tools_call` at 9 µs.
+
+**Reading it.** The repeat is the whole point: every benchmark that *looked* like it regressed in the n=1 run (`pool_available` 7→4, `pool_reserve_commit` 100→85, `cache_insert` 91→86) **reverted on the second run** — runner noise, not motion. The genuine signal is a tier of sub-100 ns micro-ops at the floor (`work_queue_push_pop` 8 ns, `estimate_tokens` 8 ns, `route_matches_model` 33 ns). **No Rust ns head-to-head exists** — hoosh's `rust-old` bench CSV is header-only — so any cross-language *speed* ratio would be fabrication; only the binary (2,105,368 bytes) and dep-collapse (200+ crates → 0 external / 32 stdlib) are citable cross-language.
+
+**Verdict for the ledger:** hoosh enters Volume 3 with a clean two-point 6.2.x baseline — the n=1 caveat is killed, the sub-100 ns gateway micro-ops are at the floor, and the apparent first-run regressions were noise. Structural dep-collapse banked; the Rust *speed* comparand does not exist (empty head-to-head CSV), so it stays uncited.
+
+---
+
 ## Receipts Pending — The Wave
 
 Volume 3 is seeded, not finished. What's still owed, and the gate on each:
 
-- **The ten Volume 1 ports, re-benchmarked at 6.0.x.** **Seven now have published 6.0.x receipts** — `abaco`, `agnosys`, `kybernet`, `ai-hwaccel`, `avatara`, `kavach` above, plus `nous` as a stability trail. The remaining three are still gated on a real run: **`agnostik`** (pin is current at 6.0.26, but no 6.0.x row has been committed to its `docs/benchmarks/history.csv` — the only 6.0.x figures live in CHANGELOG prose the author flagged as ±20–40% noise-floor jitter); **`hoosh`** (re-ported onto 6.0.57, but its Cyrius `.bcyr` suite hasn't been run/recorded — every number on disk is Rust-era criterion output); **`ark`** (still pinned pre-6.0.x at 5.1.10 — needs the re-pin + a fresh bench run). Each lands the moment its real 6.0.x CSV exists — no fabricated numbers ahead of the measurement.
+- **The ten Volume 1 ports, re-benchmarked.** ✅ **All ten now have published receipts.** The 2026-06-04 wave landed seven (`abaco`, `agnosys` → now `agnodrm`, `kybernet`, `ai-hwaccel`, `avatara`, `kavach`, plus `nous` as a stability trail); the **2026-06-20 completion** ran the last three on fresh 6.2.x bench runs — **`agnostik`** (serde `from_json` collapse confirmed: 6,000→803 ns / 3,000→503 ns), **`hoosh`** (n=1 → clean two-point 6.2.x baseline), and **`ark`** (graduated 5.1.10 → 1.0.0; microbench flagged for a clean DCE re-run) — and reframed **`agnosys` → `agnodrm`** as a decomposition. The honesty bar held throughout: stale CSVs were *re-run*, not cited, and no number was published ahead of its measurement.
 - **The four "Where Rust Still Wins" categories**, as measurement rather than direction-of-motion (Volume 2's conjecture table becomes Volume 3's verdict table). hisab already supplies fresh evidence for categories 1 (zero-copy / heap) and 3 (inlining on sub-ns ops).
 - **The optimization-arc closure verdict** — O5/O6 codebuf compaction: shipped, retired, or still triage? Both Volume 2 and `cyrius-vs-rust-benchmarks.md` leave this open.
 - **The held-cluster three** (mabda, cyrius-doom, samvada) — roll forward onto the 6.0.x surface, or enter Volume 3 with explicit "deliberately held" framing.
@@ -338,6 +409,12 @@ cat ai-hwaccel/docs/benchmarks-rust-v-cyrius.md   # head-to-head (131 crates -> 
 cat avatara/bench-history.csv          # cached-access (the 2,761x path) held flat
 cat kavach/benches/bench-history.csv   # the v3.4.0 Aho-Corasick ~12x win, side-by-side
 cat nous/bench-history.csv             # 1.2.x hardening-arc stability trail
+
+# the 2026-06-20 completion — the last three Vol 1 ports + the agnosys decomposition
+cd agnostik && bash scripts/bench-history.sh   # serde from_json collapse at 6.2.x
+cd ark      && cyrius bench tests/ark.bcyr     # 1.0.0 graduation run (bench-history.sh retired)
+cd hoosh    && bash scripts/bench-history.sh   # second 6.2.x point (kills the n=1)
+cd agnodrm  && bash scripts/bench-history.sh   # decomposed 18-bench surface (was agnosys)
 ```
 
 The ledger is the code. The numbers are the receipts. Volume 3 grows as the receipts arrive.
@@ -348,4 +425,4 @@ The ledger is the code. The numbers are the receipts. Volume 3 grows as the rece
 
 *Robert MacCracken*
 *AGNOS Project — [agnosticos.org](https://agnosticos.org)*
-*June 2026 (post-arc re-measurement — open, accreting; seeded 2026-06-01, expanded 2026-06-04)*
+*June 2026 (post-arc re-measurement; seeded 2026-06-01, expanded 2026-06-04, **all ten Volume 1 ports completed 2026-06-20** — agnostik/hoosh/ark on fresh 6.2.x runs, agnosys reframed as the agnodrm decomposition. Still accreting: held-cluster, cross-arch, opt-arc verdict.)*

@@ -92,7 +92,7 @@ This article is structured as a citation hub for the *"ask, don't slip"* discipl
 - [*What v5.5.x Taught v5.6.x*](what-5.5.x-taught-5.6.x.md) — sibling micro-article; same compounding-forward shape applied to a different v5.5.x lesson
 - [cyrius/CLAUDE.md](https://github.com/MacCracken/cyrius/blob/main/CLAUDE.md) — canonical home of the "When stuck, ASK" rule
 - [design-patterns.md §8 Pain → Procedure (Encode Lessons as First-Class)](../design-patterns.md#8-pain--procedure-encode-lessons-as-first-class) — master pattern
-- [*Docs Go Stale Before the Commit*](docs-go-stale-before-the-commit.md) — related coordination discipline (the coordination-doc-rot problem is also agent-speed-amplified)
+- [*Development Speed and How It Effects Documentation*](development-speed-and-documentation.md) — related coordination discipline (the coordination-doc-rot problem is also agent-speed-amplified)
 
 ---
 

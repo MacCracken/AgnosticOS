@@ -73,7 +73,7 @@ The cycle cadence below uses git-verified dates from `cyrius` tag refs. Patch co
 
 - [cyrius roadmap v5.6.x + v5.7.x sections](https://github.com/MacCracken/cyrius/blob/main/docs/development/roadmap.md) — where the codification lives
 - [design-patterns.md §8 Pain → Procedure (Encode Lessons as First-Class)](../design-patterns.md#8-pain--procedure-encode-lessons-as-first-class) — the master pattern
-- [*Docs Go Stale Before the Commit*](docs-go-stale-before-the-commit.md) — a different instance of the same compounding-forward pattern (agent-era coordination docs)
+- [*Development Speed and How It Effects Documentation*](development-speed-and-documentation.md) — a different instance of the same compounding-forward pattern (agent-era coordination docs)
 - [iron-bring-up-process.md § *The premise-audit gate*](../development/iron-bring-up-process.md) — the third lesson in the lineage
 
 ---

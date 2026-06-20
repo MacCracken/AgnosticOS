@@ -6,7 +6,7 @@
 >
 > **This is a working punch list, not a marketing plan.** Check items off as they complete. Items are *"this must be true or the beat doesn't land"*, not *"this would be nice."* Rewrite in place as state evolves. At arc close, archive or supersede with a `fall-2026-arc.md`-equivalent.
 >
-> **Discipline reminder**: coordination docs rot at agent speed (see [docs/articles/docs-go-stale-before-the-commit.md](../articles/docs-go-stale-before-the-commit.md)). This one is intentionally dense; assume it will be stale within days in specifics, but the *shape* holds. `git log` anything before acting.
+> **Discipline reminder**: coordination docs rot at agent speed (see [docs/articles/development-speed-and-documentation.md](../articles/development-speed-and-documentation.md)). This one is intentionally dense; assume it will be stale within days in specifics, but the *shape* holds. `git log` anything before acting.
 
 ---
 

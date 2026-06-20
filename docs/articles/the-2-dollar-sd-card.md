@@ -115,7 +115,7 @@ For the philosophy: [AGNOS — Philosophy & Intention](../philosophy.md).
 
 ## Since This Was Written
 
-**Refreshed 2026-05-06 — five weeks past the original cut.** Body figures above are the April 2026 snapshot. Rewrite-in-place per [*Docs Go Stale Before the Commit*](docs-go-stale-before-the-commit.md) — git history is authoritative for prior figures.
+**Refreshed 2026-05-06 — five weeks past the original cut.** Body figures above are the April 2026 snapshot. Rewrite-in-place per [*Development Speed and How It Effects Documentation*](development-speed-and-documentation.md) — git history is authoritative for prior figures.
 
 **Proven now (additions / advances since the body):**
 - **Cyrius v5.9.0** — cc5 at 741,048 B; multi-platform self-host closed (x86_64 / aarch64 / Apple Silicon / Windows PE32+); still bootstrapping byte-identically from the same 29 KB seed.

@@ -397,13 +397,13 @@ Any of these in CLAUDE.md will be stale within a release. The pointer block is s
 
 Articles are dated artifacts — they describe a state at the moment of writing. As the underlying state moves (kernel size, port count, Cyrius cycle), the body becomes a **time capsule**, not a current claim. Two refresh patterns are valid:
 
-- **In-place body refresh** — only when the article *is* about the current state (registries, indexes, status pages). Update inline; rewrite-in-place per *Docs Go Stale Before the Commit*.
+- **In-place body refresh** — only when the article *is* about the current state (registries, indexes, status pages). Update inline; rewrite-in-place per *Development Speed and How It Effects Documentation*.
 - **"Since This Was Written" footer** (preferred for narrative articles) — keep the body as the dated record; append a footer noting what's changed. Pattern:
 
   ```markdown
   ## Since This Was Written
 
-  **Refreshed YYYY-MM-DD — N weeks past the original cut.** Body figures above are the [original date] snapshot. Rewrite-in-place per *Docs Go Stale Before the Commit* — git history is authoritative for prior figures.
+  **Refreshed YYYY-MM-DD — N weeks past the original cut.** Body figures above are the [original date] snapshot. Rewrite-in-place per *Development Speed and How It Effects Documentation* — git history is authoritative for prior figures.
 
   - **<subsystem>** — what changed since the body
   - **<thing>** — what changed since the body

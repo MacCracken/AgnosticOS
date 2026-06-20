@@ -166,7 +166,7 @@ For context: GCC is ~100MB, Clang/LLVM is ~500MB.
 
 ### Since This Was Written
 
-**Refreshed 2026-05-15.** Rewrite-in-place per [*Docs Go Stale Before the Commit*](docs-go-stale-before-the-commit.md) — git history is authoritative for prior figures.
+**Refreshed 2026-05-15.** Rewrite-in-place per [*Development Speed and How It Effects Documentation*](development-speed-and-documentation.md) — git history is authoritative for prior figures.
 
 - **Cyrius v5.11.55** — cc5 at **809,200 B** at v5.11.24 (.25 → .55 delta not snapshotted in this article; pull from `cyrius/cc5` for live size). Self-hosting compiler on Linux x86_64; multi-platform closed (aarch64, Windows PE32+, Apple Silicon Mach-O) — all bootstrapping byte-identically from the same 29 KB seed.
 - **AGNOS kernel v1.30.1** — 273,816 B (xHCI Phase 1 staged in [Unreleased]; 1.30.0 closed at 266,312 B), 33 subsystems, 26 syscalls, structurally immune to CVE-2026-31431. **Iron-validated 2026-05-15** on archaemenid (NUC AMD Beelink SER) — kernel reaches shell prompt on framebuffer through Path C sovereign-UEFI handoff (gnoboot 0.2.0).

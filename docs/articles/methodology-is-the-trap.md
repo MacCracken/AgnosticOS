@@ -201,7 +201,7 @@ This is the methodology layer behaving as a layer should — extending its surfa
 - [*Sovereign Compiler vs Brute Force*](sovereign-compiler-vs-brute-force.md) — the receipt this article argues from. $400 vs $20K, three sequential agents vs sixteen parallel, the Vidya Effect with worked examples.
 - [*Your CLAUDE.md Isn't Lying. You're Skimming.*](your-claude-md-isnt-lying.md) — the five-layer surface specification. The structural answer to the cognitive-debt symptom Faye describes.
 - [*Micro-Work and Agent Deferment*](micro-work-and-agent-deferment.md) — the "ask, don't slip" rule, and the four-case classification of legitimate splits vs reactive deferments. The explicit anti-vibe-coding discipline.
-- [*Docs Go Stale Before the Commit*](docs-go-stale-before-the-commit.md) — the doc-currency problem at agent speed. Adjacent to the cognitive-debt symptom but located in the docs layer.
+- [*Development Speed and How It Effects Documentation*](development-speed-and-documentation.md) — the doc-currency problem at agent speed. Adjacent to the cognitive-debt symptom but located in the docs layer.
 - [*Memory Should Be Sovereign Too*](memory-should-be-sovereign-too.md) — the sovereignty argument applied to the agent's memory layer. Faye's vendor-lock-in concern lives here.
 - [*design-patterns.md §8 Pain → Procedure (Encode Lessons as First-Class)*](../design-patterns.md#8-pain--procedure-encode-lessons-as-first-class) — the through-line. Every methodology rule in this article is an instance of this pattern.
 

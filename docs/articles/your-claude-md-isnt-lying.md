@@ -163,8 +163,7 @@ The plugin can wait — or, more honestly, it can stay un-built. Discipline the 
 
 ## Related
 
-- [*Docs Go Stale Before the Commit*](docs-go-stale-before-the-commit.md) — the receipts on doc-drift at agent speed; CLAUDE.md is one of the doc kinds that rots
-- [*Your Docs Are About to Rot*](your-docs-are-about-to-rot.md) — op-ed companion on the same drift
+- [*Development Speed and How It Effects Documentation*](development-speed-and-documentation.md) — the doc-drift-at-agent-speed argument and receipts; CLAUDE.md is one of the doc kinds that rots
 - [*Memory Should Be Sovereign Too*](memory-should-be-sovereign-too.md) — the memory layer's place in the surface
 - [*Why GPU Belongs in the Stdlib*](why-gpu-belongs-in-the-stdlib.md) — the same Refusal-as-Architecture pattern at a different layer
 - [*Sovereign Compiler vs Brute Force*](sovereign-compiler-vs-brute-force.md) — the original argument template
