@@ -559,6 +559,8 @@ Detailed roadmaps tracked in respective repos:
 
 **Multimodal ML substrate** (vision + audio model frontends built on the attn11 transformer core) underpins Phases 17–18 — forward design + reference map in [`planning/multimodal-substrate.md`](planning/multimodal-substrate.md). attn11 reaching v1.0 fired the attn11→libs extraction trigger; the gating new primitives are `conv2d`/`conv1d` fwd+bwd and a sovereign FFT/mel frontend.
 
+> **GPU unblocked (2026-06-19): mabda 3.3.0 now exposes the GPU surface attn11 needs** to move its training/inference loops off CPU — the near-term realization of the mabda-native-compute theme (the PTX-direct NVIDIA leg below stays Cyrius-6.x-gated). The GPU move is **build-first**: attn11 consumes mabda's surface **directly**; a rosnet GPU-backend — or any new GPU/tensor lib — is **deferred** until the path is proven AND a 2nd consumer surfaces (the prove-inline-then-extract doctrine that produced chitra←kii / darshana←cyim / the rosnet+tyche CPU extraction). Don't pre-scaffold a rosnet-GPU-backend or route attn11's GPU work through rosnet first.
+
 ### Future Shared Crates — Demand-Gated
 
 | Domain | Trigger | Likely Consumers | Priority |
