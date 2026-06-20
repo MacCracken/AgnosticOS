@@ -269,6 +269,7 @@ These can land in any patch without blocking a gated cycle:
 - **gnoboot** — touched only as iron burns surface bootloader-side bugs; otherwise stable per the "lean is good" stance.
 - **Cyrius bugs filed during iron work** — surfaced to the user / cyrius repo, which handles its own cycle (per [[feedback_cyrius_hands_off]]).
 - **AMD Zen Quiet-Boot scanout residue** *(parked)* — `fb_console` renders cleanly when BIOS quiet-boot is **OFF** (VGA-spec fallback) but bands glyphs when **ON** (GOP framebuffer at native res). MVP-unblocked via the VGA-spec path; closed-out 2026-05-20 with the bug surviving (both GOP SetMode lever forms falsified). Resumption options: HUBP `clear_tiling` port OR a shadow-buffer FB-console eval. Pin: [[project_amd_zen_scanout_residue]].
+- **kii → chitra adoption** — kii 1.0.1 still ships its own 813-line `src/png.cyr`; the **chitra** 0.1.0 decoder (forked out of that core 2026-06-19 so **mabda** could consume it for `gpu_texture_load_png`) is the shared image-decode home now. Adapt kii to a `[deps.chitra]` dep and drop the in-repo decoder, closing the second-consumer loop (mabda→chitra is already live). **Verify capability parity before cutover**: chitra 0.1.0 is PNG depth-8 / non-interlaced only (0.2 adds depth 1/2/4/16 + Adam7) — kii must not regress what its own decoder already handles. Opportunistic; no cycle gate.
 
 ### Public-Beta path (Q4 2026 — Phase 13A items 4-7)
 
