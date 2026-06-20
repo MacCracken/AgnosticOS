@@ -44,7 +44,7 @@ The characterization surfaced three options; the harness uses **two of them as c
 
 > Track-A finds where AGNOS is weak; Track-B finds where the *services* are weak and runs the high-volume load. Both feed the same findings ledger.
 
-**Existing infra:** `agnosticos/docker/` holds only `archive-pre-cyrius/` (13 Rust-era Dockerfiles — reference only, do not resurrect). The reusable asset is the **QEMU smoke-boot scaffolding** in `agnos/scripts/`, not the old Docker tree.
+**Existing infra:** `agnosticos/docker/` now holds **`net-sweep/`** (the Track-A boot container, built 2026-06-19 — see §8.3) alongside `archive-pre-cyrius/` (13 Rust-era Dockerfiles — reference only, do not resurrect). The Track-A container reuses the **QEMU smoke-boot scaffolding** from `agnos/scripts/tcp-listen-smoke.sh`, not the old Docker tree.
 
 ## 4. The service suite — status (server stage ~50%)
 
@@ -108,7 +108,7 @@ Prioritised by the characterization's severity calls. **CRITICAL** items are the
 
 1. ✅ **Phase-B server sockets** (agnos kernel) — **DONE at agnos 1.45.5**: `sock_listen`#56 (bind+listen merged) + `sock_accept`#57 (non-blocking, net_poll-drives the handshake). `tcp-listen-smoke` 2/2 host→AGNOS. *The gate — cleared.* Open downstream: agora's fork-per-accept needs an AGNOS path (spawn#3/#43 + waitpid#4, no Unix `fork`); descent's epoll model maps cleanly — a service/peer concern, not the kernel's.
 2. **cyrius `CYRIUS_TARGET_AGNOS` peer** (hands-off) — bind `sock_listen`/`bind`/`accept` so agora/descent/sandhi build for AGNOS (extends the #45-55 proposal: [`cyrius/.../2026-06-14-agnos-net-entropy-clock-syscalls.md`](https://github.com/MacCracken/cyrius/blob/main/docs/development/proposals/2026-06-14-agnos-net-entropy-clock-syscalls.md)).
-3. **AGNOS-in-QEMU-in-Docker boot container** — Dockerfile wrapping the existing smoke boot (QEMU+OVMF+gnoboot+kernel) with SLIRP port-forward; one service bound, reachable from the harness container.
+3. **AGNOS-in-QEMU-in-Docker boot container** — Dockerfile wrapping the existing smoke boot (QEMU+OVMF+gnoboot+kernel) with SLIRP port-forward; one service bound, reachable from the harness container. **⏳ BUILT 2026-06-19 at [`agnosticos/docker/net-sweep/`](../../../docker/net-sweep/)** (`Dockerfile` + `boot-listen.sh` + `run-sweep.sh` + README; built from the `TCP_LISTEN_SMOKE` kernel + gnoboot EFI). **Validation PENDING a machine restart** — docker daemon broke this session (dockerd down + user not in docker group + no passwordless sudo). Post-restart: `sudo systemctl start docker` → `cd docker/net-sweep && sudo ./run-sweep.sh` asserts host→AGNOS `tcp_accept` across the Docker boundary. See the *ACTIVE HANDOFF* note in [`state.md`](../state.md).
 4. **Harness driver container + per-service sweep scripts** — the drivers above + the 9-dimension matrix, parameterised per service.
 5. **Findings ledger + roll-up** — `findings.jsonl` → P1 list; CI-runnable for regression.
 6. *(parallel)* **Track B** — Cyrius-Linux service Docker images for fast regression + high-volume load.
