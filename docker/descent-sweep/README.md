@@ -1,83 +1,34 @@
-# descent-sweep — agnos telnet-MUD server smoke (Docker)
+# descent-smoke — agnos telnet-MUD bench (direct QEMU, no Debian/Docker)
 
-Boots the agnos kernel under `qemu + OVMF + gnoboot` inside a container, drives
-**agnsh** (via HMP `sendkey`) to `run /bin/descent serve 4000`, then connects to
-the guest over SLIRP `hostfwd` and asserts the **descent** telnet MUD accepts the
-connection and serves its login flow — the end-to-end validation of descent's
-agnos event-loop port (`sock_listen#56` / `sock_accept#57` + the `sleep_ms`-paced
-poll loop + non-blocking `sock_recv#49` session servicing).
+> **The Debian/Docker layer was removed.** This is a **direct-QEMU dev bench** — it runs
+> `qemu-system-x86_64` straight on the host (archaemenid / any Linux box with qemu + OVMF
+> + mtools/parted/e2fsprogs). No container, no Debian. *(The `docker/` path is legacy and
+> should be relocated — e.g. to `agnos/scripts/descent-smoke.py` alongside the other agnsh
+> smokes.)*
 
-This is the server-stage analogue of `docker/net-sweep` (which proves the *kernel*
-TCP accept path): descent-sweep proves a **ring-3 sovereign network service** —
-the agnos event-loop port of a real MUD — runs where services live.
+Short-term test rig for the descent → agnos port: it boots agnos, drives **agnsh** (HMP
+`sendkey`) to `run /bin/descent serve 4000`, then connects over SLIRP `hostfwd` to exercise
+the socket/net syscalls + in/out traffic path (`sock_listen`#56 / `sock_accept`#57 +
+the `sleep_ms` poll loop + non-blocking `sock_recv`#49). It is **not** a deployment target —
+descent's real home is **bare metal** (staged into the agnos-fs, archaemenid booted on iron,
+zero host OS underneath). The bench is just the dev-loop shock absorber so we don't re-burn
+iron for every syscall tweak.
 
 ## Run
 
-Two modes:
-
 ```sh
-# 1. automated smoke — build, boot, assert, exit (CI-friendly)
-./run.sh                       # exit 0 = descent accepted + served a host connection on agnos
-HOST_PORT=15500 ./run.sh
-
-# 2. interactive — boot + hold the MUD up so you can telnet in yourself
-./run.sh serve                 # or:  SERVE=1 ./run.sh
-HOST_PORT=15500 ./run.sh serve
+python3 boot-serve.py            # automated smoke: boot → run descent → telnet assert → exit
+SERVE_MODE=1 python3 boot-serve.py   # interactive: hold it up, then telnet 127.0.0.1:4444
 ```
 
-In **serve** mode, once the container prints `★ MUD LIVE`, open the MUD from another
-terminal on your host:
-
-```sh
-telnet 127.0.0.1 4444          # the HOST_PORT (default 4444)
-```
-
-You'll get the Yeoman's Descent login banner served straight off the AGNOS kernel —
-pick a name, set a passphrase, and play. `Ctrl-C` in the `run.sh` terminal (or
-`docker stop agnos-descent-sweep-run`) shuts the guest down.
-
-The driver also runs standalone without Docker (`SERVE_MODE=1 python3 boot-serve.py`),
-handy for local iteration.
-
-## What PASS proves
-
-The smoke connects, reads the banner, sends a name, and reads the reply:
-
-```
-        Y E O M A N ' S   D E S C E N T
-  By what name are you known?
-→ Tester
-  Welcome, Tester. The Under-Grid stirs.
-  ...New operative ... choose a passphrase (4-64 chars):
-```
-
-That single exchange exercises: agnsh exec-from-disk → descent serve → kernel
-`tcp_listen`/`tcp_accept` over SLIRP → the telnet/session layer → the
-non-blocking poll loop reading live input and replying. The serial log also shows
-`persist: player saves + audit chain ready` / `filestore: open`, i.e. the libro
-audit chain + `io.cyr` flock helpers run on agnos without trapping.
-
-## Inputs (staged into `./stage/` by `run.sh`, gitignored)
-
-| file | from |
-|------|------|
-| `agnos`         | `../../../agnos/build/agnos` (production kernel) |
-| `BOOTX64.EFI`   | `../../../gnoboot/build/BOOTX64.EFI` |
-| `agnsh_agnos`   | `../../../agnoshi/build/agnsh_agnos` |
-| `descent-agnos` | `../../../cyrius-yeomans-descent/build/descent-agnos` (`cyrius build --agnos`) |
-| `rootfs/`       | `../../../agnos/build/rootfs` (`/bin/agnsh` + staged tools) |
-
-`boot-serve.py` is the driver; it also runs standalone against local sibling
-repos (no Docker) — handy for fast iteration:
-
-```sh
-python3 boot-serve.py            # uses ~/Repos/* by default; HOST_PORT=4444
-```
+Env: `HOST_PORT` (default 4444), `QEMU_TIMEOUT`, plus path overrides
+(`AGNOS_KERNEL` / `GNOBOOT_EFI` / `AGNSH_BIN` / `DESCENT_BIN` / `AGNOS_ROOTFS` / `DESCENT_DATA`).
+Defaults resolve from `~/Repos/*`.
 
 ## Notes
 
-- Uses **TCG** (`-cpu max`) to match the proven agnsh keystroke-driving path
-  (`agnos/scripts/agnsh-*.py`); KVM is passed through to the container if present
-  but the guest boot itself stays TCG-deterministic for the `sendkey` timing.
-- Boot is slow under TCG (tens of seconds); the driver polls the serial log for
-  the `agnoshi` banner before injecting the `run` command.
+- **TCG, not KVM.** agnsh keystroke injection via HMP `sendkey` is timing-sensitive — under
+  KVM's fast clock agnos's xHCI key-ring drops keys (`serve` → `erve`). TCG keeps the `run`
+  command intact (matches `agnos/scripts/agnsh-*.py`).
+- Boots a full agnos-fs (ESP gnoboot+kernel + ext2 rootfs with `/bin/{agnsh,descent}` +
+  `/data` world content), so it exercises the real exec-from-disk + persistence paths.

@@ -57,7 +57,22 @@ subprocess.run(["cp", "-a", ROOTFS, SEED], check=True)
 shutil.copy(DESCENT, f"{SEED}/bin/descent"); os.chmod(f"{SEED}/bin/descent", 0o755)
 if not os.path.isfile(f"{SEED}/bin/agnsh"):
     shutil.copy(AGNSH, f"{SEED}/bin/agnsh"); os.chmod(f"{SEED}/bin/agnsh", 0o755)
-p(f"seed: /bin/descent ({os.path.getsize(DESCENT)} B) + /bin/agnsh")
+# World content: descent loads data/zones/*.cyml + data/classes.cyml via relative
+# paths (CWD-relative; agnos's process CWD is "/"), so place them at the agnos-fs
+# root's /data — without this the server runs "roomless" (no zone). data/players
+# is created empty for persisted saves.
+DESCENT_DATA = os.environ.get("DESCENT_DATA",
+                              os.path.join(os.path.dirname(os.path.dirname(DESCENT)), "data"))
+staged_data = False
+if os.path.isdir(DESCENT_DATA):
+    os.makedirs(f"{SEED}/data/players", exist_ok=True)
+    if os.path.isdir(f"{DESCENT_DATA}/zones"):
+        shutil.copytree(f"{DESCENT_DATA}/zones", f"{SEED}/data/zones", dirs_exist_ok=True)
+    if os.path.isfile(f"{DESCENT_DATA}/classes.cyml"):
+        shutil.copy(f"{DESCENT_DATA}/classes.cyml", f"{SEED}/data/classes.cyml")
+    staged_data = True
+p(f"seed: /bin/descent ({os.path.getsize(DESCENT)} B) + /bin/agnsh"
+  + (" + /data (zones + classes)" if staged_data else " (NO data — will run roomless!)"))
 sh(f"dd if=/dev/zero of={IMG} bs=1M count=128 status=none")
 sh(f"parted -s {IMG} mklabel gpt mkpart ESP fat32 1MiB 33MiB set 1 esp on mkpart agnos-fs ext2 33MiB 100MiB")
 sh(f"sgdisk -t 2:8300 {IMG} >/dev/null")
@@ -122,8 +137,23 @@ try:
         p("=== serial tail ==="); p(ser()[-800:]); die("agnsh did not launch")
     time.sleep(1.0)
 
+    # HMP sendkey occasionally drops a key even on TCG (e.g. `run`->`ru`), which
+    # leaves agnsh with a bad command. Type, verify the agnsh echo shows the whole
+    # command intact, and retry on a drop (a wrong command just re-prompts).
+    def type_cmd(cmd, tries=5):
+        for _ in range(tries):
+            before = len(ser())
+            typ(cmd + "\n", settle=1.0)
+            time.sleep(0.5)
+            if cmd in ser()[before:]:
+                return True            # echoed intact + submitted
+            p(f"  (keystroke drop typing '{cmd}' — retrying)")
+            time.sleep(0.4)
+        return False
+
     mark = len(ser())
-    typ("run /bin/descent serve 4000\n", settle=1.0)
+    if not type_cmd("run /bin/descent serve 4000"):
+        p("=== serial tail ==="); p(ser()[-500:]); die("could not type the run command (keystroke drops)")
     listening = False
     deadline = time.time() + 60
     while time.time() < deadline:
