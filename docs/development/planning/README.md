@@ -56,6 +56,7 @@ System-level capabilities that touch multiple repos / aren't owned by any single
 | [parallel-pki.md](parallel-pki.md) | Phase 22 | Trust root in physical artifacts (sticker / SD / paper QR); CAs as opportunistic bridges only |
 | [identity-and-authorization-model.md](identity-and-authorization-model.md) | Phase 24 | Recognition over interrogation; authorization > authentication; four-layer model |
 | [multimodal-substrate.md](multimodal-substrate.md) | Phases 17–18 | Sight + hearing models on the attn11 transformer core; gating primitives (conv2d/1d fwd+bwd, sovereign FFT/mel) + reference map (papers / prior-art / in-ecosystem) |
+| [desktop-design-ideas.md](desktop-design-ideas.md) | Desktop stage | **Fermenting idea log** — generative visual language for aethersafha/mabda (organic loaders, compositor-owned global motion, shader wallpapers); concept-survives-substrate frame; HW design parked |
 | [hadara.md](hadara.md) | — (shipped v1.0) | Fossil reference — culture-as-entity design that drove hadara v1.0; for shipped capabilities, see hadara repo |
 
 ---
