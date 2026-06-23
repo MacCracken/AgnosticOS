@@ -337,7 +337,8 @@ misses, and they are the **spine** the capability lanes hang off:
 - **Extreme efficiency / integer-native — the most AGNOS-native lane**: **BitNet
   b1.58** (native ternary {−1,0,+1} weights → *matmul-free*, every multiply
   becomes add/subtract/skip; 2B at ~5–7 tok/s on a Pi 5 under 15 W — *attn11's i64
-  thesis taken to the weights themselves*); **QAT + straight-through estimator**
+  thesis taken to the weights themselves*) — **promoted to a forward-design
+  reference 2026-06-23 → [`integer-native-ml.md`](integer-native-ml.md)**; **QAT + straight-through estimator**
   (the train-to-integer discipline; the STE is the canonical case study for the
   finite-difference gate — prove the *surrogate* small, not the discontinuity);
   **rotation PTQ** (QuaRot / SpinQuant — make any imported fp16 checkpoint cleanly
