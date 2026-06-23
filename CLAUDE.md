@@ -33,7 +33,7 @@ This repo is the **genesis layer** — meta, narrative, and the infrastructure t
 
 > **Volatile state lives in [`docs/development/state.md`](docs/development/state.md)** — current versions, Cyrius pins, port status, active sweeps, carry-forward debt. Refresh that file, not this section.
 >
-> **Crate registries** (versions + roles): [`docs/development/planning/shared-crates.md`](docs/development/planning/shared-crates.md) is the full registry (incl. pre-1.0); [`docs/applications/libs/README.md`](docs/applications/libs/README.md) is the v1.0+ stable subset.
+> **Crate registries** (versions + roles): once a crate ships **v1.0 it leaves the planning registry** and lives under `docs/applications/` — v1.0+ **libraries** in [`docs/applications/libs/README.md`](docs/applications/libs/README.md), v1.0+ **binaries & tools** in [`docs/applications/binaries.md`](docs/applications/binaries.md). [`docs/development/planning/shared-crates.md`](docs/development/planning/shared-crates.md) tracks **pre-1.0 + planned + non-library projects** (games / ML reference binaries) only.
 
 The role map below is for orientation. **Versions are intentionally omitted** — they drift fast; consult state.md or the registries.
 

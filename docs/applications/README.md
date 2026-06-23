@@ -34,6 +34,10 @@ Desktop, CLI, and service applications built on the AGNOS stack.
 | [Tazama](tazama.md) | Video editor | Released | |
 | [Vidhana](vidhana.md) | System settings | Released | |
 
+## Binaries & Tools (v1.0+)
+
+Standalone v1.0+ binaries — the kernel, shell, init, package manager, build system, and the sovereign userland (coreutils, editors, viewers, terminal-aesthetics tools). See **[binaries.md](binaries.md)** for the full table.
+
 ## Shared Library Crates
 
 Reusable libraries that form the stack. See **[libs/](libs/README.md)** for the full categorized index.
