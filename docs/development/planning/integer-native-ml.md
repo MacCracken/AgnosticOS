@@ -13,9 +13,9 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Planning (forward design — **not scaffolded**) |
+| Status | **[tentib](https://github.com/MacCracken/tentib) 0.4.0** (cut 2026-06-23) — **M3 complete**: the matmul-free integer kernel runs **whole-model** through the trained ternary transformer (exact parity < 1e-9 vs the full-quant f64 forward, next-token argmax 10/10, + a branchless scalar kernel ~25% over branchy). 86/86. The **int-SIMD throughput kernel is 0.4.1**, gated on a filed cyrius integer-SIMD proposal (this toolchain is f64-only, 2-wide SSE2). Prior: 0.1.0 M0 (quantizer) · 0.2.0 M1 (BitLinear+STE) · 0.3.0 M2 (transformer trains on akshara) |
 | Axis | **Arithmetic floor** — orthogonal to paradigm + modality; the "how cheap can the model's own math get" axis |
-| Owns | nothing yet — substrate map; reference-binary + lib names **deferred** per the attn11→libs naming decision (2026-06-08) |
+| Owns | **tentib** (`bitnet` reversed) — the reference binary; sibling to attn11/tarka. Any libs that fall out stay name-deferred per the attn11→libs decision (2026-06-08) |
 | Substrate | [attn11](https://github.com/MacCracken/attn11) (transformer core) · [rosnet](https://github.com/MacCracken/rosnet) (f64 latent tensors + grad) · [tyche](https://github.com/MacCracken/tyche) (stochastic rounding RNG) · [akshara](https://github.com/MacCracken/akshara) (tokenizer) · [mabda](https://github.com/MacCracken/mabda) (later GPU ternary kernels) · [seema](https://github.com/MacCracken/seema) (edge-fleet target) |
 | Created | 2026-06-23 |
 
@@ -43,10 +43,11 @@ the most literal possible expression of that claim. It is also the path to a rea
 LLM on the **1.5x Pi-ARM line** under tight power (the b1.58 result: a 2B model at
 ~5–7 tok/s on a Pi 5 under ~15 W) — i.e. it feeds the **seema** edge-fleet endgame.
 
-> This map promotes the *integer-native* lane from `generative-paradigms.md`'s
-> research-watch list into a forward-design reference. It does **not** scaffold a
-> repo. Per the maps' shared doctrine, a reference opens on demand (or as a
-> deliberate sovereignty-demo / streaming-flex), and any shared libraries that
+> This map promoted the *integer-native* lane from `generative-paradigms.md`'s
+> research-watch list into a forward-design reference, **now realized as the
+> [tentib](https://github.com/MacCracken/tentib) repo** (scaffolded 2026-06-23,
+> M0 = ternary quantizer + matmul-free dot). Per the maps' shared doctrine, the
+> reference opened as a deliberate sovereignty-demo; any shared libraries that
 > fall out are emergent (the second-consumer trigger), never pre-designed.
 
 ---
