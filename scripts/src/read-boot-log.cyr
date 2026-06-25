@@ -22,6 +22,10 @@
 #   0x60..0x62  on a #PF-halt boot ONLY: CR2 bits 47:24 (full 48-bit address;
 #               1.40.9 follow-on #2). On any other boot 0x5C-0x62 are stale
 #               r8169/xhci leftovers — ignore them unless 0x55=0xE5 + 0x54=0x0E.
+#   0x67..0x6D  on a #GP-halt boot ONLY (1.46.x SMP sub-bite 7): error code
+#               (selector) bits 15:0 (0x67/0x68) + faulting RIP bits 31:0
+#               (0x69-0x6C) + fault CS bits 7:0 (0x6D). Localizes the IF=1
+#               first-preempt agnsh #GP. Ignore unless 0x55=0xE5 + 0x54=0x0D.
 #   0xA0..0xA4  jbd2 iron-burn telemetry (probe / replay / commit counters)
 #
 # History (xhci/r8169/dhcp/MTRR decode chapters) was stripped 2026-05-31 — those
@@ -168,7 +172,55 @@ fn main(): i64 {
     if (fmag == 229) {     # 0xE5 — a real exception was caught + halted this boot
         print_str("FAULT: an armed CPU exception fired this boot — vector ");
         print_num(fvec); println("");
-        if (fvec == 13) { println("  #GP — bad CS/SS selector or descriptor at iretq/sysret."); }
+        if (fvec == 13) {
+            println("  #GP — selector/descriptor fault (iretq/sysret) OR a general-protection violation.");
+            # 1.46.x SMP sub-bite 7: errcode(selector) 0x67/0x68 + faulting RIP 0x69-0x6C + CS 0x6D.
+            var ge0 = cmos_read(103);  # 0x67  errcode bits  7:0
+            var ge1 = cmos_read(104);  # 0x68  errcode bits 15:8
+            var gr0 = cmos_read(105);  # 0x69  RIP bits  7:0
+            var gr1 = cmos_read(106);  # 0x6A  RIP bits 15:8
+            var gr2 = cmos_read(107);  # 0x6B  RIP bits 23:16
+            var gr3 = cmos_read(108);  # 0x6C  RIP bits 31:24
+            var gr4 = cmos_read(110);  # 0x6E  RIP bits 39:32
+            var gr5 = cmos_read(111);  # 0x6F  RIP bits 47:40
+            var gcs = cmos_read(109);  # 0x6D  CS bits 7:0
+            var ge = ge0 | (ge1 << 8);
+            print_str("    error code = 0x"); fmt_byte(ge1); fmt_byte(ge0); println("");
+            if (ge == 0) {
+                println("      = 0 -> NOT a selector fault (non-canonical addr / reserved bit / SMAP / WP / etc.)");
+            } else {
+                # errcode holds the selector INDEX in bits 15:3 (RPL dropped); bit0 EXT, bit1 IDT, bit2 TI.
+                var idx = ge >> 3;
+                print_str("      selector index = "); print_num(idx);
+                if ((ge & 2) != 0) { print_str("  (in IDT)"); } elif ((ge & 4) != 0) { print_str("  (in LDT)"); } else { print_str("  (in GDT)"); }
+                if ((ge & 1) != 0) { print_str("  EXT"); }
+                println("");
+                if (idx == 1) { println("      -> GDT[1] kernel CS (0x08)."); }
+                elif (idx == 2) { println("      -> GDT[2] kernel DS (0x10)."); }
+                elif (idx == 3) { println("      -> GDT[3] user DS / user SS 0x1b  (also the 1.46.1 AP-trampoline CS=0x18 class)."); }
+                elif (idx == 4) { println("      -> GDT[4] user CS 0x23."); }
+                elif (idx == 5) { println("      -> GDT[5] BSP TSS (0x28)."); }
+                elif (idx == 7) { println("      -> GDT[7] CPU1 TSS (0x38)."); }
+                elif (idx == 9) { println("      -> GDT[9] CPU2 TSS (0x48)."); }
+                elif (idx == 11) { println("      -> GDT[11] CPU3 TSS (0x58)."); }
+                else { println("      -> cross-read against the GDT layout (gdt.cyr)."); }
+            }
+            if (gr0 != 0 || gr1 != 0 || gr2 != 0 || gr3 != 0 || gr4 != 0 || gr5 != 0) {
+                print_str("    faulting RIP = 0x");
+                fmt_byte(gr5); fmt_byte(gr4); fmt_byte(gr3); fmt_byte(gr2); fmt_byte(gr1); fmt_byte(gr0);
+                println("");
+                if (gr4 != 0 || gr5 != 0) {
+                    println("      -> >= 4 GB / high-half: CORRUPTED or non-canonical RIP (NOT kernel<16MB nor agnsh~0x400000)");
+                } else {
+                    println("      -> map via the kernel map / nm (kernel <16MB; agnsh code ~0x400000)");
+                }
+            }
+            print_str("    fault CS = 0x"); fmt_byte(gcs);
+            if (gcs == 8) { println("  -> fault at a KERNEL instruction (CS=0x08; e.g. the timer-ISR iretq returning to ring 3)."); }
+            elif (gcs == 35) { println("  -> fault INSIDE ring-3 agnsh (CS=0x23)."); }
+            else { println("  (cross-read against the GDT)."); }
+            return 0;
+        }
         elif (fvec == 14) {
             println("  #PF — page fault. Full 48-bit faulting address + cause:");
             var b0 = cmos_read(94);  # 0x5E  CR2 bits  7:0

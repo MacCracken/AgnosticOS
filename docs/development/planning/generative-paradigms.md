@@ -127,6 +127,33 @@ gates a later cut.
 nanoGPT's `from_pretrained` (GPT-2 HF load) for the import map; the LoRA /
 PEFT literature.
 
+**Concretized — QLoRA is the mined seed (2026-06-25).** A workflow mining of the
+ecosystem's two LLM products — [ifran](https://github.com/MacCracken/ifran) (Rust
+controller) and secureyeoman (Rust/TS assistant) — found that their single
+most-corroborated training demand is **QLoRA**: a LoRA adapter over an
+NF4-quantized base. `ifran/src/train/scripts/{train_sft,train_dpo}.py` carry the
+exact `BitsAndBytesConfig` (NF4 + double-quant + bf16 compute) and secureyeoman
+loads pre-NF4-quantized imports. **Both shell the math to Python (peft +
+bitsandbytes) — so this is demand evidence, not portable code** — but it pins the
+two primitives this type adds, and both are f64-expressible:
+> - **LoRA** — `W' = W + (α/r)·B·A`; `A` gaussian-init, `B` zero-init; gradients
+>   route **only** into `A,B`, computed by two ordinary `rosnet.linear_bwd` passes
+>   — no new gradient op (the substrate already exists; the activation `Xᵀ` term is
+>   what makes the naive `dL/dA = Bᵀ·dL/dZ` one-liner wrong — let `linear_bwd`
+>   supply it).
+> - **NF4** — 4-bit blockwise *NormalFloat* quantization + **double-quantization**
+>   (quantize the per-block scales) + bf16 compute.
+>
+> The two halves are **one recipe and share this home.** Do *not* split NF4 to
+> [tentib](https://github.com/MacCracken/tentib) — tentib is QAT-from-scratch +
+> STE (train-to-integer); "quantize an *imported* checkpoint" routes **here** per
+> tentib's ADR 0001. And do *not* bolt either onto attn11 — its M20 charter
+> excludes new training science. When this type opens, QLoRA is its
+> highest-credibility first cut; land it as a **user-confirmed additive step**
+> (the attn11→tarka RL de-feature precedent). Rotation-PTQ (QuaRot/SpinQuant) and
+> one-shot sparsity (SparseGPT/Wanda) stay distinct research-watch (they pair with
+> tentib + this type, but are post-hoc, not QLoRA).
+
 ---
 
 ## Type 4 — Generative (the non-autoregressive paradigms)
@@ -375,7 +402,15 @@ misses, and they are the **spine** the capability lanes hang off:
   catastrophic forgetting — *the safety glue that makes every inference-time
   adaptation safe to run continuously*. **Federated / decentralized** (FedAvg +
   sigil-backed secure aggregation) — many AGNOS devices learn together, only weight
-  deltas leave, raw data never does — *the seema-fleet endgame*.
+  deltas leave, raw data never does — *the seema-fleet endgame*. The 2026-06-25
+  product-mining (secureyeoman's federated-learning guide) confirmed this stays a
+  **horizon bullet, not a new axis** — it is ~80% infra (FedAvg/FedSGD are
+  dataset-weighted weight *means*, with nothing to finite-difference-gate). Its only
+  in-scope numerics route to existing homes: **DP noise** (Gaussian/Laplace
+  mechanisms + ε-budget composition) → [tyche](https://github.com/MacCracken/tyche)
+  (statistical sampling — *not* sigil, which stays crypto); **robust aggregation**
+  (coordinate-wise median / trimmed-mean / Krum) → [abaco](https://github.com/MacCracken/abaco).
+  Gated on seema maturity (still Pending/unported).
 - **The trust/verification spine**: **neuro-symbolic / program-&-proof synthesis**
   (DreamCoder, AlphaProof, LLM+SMT/Z3/Lean) — the model emits a *symbolic artifact
   a sound checker proves correct*: a synthesized firewall rule or capability policy
@@ -387,7 +422,16 @@ misses, and they are the **spine** the capability lanes hang off:
   prediction** (provable finite-sample coverage; temperature scaling) — the
   *abstention gate*: a model touching capabilities must know when to say "I don't
   know" and escalate. *This lane wires ML to sigil's crypto, libro's audit chain,
-  and phylax/aegis — "AI you can trust to touch the OS."*
+  and phylax/aegis — "AI you can trust to touch the OS."* The 2026-06-25 mining
+  (secureyeoman's responsible-ai guide) sharpens this: the **two hand-verifiable
+  cores** worth a sovereign reference are exactly **sparse-autoencoder feature
+  training** (encoder/decoder + L1 / top-k sparsity — the one genuinely
+  FD-gateable *learning* primitive in the bundle) and **split-conformal prediction**
+  (quantile of nonconformity scores — a deterministic, non-gradient abstention
+  gate). The SHAP / leave-one-out token-attribution and EU-AI-Act / model-card
+  framing around them is enterprise-governance infra (→ phylax/aegis), **not** a
+  learning primitive — keep only the two cores. Still research-watch; no second
+  consumer yet, so do not scaffold or name.
 - **Understand & plan, don't just generate**: **JEPA** (LeCun joint-embedding
   predictive — learn structure in representation space, no pixel generation, cheap
   on-device); **Dreamer world models** (RSSM — the agent learns to act by

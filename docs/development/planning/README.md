@@ -4,7 +4,7 @@
 >
 > Volatile state stays in [`../state.md`](../state.md). Crate registries: [`shared-crates.md`](shared-crates.md) (full, incl. pre-1.0) and [`../../applications/libs/README.md`](../../applications/libs/README.md) (v1.0+ stable).
 >
-> **Last Updated**: 2026-06-13 — added `multimodal-substrate.md` (forward design + reference map for sight/hearing ML on the attn11 transformer core; gating primitives conv2d/1d fwd+bwd + sovereign FFT/mel; Phases 17–18). Prior: 2026-05-23 `usb-hardening.md` (beta-phase USB defensive stack — pre-descriptor validation, class-policy enforcement, in-kernel per-device authorization via aegis, behavioral sandboxing via kavach/phylax, IOMMU DMA isolation; cross-cuts xhci + aegis + kavach + libro + phylax)
+> **Last Updated**: 2026-06-25 — added the **Sovereign-ML lane** section (indexes the axis maps, which were not previously listed here) + three docs from the ifran/secureyeoman product-mining: `ml-product-mining.md` (the products are *orchestrators*, not algorithm sources — a ported ifran is the training control plane that replaces the siblings' hand-built harnesses), `classical-shallow-ml.md` (new model-class-floor axis), `tarka-preference-rlhf-extensions.md` (DPO + RLHF KL spec, not yet authorized); enriched `generative-paradigms.md` (QLoRA→Type-3, federated routing, trust-spine cores). Prior: 2026-06-13 `multimodal-substrate.md` (sight/hearing ML on the attn11 core; conv2d/1d + FFT/mel; Phases 17–18). 2026-05-23 `usb-hardening.md` (beta-phase USB defensive stack).
 
 ---
 
@@ -56,8 +56,25 @@ System-level capabilities that touch multiple repos / aren't owned by any single
 | [parallel-pki.md](parallel-pki.md) | Phase 22 | Trust root in physical artifacts (sticker / SD / paper QR); CAs as opportunistic bridges only |
 | [identity-and-authorization-model.md](identity-and-authorization-model.md) | Phase 24 | Recognition over interrogation; authorization > authentication; four-layer model |
 | [multimodal-substrate.md](multimodal-substrate.md) | Phases 17–18 | Sight + hearing models on the attn11 transformer core; gating primitives (conv2d/1d fwd+bwd, sovereign FFT/mel) + reference map (papers / prior-art / in-ecosystem) |
+| [cmdit.md](cmdit.md) | Tooling (cross-cutting) | Sovereign CLI/arg-parsing distlib (getopt-long) — `flags.cyr` productized + extended; **v0.1.0 scaffolded+built 2026-06-25**; ~40 hand-rollers adopt over 0.1→0.3, kii re-folds first |
 | [desktop-design-ideas.md](desktop-design-ideas.md) | Desktop stage | **Fermenting idea log** — generative visual language for aethersafha/mabda (organic loaders, compositor-owned global motion, shader wallpapers); concept-survives-substrate frame; HW design parked |
 | [hadara.md](hadara.md) | — (shipped v1.0) | Fossil reference — culture-as-entity design that drove hadara v1.0; for shipped capabilities, see hadara repo |
+
+---
+
+## Sovereign-ML lane (axis maps + extraction records)
+
+Forward-design maps for the Cyrius-native ML reference family (attn11 / tarka / tentib / prajna on rosnet / tyche / akshara). Each axis map is **orthogonal**; extraction is **emergent** (second-consumer-triggered), names deferred. (These were not previously indexed here.)
+
+| Doc | Axis / role | Note |
+|---|---|---|
+| [generative-paradigms.md](generative-paradigms.md) | **Paradigm** axis | GPT lineage (AR / Pre-trained / non-AR generative) + Griffin/Titans north star; QLoRA→Type-3 seed |
+| [multimodal-substrate.md](multimodal-substrate.md) | **Modality** axis | sight + hearing (also under Subsystem designs) |
+| [integer-native-ml.md](integer-native-ml.md) | **Arithmetic-floor** axis | ternary / BitNet → tentib |
+| [self-improvement-lane.md](self-improvement-lane.md) | **Self-improvement** axis | RSI is a recipe-lane (not a sibling) → prajna |
+| [classical-shallow-ml.md](classical-shallow-ml.md) | **Model-class floor** axis → **`amuzesh`** (NEW 2026-06-25) | non-deep-learning: k-means / GLM / GBDT / Kalman. Lane named `amuzesh` (Persian آموزش, *learning*); named-not-scaffolded |
+| [ml-product-mining.md](ml-product-mining.md) | Extraction record (NEW 2026-06-25) | ifran/secureyeoman = orchestrators, not algorithm sources; **ported ifran = the training control plane** for the siblings |
+| [tarka-preference-rlhf-extensions.md](tarka-preference-rlhf-extensions.md) | Sibling-extension spec (NEW 2026-06-25) | tarka DPO + RLHF KL-to-ref-policy — **NOT authorized**; spec only |
 
 ---
 
