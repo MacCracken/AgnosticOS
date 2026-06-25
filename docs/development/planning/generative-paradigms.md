@@ -228,6 +228,22 @@ attention / DeltaNet; state-space models (S4 → Mamba / Mamba-2); RWKV;
 the learned-memory synthesis. **Research-watch only** — gated behind the Type-2
 recurrent reference and a stable rosnet GPU path; named when it moves.
 
+> **This rung is the home of recursive self-improvement.** Titans' test-time
+> learned-memory update *is* the "sovereignty of adaptation" north star, and it is
+> owned **here** as research-watch — there is **no separate "RSI" sibling**. A
+> 2026-06-24 scout+adversarial review found that recursive self-improvement is a
+> *recipe-lane over tarka+attn11*, not a fourth reference: the slow
+> generate→verify→retrain flywheel adds no new differentiable op (a tarka recipe;
+> a self-generated reward is still tarka's reward). The one genuinely-new primitive
+> — the **second-order meta-gradient** (∂/∂θ through an inner SGD step, the family's
+> first nested grad) — **was promoted to its own reference `prajna` (2026-06-24),
+> which shipped 1.0.0 stable that day** (M1–M5: MAML/R-operator · learned optimizers ·
+> text few-shot · continual learning): its **MAML form needs no Type-2** (toy-scale,
+> hand-derived on rosnet), while the
+> **Titans/test-time-memory form stays this rung's**, Type-2-gated. The full map,
+> the redrawn tarka boundary, and the cite-don't-claim honest-negative live in
+> [`self-improvement-lane.md`](self-improvement-lane.md).
+
 ---
 
 ## Shared substrate (consumed, not planned)
@@ -402,6 +418,12 @@ finite-difference-gated, benchmarked vs a named real-world reference).
 
 - [`multimodal-substrate.md`](multimodal-substrate.md) — the modality axis; shares
   `conv2d`/`conv1d`/FFT primitives with Type 4 here.
+- [`integer-native-ml.md`](integer-native-ml.md) — the arithmetic-floor axis (the
+  ternary / BitNet reference promoted from the *integer-native* horizon bullet).
+- [`self-improvement-lane.md`](self-improvement-lane.md) — the self-improvement /
+  adaptation-timescale axis; consolidates the recursive-self-improvement threads
+  scattered across the Beyond + Alignment + inference-time-reasoning sections here,
+  and records why it is a **recipe-lane over tarka+attn11, not a fourth reference**.
 - [`shared-crates.md`](shared-crates.md) — attn11 / rosnet / tyche / mabda / hoosh
   registry + the attn11→libs extraction plan.
 - attn11 `docs/development/roadmap.md` — the live transformer-core arc (RL/M17,

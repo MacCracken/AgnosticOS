@@ -241,6 +241,11 @@ each named-when-it-moves:
   pairs with rotation-PTQ.
 - [`multimodal-substrate.md`](multimodal-substrate.md) — the modality axis; a
   ternary conv stem is the eventual integer-native vision tie-in.
+- [`self-improvement-lane.md`](self-improvement-lane.md) — the self-improvement /
+  adaptation-timescale axis; the sibling forward-design map that **inverts** this
+  one — where this doc *promotes* the integer-native bullet to a reference, that one
+  *declines* to mint a recursive-self-improvement reference (a recipe-lane over
+  tarka+attn11 instead).
 - [`shared-crates.md`](shared-crates.md) — attn11 / rosnet / tyche / akshara
   registry + the attn11→libs extraction the substrate rides.
 - attn11 `docs/development/roadmap.md` — the live transformer-core arc the
