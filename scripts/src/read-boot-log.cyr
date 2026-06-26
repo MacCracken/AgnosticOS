@@ -169,6 +169,52 @@ fn main(): i64 {
     # 0x02 on the 1.40.9 fourth boot, not the expected 0xCD) and were suppressing
     # the whole CR2 dump even with a #PF plainly stamped.
     println("");
+    # 1.46.x SMP sub-bite 7 (2026-06-25): torn-(CS,SS)-selector diagnostic (agnos sched.cyr
+    # sched_fix_torn_selector). Magic 0x7C at 0x59 = the scheduler restored a proc whose
+    # proc_cs/proc_ss were NOT a consistent privilege pair (the 1.46.1 iron timer-ISR-iretq #GP
+    # root cause), normalized it from the RIP privilege, and stamped which proc + the torn values.
+    # Decoded INDEPENDENT of the fault block: if the repair let the box boot-to-shell there is NO
+    # #GP (fmag != 0xE5) yet this still names the offending slot; if a fault still halted, both print.
+    var tmag = cmos_read(89);   # 0x59  torn-selector magic (written LAST by the stamper)
+    if (tmag == 124) {          # 0x7C
+        var tpid = cmos_read(86);   # 0x56  pid being restored
+        var tcs  = cmos_read(87);   # 0x57  torn CS (low byte)
+        var tss  = cmos_read(88);   # 0x58  torn SS (low byte)
+        var tr2  = cmos_read(90);   # 0x5A  restored-proc RIP bits 23:16
+        var tr0  = cmos_read(91);   # 0x5B  restored-proc RIP bits  7:0
+        println("TORN-SELECTOR (1.46.x sub-bite 7): scheduler caught + repaired a desynced (CS,SS) pair.");
+        print_str("    proc pid = "); print_num(tpid);
+        println("   (0=kmain  1=BSP-idle  2-4=AP-idle  5+=agnsh/child)");
+        print_str("    torn CS = 0x"); fmt_byte(tcs);
+        print_str("   torn SS = 0x"); fmt_byte(tss);
+        println("   (a consistent pair is 0x08/0x10 kernel or 0x23/0x1b ring-3)");
+        print_str("    restored-RIP byte[23:16] = 0x"); fmt_byte(tr2);
+        print_str("   byte[7:0] = 0x"); fmt_byte(tr0); println("");
+        println("       (byte[23:16] 0x40+ => ring-3 agnsh code; 0x10-0x19 => kernel .text)");
+        println("    -> CONFIRMS the iretq #GP root cause = torn proc_cs/proc_ss; this pid is the corrupted slot.");
+        println("");
+    }
+    # 1.46.x sub-bite 7 follow-on (2026-06-25): LIVE-FRAME guard (agnos sched.cyr sched_fix_live_frame).
+    # Magic 0x3C at 0x65 = the scheduler caught + repaired a torn (CS,SS) in the ACTUAL iretq frame —
+    # the array-guard's structural blind spot (it checks proc_cs[]/proc_ss[], the iretq consumes the
+    # live stack frame). Decoded INDEPENDENT of the fault block: if the repair let the box boot-to-shell
+    # there is NO #GP (fmag != 0xE5) yet this still confirms the torn frame; if a #GP still halted, both
+    # print. Slots 0x63-0x65 alias the #PF RIP capture, so gate on fvec != 14 (no #PF this boot) AND
+    # selector-sanity (CS in {0x08,0x23}, SS in {0x10,0x1B}) to reject stale CMOS / a #PF-RIP collision.
+    var lmag = cmos_read(101);   # 0x65  live-frame magic (written LAST)
+    var lcs  = cmos_read(99);    # 0x63  live-frame CS (low byte)
+    var lss  = cmos_read(100);   # 0x64  live-frame SS (low byte)
+    var lcs_ok = 0; if (lcs == 8 || lcs == 35) { lcs_ok = 1; }       # 0x08 kernel / 0x23 user CS
+    var lss_ok = 0; if (lss == 16 || lss == 27) { lss_ok = 1; }      # 0x10 kernel / 0x1B user SS
+    if (lmag == 60 && fvec != 14 && lcs_ok == 1 && lss_ok == 1) {    # 0x3C, not a #PF boot, valid selectors
+        println("LIVE-FRAME TORN (1.46.x sub-bite 7 follow-on): scheduler caught + repaired the ACTUAL iretq frame.");
+        print_str("    live-frame CS = 0x"); fmt_byte(lcs);
+        print_str("   live-frame SS = 0x"); fmt_byte(lss); println("");
+        println("    (torn pair = kernel CS 0x08 + user SS 0x1B; repaired to a consistent pair before the iretq)");
+        println("    -> CONFIRMS the #GP root cause = a torn LIVE frame, NOT the proc_cs/proc_ss arrays.");
+        println("    -> if this burn ALSO booted to shell, the repair WORKED => root cause (a) cross-CR3 frame tear.");
+        println("");
+    }
     if (fmag == 229) {     # 0xE5 — a real exception was caught + halted this boot
         print_str("FAULT: an armed CPU exception fired this boot — vector ");
         print_num(fvec); println("");
