@@ -22,10 +22,17 @@
 #   0x60..0x62  on a #PF-halt boot ONLY: CR2 bits 47:24 (full 48-bit address;
 #               1.40.9 follow-on #2). On any other boot 0x5C-0x62 are stale
 #               r8169/xhci leftovers — ignore them unless 0x55=0xE5 + 0x54=0x0E.
-#   0x67..0x6D  on a #GP-halt boot ONLY (1.46.x SMP sub-bite 7): error code
-#               (selector) bits 15:0 (0x67/0x68) + faulting RIP bits 31:0
-#               (0x69-0x6C) + fault CS bits 7:0 (0x6D). Localizes the IF=1
+#   0x67..0x6F  on a #GP-halt boot ONLY (1.46.x SMP sub-bite 7): error code
+#               (selector) bits 15:0 (0x67/0x68) + faulting RIP bits 47:0
+#               (0x69-0x6C,0x6E,0x6F) + fault CS bits 7:0 (0x6D). Localizes the IF=1
 #               first-preempt agnsh #GP. Ignore unless 0x55=0xE5 + 0x54=0x0D.
+#   0x70..0x7E  on a #GP-halt boot ONLY (1.46.x SMP sub-bite 8): the LOADED iretq
+#               frame the #GP fired on — LOADED SS 0x70, *LOADED CS 0x71* (THE
+#               discriminator: 0x23 consistent / 0x08 torn), LOADED RFLAGS 0x72/0x73,
+#               LOADED RSP 0x74/0x75, iretq frame ptr 0x76/0x77, CR3-at-fault 0x78/0x79,
+#               kernel RFLAGS-at-fault 0x7A; do_context_switch heartbeat old/new/ctr/magic
+#               0x7B-0x7E (magic 0x5C); GDT[3] access byte via live GDTR 0x7F (expect 0xF2).
+#               Virgin low-bank scratch; #GP stub is the sole writer.
 #   0xA0..0xA4  jbd2 iron-burn telemetry (probe / replay / commit counters)
 #
 # History (xhci/r8169/dhcp/MTRR decode chapters) was stripped 2026-05-31 — those
@@ -265,6 +272,59 @@ fn main(): i64 {
             if (gcs == 8) { println("  -> fault at a KERNEL instruction (CS=0x08; e.g. the timer-ISR iretq returning to ring 3)."); }
             elif (gcs == 35) { println("  -> fault INSIDE ring-3 agnsh (CS=0x23)."); }
             else { println("  (cross-read against the GDT)."); }
+            # 1.46.x sub-bite 8 (2026-06-26): the LOADED iretq frame the #GP fired on + CR3-at-fault +
+            # the do_context_switch heartbeat. Slots 0x70-0x7E are virgin low-bank scratch the #GP stub
+            # is the ONLY writer of, so no last-writer gate is needed beyond the 0x55=0xE5/0x54=0x0D
+            # already checked above. The existing 0x6D (fault CS) is the kernel ISR that CONTAINS the
+            # iretq; THESE bytes are the frame that iretq was actually consuming.
+            var lss  = cmos_read(112);  # 0x70  LOADED SS  (expect 0x1B)
+            var lcs2 = cmos_read(113);  # 0x71  LOADED CS  *** the discriminator ***
+            var lf0  = cmos_read(114);  # 0x72  LOADED RFLAGS bits  7:0
+            var lf1  = cmos_read(115);  # 0x73  LOADED RFLAGS bits 15:8
+            var lr3  = cmos_read(117);  # 0x75  LOADED target RSP bits 31:24
+            var fp0  = cmos_read(118);  # 0x76  iretq frame ptr bits  7:0
+            var fp2  = cmos_read(119);  # 0x77  iretq frame ptr bits 23:16
+            var cr3a = cmos_read(120);  # 0x78  CR3 bits 19:12
+            var cr3b = cmos_read(121);  # 0x79  CR3 bits 27:20
+            var krf  = cmos_read(122);  # 0x7A  kernel RFLAGS-at-fault bits 15:8
+            println("    -- LOADED iretq frame (the frame the faulting iretq was consuming) --");
+            print_str("    LOADED CS = 0x"); fmt_byte(lcs2);
+            if (lcs2 == 35) { println("  *** 0x23 => CONSISTENT frame: a GENUINE SS-load rejection of valid SS=0x1B (NOT a tear)."); }
+            elif (lcs2 == 8) { println("  *** 0x08 => TORN frame (kernel CS + user SS): revives the frame-tear hypothesis."); }
+            else { println("  (unexpected loaded CS — cross-read against the GDT)."); }
+            print_str("    LOADED SS = 0x"); fmt_byte(lss);
+            if (lss == 27) { println("   (0x1B user SS — the value the iretq was loading, as expected)."); }
+            else { println("   (NOT 0x1B — the frame SS itself is corrupt)."); }
+            print_str("    LOADED RFLAGS = 0x"); fmt_byte(lf1); fmt_byte(lf0);
+            if ((lf0 & 2) != 0) { print_str("   (bit1 reserved=1 OK"); } else { print_str("   (bit1=0 => GARBAGE RFLAGS"); }
+            if ((lf1 & 2) != 0) { println(" / IF=1)"); } else { println(" / IF=0)"); }
+            print_str("    LOADED target RSP byte[31:24] = 0x"); fmt_byte(lr3);
+            if (lr3 == 0) { println("   (0x00 => GARBAGE user RSP)."); } else { println("   (nonzero => plausible agnsh user stack)."); }
+            print_str("    iretq frame ptr byte[23:16] = 0x"); fmt_byte(fp2); print_str("  byte[7:0] = 0x"); fmt_byte(fp0);
+            println("   (byte[23:16] ~0x0E-0x0F => ran off the region-7 per-proc kstack)");
+            print_str("    CR3 at fault bits[27:12] = 0x"); fmt_byte(cr3b); fmt_byte(cr3a);
+            if (cr3a == 1 && cr3b == 0) { println("   (0x0001 => boot CR3 0x1000 — NOT a per-proc pml4!)"); }
+            else { println("   (nonzero => resumed under a per-proc pml4, as expected)."); }
+            print_str("    kernel RFLAGS-at-fault bits[15:8] = 0x"); fmt_byte(krf);
+            if ((krf & 2) != 0) { println("   (IF=1 in kernel context at the fault)."); } else { println("   (IF=0 at the fault)."); }
+            var hbm = cmos_read(126);  # 0x7E  heartbeat magic (written LAST by the relay)
+            if (hbm == 92) {           # 0x5C
+                var hbold = cmos_read(123);  # 0x7B  old_pid
+                var hbnew = cmos_read(124);  # 0x7C  new_pid
+                var hbctr = cmos_read(125);  # 0x7D  switch counter (low 8)
+                println("    -- do_context_switch HEARTBEAT (last real switch before the fault) --");
+                print_str("    old pid = "); print_num(hbold); print_str("  ->  new pid = "); print_num(hbnew);
+                println("   (old=1 BSP-idle, new=5+ agnsh => the IF=1 idle->agnsh resume IS the faulting transition)");
+                print_str("    switch count = "); print_num(hbctr);
+                println("   (1-2 => FIRST preempt => confirms the IF=1-first-resume thesis)");
+            }
+            # 1.46.x sub-bite 8: GDT[3] descriptor state, read THROUGH the live GDTR (sgdt) at fault.
+            # H1 (CR3 asymmetry) is dead — KPTI collapsed, proc_get_user_cr3==proc_get_cr3 — so this
+            # slot decides H2 (GDT corruption) vs a genuine silicon rejection of a valid SS=0x1B.
+            var g3a = cmos_read(127);  # 0x7F  GDT[3] access byte (expect 0xF2)
+            print_str("    GDT[3] access byte (via live GDTR) = 0x"); fmt_byte(g3a);
+            if (g3a == 242) { println("   (0xF2 INTACT: P=1,DPL=3,data,writable => GDT[3] valid; with LOADED CS=0x23 = GENUINE silicon SS-load rejection, H2 dead)."); }
+            else { println("   (NOT 0xF2 => GDT[3] corrupted OR GDTR relocated = H2: the loaded SS=0x1B descriptor the CPU reads is malformed)."); }
             return 0;
         }
         elif (fvec == 14) {
