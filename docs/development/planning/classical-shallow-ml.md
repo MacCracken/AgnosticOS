@@ -24,7 +24,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | **Planning** (forward design — **named, not scaffolded**). Lane name **`amuzesh`** chosen 2026-06-25; **no repo yet** — scaffolding waits for a second-consumer trigger per the emergent-extraction discipline. (The Sanskrit `sankhya` was unavailable — a shipped v2.0.0 ancient-mathematics / calendar / archaeoastronomy lib — so the lane took the Persian word for *learning* instead.) |
+| Status | **Active** — **scaffolded 2026-06-27**; M0 v0.1.0 shipped ([MacCracken/amuzesh](https://github.com/MacCracken/amuzesh), `cyrius init`, pin 6.2.44): k-means (Lloyd) + k-means++ (D²-weighted) + nearest-centroid prototype classifier on the ganita + tyche substrate — demo purity/accuracy 100%, suite **23/23**. Lane name **`amuzesh`** chosen 2026-06-25. The *further* mechanisms (logistic-IRLS, GLM / ridge / PCA, GBDT, Kalman / HMM, naive-Bayes) stay forward-mapped + second-consumer-triggered. (The Sanskrit `sankhya` was unavailable — a shipped v2.0.0 ancient-mathematics / calendar / archaeoastronomy lib — so the lane took the Persian word for *learning* instead.) |
 | Axis | **Model-class floor** — orthogonal to the four deep-learning axes; "when the right model is *not* a neural net." |
 | Owns | the **amuzesh** lane — the classical / shallow-ML reference surface. Nothing built yet; stands **on already-shipped numeric libs**, not re-implemented. |
 | Substrate | [ganita](https://github.com/MacCracken/ganita) (linear algebra: LU / QR / Cholesky / SVD / eigen / least-squares / pseudo-inverse) · [hisab](https://github.com/MacCracken/hisab) (optimization: gradient-descent / CG / BFGS / LBFGS / Levenberg–Marquardt + autodiff / FFT) · [rosnet](https://github.com/MacCracken/rosnet) (f64 tensors) · [tyche](https://github.com/MacCracken/tyche) (sampling, k-means++ seeding) · [abaco](https://github.com/MacCracken/abaco) (statistical primitives). Live versions: [`state.md`](../state.md). |
@@ -98,11 +98,12 @@ real enough to map (it is the honest home for capabilities currently scattered a
 
 ## Sequencing & gating
 
-- **Named, but research-watch + second-consumer-triggered.** The lane has a name
-  (`amuzesh`, chosen 2026-06-25); it does **not** yet have a repo — do **not** scaffold one
-  now. Extraction is emergent in this family — a mechanism becomes a lib when a *second*
-  consumer actually needs it (the standard trigger that produced `taar` from yo+dig). The name
-  lets the lane be referenced and tracked; the repo waits for the trigger.
+- **Scaffolded (M0); the rest is research-watch + second-consumer-triggered.** The repo exists
+  ([MacCracken/amuzesh](https://github.com/MacCracken/amuzesh), scaffolded 2026-06-27) and M0
+  ships the largest genuinely-new core (k-means + prototype classifier). Extraction stays emergent
+  in this family — a *further* mechanism becomes a shipped lib only when a *second* consumer
+  actually needs it (the standard trigger that produced `taar` from yo+dig). M0 was the
+  user-authorized first cut; subsequent mechanisms wait for the pull, not the push.
 - **Likely first mover when it does move:** k-means + prototype classifier (the
   largest genuinely-new content, smallest dependency surface, clearest single
   demand), or **GBDT** if phylax/aegis pulls it forward as the auditable
