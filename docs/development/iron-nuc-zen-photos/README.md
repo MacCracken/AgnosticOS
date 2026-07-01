@@ -262,7 +262,7 @@ The 1.39.x VFS generic-write lift gave every shell verb a FAT/exFAT path, but th
 
 ## 1.41.x shell-separation arc on iron (14111 → 14115) — agnsh types on hardware 🎯
 
-The interactive shell left the kernel: PID 1 kybernet execs the userland `/bin/agnsh` in ring 3 from the ext2 root; the in-kernel `shell()` shrank to a recovery REPL. Four burns took it from "boot looks hung" to "agnsh types, echoes, and dispatches on archaemenid." Per-attempt narrative: [`iron-nuc-zen-log.md#tracker-141x-cycle`](../iron-nuc-zen-log.md#tracker-141x-cycle); root-cause detail in the issue doc `issue/2026-06-04-agnsh-ring3-pf-pmm-fragmentation.md`.
+The interactive shell left the kernel: PID 1 kybernet execs the userland `/bin/agnsh` in ring 3 from the ext2 root; the in-kernel `shell()` shrank to a recovery REPL. Four burns took it from "boot looks hung" to "agnsh types, echoes, and dispatches on archaemenid." Per-attempt narrative: [`iron-nuc-zen-log.md#tracker-141x-cycle`](../iron-nuc-zen-log.md#tracker-141x-cycle); root-cause detail in the issue doc `../issues/archive/2026-06-04-agnsh-ring3-pf-pmm-fragmentation.md`.
 
 | Photo | Date | What it shows |
 |-------|------|---------------|

@@ -27,7 +27,7 @@ type: state
 > **agnosys → agnodrm decomposition (2026-06-19):** agnosys was over-scoped; the device/DRM model survives as **agnodrm** (udev + DRM/KMS), trust→sigil, security/mac/audit→kavach, pam→aegis, logging→sakshi, syscall layer→cyrius (the Linux-eccentric group bootloader/update/netns/fuse/journald parked post-v1). Detail → CLAUDE.md role-map + agnodrm `docs/development/2026-06-18-agnosys-to-agnodrm-decomposition-plan.md`.
 
 **Out of cycle scope (parked):**
-- AMD Zen scanout residue (Quiet Boot legibility) — separate cycle per [`project_amd_zen_scanout_residue`](../../../../.claude/projects/-home-macro-Repos-agnosticos/memory/project_amd_zen_scanout_residue.md); HUBP `clear_tiling` port or shadow-buffer eval.
+- AMD Zen scanout residue (Quiet Boot legibility) — separate cycle per [`project_archaemenid_hardware_target`](../../../../.claude/projects/-home-macro-Repos-agnosticos/memory/project_archaemenid_hardware_target.md) (§ scanout residue); HUBP `clear_tiling` port or shadow-buffer eval.
 - Kernel-side FB **double-buffer** (tear-free flips inside blit#39) — backlogged 2026-06-11 when zero-copy FB-mmap was closed as superseded. Trigger: observed tearing on iron, or future shell-launched games beyond cyrius-doom needing it. Always kernel-mediated (`fb_phys` stays unexposed — the hardened posture is the decision).
 - i225-V NIC driver — queued for Intel iron post-migration (the r8169 / RTL8125 path is DONE + iron-verified, 1.32.x; i225-V is a separate hardware line, not an AMD blocker).
 
