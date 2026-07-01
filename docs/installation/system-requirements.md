@@ -15,7 +15,7 @@
 | **RAM** | 4 GB | 8 GB (CLI+LLM), 32 GB (Desktop+LLM) |
 | **Storage** | 20 GB SSD | 100 GB NVMe SSD |
 | **GPU** | None (headless) | NVIDIA/AMD/Intel discrete or integrated |
-| **Boot** | UEFI or Legacy BIOS | UEFI with Secure Boot |
+| **Boot** | UEFI (GPT + FAT ESP) | UEFI with Secure Boot |
 | **Network** | Internet for initial setup | Persistent for cloud/fleet features |
 
 ---
@@ -109,8 +109,8 @@ Minimal footprint for embedded devices — fleet management, OTA updates, teleme
 
 | Feature | Required? | Notes |
 |---------|-----------|-------|
-| UEFI | Recommended | systemd-boot is the default bootloader |
-| Legacy BIOS | Supported | Via GRUB 2 |
+| UEFI | Required | gnoboot 0.6.0 (sovereign UEFI PE32+ EFI Application) is the default bootloader, on GPT + FAT ESP |
+| Legacy BIOS | Not supported | GRUB / multiboot2 path retired; boot is UEFI-only via gnoboot |
 | Secure Boot | Optional | Full MOK enrollment support; recommended for production |
 | TPM 2.0 | Optional | Enables disk encryption key sealing, measured boot, device attestation |
 | LUKS disk encryption | Optional | LUKS2 via cryptsetup 2.8.1; works with or without TPM |
@@ -125,10 +125,10 @@ AGNOS uses **two kernels** depending on profile — the AGNOS kernel is primary;
 
 ### AGNOS Kernel (sovereign, primary)
 
-- **Version**: Cyrius-native, 40+ subsystems, a small sovereign syscall surface (no socket/splice/AF_ALG layer); the exec-from-disk baseline (1.40.x through 1.40.13) is iron-validated on NUC AMD, with the in-flight shell-separation arc software-complete and QEMU-validated, iron burn pending (current version + size + syscall count in [`development/state.md`](../development/state.md))
+- **Version**: Cyrius-native, 40+ subsystems, a small sovereign syscall surface (no socket/splice/AF_ALG layer); the exec-from-disk, SMP, and shell-separation arcs plus >256 MB RAM support are all iron-validated on NUC AMD (current version + size + syscall count in [`development/state.md`](../development/state.md))
 - **Repo**: `MacCracken/agnos`
 - **Multi-arch split** (v1.1.0): `kernel/arch/x86_64/`, `kernel/arch/aarch64/`, `kernel/core/`, `kernel/user/`
-- **Boot**: multiboot1; boots in QEMU via `make boot-test` from the genesis repo
+- **Boot**: gnoboot 0.6.0 (sovereign UEFI PE32+ EFI Application) from a GPT + FAT ESP; boots in QEMU via `make boot-test` from the genesis repo
 
 ### Linux Kernel (host bootstrap, transitional)
 
@@ -168,7 +168,7 @@ The oldest hardware that can run AGNOS, by profile:
 ### Server/CLI (oldest viable)
 - **CPU**: Any 64-bit x86_64 (Intel Core 2 / AMD Athlon 64, ~2006) or ARM64
 - **RAM**: 4 GB DDR2/DDR3 is functional
-- **Motherboard**: BIOS or UEFI (GRUB 2 handles legacy BIOS)
+- **Motherboard**: UEFI required (gnoboot is UEFI-only; no legacy-BIOS boot path)
 - **Practical floor**: ~2010 era hardware (4 GB RAM was common by then)
 
 ### Edge (oldest viable)

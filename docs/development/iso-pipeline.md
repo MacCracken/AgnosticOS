@@ -51,8 +51,9 @@ proceeding. No silent fallbacks.
 
 **Implemented**: `./build/boot --iso-check` (or `make iso-check`). Checks all
 components, categorized as required/optional, reports READY/MISS/SKIP with
-versions and artifact sizes, checks host tools (qemu, grub-mkrescue,
-mksquashfs, xorriso), exits non-zero if any required component is missing.
+versions and artifact sizes, checks host tools (qemu, gnoboot's UEFI
+toolchain + GPT/FAT-ESP assembly, mksquashfs), exits non-zero if any required
+component is missing.
 
 ### Stage 1 — Bootstrap Toolchain
 
@@ -117,11 +118,9 @@ Also install:
 ### Stage 4 — Package ISO
 
 1. Find/verify kernel (`vmlinuz`) and initramfs
-2. Build GRUB config with boot menu entries:
-   - AGNOS (normal boot, kybernet as init)
-   - AGNOS (recovery, `/bin/bash` as init)
+2. Lay out the FAT ESP: `EFI/BOOT/BOOTX64.EFI` (gnoboot, sovereign UEFI PE32+ app) + `/boot/agnos` (kernel). No GRUB config — gnoboot loads `/boot/agnos` directly (the GRUB multiboot2 path was killed 2026-05-13 on the W^X blocker).
 3. Create squashfs of rootfs (`mksquashfs`, zstd compression)
-4. Assemble ISO with `grub-mkrescue` / `xorriso`
+4. Assemble the image: GPT-combine the FAT ESP + rootfs into `agnos-x86_64.img` (or an El-Torito UEFI `.iso` carrying the ESP)
 5. Generate SHA256 checksum
 6. Optionally validate: boot the ISO in QEMU and check for AGNOS banner
 
@@ -170,7 +169,7 @@ Scope: x86_64, minimal profile (headless), host-built toolchain assumed.
 3. Shell out to host tools for Stage 1 (cross-toolchain) — don't rewrite LFS in Cyrius
 4. Drive recipe builds through `ark-build` or `takumi` in chroot
 5. Install AGNOS binaries (Stage 3)
-6. Package with host `grub-mkrescue` + `mksquashfs` (Stage 4)
+6. Package the boot media: GPT + FAT ESP carrying gnoboot's `BOOTX64.EFI` + kernel, rootfs via host `mksquashfs` (Stage 4)
 7. QEMU validation (Stage 5)
 
 ### Phase 2 — Self-hosting ISO
@@ -210,6 +209,6 @@ Carried forward from the Rust era, adapted for current component names:
 
 ## Relation to Beta Target
 
-The original "May 1 (Beltane)" boot target is **superseded** by the two-stage beta rescope (2026-05-06): closed beta in **early June 2026** with a 5–15 trusted-tester cohort, public beta in **Q4 2026** with audit + community testing.
+The original "May 1 (Beltane)" boot target is **superseded** by the two-stage beta rescope (2026-05-06): closed beta in **early June 2026**, public beta Q4 2026 — itself later re-rescoped (2026-06-29) to a **late-August 2026** closed beta behind a founder solo month, public deferred post-summer; see [roadmap](roadmap.md).
 
 The boot-in-QEMU milestone (`make boot-test` — kernel + kybernet PID 1) works today. The ISO pipeline (`make boot-iso` producing a real bootable artifact) is the next gate, and it's the closed-beta dependency. Phase 1 (minimum viable ISO) is what closes the extraction branch.

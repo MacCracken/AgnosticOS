@@ -2,7 +2,7 @@
 
 > **Version:** 2026.5.6 | **Last Updated:** 2026-05-06
 >
-> **Status:** AGNOS is **Pre-Beta** — closed beta targets early June 2026, public beta Q4 2026 (see [roadmap](../development/roadmap.md)). The kernel boots in QEMU and the sovereign boot pipeline is active. The full installer (`agnova`) and bootable distribution ISO land with **Phase 1** — see [ISO pipeline](../development/iso-pipeline.md) for stage status. This guide describes what is buildable and testable **today**, and what is coming.
+> **Status:** AGNOS is **Pre-Beta** — closed beta opens late August 2026 (preceded by a ~July founder solo-dogfood month + Docker server-sweep); public beta is deferred to post-summer, with GA targeted late fall/early winter 2026 (see [roadmap](../development/roadmap.md)). The kernel boots in QEMU and the sovereign boot pipeline is active. The full installer (`agnova`) and bootable distribution ISO land with **Phase 1** — see [ISO pipeline](../development/iso-pipeline.md) for stage status. This guide describes what is buildable and testable **today**, and what is coming.
 
 ---
 
@@ -18,7 +18,7 @@
 - **ISO Stages 1–4** — source download, cross-toolchain bootstrap, base-system build in chroot, ISO packaging. See `docs/development/iso-pipeline.md`.
 - **agnova** (installer) — currently at 0.1.0 scaffold. Will own disk partitioning, LUKS2, bootloader install, profile selection (Desktop / Server / Minimal).
 - **takumi** (build system) — pending Cyrius port. Drives recipe builds during ISO assembly.
-- **Target**: closed beta cut, **early June 2026** — gated on Cyrius v5.10.x bare-metal target. See `docs/development/roadmap.md` Phase 13A.
+- **Target**: closed beta cut, **late August 2026** — gated on the Cyrius bare-metal target (v6.x line; current toolchain in [`development/state.md`](../development/state.md)). See `docs/development/roadmap.md` Phase 13A.
 
 ---
 
@@ -111,7 +111,7 @@ Progress against the ISO pipeline:
 | 3 | Build base system in chroot | Not started |
 | 4 | Package into ISO | Not started |
 
-Phase 13B (Arch-Neutral Boot Pipeline) is being neutralized during Cyrius v5.9.x catchup so v5.10.x can open clean for both bare-metal and RISC-V rv64. See [roadmap Phase 13B](../development/roadmap.md#phase-13b--arch-neutral-boot-pipeline).
+Phase 13B (Arch-Neutral Boot Pipeline) is being neutralized on the Cyrius v6.x line to keep both the bare-metal and RISC-V rv64 targets clean (current toolchain in [`development/state.md`](../development/state.md)). See [roadmap Phase 13B](../development/roadmap.md#phase-13b--arch-neutral-boot-pipeline).
 
 ---
 

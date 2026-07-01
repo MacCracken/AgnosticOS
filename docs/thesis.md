@@ -103,7 +103,7 @@ The same logic applies at project-scope. Linus didn't start Linux with the goal 
 
 **Shipped:**
 - **AGNOS kernel** — 40+ subsystems: syscalls, TCP/IP, ext2/4 + FAT, NVMe / AHCI / USB-MS storage, VirtIO, SMP, ELF loader, kybernet as PID 1, sovereign UEFI handoff (gnoboot), native XHCI + USB-HID-boot + r8169 NIC drivers. **Boot-to-Shell MVP gate cleared on iron** (NUC AMD, Attempt 68 / 2026-05-18); current version + size in state.md.
-- **Cyrius v6.0.1** — `cycc` self-hosting from the 29 KB seed; x86_64 Linux, aarch64 Linux, Apple Silicon Mach-O, Windows PE32+ — all byte-identical (current size + pin in state.md)
+- **Cyrius v6.3.x** — `cycc` self-hosting from the 29 KB seed; x86_64 Linux, aarch64 Linux, Apple Silicon Mach-O, Windows PE32+ — all byte-identical (current size + pin in state.md)
 - **Stdlib fold-in pattern** matured across three minor releases — sandhi (v5.7.0 service-boundary), vani (v5.8.0 audio I/O), niyama (v5.9.0 regex engines). Decision framework: [*What Justifies a Stdlib Foldin*](articles/what-justifies-a-stdlib-foldin.md).
 - **bhava v2.0.0** — 37 modules, 5 bridges, 63 bridge functions, 1,117 tests; Scales 0–3 implemented
 - **30+ subsystems** ported from Rust to Cyrius (live count in [state.md](development/state.md))
@@ -111,9 +111,9 @@ The same logic applies at project-scope. Linus didn't start Linux with the goal 
 - **ISO pipeline Stage 0** (component verification — `make iso-check` reports 26-of-26 components ready)
 
 **In flight / next:**
-- v5.9.x catchup arc (consumer rollup, optimization-debt audit) → **v5.10.x reserved for AGNOS bare-metal target + RISC-V rv64 backend** (both slipped from earlier cycles as foldin work compounded)
-- **Closed beta** — early June 2026 (Phase 13A OS Independence + small private friend-tester cohort)
-- **Public beta** — Q4 2026 (adds third-party security audit + community testing program)
+- v6.3.x consumer rollup / optimization-debt audit → **AGNOS bare-metal target + RISC-V rv64 backend** (the v6.x "what the language gains" arc; current cycle in state.md)
+- **Closed beta** — late August 2026 (Phase 13A OS Independence + small private friend-tester cohort), preceded by a founder solo-dogfood month (~July)
+- **Public beta** — deferred to post-summer (adds third-party security audit + community testing program); GA late fall / early winter 2026
 - bhava v3.0 — Scales 4–7, Cyrius-native implementation, fixed-point realization
 - AGNOS 1.0 ISO
 - Paper draft (after bhava v3.0)

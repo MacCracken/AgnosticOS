@@ -92,7 +92,7 @@ The OS organizes into eight layers, numbered 0 through 7:
 5. Intelligence   — hoosh (LLM gateway)
 4. Orchestration  — daimon (agent orchestrator)
 3. Init           — kybernet (PID 1), argonaut (service management)
-2. System         — agnosys (kernel interface)
+2. System         — agnodrm (device/DRM model; syscall layer in cyrius)
 1. Kernel         — AGNOS kernel (~571 KB, Cyrius-native, 40+ subsystems)
 0. Substrate      — the physical hardware: silicon, electromagnetic fields
 ```

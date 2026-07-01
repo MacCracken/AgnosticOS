@@ -107,7 +107,7 @@ AGNOS runs its own sovereign kernel, written in Cyrius. No Linux dependency at r
 - Pipes, signals, epoll, timerfd
 - Recovery-REPL shell (the interactive shell moved to userland `agnsh` in the 1.41.x shell-separation arc)
 - kybernet as PID 1
-- Sovereign UEFI handoff (Path C, RDI = `&boot_info` via gnoboot v0.5.0)
+- Sovereign UEFI handoff (Path C, RDI = `&boot_info` via gnoboot; live version in [`development/state.md`](development/state.md))
 - Native XHCI + USB-HID-boot keyboard driver (all 5 phases landed; iron-side blocker remains on archaemenid silent-absorb arc)
 
 The `kernel/` directory in this repo contains Linux kernel configs for **host bootstrap only** — building the cross-compiler toolchain on an existing Linux host before AGNOS can self-host.
@@ -382,7 +382,7 @@ Per [`development/state.md`](development/state.md), these subsystems are still p
 
 | Subsystem | Notes |
 |-----------|-------|
-| bhava | Rust 2.0.0 — emotion/sentiment port can start; gating on v5.9.x stdlib + math additions |
+| bhava | Rust 2.0.0 — emotion/sentiment port pending (Rust authoritative) |
 | aethersafha | Scaffold — Wayland compositor real implementation pending |
 | takumi | Cyrius port active, `rust-old/` authoritative until parity |
 | goonj | Acoustics — Rust authoritative, port pending |

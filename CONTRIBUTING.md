@@ -279,7 +279,7 @@ syscall(60, exit_code);
 
 **Building**:
 ```bash
-# Always use cyrius build, never raw cc5 (cc3 was the v3.x/v4.x binary; cc5 is current)
+# Always use cyrius build, never raw cycc (self-hosting compiler; was cc5, renamed at cyrius v6.0.0)
 cyrius build src/main.cyr build/output
 ```
 
@@ -402,13 +402,13 @@ Security-sensitive changes require:
 
 ### Versioning Scheme
 
-AGNOS uses **Calendar Versioning (CalVer)** in `YYYY.M.D` format:
+AGNOS uses **Semantic Versioning (SemVer)** in `MAJOR.MINOR.PATCH` format:
 
-- `YYYY` — release year
-- `M` — release month
-- `D` — release day of the month
+- `MAJOR` — incompatible/breaking changes
+- `MINOR` — backward-compatible functionality
+- `PATCH` — backward-compatible fixes
 
-Patch releases append `-N` (e.g., `2026.3.5-1`, `2026.3.5-2`).
+The scheme switched from CalVer (`YYYY.M.D`) to SemVer at the 0.1.0 cut; CalVer may return at a named GA milestone.
 
 The canonical version lives in the `VERSION` file at the repository root. Shell scripts, the Makefile, and the Docker entrypoint all read from this file.
 

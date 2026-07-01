@@ -16,7 +16,7 @@ AGNOS uses Linux 6.6 LTS as its kernel, with:
 - Patches in `kernel/6.6-lts/patches/`
 - Security hardening (Landlock, seccomp, IMA, dm-verity, Secure Boot)
 
-The kernel interface is exposed to userspace via **agnosys** (`userland/agnos-sys/`), which provides safe Rust wrappers for syscalls, LSM hooks, and hardware interfaces.
+The kernel interface was historically exposed to userspace via **agnosys** (`userland/agnos-sys/`), which provided safe Rust wrappers for syscalls, LSM hooks, and hardware interfaces. **agnosys was decomposed on 2026-06-19** — udev/DRM survives as **agnodrm**; trust→**sigil**, security/MAC/audit→**kavach**, pam→**aegis**, logging→**sakshi**, and the syscall layer folded into **cyrius**. There is no live `agnosys` crate; the wrapper/module material below is historical (Rust monolith era, pre-2026-04-01 extraction).
 
 ---
 
@@ -243,9 +243,11 @@ The self-hosting validation script tests kernel module compilation:
 
 ---
 
-## Kernel-Userspace Interface (agnosys)
+## Kernel-Userspace Interface (agnosys — historical)
 
-AGNOS custom kernel features are exposed to userspace via the **agnosys** crate (`userland/agnos-sys/`). This provides safe Rust wrappers organized into 16 modules:
+> **Historical (agnosys decomposed 2026-06-19):** The `agnosys` crate no longer exists. It was decomposed into **agnodrm** (udev/DRM survivor), **sigil** (trust), **kavach** (security/MAC/audit), **aegis** (pam), **sakshi** (logging), and **cyrius** (syscall layer); the Linux-eccentric group (bootloader/update/netns/fuse/journald) is parked post-v1. The AGNOS stack is Cyrius-native — the Rust crate and its module table below describe the retired monolith and are kept for reference only.
+
+AGNOS custom kernel features were historically exposed to userspace via the **agnosys** crate (`userland/agnos-sys/`), which provided safe Rust wrappers organized into 16 modules:
 
 | Module | Kernel Feature | Description |
 |--------|---------------|-------------|
@@ -266,11 +268,13 @@ AGNOS custom kernel features are exposed to userspace via the **agnosys** crate 
 | `update` | System update | Atomic update mechanism |
 | `llm` | Hardware detect | GPU/accelerator detection for LLM inference |
 
-### Adding a New Kernel Interface
+### Adding a New Kernel Interface (historical — agnosys retired)
+
+> These steps targeted the retired `agnosys`/`agnos-sys` Rust crate and its Cargo workspace (dismantled 2026-04-01, decomposed 2026-06-19). The AGNOS stack is Cyrius-native — kernel interface work now lives in the `agnos` repo (see `agnos/CLAUDE.md`), not in an `agnos-sys` crate. Retained for reference:
 
 1. **Write the kernel module** in `kernel/modules/`
 2. **Create the Rust wrapper** in `userland/agnos-sys/src/`
-3. **Add tests** — agnosys has 750+ tests
+3. **Add tests** — agnosys had 750+ tests
 4. **Wire it up** — add `pub mod mymodule;` in `agnos-sys/src/lib.rs`
 
 Example Rust wrapper pattern:

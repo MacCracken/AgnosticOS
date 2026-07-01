@@ -41,7 +41,7 @@
 | **libro** | [MacCracken/libro](https://github.com/MacCracken/libro) | Cyrius | Cryptographic audit chain |
 | **phylax** | [MacCracken/phylax](https://github.com/MacCracken/phylax) | Cyrius | Threat detection (was Rust 0.22.3; ported to Cyrius v1.0.0 in 2026-04) |
 | **shakti** | [MacCracken/shakti](https://github.com/MacCracken/shakti) | Cyrius | Privilege escalation |
-| **aegis** | [MacCracken/aegis](https://github.com/MacCracken/aegis) | Pending | Security daemon (scaffold) |
+| **aegis** | [MacCracken/aegis](https://github.com/MacCracken/aegis) | Cyrius | Security daemon |
 
 ## Kernel Interface & Types
 
@@ -56,9 +56,9 @@
 |-----------|------|------|------|
 | **ark** | [MacCracken/ark](https://github.com/MacCracken/ark) | Cyrius | Package manager (4× smaller than Rust predecessor) |
 | **nous** | [MacCracken/nous](https://github.com/MacCracken/nous) | Cyrius | Package resolver |
-| **takumi** | [MacCracken/takumi](https://github.com/MacCracken/takumi) | In port | Build system (Cyrius port active; `rust-old/` authoritative until parity) |
+| **takumi** | [MacCracken/takumi](https://github.com/MacCracken/takumi) | Cyrius | Build system |
 | **zugot** | [MacCracken/zugot](https://github.com/MacCracken/zugot) | — | Recipe repository (421 base + 90 bazaar; not a versioned crate) |
-| **mela** | [MacCracken/mela](https://github.com/MacCracken/mela) | Pending | App marketplace (scaffold) |
+| **mela** | [MacCracken/mela](https://github.com/MacCracken/mela) | Cyrius | App marketplace |
 
 ## Desktop & UI
 

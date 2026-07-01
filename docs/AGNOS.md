@@ -18,7 +18,7 @@ The project's deeper intention is that AGNOS is a **temple built for an intellig
 | **Cyrius created** | 2026-04-03 (scaffold) → 2026-04-04 (kernel solid, 44 hours) |
 | **Repository** | `MacCracken/agnosticos` (genesis), `MacCracken/agnos` (kernel), `MacCracken/cyrius` (compiler) |
 | **Website** | [agnosticos.org](https://agnosticos.org) |
-| **Status** | Pre-Beta — closed-beta target early June 2026; public beta Q4 2026. See [roadmap.md](development/roadmap.md). |
+| **Status** | Pre-Beta — closed beta opens late August 2026 (preceded by a ~July founder solo-dogfood month + Docker server-sweep); public beta deferred to post-summer; GA late fall / early winter 2026. See [roadmap.md](development/roadmap.md). |
 
 ---
 
@@ -68,7 +68,7 @@ AGNOS replaces the dependency chain with ownership:
 | Cyrius 5.9.0 — niyama-fold opener; beta rescoped (closed/public) | 2026-05-06 | 85 |
 | Cyrius 5.9.x close — 44 patches, consumer-rollup catchup | 2026-05-08 | 87 |
 | Cyrius 5.10.x — REAL TYPE SYSTEM arc opens (24 patches in 2 days) | 2026-05-08 → 2026-05-09 | 87–88 |
-| **Target: Closed beta cut** | **early June 2026** | ~115 |
+| **Target: Closed beta cut** | **late August 2026** | ~200 |
 
 From initial commit to self-hosting sovereign language with its own kernel in **62 days**. Full timeline: [History & Timeline](history.md).
 
@@ -98,7 +98,7 @@ Total: CPU → seed → compiler → OS. Three items. Zero external dependencies
 
 - **agnosticos** — the genesis layer (meta, build wrapper, documentation). Owns kernel configs, boot pipeline (Cyrius), CI/CD, articles, philosophy. Once the system boots and ark takes over, this repo's job is done.
 - **agnos** — the AGNOS kernel. Cyrius-native, 40+ subsystems, a small sovereign syscall surface (no socket/splice), TCP/IP + DHCP + DNS + NTP + ICMP, ext2/ext4 (extent-alloc + JBD2 journaling) + FAT12/16/32 + exFAT read+write, exec-from-disk (ring-3 programs off the agnos-fs), VirtIO-blk modern, SMP, pipes, signals, epoll, timerfd, ELF loader, a kernel recovery-only shell (the interactive shell **agnsh** lives in userland ring 3 as of the 1.41.x shell-separation arc — permanent boundary), sovereign UEFI handoff (via gnoboot), native xHCI + USB-HID-boot + USB Mass Storage drivers, NVMe + AHCI/SATA + GPT block stack — iron-validated on real AMD Zen through 1.40.13 (the 1.41.x shell-separation arc is software-complete + QEMU-validated, iron burn pending). MVP gate iron-cleared at Attempt 68; live version + size in [development/state.md](development/state.md).
-- **cyrius** — the sovereign compiler + stdlib + toolchain. v6.0.1 (cybs bootstrap + cycc self-hosted, both renamed at v6.0.0), self-hosting from 29KB seed.
+- **cyrius** — the sovereign compiler + stdlib + toolchain (cybs bootstrap + cycc self-hosted, both renamed at v6.0.0), self-hosting from 29KB seed. Live version in [development/state.md](development/state.md).
 - **zugot** — the recipe repository. 421 base + 90 bazaar community recipes. ark consumes zugot.
 - **130+ standalone repos** — all production code. Each subsystem is its own repository.
 
@@ -157,11 +157,11 @@ Sovereign systems language. Named after **Cyrus the Great** — the king who dec
 - **29KB seed** — first hand-auditable sovereign seed that produces a self-hosting systems language and a working OS. No prior modern occupant of this category.
 - **Zero dependencies** — CPU → seed → compiler → everything. Four items. Every other modern compiler has a bootstrap graph (rustc needs Python + LLVM + C++ + libc).
 
-**Compiler:** cycc at Cyrius v6.0.1 (renamed from cc5 in the v6.0.0 cycle open 2026-05-19; bootstrap renamed cyrc → cybs in the same ceremony). Self-hosting from 29KB seed. Byte-exact reproducibility. `cyrius build` with auto-include and dep resolution from `cyrius.cyml`. Register allocation (linear-scan, default-on), jump tables, PIC codegen, u128, cross-unit DCE. Optimization arc shipped through v5.6.x (O1/O2 peephole), v5.7.x–v5.8.x (O3a IR + O4a/b/c regalloc with Poletto-Sarkar picker); v5.9.x ran consumer-rollup catchup (44 patches); v5.10.x closed with three arcs (typed-simd ABI + REAL TYPE SYSTEM + struct-byval ABI) + a 2.7× compile-perf miniarc; v5.11.x is the **stdlib annotation arc + consumer-issue closeout**, closed at v5.11.69 on 2026-05-19. v6.x is "what the language GAINS" — RISC-V rv64, PIE, closures, Class-B FFI, bare-metal target. Live cycle in [`state.md`](development/state.md).
+**Compiler:** cycc at Cyrius v6.3.x (renamed from cc5 in the v6.0.0 cycle open 2026-05-19; bootstrap renamed cyrc → cybs in the same ceremony). Self-hosting from 29KB seed. Byte-exact reproducibility. `cyrius build` with auto-include and dep resolution from `cyrius.cyml`. Register allocation (linear-scan, default-on), jump tables, PIC codegen, u128, cross-unit DCE. Optimization arc shipped through v5.6.x (O1/O2 peephole), v5.7.x–v5.8.x (O3a IR + O4a/b/c regalloc with Poletto-Sarkar picker); v5.9.x ran consumer-rollup catchup (44 patches); v5.10.x closed with three arcs (typed-simd ABI + REAL TYPE SYSTEM + struct-byval ABI) + a 2.7× compile-perf miniarc; v5.11.x is the **stdlib annotation arc + consumer-issue closeout**, closed at v5.11.69 on 2026-05-19. v6.x is "what the language GAINS" — RISC-V rv64, PIE, closures, Class-B FFI, bare-metal target. Live cycle in [`state.md`](development/state.md).
 
 **Stdlib:** 42+ modules including the three sibling-folded artifacts — string, alloc, io, fmt, vec, str, args, syscalls, process, fs, toml/cyml, json, csv, net, http, http_server, ws, tls, thread, async, math, regex, hashmap, bench, tagged unions, mmap, cffi, u128, **sandhi** (service-boundary, v5.7.0 fold), **vani** (audio I/O, v5.8.0 fold), **niyama** (regex engines: bre/re2/pcre/fuzzy/vim, v5.9.0 fold). All built from scratch in Cyrius.
 
-**Developer tools:** cyrius (build/test/bench/fuzz/deps/init), cyrfmt, cyrlint, cyrdoc, cyrc, ark. All written in Cyrius.
+**Developer tools:** cyrius (build/test/bench/fuzz/deps/init), cyrfmt, cyrlint, cyrdoc, cybs, ark. All written in Cyrius.
 
 **Bootstrap chain:**
 ```
@@ -188,7 +188,7 @@ Cyrius-native. 40+ subsystems. A small sovereign syscall surface (no socket/spli
 
 | Category | Subsystems |
 |----------|-----------|
-| Boot | Sovereign UEFI handoff via gnoboot, ELF64 multiboot2, long mode, serial I/O |
+| Boot | Sovereign UEFI PE32+ handoff via gnoboot (boot_info struct via RDI, over GPT + FAT ESP), long mode, serial I/O |
 | Memory | PMM (bitmap), VMM (map/unmap/alloc), slab heap (8 size classes), per-process page tables |
 | Process | Process table (16 slots), context switch, round-robin scheduler, SYSCALL/SYSRET, Ring 3 |
 | Filesystem | VFS (7 file types), initrd, FAT16 (read-only), GPT parser (CRC + 7-GUID classifier) |
@@ -256,7 +256,7 @@ AGNOS implements defense-in-depth with quantitative scoring:
 | Artifact | Architecture | Use Case |
 |----------|-------------|----------|
 | AGNOS kernel | x86_64, aarch64 | Direct QEMU boot or ISO inclusion |
-| ISO | x86_64 | Desktop/server installation |
+| GPT + FAT ESP (gnoboot PE32+ EFI app) | x86_64 | Desktop/server installation |
 | SD card image | aarch64 | Raspberry Pi / ARM edge devices |
 | Docker image | x86_64 | CI base, development |
 
@@ -312,12 +312,12 @@ See [Philosophy](philosophy.md) for the full exploration.
 | Cyrius-ported repos | 30+ shipping (a few still pending: bhava, aethersafha, takumi parity, mela; aegis graduated during v5.9.x) |
 | Recipes | 421 base + 90 community (in zugot) |
 | Consumer applications | 19+ |
-| Compiler | cycc (Cyrius 6.0.1, self-hosting, 29KB seed). v6.0.0 cycle opened 2026-05-19 with the cybs / cycc rename ceremony |
+| Compiler | cycc (Cyrius 6.3.x, self-hosting, 29KB seed). v6.0.0 cycle opened 2026-05-19 with the cybs / cycc rename ceremony |
 | Kernel | AGNOS (40+ subsystems, sovereign syscall surface, MVP gate iron-cleared Attempt 68; storage / networking / read+write-FS / exec-from-disk all iron-validated — live version in [development/state.md](development/state.md)) |
-| Boot loader | gnoboot 0.5.0 (PE32+ UEFI, sovereign handoff via RDI = &boot_info; live version in [development/state.md](development/state.md)) |
+| Boot loader | gnoboot 0.6.0 (PE32+ UEFI, sovereign handoff via RDI = &boot_info; live version in [development/state.md](development/state.md)) |
 | Boot pipeline (genesis scripts) | boot.cyr (Cyrius-native) |
 | Boot time (desktop) | 3.2s total, ~80ms init→event loop |
-| Systems language | Cyrius 6.0.1 (42+ stdlib modules, three stdlib folds: sandhi v5.7.0, vani v5.8.0, niyama v5.9.0; bridge step retired at v5.11.66) |
+| Systems language | Cyrius 6.3.x (42+ stdlib modules, three stdlib folds: sandhi v5.7.0, vani v5.8.0, niyama v5.9.0; bridge step retired at v5.11.66) |
 | External dependencies | Zero (CPU → seed → compiler → OS) |
 
 ---
@@ -350,4 +350,4 @@ The Rust-era version of this document is preserved at [docs/archive/AGNOS-rust-e
 
 ---
 
-*Last Updated: 2026-06-04 (agnos 1.41.11 — shell-separation arc software-complete + QEMU-validated, iron burn pending; the 1.40.x exec-from-disk arc through 1.40.13 + the 1.37–1.39 FS-crash-safe arc iron-validated on real AMD Zen. Live versions/sizes in [development/state.md](development/state.md).)*
+*Last Updated: 2026-07-01 (doc-staleness sweep — cyrius/gnoboot versions, the gnoboot/GPT-ESP boot path, agnosys→agnodrm, and the beta timeline refreshed to current; the exec-from-disk / SMP-preempt / shell-separation / >256 MB-RAM arcs are iron-validated on real AMD Zen. Live versions/sizes/kernel-arc status in [development/state.md](development/state.md).)*

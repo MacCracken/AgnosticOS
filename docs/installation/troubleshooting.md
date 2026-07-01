@@ -32,14 +32,14 @@ Install options:
 
 ### Toolchain version mismatch
 
-Every Cyrius project pins a version in `.cyrius-toolchain`:
+Every Cyrius project pins a version in its `cyrius.cyml` manifest via the `cyrius = "<version>"` field (single source of truth — there is no separate `.cyrius-toolchain` file):
 
 ```sh
-cat /home/macro/Repos/agnosticos/scripts/.cyrius-toolchain
+grep '^cyrius' /home/macro/Repos/agnosticos/scripts/cyrius.cyml
 cyrius --version
 ```
 
-If they disagree, install the pinned version (`cyriusly install <version>`) or rebuild the toolchain from source.
+If they disagree, rebuild the toolchain from source (`cd /home/macro/Repos/cyrius && sh scripts/bootstrap.sh`) or install the matching release tarball.
 
 ### `stdout` or `println` doesn't print
 
@@ -59,7 +59,7 @@ var exit_code = main();
 syscall(60, exit_code);
 ```
 
-Study working programs in `/home/macro/Repos/cyrius/programs/*.cyr` (46 examples).
+Study working programs in `/home/macro/Repos/cyrius/programs/*.cyr` (65+ examples).
 
 ---
 
@@ -146,7 +146,7 @@ make boot-test
 
 ### Kernel boots but panics on first syscall
 
-Most common cause: `agnos` and `agnosys` versions are out of sync. Rebuild both from current sources.
+Most common cause: `agnos` and its `cyrius` toolchain pin are out of sync. Rebuild the kernel against the pinned toolchain from current sources.
 
 ### QEMU version too old
 

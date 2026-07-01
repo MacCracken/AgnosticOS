@@ -86,8 +86,8 @@ binaries are **statically-linked sovereign** (D2). So **libraries do not ship as
 rootfs files** — they are compiled *into* their consuming tools. The rootfs
 manifest is the **tool binaries only**; libraries are build-time dependencies.
 (Re-run `boot --iso-check` for a freshness snapshot, and verify each repo's
-`VERSION` — the old "26/26 READY" capture predates agnos 1.30.5 → **1.41.1**,
-gnoboot 0.2.0 → **0.4.3**, cyrius 5.11.55 → **6.0.24**.)
+`VERSION` — the old "26/26 READY" capture predates agnos 1.30.5 → **1.51.2**,
+gnoboot 0.2.0 → **0.6.0**, cyrius 5.11.55 → **6.3.21**.)
 
 ### On the ESP (firmware boot, not rootfs)
 
@@ -111,7 +111,7 @@ gnoboot 0.2.0 → **0.4.3**, cyrius 5.11.55 → **6.0.24**.)
 
 ### Build-time libraries (statically linked — NOT rootfs files)
 
-`agnostik`, `agnosys`, `argonaut`, `sigil`, `libro`, `itihas`, `sankoch`,
+`agnostik`, `agnodrm`, `argonaut`, `sigil`, `libro`, `itihas`, `sankoch`,
 `mihi`, `darshana`, `abaco`, `hisab`, `mabda`, `bsp`. Needed to *build* the
 tools above; they leave no separate artifact on the rootfs.
 
@@ -125,7 +125,7 @@ tools above; they leave no separate artifact on the rootfs.
   host-`vmlinuz` (D1a) and custom-Linux (D1c) options are dead; agnos drives
   real hardware on iron. gnoboot loads it; no Linux kernel in the chain.
 - **D2. C runtime → RESOLVED: fully sovereign, no glibc.** AGNOS binaries are
-  statically-linked Cyrius using Linux syscalls via `agnosys`; the ext4 rootfs
+  statically-linked Cyrius using Linux syscalls via `cyrius`; the ext4 rootfs
   needs no `/lib`, no libc. (Confirm with a spot `ldd` on the shipped binaries
   — expected "not a dynamic executable" across the board.)
 - **D4. Where the new code lives → RESOLVED: new `scripts/src/iso.cyr`.**

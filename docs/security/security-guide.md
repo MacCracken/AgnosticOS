@@ -154,7 +154,7 @@ security.emergency_kill_switch();
 
 ### 6. Aegis Security Daemon
 
-Aegis (`agent_runtime::aegis`) is the centralized security policy daemon that enforces system-wide security rules. It provides:
+Aegis (`aegis`) is the centralized security policy daemon that enforces system-wide security rules. It provides:
 
 - Real-time agent behavior monitoring and anomaly detection
 - Automated sandbox enforcement and threat response
@@ -163,7 +163,7 @@ Aegis (`agent_runtime::aegis`) is the centralized security policy daemon that en
 
 ### 7. Phylax Threat Detection
 
-Phylax (`agent_runtime::phylax`) is the native threat detection engine — pure Rust, no external AV dependency:
+Phylax (`phylax`) is the native threat detection engine — Cyrius-native, no external AV dependency:
 
 - **YARA-compatible rule engine** — Hex-pattern matching for known malware signatures, crypto miners, reverse shells, base64 droppers
 - **Shannon entropy analysis** — Detects ransomware patterns and encrypted payloads (configurable threshold)
@@ -174,10 +174,10 @@ Phylax (`agent_runtime::phylax`) is the native threat detection engine — pure 
 
 ### 8. Sigil Trust System
 
-Sigil (`agent_runtime::sigil`) provides cryptographic trust verification:
+Sigil (`sigil`) provides cryptographic trust verification:
 
 - Package and agent signature verification (Ed25519 + ML-DSA hybrid)
-- Trust chain management for `.ark` and `.agnos-agent` packages
+- Trust chain management for `.ark` packages
 - TPM-backed hardware attestation for system integrity
 - Transparency log integration for auditable trust decisions
 
@@ -188,13 +188,13 @@ AGNOS implements hybrid post-quantum cryptographic schemes:
 - **Key exchange**: ML-KEM (Kyber) + X25519 hybrid for forward secrecy
 - **Digital signatures**: ML-DSA (Dilithium) + Ed25519 hybrid
 - **Hash-based signatures**: SPHINCS+ for long-lived signing keys
-- **Crypto-agility**: Algorithm-agnostic APIs in `agnos_common::secrets` allow seamless migration
+- **Crypto-agility**: Algorithm-agnostic APIs in `agnostik` (shared types) allow seamless migration
 
 ### 10. Mutual TLS (mTLS)
 
-All inter-service communication uses mutual TLS (`agent_runtime::mtls`):
+All inter-service communication uses mutual TLS:
 
-- Certificate pinning via `agnos_sys::certpin` (SPKI SHA-256 hashes)
+- Certificate pinning via `sigil` (SPKI SHA-256 hashes)
 - Per-agent client certificates issued by the local CA
 - Certificate rotation with zero-downtime rollover
 - CORS restricted to localhost; Bearer token auth for API endpoints

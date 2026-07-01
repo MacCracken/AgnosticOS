@@ -128,7 +128,7 @@ AGNOS runs the same way. Every subsystem, every API surface, every deletion — 
 **Pattern.** Version, config, and cross-cutting data live in ONE place. Consumers pull it rather than encoding it into their own artifacts. Every duplicated fact is a drift surface.
 
 **Examples.**
-- `VERSION` file at repo root (CalVer, single authority) — docs and scripts pull from it, never hardcode
+- `VERSION` file at repo root (SemVer, single authority) — currently 0.1.0; docs and scripts pull from it, never hardcode
 - cc5 → `cycc` rename (Cyrius v6.0.0, 2026-05-19): binary name becomes stable; version lives in `VERSION`; no more `cc → cc2 → cc3 → cc5` renaming treadmill across scripts, CI, install paths, docs (four historical renames — `cycc` is declared the final one, paired with `cyrc → cybs` for the bootstrap binary)
 - Size comparisons live in cyrius repo's `docs/size-comparisons.md`; genesis docs link out rather than duplicate tables that would drift per optimization release
 - Per-repo CLAUDE.md is authoritative for that repo's state — sibling repos reference, don't copy

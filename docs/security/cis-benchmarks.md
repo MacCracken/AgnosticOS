@@ -108,8 +108,8 @@ This document maps CIS Linux Benchmark 3.0.0 controls to AGNOS kernel configurat
 |-------------|-------------|--------|----------------|
 | 4.1.1 | Ensure auditd is installed | ✅ | Package: `agnos-audit` |
 | 4.1.2 | Ensure auditd service is enabled | ✅ | `systemctl enable auditd` |
-| 4.1.3 | Ensure auditing for processes that start prior to auditd | ✅ | `GRUB_CMDLINE_LINUX="audit=1"` |
-| 4.1.4 | Ensure audit_backlog_limit is sufficient | ✅ | `GRUB_CMDLINE_LINUX="audit_backlog_limit=8192"` |
+| 4.1.3 | Ensure auditing for processes that start prior to auditd | ✅ | gnoboot kernel command line: `audit=1` |
+| 4.1.4 | Ensure audit_backlog_limit is sufficient | ✅ | gnoboot kernel command line: `audit_backlog_limit=8192` |
 | 4.1.5 | Ensure events that modify date/time are collected | ✅ | `/etc/audit/rules.d/50-time.rules` |
 | 4.1.6 | Ensure events that modify user/group are collected | ✅ | `/etc/audit/rules.d/50-user.rules` |
 | 4.1.7 | Ensure events that modify network are collected | ✅ | `/etc/audit/rules.d/50-network.rules` |
