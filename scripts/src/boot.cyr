@@ -188,6 +188,14 @@ fn iso_check() {
     # --- Boot chain (all required) ---
     println("--- Boot Chain (required) ---");
 
+    # gnoboot — sovereign UEFI bootloader (PE32+ EFI Application). This is the
+    # AGNOS boot path: firmware → ESP/BOOTX64.EFI → kernel. It REPLACES GRUB;
+    # AGNOS does not use grub/grub-mkrescue, ISO9660/xorriso, or squashfs (those
+    # are Linux packaging leftovers). The artifact is the EFI app, not an ELF.
+    total = total + 1;
+    r = check_component("gnoboot",  "../../gnoboot/VERSION",  "../../gnoboot/build/BOOTX64.EFI", 1);
+    if (r == 1) { ready = ready + 1; } else { missing = missing + 1; }
+
     total = total + 1;
     r = check_component("kernel",   "../../agnos/VERSION",    "../../agnos/build/agnos", 1);
     if (r == 1) { ready = ready + 1; } else { missing = missing + 1; }
@@ -197,7 +205,7 @@ fn iso_check() {
     if (r == 1) { ready = ready + 1; } else { missing = missing + 1; }
 
     total = total + 1;
-    r = check_component("cyrius",   "../../cyrius/VERSION",   "../../cyrius/build/cc5", 1);
+    r = check_component("cyrius",   "../../cyrius/VERSION",   "../../cyrius/build/cycc", 1);
     if (r == 1) { ready = ready + 1; } else { missing = missing + 1; }
 
     total = total + 1;
@@ -206,6 +214,13 @@ fn iso_check() {
 
     total = total + 1;
     r = check_component("nous",     "../../nous/VERSION",     "../../nous/build/nous", 1);
+    if (r == 1) { ready = ready + 1; } else { missing = missing + 1; }
+
+    # agnova — the AGNOS OS installer. The bootable medium IS the installer image,
+    # so agnova is a required ISO component (it lays AGNOS onto the target disk;
+    # the sovereign counterpart to a distro installer, no debian-installer/calamares).
+    total = total + 1;
+    r = check_component("agnova",   "../../agnova/VERSION",   "../../agnova/build/agnova", 1);
     if (r == 1) { ready = ready + 1; } else { missing = missing + 1; }
 
     println("");
@@ -255,8 +270,13 @@ fn iso_check() {
     r = check_component("agnostik", "../../agnostik/VERSION", "../../agnostik/build/agnostik", 1);
     if (r == 1) { ready = ready + 1; } else { missing = missing + 1; }
 
+    # agnosys was RENAMED/DECOMPOSED 2026-06-19 → agnodrm (the device/DRM survivor:
+    # udev enumeration + DRM/KMS). trust→sigil, security/mac/audit→kavach, pam→aegis,
+    # logging→sakshi, syscall→cyrius. In the ISO manifest agnodrm takes agnosys's slot.
+    # (A stale build/agnosys binary lingers in agnodrm/build/ — ignore it; the current
+    # artifact is build/agnodrm.)
     total = total + 1;
-    r = check_component("agnosys",  "../../agnosys/VERSION",  "../../agnosys/build/agnosys", 1);
+    r = check_component("agnodrm",  "../../agnodrm/VERSION",  "../../agnodrm/build/agnodrm", 1);
     if (r == 1) { ready = ready + 1; } else { missing = missing + 1; }
 
     total = total + 1;
@@ -325,37 +345,45 @@ fn iso_check() {
 
     println("");
 
-    # --- Host tools ---
-    println("--- Host Tools ---");
+    # --- Host tools (TRANSITIONAL bootstrap — replaced by the sovereign builder) ---
+    # AGNOS is UEFI-native via gnoboot: the medium is a GPT disk with an EFI System
+    # Partition (FAT) holding BOOTX64.EFI + kernel + rootfs. NO grub/xorriso/squashfs
+    # (Linux ISO9660 leftovers, removed). The image is assembled TODAY with Linux
+    # mtools/dosfstools/gptfdisk (agnsh-smoke.sh / install-usb.sh mcopy onto the ESP).
+    # These are BOOTSTRAP SCAFFOLDING — a Cyrius-native sovereign disk-image assembler
+    # (name TBD, roadmap SERVER stage) replaces them at the "agnos building agnos" gate,
+    # since a self-hosting AGNOS can't shell out to Linux tools to build its own image.
+    # Informational only — NOT counted in the required-component tally.
+    println("--- Host Tools: LINUX (bootstrap only — until the sovereign image-builder ships) ---");
 
     var tbuf = alloc(256);
 
-    var tn = exec_capture(vec_from("/usr/bin/env", "qemu-system-x86_64", "--version"), tbuf, 256);
+    var tn = exec_capture(vec_from("/usr/bin/env", "mcopy", "--version"), tbuf, 256);
     if (tn > 0) {
-        prints("  READY  qemu\n");
+        prints("  READY  mtools        (mcopy — stage BOOTX64.EFI + kernel onto the FAT ESP)\n");
     } else {
-        prints("  MISS   qemu          (needed for ISO validation)\n");
+        prints("  note   mtools absent (needed NOW to populate the ESP image)\n");
     }
 
-    tn = exec_capture(vec_from("/usr/bin/env", "grub-mkrescue", "--version"), tbuf, 256);
+    tn = exec_capture(vec_from("/usr/bin/env", "mkfs.fat", 0), tbuf, 256);
     if (tn > 0) {
-        prints("  READY  grub-mkrescue\n");
+        prints("  READY  dosfstools    (mkfs.fat — format the EFI System Partition)\n");
     } else {
-        prints("  MISS   grub-mkrescue (needed for ISO creation)\n");
+        prints("  note   dosfstools absent (needed NOW to format the ESP)\n");
     }
 
-    tn = exec_capture(vec_from("/usr/bin/env", "mksquashfs", 0), tbuf, 256);
+    tn = exec_capture(vec_from("/usr/bin/env", "sgdisk", "--version"), tbuf, 256);
     if (tn > 0) {
-        prints("  READY  mksquashfs\n");
+        prints("  READY  gptfdisk      (sgdisk — GPT-partition the disk image)\n");
     } else {
-        prints("  MISS   mksquashfs    (needed for rootfs compression)\n");
+        prints("  note   gptfdisk absent (needed NOW to GPT-partition the image)\n");
     }
 
-    tn = exec_capture(vec_from("/usr/bin/env", "xorriso", "--version"), tbuf, 256);
+    tn = exec_capture(vec_from("/usr/bin/env", "qemu-system-x86_64", "--version"), tbuf, 256);
     if (tn > 0) {
-        prints("  READY  xorriso\n");
+        prints("  READY  qemu          (optional — boot the assembled image to validate)\n");
     } else {
-        prints("  MISS   xorriso       (needed for ISO creation)\n");
+        prints("  note   qemu absent   (optional; only for boot-testing the image)\n");
     }
 
     println("");
