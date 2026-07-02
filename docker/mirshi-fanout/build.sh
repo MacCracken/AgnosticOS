@@ -15,9 +15,13 @@ repos="$(cd "$here/../../.." && pwd)"          # ~/Repos (agnosticos/docker/mirs
 img="${IMG:-agnos-mirshi-fanout}"
 
 # "name : repo-subdir : agnos-ELF (relative to repo) : build-hint"
+# Run-once tools (iam, kii) are exercised by smoke.sh; server tools (agora) by
+# serve-smoke.sh — mirshi's net band lets an agnos server accept in a container.
 TOOLS=(
     "iam:iam:build/iam_agnos:cd ~/Repos/iam && cyrius build --agnos src/main.cyr build/iam_agnos"
     "kii:kii:build/kii_agnos:cd ~/Repos/kii && cyrius build --agnos src/main.cyr build/kii_agnos"
+    "agora:agora:build/agora_agnos:cd ~/Repos/agora && cyrius build --agnos src/main.cyr build/agora_agnos"
+    "descent:cyrius-yeomans-descent:build/descent-agnos:cd ~/Repos/cyrius-yeomans-descent && cyrius build --agnos src/main.cyr build/descent-agnos"
 )
 
 stage="$(mktemp -d)"; trap 'rm -rf "$stage"' EXIT
@@ -42,6 +46,17 @@ done
 
 # Sample data the tools read.
 cp "$repos/kii/tests/fixtures/RAMGON.png" "$stage/data/ramgon.png"    # kii render target
+
+# descent world data — it uses ABSOLUTE /data/... paths (agnos VFS), so its world
+# lives at the image root /data/ (the FROM-scratch container root IS the rootfs;
+# no mirshi --root needed). Only the world is staged; descent's persist_init
+# creates /data/players + /data/audit.libro fresh in the container's writable layer.
+des="$repos/cyrius-yeomans-descent"
+if [ -d "$des/data/zones" ]; then
+    cp -r "$des/data/zones" "$stage/data/zones"
+    cp "$des/data/classes.cyml" "$stage/data/classes.cyml"
+    echo "   + /data/zones + /data/classes.cyml (descent world)"
+fi
 
 cp "$here/Dockerfile" "$stage/Dockerfile"
 echo "==> docker build -t $img (FROM scratch)"
