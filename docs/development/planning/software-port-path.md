@@ -92,7 +92,7 @@ Gap #1 first (the model/checkpoint store it produces is the shared dependency un
 
 ## 4. Cross-cutting gates (pace everything above)
 
-- **Type-3 weight importer** — greenfield; #1 value; unblocks "run real models sovereignly" + the model store.
+- **Type-3 weight importer** — greenfield; #1 value; unblocks "run real models sovereignly" + the model store. **✅ M1 HIT 2026-07-02:** chain shipped (tula 1.0.0 / rupantara 0.4.0 / anukūlana 0.2.0) — a real GPT-2-small checkpoint imports + runs clean on the sovereign stack. Remaining: exact HF-fidelity gate → LoRA/QLoRA. Detail: [`type3-weight-import.md`](type3-weight-import.md).
 - **tentib int-SIMD** — external cyrius-toolchain gate (integer SIMD); blocks tentib throughput, not correctness.
 - **mabda GPU speedup** — needs matrix-core f64 / the NVIDIA-native arc (mabda 4.x); gates diffusion + scale.
 - **puka** — gates any desktop GUI (tanur, and desktop-tier apps in Tier E).

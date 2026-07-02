@@ -37,6 +37,24 @@ This doc holds **volatile state** — what's currently true across the AGNOS dev
 
 ---
 
+## ML / AI reference arc — Type-3 weight import (live)
+
+The sovereign ML/AI work runs as a **separate thread** from the kernel arc above (own repos, no iron burns — validated in QEMU / on host). Live map: [[project_ml_ai_arc_overview]] memory + [`planning/type3-weight-import.md`](planning/type3-weight-import.md) + [`planning/software-port-path.md`](planning/software-port-path.md). Per-repo detail lives in each repo's CHANGELOG — this is a pointer, not a log.
+
+**Current head (2026-07-02): the Type-3 chain hit its M1 headline** — a real foreign checkpoint runs on the sovereign stack:
+
+| Repo | Ver | Role | State |
+|------|-----|------|-------|
+| [`tula`](https://github.com/MacCracken/tula) | 1.0.0 | weight-file format (M0) | format v1 FROZEN (105 assert + 2M fuzz + audit) |
+| [`rupantara`](https://github.com/MacCracken/rupantara) | 0.4.0 | transformer-forward lib (attn11→libs #4) | whole-forward parity-proven bit-identical vs attn11 + KV-cache decode |
+| [`anukūlana`](https://github.com/MacCracken/anukulana) | 0.2.0 | Type-3 import+run reference | **real GPT-2-small imports + runs clean** (0 NaN/123.6M params, finite logits); next = exact HF-fidelity gate → LoRA |
+| [`attn11`](https://github.com/MacCracken/attn11) | 1.12.0 | GPT transformer ref | CPU leaf-op re-fold onto rupantara `ru_*` (1049 grad-checks green in one binary) |
+| [`ganita`](https://github.com/MacCracken/ganita) | 1.0.2 | linalg/math lib | `f64_tanh` NaN-overflow fix (surfaced by the real forward; folded into cyrius stdlib **6.3.31**) |
+
+Other siblings (unchanged this thread): tarka 1.0.0 (RL), prajna 1.0.0 (meta), tentib 0.4.x (ternary — int-SIMD gate on cyrius), amuzesh 0.1.0 (classical). anukūlana pins cyrius **6.3.31** (to pick up the folded ganita fix). The three open ML gaps stay: Type-3 (this chain, M1 done), the ifran control-plane port, the puka model-studio GUI.
+
+---
+
 ## Active sweeps
 
 Open housekeeping (none blocking; bundle with each repo's next natural touch):
