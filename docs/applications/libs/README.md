@@ -29,7 +29,7 @@ See also: [First-Party Standards — Own the Stack](../../development/first-part
 | libro | 2.7.7 | Cryptographic audit chain |
 | mabda | 3.4.4 | GPU foundation — consumes chitra for image decode; exposes the GPU compute surface attn11/puka build on |
 | majra | 2.4.7 | Queue/pub-sub |
-| mihi | 1.1.0 | System-info probe library (CPU / RAM / GPU / kernel / uptime / distro / hostname) — substrate for iam, chakshu |
+| mihi | 1.2.1 | System-info probe library (CPU / RAM / GPU / kernel / uptime / distro / hostname) — substrate for iam, chakshu. Agnos CPU model via CPUID brand string (1.2.x) |
 | nein | 1.5.4 | Programmatic nftables firewall |
 | patra | 1.12.3 | Structured storage & SQL — B+ tree, WAL (Cyrius-native) |
 | phylax | 1.2.1 | Threat detection — YARA, entropy, magic bytes, ML |
