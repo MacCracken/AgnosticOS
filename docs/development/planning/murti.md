@@ -1,478 +1,161 @@
-# Murti — Local Model Runtime Engine
+# Murti — Sovereign Model-Loading & Inference-Dispatch Seam
 
-> **Murti** (Sanskrit: मूर्ति — form, embodiment, manifestation) — core model lifecycle and inference engine for AGNOS
+> **Murti** (Sanskrit: मूर्ति — *form, embodiment, the manifest image of the formless*) — the seam that takes a **weight file at rest** and gives it a running **form**: load a sovereign weight file, place it on the right hardware, dispatch the forward pass to the sovereign inference kernels, and hold the resident-model lifecycle. The *embodiment* layer between a stored model and a served answer.
 
 | Field | Value |
 |-------|-------|
-| Status | Scaffolded (0.1.0) |
-| Priority | 1 — foundational crate for hoosh + Irfan, Ollama replacement |
-| Crate | `murti` (crates.io, available) |
-| Repository | `MacCracken/murti` |
-| Runtime | library crate (no binary, no HTTP server) |
-| Domain | LLM model storage, inference backends, GPU allocation |
+| Status | **Re-architected planning doc (Cyrius-native), 2026-07-01. Supersedes the 2026-03-24 Rust-era draft in full.** Not scaffolded. |
+| Repo existence | **OPEN QUESTION** — see §0. The *capability* is real; whether it earns a *separate repo* (vs living permanently inside hoosh) is gated on a real second consumer. |
+| Priority | Deferred / demand-gated — opens (if at all) only after the Type-3 weight importer exists **and** a real second consumer of the load↔dispatch path appears. |
+| Name | `murti` (मूर्ति) — kept as a **reserved** name in the Sanskrit/Hindi system-lib lane; reserving the name does **not** commit to the repo existing. |
+| Runtime | Cyrius library, no HTTP server, no daemon (serving is hoosh's). |
+| Domain | weight-file load → placement query → **dispatch** to rosnet/tentib → hand logits to hoosh. **Not** training, **not** serving, **not** GPU primitives, **not** the marketplace, **not** the foreign-engine compat seam. |
 
 ---
 
-## Why First-Party
+## 0. The decision (read this first)
 
-Ollama is a monolithic Go binary that bundles model management, inference, and API into one process. It has no awareness of agent fleets, token budgets, hardware acceleration profiles, or sandboxed execution. More critically, it can't be composed — you either use all of Ollama or none of it.
+**The Rust-era murti is dead. The concept that replaces it is a thin seam, and whether that seam is ever a separate repo is deliberately left open.**
 
-AGNOS needs model runtime capabilities in two very different contexts:
+The Rust-era murti's entire value proposition was **being a broker for 15 external inference backends** (llama.cpp, vLLM, TensorRT, Metal, Vulkan, ONNX, TPU, Gaudi, Inferentia, OneAPI, Qualcomm, XDNA, Candle, Ollama). In March 2026 that was the only way AGNOS could run a real model, so a backend broker *was* the runtime. As of 2026-07-01 that premise is dead: AGNOS runs local inference on its **own** kernels —
 
-- **Hoosh** (gateway, port 8088) needs to route local inference alongside 15 cloud providers, with caching, rate limiting, and token budgets. It doesn't need a CLI, training, or a desktop UI.
-- **Irfan** (desktop app, port 8420) needs the same model lifecycle plus training, evaluation, marketplace, fleet management, and a full CLI/GUI experience.
+- **rosnet 0.2.0** — f64 tensors + hand-derived matmul gradient, plus a **mabda-gated `[lib.gpu]` GPU profile**. The f64 forward path.
+- **tentib 0.4.0** — a **matmul-free integer inference kernel** (ternary weights, int8 activations, add/sub/skip), whole-model parity < 1e-9 vs f64. The integer forward path. *(Correctness-ready today; useful throughput is gated on cyrius integer-SIMD — see §3.)*
+- **The Type-3 importer** (`generative-paradigms.md`) — a **sovereign weight-file format** + a real-checkpoint importer + LoRA/QLoRA. How someone else's pretrained weights become a sovereign model AGNOS can run.
+- **hoosh 2.4.11** — the OpenAI-compatible serving / routing / budget plane.
 
-Today, Irfan has all of this implemented in `ifran-core` and `ifran-backends` — model registry, 15 inference backends, 10 hardware accelerator families, pull with resume, quantization. But hoosh can't use any of it without depending on Irfan as a running service.
+A "runtime whose job is to shell to llama.cpp" is now the **exact opposite** of the sovereign-ML thesis. The broker dies. What is left is a genuinely-new but *thin* seam nobody owns cleanly:
 
-**Murti extracts the core engine from Irfan into a shared crate.** Both hoosh and Irfan depend on murti. Irfan becomes the desktop experience layer; hoosh becomes the gateway layer. The engine is shared.
+> **The load↔place↔dispatch↔pool seam:** given a sovereign weight file, validate + mmap it (via sigil + the Type-3 importer), ask ai-hwaccel/mabda where it should live, dispatch the forward pass to the correct sovereign kernel (rosnet-f64 or tentib-integer), and hold the resident-model pool (VRAM-budget eviction, idle-unload, LoRA adapter hot-swap). Return logits to hoosh.
 
-## Design Principles
+### Does this seam earn a separate repo? — OPEN QUESTION, deferred
 
-1. **Library, not service** — murti is a Rust crate with no HTTP server, no CLI, no binary. Consumers (hoosh, Irfan) own their own API surfaces.
-2. **Extract, don't rewrite** — murti's initial code comes directly from `ifran-core` (model registry, store, pull, lifecycle) and `ifran-backends` (inference backends, GPU allocation). This is a refactor, not a greenfield project.
-3. **VRAM-aware by default** — murti queries ai-hwaccel for available VRAM and automatically determines GPU layer offloading. Consumers can override.
-4. **Backend-agnostic** — the `InferenceBackend` trait abstracts over llama.cpp, vLLM, TensorRT, Candle, and hardware-specific runtimes. New backends are feature-gated.
-5. **Model configs are TOML** — consistent with AGNOS conventions. No custom DSL.
+Both the "collapse it into hoosh" and "extract it as murti" positions are defensible, and the honest posture is to **not decide yet**:
 
-## Architecture
+- **Case for collapsing into hoosh (the default today):** the seam is thin — load (Type-3 importer) + run (rosnet/tentib) + place (ai-hwaccel). hoosh already owns routing, budgets, cloud-fallback, and per-agent accounting; resident-model residency policy is *of a piece* with serving-side resource policy, not a foreign concern. The arithmetic dispatch fork (rosnet-f64 vs tentib-integer) is, today, **one branch on a manifest field** — a branch is not a subsystem. And the second-consumer trigger is **not yet satisfied**: hoosh is the only *live* consumer of local inference. A forecast that ifran-control-plane will later need the same path is not a second consumer — it is scaffolding-ahead-of-need until real code needs it.
+- **Case for extracting murti later:** the resident-model *state* (which models on which device, VRAM-budget LRU eviction, crash-reload, adapter hot-swap) is genuine stateful runtime coordination that rosnet (stateless tensor lib), tentib (a kernel), and the Type-3 importer (a codec) do not hold. If that state grows, and if a **second live consumer** needs the load↔dispatch path *without going through hoosh* (the ifran-control-plane's post-train "load the checkpoint I just produced and eval it" is the expected trigger), the seam earns extraction — exactly the `yo`+`dig`→`taar` pattern.
 
-### The Stack
-
-```
-┌─────────────────────────┐  ┌──────────────────────────────────┐
-│         Hoosh           │  │             Irfan                 │
-│    (LLM Gateway)        │  │     (Desktop LLM Manager)        │
-│  port 8088              │  │  port 8420                        │
-│                         │  │                                   │
-│  - OpenAI-compat API    │  │  - CLI (pull/run/list/train/eval) │
-│  - 15 cloud providers   │  │  - Desktop GUI                    │
-│  - Caching              │  │  - Training pipeline              │
-│  - Rate limiting        │  │  - Evaluation benchmarks          │
-│  - Token budgets        │  │  - Marketplace                    │
-│  - Per-agent accounting  │  │  - Fleet management              │
-│  - Cloud fallback       │  │  - RLHF / distillation           │
-│                         │  │  - SecureYeoman bridge            │
-├─────────────────────────┤  ├──────────────────────────────────┤
-│    MurtiProvider        │  │  ifran-core (thin wrapper)        │
-│  (impl LlmProvider)    │  │  ifran-backends → re-exports      │
-└────────┬────────────────┘  └──────────┬───────────────────────┘
-         │                              │
-         └──────────┬───────────────────┘
-                    │
-         ┌──────────▼──────────────────┐
-         │          Murti              │
-         │   (Core Model Runtime)      │
-         │                             │
-         │  - ModelRegistry            │
-         │  - ModelStore               │
-         │  - PullManager              │
-         │  - InferenceEngine          │
-         │  - GpuAllocator             │
-         │  - ModelPool                │
-         │  - BackendManager           │
-         │  - ModelConfig              │
-         │  - OllamaCompat            │
-         └──────────┬──────────────────┘
-                    │
-         ┌──────────▼──────────────────┐
-         │       ai-hwaccel            │
-         │  (GPU detection crate)      │
-         └─────────────────────────────┘
-```
-
-### What Moves Where
-
-| Current Location | Becomes | Notes |
-|---|---|---|
-| `ifran-core` model registry | `murti::registry` | HuggingFace, OCI, direct URL, local, Ollama library |
-| `ifran-core` model store + pull | `murti::store`, `murti::pull` | Content-addressable blobs, resume, SHA-256/BLAKE3 |
-| `ifran-core` lifecycle (load/unload) | `murti::engine` | Process management, health checks, crash recovery |
-| `ifran-core` hardware detection | `murti::gpu` | VRAM queries, layer splitting, multi-GPU |
-| `ifran-backends` (all 15) | `murti::backends` | Trait + feature-gated implementations |
-| `ifran-core` quantization | `murti::quantize` | 15 quantization levels |
-| `ifran-core` fleet model distribution | `murti::fleet` | Edge push, dedup, VRAM-aware placement |
-| `ifran-core` RAG / embeddings | stays in `ifran-core` | Consumer-specific, not core runtime |
-| `ifran-core` multi-tenancy | stays in `ifran-core` | Consumer-specific |
-| `ifran-train` (all training) | stays in `ifran-train` | Irfan-specific |
-| `ifran-api` (REST/gRPC) | stays in `ifran-api` | Irfan-specific |
-| `ifran-bridge` (SY bridge) | stays in `ifran-bridge` | Irfan-specific |
-| `ifran-cli` | stays in `ifran-cli` | Irfan-specific (wraps murti for model ops) |
-
-### Crate Structure
-
-```
-murti/
-├── Cargo.toml
-├── src/
-│   ├── lib.rs                # Public API: Murti struct, MurtiConfig
-│   ├── registry.rs           # ModelRegistry — resolve names to download URLs
-│   │                         #   Sources: HuggingFace, OCI, Ollama library, local, custom
-│   ├── store.rs              # ModelStore — content-addressable local storage
-│   │                         #   /var/lib/agnos/models/ layout, TOML index, dedup
-│   ├── pull.rs               # PullManager — async download, resume, integrity
-│   │                         #   HTTP range requests, SHA-256/BLAKE3, progress channel
-│   ├── quantize.rs           # Quantizer — 15 GGUF quantization levels
-│   │                         #   f32, f16, bf16, q8_0, q6k, q5_k_m, q5_k_s, q4_k_m,
-│   │                         #   q4_k_s, q4_0, q3_k_m, q3_k_s, q2k, iq4_xs, iq3_xxs
-│   ├── engine.rs             # InferenceEngine — backend process lifecycle
-│   │                         #   Spawn, health check, graceful shutdown, crash recovery
-│   ├── backends/
-│   │   ├── mod.rs            # InferenceBackend trait
-│   │   ├── llama_cpp.rs      # llama-server management (default)
-│   │   ├── ollama.rs         # Ollama API client (compat/migration)
-│   │   ├── vllm.rs           # vLLM backend
-│   │   ├── tensorrt.rs       # TensorRT-LLM
-│   │   ├── candle.rs         # Candle (pure Rust, future)
-│   │   ├── gguf.rs           # Direct GGUF loading (future)
-│   │   ├── onnx.rs           # ONNX Runtime
-│   │   ├── tpu.rs            # Google TPU
-│   │   ├── gaudi.rs          # Intel Gaudi
-│   │   ├── inferentia.rs     # AWS Inferentia/Trainium
-│   │   ├── oneapi.rs         # Intel Arc (OneAPI)
-│   │   ├── qualcomm.rs       # Qualcomm AI 100
-│   │   ├── metal.rs          # Apple Metal
-│   │   ├── vulkan.rs         # Vulkan compute
-│   │   └── xdna.rs           # AMD XDNA (Ryzen AI)
-│   ├── gpu.rs                # GpuAllocator — VRAM queries + layer splitting via ai-hwaccel
-│   ├── pool.rs               # ModelPool — multi-model LRU by VRAM budget
-│   ├── config.rs             # ModelConfig — TOML model definitions
-│   ├── fleet.rs              # FleetDistributor — edge push, dedup, VRAM-aware placement
-│   └── compat.rs             # OllamaCompat — import models + convert Modelfiles
-```
-
-### Key Types (Public API)
-
-```rust
-/// Top-level entry point — consumers create one Murti instance
-pub struct Murti {
-    registry: Arc<ModelRegistry>,
-    store: Arc<ModelStore>,
-    engine: Arc<InferenceEngine>,
-    pool: Arc<ModelPool>,
-    gpu: Arc<GpuAllocator>,
-    config: MurtiConfig,
-}
-
-impl Murti {
-    /// Pull a model from registry into local store
-    pub async fn pull(&self, name: &str) -> mpsc::Receiver<PullProgress>;
-
-    /// Ensure model is available (pull if needed) and load into engine
-    pub async fn ensure_loaded(&self, model_id: &str) -> Result<LoadedModel>;
-
-    /// Run inference (auto-loads if needed via pool)
-    pub async fn infer(&self, model_id: &str, request: &InferenceRequest) -> Result<InferenceResponse>;
-
-    /// Stream inference
-    pub async fn infer_stream(&self, model_id: &str, request: InferenceRequest)
-        -> Result<mpsc::Receiver<Result<String>>>;
-
-    /// List models in local store
-    pub async fn list_stored(&self) -> Result<Vec<StoredModel>>;
-
-    /// List currently loaded/running models
-    pub async fn list_loaded(&self) -> Result<Vec<LoadedModel>>;
-
-    /// Unload a model from engine (keeps in store)
-    pub async fn unload(&self, model_id: &str) -> Result<()>;
-
-    /// Remove a model from store (unloads first if loaded)
-    pub async fn remove(&self, model_id: &str) -> Result<()>;
-
-    /// Import Ollama models into murti store
-    pub async fn import_ollama(&self) -> Result<Vec<StoredModel>>;
-
-    /// Get GPU allocation status
-    pub async fn gpu_status(&self) -> Result<GpuStatus>;
-
-    /// Re-quantize a stored model
-    pub async fn quantize(&self, model_id: &str, level: QuantLevel) -> Result<StoredModel>;
-}
-```
-
-### How Irfan Changes
-
-Irfan's `ifran-core` and `ifran-backends` become thin wrappers around murti:
-
-```toml
-# ifran-core/Cargo.toml
-[dependencies]
-murti = { version = "0.21", features = ["all-backends"] }
-```
-
-```rust
-// ifran-core — model operations delegate to murti
-pub struct ModelManager {
-    murti: Arc<murti::Murti>,
-    // Irfan-specific additions:
-    lineage: LineageTracker,       // Dataset → training → eval → deployment tracking
-    tenancy: TenantManager,       // Multi-tenant resource isolation
-    marketplace: Marketplace,     // Model publishing/discovery
-}
-
-impl ModelManager {
-    pub async fn pull(&self, name: &str, tenant: &TenantId) -> Result<...> {
-        // Tenant quota check, then delegate
-        self.tenancy.check_storage_quota(tenant)?;
-        self.murti.pull(name).await
-    }
-
-    pub async fn infer(&self, model_id: &str, request: &InferenceRequest) -> Result<...> {
-        // Lineage tracking, then delegate
-        self.lineage.record_inference(model_id);
-        self.murti.infer(model_id, request).await
-    }
-}
-```
-
-What stays Irfan-only (not in murti):
-- **Training** — LoRA, QLoRA, full fine-tune, DPO, RLHF, distillation (`ifran-train`)
-- **Evaluation** — MMLU, HellaSwag, HumanEval, perplexity (`ifran-core` eval module)
-- **RAG pipeline** — chunking, embedding, retrieval (`ifran-core` rag module)
-- **Multi-tenancy** — per-tenant isolation, GPU budgets
-- **Lineage tracking** — dataset → training → eval → deployment chain
-- **Marketplace** — model publishing, peer-to-peer sharing
-- **RLHF annotation** — human feedback sessions
-- **Fleet management** — node registration, health states (uses murti's `FleetDistributor` for model push)
-- **SecureYeoman bridge** — bidirectional gRPC delegation
-- **CLI** — `ifran pull/run/train/eval/serve` (wraps murti for model ops)
-- **REST/gRPC API** — port 8420 (wraps murti for model endpoints)
-- **Desktop GUI** — model browser, training dashboard
-
-### How Hoosh Changes
-
-Hoosh replaces `LlamaCppProvider` and `OllamaProvider` with a single `MurtiProvider`:
-
-```rust
-// hoosh providers.rs — replaces LlamaCppProvider + OllamaProvider
-
-pub struct MurtiProvider {
-    murti: Arc<murti::Murti>,
-}
-
-#[async_trait]
-impl LlmProvider for MurtiProvider {
-    async fn infer(&self, request: &InferenceRequest) -> Result<InferenceResponse> {
-        self.murti.infer(&request.model, request).await
-    }
-
-    async fn infer_stream(&self, request: InferenceRequest)
-        -> Result<mpsc::Receiver<Result<String>>>
-    {
-        self.murti.infer_stream(&request.model, request).await
-    }
-
-    async fn load_model(&self, model_id: &str) -> Result<ModelInfo> {
-        let loaded = self.murti.ensure_loaded(model_id).await?;
-        Ok(loaded.into())
-    }
-
-    async fn unload_model(&self, model_id: &str) -> Result<()> {
-        self.murti.unload(model_id).await
-    }
-
-    async fn list_models(&self) -> Result<Vec<ModelInfo>> {
-        let models = self.murti.list_stored().await?;
-        Ok(models.into_iter().map(Into::into).collect())
-    }
-}
-```
-
-Hoosh gains local model management without owning any model lifecycle code. The existing cloud providers (OpenAI, Anthropic, Google, etc.) remain unchanged. Hoosh's routing logic can now seamlessly fall back from local (murti) to cloud when local inference is saturated.
-
-**Hoosh CLI gains** (thin wrappers around murti):
-```
-hoosh pull mistral:7b-q4          # murti.pull()
-hoosh models                       # murti.list_stored()
-hoosh ps                           # murti.list_loaded()
-hoosh rm mistral:7b-q4            # murti.remove()
-hoosh import-ollama               # murti.import_ollama()
-```
-
-**Hoosh API gains** (new endpoints):
-```
-GET    /v1/models/local             # List models in store
-POST   /v1/models/pull              # Trigger async pull (SSE progress stream)
-DELETE /v1/models/:name             # Remove from store
-GET    /v1/models/running           # List loaded models with GPU allocation
-POST   /v1/models/import/ollama     # Import Ollama models
-GET    /v1/models/gpu               # GPU allocation status
-```
-
-## What Ollama Does vs What We Replace It With
-
-| Capability | Ollama | AGNOS (murti + hoosh + Irfan) |
-|---|---|---|
-| Model download/pull | `ollama pull` | **murti** — registry + pull + store |
-| Model storage | `~/.ollama/models/` | **murti** — `/var/lib/agnos/models/` content-addressable |
-| GGUF quantization | Via Modelfile `FROM` | **murti** — 15 quantization levels |
-| Inference backends | llama.cpp only (CGo) | **murti** — 15 backends (llama.cpp, vLLM, TensorRT, Metal, Vulkan...) |
-| GPU layer splitting | Auto VRAM | **murti** — ai-hwaccel, multi-GPU, 10 accelerator families |
-| Model config | Modelfile (custom DSL) | **murti** — TOML configs |
-| Multi-model serving | Auto load/unload | **murti** — LRU pool by VRAM budget |
-| OpenAI-compatible API | Yes (port 11434) | **hoosh** (port 8088) — already done |
-| Streaming | Yes | **hoosh** — already done |
-| Multi-provider fallback | No | **hoosh** — 15 cloud providers + local murti |
-| Per-agent rate limiting | No | **hoosh** — already done |
-| Token budgets | No | **hoosh** — already done |
-| Training | No | **Irfan** — LoRA, QLoRA, DPO, RLHF, distillation |
-| Evaluation | No | **Irfan** — MMLU, HellaSwag, HumanEval, perplexity |
-| Desktop GUI | No | **Irfan** — model browser, training dashboard |
-| Fleet distribution | No | **murti** fleet + daimon edge |
-| Marketplace | No | **Irfan** — model publishing + discovery |
-| Sandboxed inference | No | **murti** + agnosys Landlock/seccomp |
-| Edge fleet | No | **murti** fleet + daimon edge module |
-
-## Model Storage Layout
-
-```
-/var/lib/agnos/models/
-├── index.toml                     # Model index (name:tag → blob SHA)
-├── blobs/
-│   ├── sha256-ab3f...             # Content-addressable GGUF files
-│   └── sha256-cd91...
-├── configs/
-│   ├── mistral-7b-q4.toml        # Per-model configuration
-│   └── llama3-8b.toml
-└── tmp/                           # In-progress downloads (resume support)
-```
-
-### TOML Model Config
-
-```toml
-# configs/mistral-7b-q4.toml
-
-[model]
-name = "mistral"
-tag = "7b-q4_K_M"
-base = "mistral-7b-instruct-v0.2"
-quantization = "Q4_K_M"
-
-[parameters]
-temperature = 0.7
-top_p = 0.9
-top_k = 40
-repeat_penalty = 1.1
-context_length = 8192
-
-[system]
-prompt = "You are a helpful assistant."
-
-[gpu]
-layers = "auto"                    # "auto", "none", or explicit count
-vram_limit_mb = 4096               # Optional per-model VRAM cap
-
-[serve]
-timeout_secs = 300                 # Unload after idle
-batch_size = 512
-threads = 4                        # CPU threads (for non-GPU layers)
-
-[backend]
-prefer = "llama-cpp"               # Backend preference (auto-selected if omitted)
-```
-
-## Dependencies
-
-| Crate | Purpose |
-|-------|---------|
-| `ai-hwaccel` | GPU detection, VRAM queries, accelerator profiles |
-| `reqwest` | HTTP downloads (HuggingFace API, model blobs) |
-| `tokio` | Async runtime, process management |
-| `serde` + `toml` | Model config parsing |
-| `sha2` + `blake3` | Integrity verification (dual hash) |
-| `chrono` | Timestamps |
-| `tracing` | Structured logging |
-| `thiserror` | Error types |
-
-Backend-specific deps are feature-gated. The llama.cpp binary is a system dependency managed by `zugot/ai/llama-cpp.toml`.
-
-## Feature Flags
-
-```toml
-[features]
-default = ["llama-cpp"]
-llama-cpp = []
-ollama-compat = []
-vllm = []
-tensorrt = []
-candle = []
-onnx = []
-metal = []
-vulkan = []
-tpu = []
-gaudi = []
-inferentia = []
-oneapi = []
-qualcomm = []
-xdna = []
-all-backends = ["llama-cpp", "ollama-compat", "vllm", "tensorrt", "candle",
-                "onnx", "metal", "vulkan", "tpu", "gaudi", "inferentia",
-                "oneapi", "qualcomm", "xdna"]
-fleet = []                         # Edge fleet distribution
-```
-
-Hoosh uses `murti = { features = ["llama-cpp"] }` (lightweight). Irfan uses `murti = { features = ["all-backends", "fleet"] }` (full power).
-
-## Security
-
-- **Sandboxed inference**: Backend processes spawned by murti run under Landlock + seccomp via agnosys. Read-only access to model blobs, no network.
-- **Integrity verification**: All downloaded models verified by SHA-256 + BLAKE3 before use.
-- **No arbitrary code execution**: GGUF is a data format. Murti validates magic bytes before loading.
-- **Registry sources**: Configured by consumer (hoosh config or Irfan config), not user-supplied at pull time.
-- **Data sensitivity routing**: Model configs can declare sensitivity level; murti respects routing constraints.
-
-## Migration Path
-
-### Phase 0 — Extract (refactor, no new features)
-- [ ] Create `murti` crate from `ifran-core` model registry, store, pull, lifecycle, GPU allocation
-- [ ] Move `ifran-backends` into `murti::backends` (all 15 backends)
-- [ ] `ifran-core` depends on `murti`, delegates model ops
-- [ ] All existing Irfan tests pass (murti is an extraction, not a rewrite)
-- [ ] Publish `murti` v0.21.0 to crates.io
-
-### Phase 1 — Hoosh Integration
-- [ ] `MurtiProvider` in hoosh replaces `LlamaCppProvider` + `OllamaProvider`
-- [ ] `hoosh pull/models/ps/rm` CLI commands
-- [ ] `/v1/models/*` API endpoints in hoosh
-- [ ] Hoosh integration tests with murti
-- [ ] Remove dead `LlamaCppProvider` and `OllamaProvider` from hoosh
-
-### Phase 2 — Polish
-- [ ] `OllamaCompat` import (models + Modelfile → TOML conversion)
-- [ ] `ModelPool` LRU eviction by VRAM budget
-- [ ] Edge fleet model distribution via `murti::fleet` + daimon
-- [ ] MCP tools: `murti_pull`, `murti_list`, `murti_status`, `murti_recommend`
-- [ ] Agnoshi intents: "pull llama3", "what models are loaded", "recommend a model for code"
-
-### Phase 3 — Advanced Inference (see also: Roadmap Phase 17)
-- [ ] Candle backend (pure Rust GGUF runtime — no llama.cpp dependency)
-- [ ] Speculative decoding (draft + verify model pairs)
-- [ ] LoRA adapter hot-swap (switch adapters without reloading base model)
-- [ ] Safetensors → GGUF on-pull conversion
-
-### Phase 4 — Activation Sparsity (PowerInfer-inspired, Roadmap Phase 17A)
-
-Exploit neuron activation locality to run large models (40B–175B) on consumer GPUs. Inspired by [PowerInfer](https://github.com/Tiiny-AI/PowerInfer) but integrated across the AGNOS stack (agnosys, ai-hwaccel, hoosh).
-
-- [ ] Neuron activation profiler — offline analysis to identify hot/cold neuron sets per layer
-- [ ] Sparse FFN operators — CPU (AVX2/NEON) and GPU (CUDA/ROCm) kernels that skip inactive neurons
-- [ ] Adaptive neuron predictor — lightweight model bundled alongside weights, predicts per-input activation
-- [ ] GPU-CPU hybrid split — hot neurons persistent on GPU, cold neurons computed on CPU on-demand
-- [ ] PowerInfer GGUF import — read PowerInfer-format models with embedded predictor weights
-- [ ] TurboSparse conversion — `murti quantize --sparsify` for SwiGLU→ReLU model conversion (watching upstream maturity)
-
-**Limitation**: Currently only viable for ReLU-family activation models. TurboSparse extends this to SwiGLU models but is not yet production-quality for all architectures. Track progress in Roadmap Phase 17 Maturity Watch List.
-
-**Why murti can outperform PowerInfer**: PowerInfer runs on generic Linux with a llama.cpp fork. Murti coordinates with agnosys (huge-page buffers, GPU memory pinning), ai-hwaccel (NUMA-aware placement, thermal monitoring), and hoosh (cloud fallback when local inference saturates). Full-stack co-optimization is not possible in a standalone engine.
-
-### Phase 5 — System Co-optimization (Roadmap Phase 17C)
-- [ ] Huge-page model buffers via agnosys (2MB/1GB pages, reduced TLB misses)
-- [ ] GPU memory pinning (persistent hot neuron allocation survives idle)
-- [ ] NUMA-aware cold neuron placement (GPU-local NUMA node for CPU fallback)
-- [ ] Inference-priority cgroup profiles via argonaut
-- [ ] Thermal-aware load shedding to cloud via hoosh
-- [ ] Edge-optimized profiles for constrained devices (RPi, Pocket Lab-class)
+**Decision: hoosh's local-inference provider IS the murti prototype.** Build the seam inside hoosh's local path first. Do **not** scaffold a murti repo. Extraction becomes a live question only when (a) the Type-3 importer exists (murti has nothing to load until then) **and** (b) a real second consumer with running code needs the seam independently of hoosh. Until both hold, "murti survives as a repo" is an open question, not a plan.
 
 ---
 
-*Last Updated: 2026-03-24. Verified 2026-05-09: design intent unchanged; murti at 0.1.0 scaffold per [`shared-crates.md`](shared-crates.md). Consumer dependencies all at v1.0+ stable (hoosh 2.0.0, ifran 1.3.0, ai-hwaccel 2.0.0).*
+## 1. What the seam owns vs must NOT own
+
+### The seam (whether it lives in hoosh or, later, in murti)
+
+```
+   sovereign weight file (Type-3 format, sigil-signed header)
+              │
+              ▼
+   ┌────────────────────────────────────────────────┐
+   │        load↔place↔dispatch↔pool seam            │
+   │                                                  │
+   │  load    — validate magic + sigil signature,     │
+   │            mmap payload, drive the Type-3         │
+   │            importer, hold tensor handles         │
+   │  place   — ask ai-hwaccel: devices / VRAM / plan;│
+   │            ask mabda for GPU buffers when needed  │
+   │  dispatch— fork on declared arithmetic:          │
+   │              f64 model     → rosnet forward       │
+   │              ternary model → tentib kernel        │
+   │  pool    — resident-model registry, VRAM-budget   │
+   │            LRU eviction, idle-unload, LoRA swap    │
+   └────────────────────────────────────────────────┘
+              │
+              ▼
+        logits / token stream  ──►  hoosh (serving, routing, budgets, cloud fallback)
+```
+
+1. **Load** — validate the sovereign weight file (magic + **sigil**-verified signed header = the trust boundary), mmap the payload, drive the Type-3 importer to map tensor names onto the model layout, hold the live tensor handles. The seam *calls* the importer; it does not *own* the format spec (that is Type-3's).
+2. **Place** — query **ai-hwaccel** for the device/VRAM/placement plan and **mabda** for concrete GPU allocations. The seam *consumes* placement intelligence; it does not *compute* it.
+3. **Dispatch** — the arithmetic fork: route the forward pass to **rosnet** (f64) or **tentib** (ternary/integer) based on the weight file's declared kind + the placement plan. Today a branch; a subsystem only if it grows.
+4. **Pool** — the resident-model lifecycle: which models are loaded where, VRAM-budget LRU eviction, idle-timeout unload, crash-reload, and **LoRA adapter hot-swap** over a resident base (adapter *construction* is Type-3's; live *swap* is this seam's).
+
+### What the seam must NOT own
+
+| Concern | Owner | Why not here |
+|---|---|---|
+| **Training** (SFT, LoRA/QLoRA *fit*, DPO/RLHF, distillation, pretrain) | attn11 / tarka / prajna / tentib (math) + **ifran-control-plane** (orchestration) | The seam runs a finished weight file; it never computes a gradient. |
+| **Weight-file format spec + importer + NF4/LoRA construction** | **Type-3 "Pre-Trained" reference** (`generative-paradigms.md`) | The seam *consumes* the codec; owning the format couples the engine to the paradigm. |
+| **Serving API** (OpenAI-compat, streaming, routing, caching, rate-limit, budgets, per-agent accounting, cloud fallback) | **hoosh 2.4.11** | Already shipped. The seam returns logits/tokens; hoosh makes a served product. No HTTP here. |
+| **Marketplace** (publish/discover/sign models) | **mela 1.0.1** | Distribution ≠ execution. |
+| **GPU primitives** (kernels, buffers, GFX9/wgpu) | **mabda 3.4.5** | The seam asks mabda for buffers/kernels; never writes a GPU kernel. |
+| **Accelerator detection + placement planning** | **ai-hwaccel 2.3.12** | The seam consumes the plan. The Rust `GpuAllocator`'s VRAM-query/layer-split logic moves out to ai-hwaccel. |
+| **Model / checkpoint store** (content-addressable blobs, index, dedup, eviction) | **ifran-control-plane** (writes checkpoints) with container = **vahana/sankoch**, hashing = **sigil** | A *stateful store* is a different artifact from the *codec* (Type-3) — do not fold the store into the format. The seam *loads what is on disk*; it is not the store. |
+| **The foreign GGUF/llama.cpp path** | **mehman** (foreign surfaces sandboxed in **kavach**, the swallow/compat stage) | **Load-bearing doctrine call:** a model AGNOS cannot import sovereignly is a **mehman/compat concern reached *around* this seam, never *through* it.** The seam dispatches ONLY to sovereign kernels (rosnet/tentib). The moment it spawns a llama.cpp path it is a broker again — the very thing being killed. |
+| **Lineage / provenance** | **itihas** (via ifran-control-plane) | Runtime dispatch is not provenance. |
+| **Fleet / edge model distribution** | **seema** (fleet) + **daimon** (edge orchestration) | Pushing weights across a fleet is distribution, not local embodiment. The Rust `murti::fleet` module is removed. |
+| **The 14 other external backends** (vLLM/TensorRT/Metal/TPU/Gaudi/…) | **Deleted.** | Rust-era hardware-vendor coupling the sovereign kernels + mabda now cover natively. |
+
+**The polarity inversion in one line:** the Rust murti's public API centered on `pull()` / `import_ollama()` / `quantize()` (acquisition + format-wrangling); the sovereign seam centers on `load()` / `dispatch()` / `pool` (embodiment). Acquisition and format move to Type-3; the foreign path moves to mehman; only *making a loaded sovereign model run* stays.
+
+---
+
+## 2. Revised Cyrius dependency set
+
+No Cargo. No reqwest / tokio / serde / thiserror / tracing / chrono / sha2 / blake3 crates. No feature-gated backend zoo. **No kavach** — because the seam does not host the foreign path (that is mehman's), it spawns no sandboxed foreign process and needs no sandbox dependency.
+
+| Cyrius dep | Role | Replaces (Rust-era) |
+|---|---|---|
+| **rosnet** | f64 tensor forward path (default dispatch target); GPU forward via its mabda-gated `[lib.gpu]` profile | the entire `backends/` f64 story (Candle, direct-GGUF f32) |
+| **tentib** | matmul-free **integer** forward path (ternary / int8) — correctness-ready; throughput gated on cyrius int-SIMD | — (no Rust-era equivalent) |
+| **ai-hwaccel** | device enumeration, VRAM query, placement plan | Rust `ai-hwaccel` + absorbs murti's old `GpuAllocator` split logic |
+| **mabda** | GPU buffers/kernels behind ai-hwaccel's plan | the CUDA/ROCm/Vulkan/Metal FFI backends (all deleted) |
+| **sigil** | verify the signed weight-file header (trust boundary at load) | `sha2` + `blake3` crates |
+| **sandhi** | any socket/HTTP a fetch needs (transport only) | `reqwest` + `tokio` net |
+| **akshara** | tokenizer handle passed through to the dispatched forward | — |
+| **chitra** | image decode when a loaded model is multimodal (future, gated on multimodal) | — |
+| **sakshi** | structured runtime logging | `tracing` |
+| **CYML** (`cyrius.cyml`) | model config + manifest parsing | `serde` + `toml` |
+
+**Type-3 importer coupling** is at the ABI/contract level (the seam calls "importer, give me tensor handles from this mmap"), never by vendoring the codec — monolithic-by-design. While the codec is not yet its own extracted lib, the seam and the importer may co-live in the Type-3 reference.
+
+---
+
+## 3. Phased roadmap (prototype-in-hoosh first)
+
+Every milestone is CPU-f64-first (no GPU gate) except where noted, mirroring the sibling discipline. **Nothing opens before the Type-3 importer exists**, and the early milestones live **inside hoosh's local-inference provider**, not a murti repo.
+
+- **M0 — Load & validate (in hoosh's local provider).** Read a sovereign weight file: validate magic, verify the sigil-signed header (reject unsigned/tampered), mmap the payload, drive the Type-3 importer, hold tensor handles. Prove a loaded model round-trips to correct logits via rosnet on a tiny attn11-class checkpoint. *This is also the inference path the Type-3 importer needs to prove itself — it is a **precondition** of the importer test, not a downstream phase.*
+- **M1 — Dispatch fork.** Read the weight file's declared arithmetic; route f64 → rosnet, ternary → tentib. Prove both paths return correct logits, selected automatically. **Gate:** tentib's kernel is *correctness*-ready now but *throughput*-gated on the cyrius integer-SIMD proposal (toolchain is f64-only, 2-wide SSE2) — the ternary path is a correct-logits target immediately, a fast target only once int-SIMD lands.
+- **M2 — Placement query.** Consume ai-hwaccel's plan; when GPU-resident, obtain buffers from mabda and run rosnet's `[lib.gpu]` forward. CPU-only when no accelerator. *GPU branch gated on mabda 3.x + rosnet GPU path; the CPU branch ships regardless.*
+- **M3 — The pool (resident lifecycle).** Multi-model residency registry, VRAM-budget LRU eviction, idle-unload, crash-reload. **This is the extraction checkpoint:** if a real second consumer (ifran-control-plane's post-train eval-load) now drives this path independently of hoosh, *this* is where murti becomes its own repo. If not, it stays in hoosh.
+- **M4 — LoRA adapter hot-swap.** Swap a Type-3-produced adapter over a resident base without reloading the base.
+- **M5+ (research-watch, demand-gated).** Activation-sparsity / hot-cold split as a *third dispatch target* (co-optimized with ai-hwaccel NUMA + mabda pinning) — **re-scoped** from the Rust doc's PowerInfer/llama.cpp-fork framing to the sovereign kernels; dequant-on-the-fly for imported int4/int8; multimodal input decode via chitra. All demand-gated, held to sibling discipline.
+
+> **Note:** the Rust doc's M5 "spawn a foreign GGUF/llama.cpp runner" is **deleted**. The foreign path is mehman's, reached around this seam, never through it.
+
+---
+
+## 4. What changed vs the Rust-era doc
+
+| Rust-era murti (2026-03-24) | Sovereign seam (this doc) |
+|---|---|
+| **Value prop = broker for 15 external backends.** | **Value prop = the load↔place↔dispatch↔pool seam over the *sovereign* kernels** (rosnet-f64, tentib-integer). The 15 backends are deleted; the foreign path moves to mehman. |
+| A committed Priority-1 crate, "scaffolded 0.1.0," extract-from-ifran-now. | **Repo existence is an OPEN QUESTION.** Prototype lives in hoosh's local provider; extraction is second-consumer-gated behind the Type-3 importer. Do not scaffold. |
+| Extract engine **from ifran-core / ifran-backends** (a Rust refactor). | **Greenfield Cyrius seam.** Nothing is "extracted from ifran"; ifran becomes the *training control plane*, not the seam's parent. |
+| Owned `pull` / `PullManager` / HTTP downloads (reqwest+tokio). | **No acquisition.** Fetch (if any) routes to Type-3 / vahana / sankoch via **sandhi**. Loads what is on disk. |
+| Owned `quantize` (15 GGUF levels) + `OllamaCompat` + `import_ollama`. | **Removed.** Import-quant (NF4/QLoRA) is Type-3; train-to-integer is tentib; Ollama/GGUF import is **mehman's** compat seam, not here. |
+| Owned `GpuAllocator` (VRAM query + layer split). | **Moved to ai-hwaccel.** The seam keeps only *residency bookkeeping* (the pool). |
+| Owned `murti::fleet`. | **Removed** — fleet is **seema** + **daimon**. |
+| Owned the model store (`ModelStore`, content-addressable blobs). | **Moved.** The stateful store is the control-plane's (container vahana/sankoch, hashing sigil); the seam is not a store. |
+| `sha2` + `blake3` for integrity. | **sigil** verifies the signed header. |
+| Foreign-engine compat seam owned by murti (spawn llama.cpp in a sandbox). | **Owned by mehman** (kavach-sandboxed), reached *around* the seam — never inside it. `kavach` drops from the dependency set. |
+| Sandbox via **agnosys**. | N/A (no foreign process here); sandboxing of the foreign path is mehman/kavach's. |
+| Deps: reqwest, tokio, serde, toml, sha2, blake3, chrono, tracing, thiserror + 14 backend SDKs. | Deps: rosnet, tentib, ai-hwaccel, mabda, sigil, sandhi, akshara, chitra, sakshi, CYML. **Zero external crates, zero vendor SDKs, zero foreign engines.** |
+| Model config = **TOML**. | Model config = **CYML**. |
+| Consumers: **hoosh + Irfan** share murti; Irfan owns training. | Consumers: **hoosh (serving)** is the sole live consumer and the prototype host; **ifran-control-plane** is the *projected* second consumer that would justify extraction; the sovereign siblings + ifran own training; mela owns marketplace. |
+| "Ollama replacement" framing. | **Sovereignty framing:** run inference on kernels AGNOS owns from the metal up. Foreign paths are mehman's sandboxed compat courtesy, not the product. |
+| Name `murti` (मूर्ति) = "runtime broker." | **Name kept but reserved**, re-anchored to *embodiment* (weight-file-at-rest → running form). Reserving the name ≠ committing to the repo. |
+
+---
+
+## 5. Open questions (surface, don't decide)
+
+1. **Does the seam ever earn a separate murti repo, or live in hoosh permanently?** Deferred until (a) the Type-3 importer exists and (b) a real second consumer needs the load↔dispatch path independently of hoosh. Today: prototype in hoosh.
+2. **Is the model/checkpoint store the control-plane's, or its own thing?** This doc homes it to the control plane (container vahana/sankoch, hashing sigil); confirm when the control-plane port opens (see the audit's ifran section).
+3. **Name vs repo:** `murti` is reserved in the naming registry; it does not obligate a repo to exist.
+
+---
+
+*Re-architected 2026-07-01 onto the sovereign Cyrius substrate; supersedes the 2026-03-24 Rust-era draft. Sovereign-core primary, foreign path to mehman (never here), sibling-not-chain, second-consumer extraction, demand-gated. Live substrate versions: rosnet 0.2.0, tentib 0.4.0, ai-hwaccel 2.3.12, mabda 3.4.5, hoosh 2.4.11, mela 1.0.1 — verify against [`state.md`](../state.md).*
