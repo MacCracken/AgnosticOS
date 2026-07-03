@@ -1,6 +1,6 @@
 # agnos 1.52.x — Audio-output arc (HDA)
 
-> **Status**: Scoped 2026-06-29 (multi-agent research, source-grounded — real `file:line` + live `lspci`/`/proc/asound` reads). **Caveat**: the synthesis/adversarial-verify pass of the research workflow failed (StructuredOutput retry cap); this doc is synthesized from the four completed, source-grounded **map** outputs — the milestone gates are author-synthesized, not independently verify-passed. The HDA map self-identified the risky parts (codec graph, BDL timing, WC/UC mapping), which is most of what a verify pass would surface. | **Slot**: agnos **1.52.x** (near-term AMD-line feature arc, user-chosen). | **Roadmap phase**: hardware/feature (audio).
+> **Status**: Scoped 2026-06-29 → **✅ VERIFY-PASSED 2026-07-03.** The adversarial-verify pass that failed at scoping time (StructuredOutput retry cap) was **re-run and completed** (16-agent workflow: 6 source-grounded maps → 9 adversarial verdicts → synthesis). **The authoritative implementation plan now lives in [`audio-arc-152x-plan.md`](audio-arc-152x-plan.md)** — this doc is the "why/scope"; that doc is the verified "how". **Corrections the verify pass surfaced (fixed in the plan doc, flagged here):** (1) **SDnFMT `0x4011` is 44.1kHz, NOT 48kHz** — 48k/16/2ch is **`0x0011`** (`0x4011` is correct *only* on the DOOM 44100 path); (2) the front jack is **HP-Out (`0x2`), not Line-Out** — the "pick Line-Out" rule is REFUTED (see the ⚠ note on the Output line below); (3) output-stream base = `0x80 + ISS*0x20` computed from live GCAP, not hardcoded; (4) EAPD (`0x70c`=`0x2`) + the NID-0x20 COEF bit5-clear are the "enumerates-but-silent-on-iron" gate; (5) the syscall band is **`#64–#69`** (see the Gate-2 banner). | **Slot**: agnos **1.52.x** (near-term AMD-line feature arc, user-chosen). | **Roadmap phase**: hardware/feature (audio).
 
 ## Why & where
 
@@ -10,7 +10,7 @@ Audio is **absent** from the agnos roadmap (greenfield — no `hda`/`sound` file
 
 - **Controller**: `04:00.6` AMD Ryzen HD Audio `[1022:15e3]` — a **standard HDA/Azalia** controller (Intel HD Audio register spec, portable AMD/Intel; Linux binds it `HD-Audio Generic`). **Not** the ACP DSP (`04:00.5`) or HDMI audio (`04:00.1`).
 - **Codec**: **Realtek ALC897** (`0x10ec0897`) — bog-standard HDA codec, enumerated over CORB/RIRB verbs; no AMD-proprietary quirks for basic stereo PCM.
-- **Output**: the **front headphone jack** (user-confirmed) is the ALC897's line-out — the real on-iron "hear a tone" target. HDA codecs expose the front jack as a **separate pin widget** (often with jack-presence detect), so the codec-graph walk must route DAC → the *front-panel output pin*, not just the first pin found (QEMU's single-output codec quietly skips this — an iron-only concern).
+- **Output**: the **front headphone jack** (user-confirmed) is the real on-iron "hear a tone" target. **⚠ CORRECTION (verify pass 2026-07-03):** it is almost certainly tasked **HP-Out (`default_device`=`0x2`), NOT Line-Out (`0x0`)** — on a real ALC897 the nominal analog line-out pin (`0x14`) is frequently retasked to Speaker by board firmware. The codec-graph walk must **accept BOTH HP-Out and Line-Out candidate pins**, reject `port_conn==NONE`, prefer `location==Front` + jack-detect, and resolve the DAC via a real connection-list walk — **not** "pick the Line-Out pin at the lowest sequence" (REFUTED). HDA exposes the front jack as a **separate pin widget** (often with jack-presence detect); QEMU's single-output codec quietly skips all of this (iron-only concern). **A live archaemenid `GET_CFGDEF` dump must confirm which node is the front jack before B2 routing is frozen.**
 
 ## The four gates
 
@@ -28,9 +28,11 @@ Flat in `core/` like `nvme.cyr`/`ahci.cyr`/`r8169.cyr` (a `core/audio/` subdir i
 
 **Hardest parts** (from the map): the codec widget-graph walk (B2), BDL/ring timing + refill cadence (mismatch = silent-or-garbage with no fault; oversize the ring early), the WC-vs-UC mapping discipline, and the QEMU-vs-iron codec divergence.
 
-### Gate 2 — sovereign ring-3 audio syscall band `#63–#68`
+### Gate 2 — sovereign ring-3 audio syscall band `#64–#69`
 
-`#63+` is the next free contiguous band (`#44` is the lone gap; net band ends `#57`; `#58-62` = lseek/flock/winsize/net_config/exec_redirect). Mirrors the **net band template** exactly (flat `if (num==K)` dispatch arm per verb, `is_user_range()` gating every ring-3 buffer, `a4=r10` via `ksyscall_a4_get()`, blocking calls in the proven `sleep_ms#41` sti-window `preempt_disable; sti; poll+arch_wait; cli; preempt_enable` — the `sock_connect#47` recipe; a small `snd_id 0..3` slot table auto-released on proc exit, the `flock_release_pid` precedent):
+> **⚠ BAND SHIFTED +1 (2026-07-03, arc-open).** This doc was scoped 2026-06-29 with the band at `#63–#68`, but **`symlink#63` landed at 1.51.0** (taking the then-next-free `#63`). The audio band therefore shifts to **`#64–#69`**: `snd_open`#64 · `snd_config`#65 · `snd_write`#66 · `snd_close`#67 · `snd_drain`#68 · `snd_avail`#69. Every `#63-68` / `snd_config#64` reference below is off by one — re-derive from `#64` at implementation (the plan already flags "re-read the ABI before implementation").
+
+`#64+` is the next free contiguous band (`#44` is the lone gap; net band ends `#57`; `#58-62` = lseek/flock/winsize/net_config/exec_redirect; `#63` = `symlink`). Mirrors the **net band template** exactly (flat `if (num==K)` dispatch arm per verb, `is_user_range()` gating every ring-3 buffer, `a4=r10` via `ksyscall_a4_get()`, blocking calls in the proven `sleep_ms#41` sti-window `preempt_disable; sti; poll+arch_wait; cli; preempt_enable` — the `sock_connect#47` recipe; a small `snd_id 0..3` slot table auto-released on proc exit, the `flock_release_pid` precedent):
 
 | # | Verb | Shape |
 |---|---|---|
