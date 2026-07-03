@@ -99,7 +99,7 @@ hoosh; GPU → mabda/ai-hwaccel; real hashing → sigil; provider routing → ho
 | **tarka** | Multi-armed bandits / Thompson sampling | med | seeds the black-box-opt continuum |
 | **tarka** | pass@k unbiased binomial estimator | low | the one real eval nugget (perplexity already in attn11) |
 | **tyche** | DP noise (Gaussian/Laplace, ε-budget) | low | seema-gated; see `generative-paradigms.md` federated bullet |
-| **attn11** | speculative decoding · EDA text-aug | low | mines planned features; gated on attn11 reopening |
+| **attn11** | speculative decoding (DSpark ref) · EDA text-aug | low→med | now a full map: [`speculative-decoding.md`](speculative-decoding.md) — DeepSeek DSpark (2026-06) upgraded it to a concrete reference arch, homed as an attn11 **decode lane** reusing MTP heads + the KD objective; still gated on attn11 reopening |
 | **abaco** | z/t-test CDF · robust-aggregation stats | low | non-sibling system-math home |
 
 ### New-lib candidates (names deferred — second-consumer-triggered)

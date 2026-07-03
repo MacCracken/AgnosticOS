@@ -53,6 +53,8 @@ The sovereign ML/AI work runs as a **separate thread** from the kernel arc above
 
 Other siblings (unchanged this thread): tarka 1.0.0 (RL), prajna 1.0.0 (meta), tentib 0.4.x (ternary — int-SIMD gate on cyrius), amuzesh 0.1.0 (classical). anukūlana pins cyrius **6.3.31** (to pick up the folded ganita fix). The three open ML gaps stay: Type-3 (this chain, M1 done), the ifran control-plane port, the puka model-studio GUI.
 
+**Mapped-but-unbuilt lane (2026-07-03):** DeepSeek **DSpark** (speculative decoding) was investigated and homed as an **attn11 decode lane** (not a new sibling) — it reuses attn11's MTP heads (self-speculative draft) + planned KD objective (draft training); correctness gate = losslessness; load-aware verification splits to hoosh/murti. Forward-design map: [`planning/speculative-decoding.md`](planning/speculative-decoding.md). **Gated on attn11 reopening** (parked at infra-only M20) — design reserved, build not triggered.
+
 ---
 
 ## Active sweeps

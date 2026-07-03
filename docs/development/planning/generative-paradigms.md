@@ -360,8 +360,11 @@ misses, and they are the **spine** the capability lanes hang off:
   Coconut** (reason in latent space — depth / continuous-thought, not CoT tokens);
   **rStar-Math** (self-evolved MCTS, a 7B beats o1-preview, no big teacher);
   **speculative decoding** (lossless accel — the substrate that makes all the
-  above affordable on-device). *The allocation/search policy is a planning knob
-  the agent owns and budgets.*
+  above affordable on-device) — **promoted to a forward-design reference 2026-07-03
+  → [`speculative-decoding.md`](speculative-decoding.md)** after DeepSeek DSpark,
+  homed as an **attn11 decode lane** (reuses the MTP heads as the self-speculative
+  draft). *The allocation/search policy is a planning knob the agent owns and
+  budgets.*
 - **Alignment the device owns**: **DPO** (alignment as one contrastive log-ratio
   loss — no reward model, no sampler — the most attn11-shaped objective here);
   **KTO** (unpaired thumbs-up/down — the *edge-adaptation* objective: tune locally
