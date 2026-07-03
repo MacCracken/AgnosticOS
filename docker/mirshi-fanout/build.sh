@@ -15,11 +15,14 @@ repos="$(cd "$here/../../.." && pwd)"          # ~/Repos (agnosticos/docker/mirs
 img="${IMG:-agnos-mirshi-fanout}"
 
 # "name : repo-subdir : agnos-ELF (relative to repo) : build-hint"
-# Run-once tools (iam, kii) are exercised by smoke.sh; server tools (agora) by
-# serve-smoke.sh — mirshi's net band lets an agnos server accept in a container.
+# Run-once tools (iam, kii, agnsh) are exercised by smoke.sh; server tools
+# (agora, descent) by serve-smoke.sh — mirshi's net band lets an agnos server
+# accept in a container. NOTE agnsh's entry is src/agnsh.cyr (not src/main.cyr,
+# which is dead legacy) — the only tool here that doesn't build from src/main.cyr.
 TOOLS=(
     "iam:iam:build/iam_agnos:cd ~/Repos/iam && cyrius build --agnos src/main.cyr build/iam_agnos"
     "kii:kii:build/kii_agnos:cd ~/Repos/kii && cyrius build --agnos src/main.cyr build/kii_agnos"
+    "agnsh:agnoshi:build/agnsh_agnos:cd ~/Repos/agnoshi && cyrius build --agnos src/agnsh.cyr build/agnsh_agnos"
     "agora:agora:build/agora_agnos:cd ~/Repos/agora && cyrius build --agnos src/main.cyr build/agora_agnos"
     "descent:cyrius-yeomans-descent:build/descent-agnos:cd ~/Repos/cyrius-yeomans-descent && cyrius build --agnos src/main.cyr build/descent-agnos"
 )

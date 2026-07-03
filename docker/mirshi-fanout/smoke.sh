@@ -6,6 +6,7 @@
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
+repos="$(cd "$here/../../.." && pwd)"          # ~/Repos (for host-side artifact checks)
 img="${IMG:-agnos-mirshi-fanout}"
 caps=(--cap-add=SYS_PTRACE --security-opt seccomp=unconfined)
 
@@ -27,6 +28,34 @@ if [ "$bytes" -gt 1000 ]; then
     echo "OK: kii renders ($bytes bytes of ANSI art)"
 else
     echo "FAIL: kii produced $bytes bytes"; fail=1
+fi
+
+echo "== agnsh --version (the sub-megabyte sovereign AI shell) =="
+if run /bin/agnsh --version | grep -q "agnoshi"; then
+    echo "OK: agnsh reports $(run /bin/agnsh --version)"
+else
+    echo "FAIL: agnsh --version"; fail=1
+fi
+
+echo "== agnsh REPL (parse a built-in over stdin, then exit — no QEMU) =="
+# agnsh is interactive; pipe a built-in + exit into `docker run -i`. The built-ins
+# (help/mode/version/history/clear/exit) run in the REPL loop — unlike `-c CMD`,
+# which routes through the AI-translate pipeline. Asserts it reads stdin, parses
+# `help`, renders the menu, and exits clean.
+sh_out="$(printf 'help\nexit\n' | docker run --rm -i "${caps[@]}" "$img" /bin/agnsh 2>/dev/null)"
+if echo "$sh_out" | grep -qi "Built-ins"; then
+    echo "OK: agnsh REPL parsed 'help' + exited ($(echo "$sh_out" | head -1))"
+else
+    echo "FAIL: agnsh REPL did not respond"; fail=1
+fi
+
+echo "== agnsh sub-megabyte gate (the whole AI shell as one static agnos ELF) =="
+agnsh_elf="$repos/agnoshi/build/agnsh_agnos"
+sz="$(wc -c <"$agnsh_elf")"
+if [ "$sz" -lt 1048576 ]; then
+    echo "OK: agnsh is $sz bytes ($((sz / 1024)) KB) — sub-megabyte sovereign shell"
+else
+    echo "FAIL: agnsh is $sz bytes (>= 1 MB)"; fail=1
 fi
 
 echo "== fanout (8x iam, concurrent, no QEMU) =="

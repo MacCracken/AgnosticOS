@@ -38,14 +38,15 @@ is *not* "the agnos kernel works" — that's net-sweep/sched-sweep/iron.
 |---|---|---|
 | **iam** | `/bin/iam` | info-getter band (`uname#34`/`sysinfo#35`/`getuid#15`) + native CPUID. The **GPU line is absent by design** — the accelerator manifest (agnos#89, a hardware-manifest read) has no answer under mirshi (no agnos hardware model). |
 | **kii** | `/bin/kii /data/ramgon.png [--width N]` | fs read (`open`/`read`), `winsize#60`, ANSI render. Renders an ~8 KB halfblock frame. |
+| **agnsh** | `/bin/agnsh` (REPL over stdin) · `--version` | The **sub-megabyte sovereign AI shell** — the whole agnoshi shell as a single ~268 KB agnos-target ELF (< 1 MB, no OS underneath). Interactive: pipe a line into `docker run -i`; the built-ins (`help`/`mode`/`version`/`history`/`clear`/`exit`) run in the REPL loop. `-c CMD` routes through the AI-translate pipeline instead. Entry is `src/agnsh.cyr`. |
 
-Deferred:
-- **descent** (MUD, `serve <port>`) — a server: mirshi net band + epoll. Needs
-  the `--net`/`--net-listen-any` run mode + a telnet-client assert (a different
-  invocation class than the run-once tools) — the next tool to land here.
-- **agora** (BBS) — **fork-per-accept**; no `agora_agnos` build yet (blocked on
-  the agnos `spawn#3`/`waitpid#4` adaptation of its accept loop). Out until it
-  builds `--agnos`.
+Servers — run by [`serve-smoke.sh`](serve-smoke.sh) (a different invocation class than
+the run-once tools): mirshi's supervisor-emulated net band lets an agnos server
+`accept` inbound in a `FROM scratch` container with a published port, no QEMU:
+- **agora** (BBS, `serve <port> --store …`) — **serial-accept on agnos** (no fork:
+  handles each connection to completion, then loops).
+- **descent** (MUD, `serve <port>`) — single-process epoll; reads its world from the
+  image's absolute `/data/zones` + `/data/classes.cyml`.
 
 ## Prerequisites
 
@@ -54,6 +55,9 @@ Deferred:
   - `~/Repos/mirshi` — built here by `build.sh` (always current).
   - `~/Repos/iam/build/iam_agnos` — `cd ~/Repos/iam && cyrius build --agnos src/main.cyr build/iam_agnos`
   - `~/Repos/kii/build/kii_agnos` — `cd ~/Repos/kii && cyrius build --agnos src/main.cyr build/kii_agnos`
+  - `~/Repos/agnoshi/build/agnsh_agnos` — `cd ~/Repos/agnoshi && cyrius build --agnos src/agnsh.cyr build/agnsh_agnos` (note: `src/agnsh.cyr`, not `src/main.cyr`)
+  - `~/Repos/agora/build/agora_agnos` — `cd ~/Repos/agora && cyrius build --agnos src/main.cyr build/agora_agnos` (server; serve-smoke.sh)
+  - `~/Repos/cyrius-yeomans-descent/build/descent-agnos` — `cd ~/Repos/cyrius-yeomans-descent && cyrius build --agnos src/main.cyr build/descent-agnos` (server; serve-smoke.sh)
 
   `build.sh` fails loud with the exact command if a tool ELF is missing (it
   **stages** release artifacts — it does not resolve each tool's cross-repo deps).
