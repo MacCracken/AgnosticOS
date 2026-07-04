@@ -56,7 +56,7 @@ The role map below is for orientation. **Versions are intentionally omitted** â€
 | **mabda** | GPU foundation library | **Ported** |
 | **daimon** | Agent orchestrator, MCP tools | **Ported** |
 | **agnoshi** | AI shell | **Ported** |
-| **aethersafha** | Wayland compositor | Pending |
+| **aethersafha** | Wayland compositor | **Porting** (0.5.0 â€” built-in-apps framework; backends bhumi 1.0.0 + mehman 1.0.0) |
 | **ark** | Package manager | **Ported** |
 | **nous** | Package resolver | **Ported** |
 | **takumi** | Build system | **Ported** |

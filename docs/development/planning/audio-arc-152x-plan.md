@@ -311,7 +311,11 @@ The cyrius `vani` audio library gets an agnos backend that calls `snd_open#64 �
 
 ### Gate 4 — un-gate cyrius-doom's sound
 
-`cyrius-doom` currently carries three `#ifdef CYRIUS_TARGET_AGNOS → return 0` guards that stub audio out on agnos. Gate 4 removes them so DOOM initializes its audio path (which already produces 44100-stereo-S16 in `audio_tick`) and routes it through the vani agnos backend → the band → the ALC897 front jack. **Acceptance = the arc headline: DOOM runs with sound on iron.** This is validated only on archaemenid (QEMU proves the transport; the front-jack routing + EAPD/COEF/GPIO are iron-only).
+`cyrius-doom` currently carries three `#ifdef CYRIUS_TARGET_AGNOS → return 0` guards that stub audio out on agnos (`src/audio.cyr:118` + `src/audio.cyr:270` + `src/sound.cyr:39`). Gate 4 removes/rewires them so DOOM initializes its audio path (which already produces 44100-stereo-S16 in `audio_tick`) and routes it through the vani agnos backend → the band → the ALC897 front jack. **The `--agnos` build must be updated to consume the sound drivers** (not just un-guarded — actually wired to vani's agnos backend).
+
+**★ cyrius-doom is the FIRST thing to test once audio works** (user directive 2026-07-03), and it has a dedicated fast path: **`cyrius-doom --audio-test`** (`src/main.cyr:240`) plays **6 SFX + an L/R stereo-pan sweep (~8 s) WITHOUT launching the full game** — the tightest end-to-end audio-path check (WAD `DS*` PCM → vani → `snd_*` band → HDA → front jack). Use `--audio-test` as the first Gate-4 validation, *then* full `cyrius-doom` for the headline.
+
+**Acceptance = the arc headline: DOOM runs with sound on iron.** Validated only on archaemenid (QEMU proves the transport; front-jack routing + EAPD/COEF/GPIO are iron-only).
 
 ---
 
