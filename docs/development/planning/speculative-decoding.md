@@ -208,6 +208,10 @@ concrete feeder into the seema / desktop on-device story).
 - **Inherits attn11's discipline:** Cyrius-native, no BLAS / libc / autodiff;
   trained parts FD-gated; the loop distribution-gated; benchmarked vs a named
   reference (DSpark / EAGLE numbers).
+- **Runs-on-agnos gate: the kernel FP/SIMD arc** (agnos
+  `docs/development/planning/kernel-fp-arc-153x.md`, slotted 1.53.x) — the
+  on-device tok/s headline this lane feeds (seema / desktop) runs f64 forwards,
+  and agnos ring-3 enables no FP today. Host/QEMU validation is unaffected.
 
 ### Splits to the serving layer (NOT the reference)
 

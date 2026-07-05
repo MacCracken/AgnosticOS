@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Milestone — Type-3 fidelity gate closed + the ML-substrate freeze (2026-07-04)
+
+Two cuts landed the same day, closing the review's live items:
+
+- **anukūlana 0.3.0 — M2 COMPLETE.** The imported GPT-2 forward now **matches HF exactly**: `gpt2-oracle` gates against a **committed HF-logits fixture** (torch ran once in a disposable venv, its logits committed as test data — Python/torch is never a build/run/test dependency). Result on the real 124M checkpoint: argmax identical at all 48 positions (3 seqs × 16), last-row maxrel 1.05e-6 (fp32-rounding scale — HF computes fp32, the sovereign path computes f64 over the same widened weights), gate frozen at 1e-5. Suite 49/49; `make fidelity`. Next: M3 LoRA.
+- **rosnet 1.0.0 — the substrate freeze.** No behavior change: froze the surface **six shipping consumers** (attn11/tarka/tentib/prajna/rupantara/anukūlana) exercised unchanged since 0.1.1 — CPU bundle **and** GPU profile (mabda 4.x churn is provider-level; 4.0 added basic NVIDIA). All six v1.0 criteria closed at the cut: `docs/api.md` freeze + `docs/benchmarks.md` capture (Ryzen 7 5800H) + audit PASS (the no-bounds-checks caller-guarantees contract audited as the deliberate substrate design). Graduated pre-1.0 → [`libs/README.md`](docs/applications/libs/README.md) Science & Knowledge (86→**87** v1.0+ libs).
+- Cross-cutting decisions recorded: **ifran decomposition RESOLVED** (decompose at the port — existing homes take their pieces; the control-plane core ports as one repo, internals second-consumer-gated; [`software-port-path.md`](docs/development/planning/software-port-path.md) §3) and the **runs-on-agnos gate** (the agnos kernel FP/SIMD arc, 1.53.x) cross-linked into all five ML axis docs + state.md.
+
 ### Changed — ML/AI-arc planning-doc currency sweep (2026-07-04)
 
 Review of the twelve ML/AI planning docs against live repo state (VERSION files, CHANGELOGs, source trees) found the plans lagging their own shipped results; five docs + state.md re-anchored:

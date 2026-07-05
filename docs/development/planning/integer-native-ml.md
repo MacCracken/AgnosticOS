@@ -174,6 +174,13 @@ already uses; a Pi-class tok/s demo is the sovereignty-flex headline.
 - **Inherits attn11's discipline:** Cyrius-native, no BLAS / libc / autodiff,
   finite-difference-gated (the STE surrogate), benchmarked vs a named real-world
   implementation.
+- **Runs-on-agnos gate: the kernel FP/SIMD arc** (agnos
+  `docs/development/planning/kernel-fp-arc-153x.md`, slotted 1.53.x) — agnos
+  ring-3 currently enables no FP/XMM. **The integer kernel does NOT dodge this
+  gate:** its dequant scales (`γ · max|x|/127`) and the RMSNorm/SubLN path are
+  f64, so ternary inference on agnos still needs the FP arc. (The same arc's
+  later phases are also where kernel-side int-SIMD state handling lands —
+  relevant to the 0.4.1 throughput kernel once cyrius ships integer SIMD.)
 
 ---
 

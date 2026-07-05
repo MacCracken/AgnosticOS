@@ -115,6 +115,11 @@ real enough to map (it is the honest home for capabilities currently scattered a
   convergence/coverage/regret elsewhere; benchmark each vs a named real-world
   reference (scikit-learn / XGBoost / a Kalman-optimal baseline) under the
   family's fairness-ruled harness shape.
+- **Runs-on-agnos gate: the kernel FP/SIMD arc** (agnos
+  `docs/development/planning/kernel-fp-arc-153x.md`, slotted 1.53.x) — amuzesh
+  and its ganita/hisab substrate are f64 throughout, and agnos ring-3 enables no
+  FP today. The phylax/aegis on-agnos GBDT story waits on that arc (host/QEMU
+  validation unaffected).
 
 ---
 

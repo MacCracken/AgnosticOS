@@ -42,7 +42,7 @@ Beyond what attn11 already has, sight needs:
 | **2D convolution, fwd + bwd** | **Yes — the main new gradient work** | The one genuinely new *learned* primitive. A pure ViT can skip it (non-overlapping patchify = reshape + matmul, which attn11 has via `tensor.cyr`); but CLIP-style conv stems and any CNN need `conv2d` with hand-derived grads — the direct analog of the attention backprop already done. `im2col` + matmul is the practical implementation path. |
 | **Bidirectional attention** | Trivial | Drop attn11's causal mask. |
 | **2D positional embeddings** | Minor | Extension of the existing 1D learned positional embed. |
-| **Image-decode frontend** | Partly exists | **`kii`** already carries raster decoders (PNG / JPEG → pixel array). A model wants normalized `f64` tensors instead of quantized ANSI, but it's the same decode path — a candidate to lift into a shared lib rather than re-author. |
+| **Image-decode frontend** | **✅ Exists — `chitra`** | The lift already happened: **chitra** (चित्र, 0.3.0) is the shared pure-Cyrius raster decoder (PNG all bit depths + Adam7; baseline JFIF JPEG grayscale/YCbCr, 4:4:4/4:2:2/4:2:0 + restarts → canonical RGBA8), extracted from kii's decoders — kii + mabda both consume it. The vision frontend only adds the trivial RGBA8 → normalized `f64` tensor conversion. |
 | Pooling (avg/max), if doing a CNN | Small | Straightforward fwd+bwd. |
 
 **Sight proof-of-life** = a ViT (or small CNN) trained to classify a tiny image set (MNIST-class), loss descending, finite-difference-gated — the exact sibling of attn11's first char-LM loss curve.
@@ -79,7 +79,7 @@ Because the FFT/mel frontend is fixed, **hearing ≈ sight (conv + transformer o
 | **FFT / STFT + mel** | — | ✅ | **no** (fixed frontend — big simplification) | **FFT landed** (hisab; also shravan/naad); STFT+mel glue remains |
 | **cross-attention** | (fusion) | ✅ (ASR) | yes — small generalization | attn11 / **rupantara** (the extracted blocks lib) |
 | bidirectional attn + 2D pos-embed | ✅ | (via spectrogram) | trivial | attn11 variant |
-| image decode → `f64` tensor | ✅ | — | n/a | `kii` decoders (lift to lib) |
+| image decode → `f64` tensor | ✅ | — | n/a | **`chitra`** (shared decode lib, landed; + a trivial RGBA8→f64 normalize) |
 
 The two real lifts *were* **convolution with hand-derived gradients** and **a sovereign FFT** — the FFT has since landed (hisab, 2026-07 refresh), so **the one remaining lift is convolution fwd+bwd**. Everything else is attn11/rupantara reused or a trivial variant.
 
@@ -100,6 +100,8 @@ Once vision and audio encoders both emit *the same `f64` embedding-vector sequen
 5. Vision/audio **proof-apps** ride the existing FB substrate (`blit`#39, landed agnos 1.43.4) — no desktop required, same proof-app pattern as DOOM / agora.
 
 This is **demand-gated, post-beta** work. It is not on the closed-beta (boot-to-shell) or public-beta (self-hosting) critical paths. Do not scaffold ahead of need.
+
+**Runs-on-agnos gate: the kernel FP/SIMD arc** (agnos `docs/development/planning/kernel-fp-arc-153x.md`, slotted 1.53.x) — the vision/audio models are f64 end-to-end and agnos ring-3 enables no FP today; proof-apps validate on host/QEMU until that arc lands.
 
 ---
 
@@ -137,7 +139,7 @@ This is **demand-gated, post-beta** work. It is not on the closed-beta (boot-to-
 - **attn11** — the reference binary + `ops.cyr` / `tensor.cyr` / `attn.cyr` / `attn_linear.cyr` / `attn_ssm.cyr` / `train.cyr` / `persist.cyr`. The modality-agnostic core.
 - **attn11→libs extraction** — **complete**: rosnet (tensor core) + tyche (PRNG) + **rupantara** (transformer blocks/forward, 0.4.0, re-fold green) — registry in [`shared-crates.md`](shared-crates.md).
 - **hisab** — sovereign **FFT/DST/DCT/2D-FFT** (registered numerical lib) — the audio frontend's transform; **abaco** [`src/dsp.cyr`](https://github.com/MacCracken/abaco) holds the windowing/dB/midi groundwork; STFT + mel filterbank glue still to be homed (hisab or abaco — decide at build time). shravan (`fft.cyr`, MDCT) + naad (`dsp_spectral.cyr`) carry codec/synthesis-local spectral paths.
-- **kii** — image raster decoders (PNG/JPEG → pixel array); lift to a shared decode lib for the vision frontend.
+- **chitra** — the shared pure-Cyrius image-decode lib (PNG + JPEG → canonical RGBA8; extracted from kii, consumed by kii + mabda) — the vision frontend's decode path, ready.
 - **vani / shravan / naad / dhvani / goonj / shruti** — audio device I/O, codecs, synth, engine, acoustics ([`shared-crates.md`](shared-crates.md) *Audio I/O*).
 - **drishti-av1 / -h264 / -h265 / -vpx / -rav1e** — sovereign video codecs ([`shared-crates.md`](shared-crates.md) *Video Codec Projects*); sight-adjacent decode surface.
 - **mabda** (GPU foundation) + **ai-hwaccel** (GPU detection) — the eventual hardware-acceleration path once correctness is proven on `f64` arrays.

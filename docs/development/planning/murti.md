@@ -19,7 +19,7 @@
 
 The Rust-era murti's entire value proposition was **being a broker for 15 external inference backends** (llama.cpp, vLLM, TensorRT, Metal, Vulkan, ONNX, TPU, Gaudi, Inferentia, OneAPI, Qualcomm, XDNA, Candle, Ollama). In March 2026 that was the only way AGNOS could run a real model, so a backend broker *was* the runtime. As of 2026-07-01 that premise is dead: AGNOS runs local inference on its **own** kernels —
 
-- **rosnet 0.2.0** — f64 tensors + hand-derived matmul gradient, plus a **mabda-gated `[lib.gpu]` GPU profile**. The f64 forward path.
+- **rosnet 1.0.0** (frozen 2026-07-04) — f64 tensors + hand-derived matmul gradient, plus a **mabda-gated `[lib.gpu]` GPU profile**. The f64 forward path.
 - **tentib 0.4.0** — a **matmul-free integer inference kernel** (ternary weights, int8 activations, add/sub/skip), whole-model parity < 1e-9 vs f64. The integer forward path. *(Correctness-ready today; useful throughput is gated on cyrius integer-SIMD — see §3.)*
 - **The Type-3 importer** (`generative-paradigms.md`) — a **sovereign weight-file format** + a real-checkpoint importer + LoRA/QLoRA. How someone else's pretrained weights become a sovereign model AGNOS can run.
 - **hoosh 2.4.11** — the OpenAI-compatible serving / routing / budget plane.
@@ -158,4 +158,4 @@ Every milestone is CPU-f64-first (no GPU gate) except where noted, mirroring the
 
 ---
 
-*Re-architected 2026-07-01 onto the sovereign Cyrius substrate; supersedes the 2026-03-24 Rust-era draft. Sovereign-core primary, foreign path to mehman (never here), sibling-not-chain, second-consumer extraction, demand-gated. Live substrate versions: rosnet 0.2.0, tentib 0.4.0, ai-hwaccel 2.3.12, mabda 3.4.5, hoosh 2.4.11, mela 1.0.1 — verify against [`state.md`](../state.md).*
+*Re-architected 2026-07-01 onto the sovereign Cyrius substrate; supersedes the 2026-03-24 Rust-era draft. Sovereign-core primary, foreign path to mehman (never here), sibling-not-chain, second-consumer extraction, demand-gated. Live substrate versions: rosnet 1.0.0 (frozen), tentib 0.4.0, ai-hwaccel 2.3.12, mabda 4.0.x (providers: AMD GFX9 + basic NVIDIA), hoosh 2.4.11, mela 1.0.1 — verify against [`state.md`](../state.md).*

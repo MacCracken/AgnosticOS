@@ -43,7 +43,7 @@ the metal up, with nothing borrowed?*
 |---|----------|------------------|--------|
 | 1 | **Transformer** | attention + backprop + optimizer in everything-is-i64 | **attn11** (1.12.0; parked at infra-only M20, forward extracted → **rupantara**) |
 | 2 | **Autoregressive** | recurrence + backprop-through-time; the autoregressive decode/sampling discipline | planned |
-| 3 | **Pre-Trained** | sovereign weight format + import a *real* foundation model + adapt (LoRA) | **OPENED — M1 shipped 2026-07-02** (tula 1.0.0 / rupantara 0.4.0 / anukūlana 0.2.0 — a real GPT-2-small runs on the sovereign stack) → [`type3-weight-import.md`](type3-weight-import.md) |
+| 3 | **Pre-Trained** | sovereign weight format + import a *real* foundation model + adapt (LoRA) | **CHARTER BUILT 2026-07-04** (tula 1.0.0 / rupantara 0.4.0 / anukūlana **1.0.0 STABLE** — a real GPT-2-small runs on the sovereign stack, **matches HF exactly, adapts** [FD-gated LoRA + QLoRA over an NF4 4-bit base], **and persists** [signed 63.8 MB NF4 ckpt + adapter via tula, bit-identical round-trips]) → [`type3-weight-import.md`](type3-weight-import.md) |
 | 4 | **Generative** | the **non-autoregressive** generative families (diffusion / VAE / GAN) | planned |
 | ∞ | **Beyond** | recurrence+attention hybrids (Griffin/Hawk) + test-time learned memory (Titans) — the architecture-evolution north star | research-watch |
 
@@ -100,9 +100,13 @@ shared decode/sampler shape attn11 already benchmarks against.
 > [`type3-weight-import.md`](type3-weight-import.md) (opened 2026-07-01 as gap #1),
 > and the chain **shipped its M1 headline 2026-07-02**: `tula` 1.0.0 (weight-file
 > format, frozen) · `rupantara` 0.4.0 (transformer-forward lib, extracted from
-> attn11 + re-folded) · `anukūlana` 0.2.0 (a **real GPT-2-small safetensors
-> imports and runs clean** on the sovereign stack). LoRA (M2) → QLoRA/NF4 (M3)
-> are next. The section below is the original framing, kept for the rationale.
+> attn11 + re-folded) · `anukūlana` 1.0.0 STABLE (a **real GPT-2-small safetensors
+> imports, runs clean, matches HF exactly** — fixture-based fidelity gate, no
+> torch dependency — **adapts**: FD-gated LoRA head adapter 8/8 over the
+> bit-frozen base + QLoRA over the NF4-quantized 4-bit base — **and persists**:
+> signed NF4 checkpoint + adapter via tula, bit-identical round-trips). The
+> charter is FULLY built; the section below is the original framing, kept for
+> the rationale.
 
 The pillar that turns "we trained a toy" into "we run a real one." Emphasis is
 **import + adapt**, not "train bigger." The pretraining-at-scale and corpus
@@ -317,6 +321,13 @@ per the 2026-06-08 decision.
 - **Each reference inherits attn11's discipline:** Cyrius-native, no
   BLAS/libc/autodiff, finite-difference-gated gradients, and a fairness-ruled
   benchmark vs a named real-world implementation (the B-series harness shape).
+- **Runs-on-agnos gate (all paradigms): the kernel FP/SIMD arc** (agnos
+  `docs/development/planning/kernel-fp-arc-153x.md`, slotted 1.53.x). The whole
+  family validates on Linux host/QEMU today; agnos ring-3 enables no FP (no
+  `CR4.OSFXSR`, no XMM save on context switch), so the first `movsd` in any f64
+  program `#UD`s. Every on-device story these references invoke (seema edge,
+  desktop, on-agnos inference) is gated behind that arc — it is an agnos-kernel
+  gate, not an ML-side work item.
 
 ---
 
