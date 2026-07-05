@@ -50,7 +50,7 @@ The sovereign ML/AI work runs as a **separate thread** from the kernel arc above
 | [`anukūlana`](https://github.com/MacCracken/anukulana) | **1.0.0** | Type-3 reference — **STABLE** | **charter FULLY built + FROZEN** (import → run → match-HF → LoRA/QLoRA → signed persistence; api.md + STABILITY + SECURITY + audit [2 st_open DoS fixes] + 38k-round fuzz gate + benchmarks; suite 80). **Post-1.0 headline: GGUF import** |
 | [`attn11`](https://github.com/MacCracken/attn11) | 1.12.0 | GPT transformer ref | CPU leaf-op re-fold onto rupantara `ru_*` (1049 grad-checks green in one binary) |
 | [`ganita`](https://github.com/MacCracken/ganita) | 1.0.2 | linalg/math lib | `f64_tanh` NaN-overflow fix (surfaced by the real forward; folded into cyrius stdlib **6.3.31**) |
-| [`rosnet`](https://github.com/MacCracken/rosnet) | 1.0.0 | f64 tensor/BLAS substrate | **FROZEN 2026-07-04** (six-consumer freeze, CPU+GPU profiles, audit PASS; → [libs registry](../applications/libs/README.md)) |
+| [`rosnet`](https://github.com/MacCracken/rosnet) | 1.1.0 | f64 tensor/BLAS substrate | FROZEN 1.0.0 (2026-07-04); **1.1.0 (2026-07-05) added conv2d/conv1d** (FD-gated, per-axis stride/pad) — **the modality axis is substrate-complete** |
 
 Other siblings: **tarka 1.1.1** (RL — the 1.1.x preference set DPO+KL / IPO+KTO shipped, closing out [`planning/tarka-preference-rlhf-extensions.md`](planning/tarka-preference-rlhf-extensions.md)), prajna 1.0.0 (meta), tentib 0.4.0 (ternary — 0.4.1 int-SIMD gate on cyrius; named next in the cyrius v6.4.x opening sequence), amuzesh 0.1.0 (classical). anukūlana pins cyrius **6.3.31** (to pick up the folded ganita fix). The three open ML gaps stay: Type-3 (this chain, M1 done), the ifran control-plane port, the puka model-studio GUI.
 

@@ -312,6 +312,8 @@ per the 2026-06-08 decision.
 - **GPU-gated where noted.** Type 4 (diffusion) and any serious Type-3 scale want
   rosnet's **mabda-backed GPU path** — itself paused on mabda 3.x. The CPU-f64
   references (Type 2 recurrent, the small VAE) need no GPU and can open first.
+  **Type 4's conv dependency is MET** (rosnet conv2d landed 2026-07-05, FD-gated)
+  — a small CPU-f64 DDPM/VAE can open without waiting on GPU.
 - **Order, as it actually moved:** **Type 3 went first** (opened 2026-07-01 on the
   Type-3 weight-import demand; M1 shipped 2026-07-02 — the original "Type 2
   cheapest-first" suggestion was overtaken by the highest-credibility-per-effort

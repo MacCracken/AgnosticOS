@@ -9,7 +9,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Planning (forward design — not scaffolded). **Refreshed 2026-07-04:** two of the original gating lifts have since landed elsewhere — the transformer-blocks extraction (→ **rupantara** 0.4.0, attn11 re-fold green) and the sovereign FFT (**hisab** ships FFT/DST/DCT/2D-FFT; shravan `fft.cyr`, naad `dsp_spectral.cyr`). **The one remaining new learned primitive gating both modalities is conv2d/conv1d fwd+bwd.** |
+| Status | Planning (forward design — not scaffolded). **Refreshed 2026-07-04:** two of the original gating lifts have since landed elsewhere — the transformer-blocks extraction (→ **rupantara** 0.4.0, attn11 re-fold green) and the sovereign FFT (**hisab** ships FFT/DST/DCT/2D-FFT; shravan `fft.cyr`, naad `dsp_spectral.cyr`). **conv2d/conv1d LANDED 2026-07-05** (**rosnet 1.1.0**, released 2026-07-05: NCHW, per-axis stride/pad, hand-derived FD-gated gradients) — **the modality axis is now SUBSTRATE-COMPLETE**: decode (chitra) + FFT (hisab) + transformer (rupantara) + tokenizer (akshara) + conv (rosnet 1.1). What remains is CONSUMER work: the sight proof (tiny ViT/CNN), STFT+mel glue, cross-attention — each opens on demand. |
 | Roadmap | Underpins Post-Beta **Phase 17** (local inference) + **Phase 18** (immersive communication); substrate is demand-gated |
 | Trigger | attn11 reached **v1.0** → the attn11→libs extraction trigger has fired (see [`shared-crates.md`](shared-crates.md) *Planned*) |
 | Gating new primitives | `conv2d`/`conv1d` fwd+bwd (learned); sovereign FFT/STFT + mel filterbank (fixed); cross-attention |
@@ -75,7 +75,7 @@ Because the FFT/mel frontend is fixed, **hearing ≈ sight (conv + transformer o
 | Primitive | Sight | Hearing | Learned? (needs backprop) | Where it lives / would live |
 |-----------|:-----:|:-------:|---------------------------|------------------------------|
 | **Tensor core** (matmul + grad, transpose, elementwise, softmax, layernorm) | ✅ | ✅ | **extracted** (rosnet 0.2.0) | rosnet |
-| **conv2d / conv1d fwd + bwd** | ✅ | ✅ (1d stem) | **yes — main new gradient work** | new lib (name deferred) |
+| **conv2d / conv1d fwd + bwd** | ✅ | ✅ (1d stem) | **✅ LANDED** (rosnet 1.1, 2026-07-05 — FD-gated, per-axis stride/pad) | **rosnet** `src/conv.cyr` |
 | **FFT / STFT + mel** | — | ✅ | **no** (fixed frontend — big simplification) | **FFT landed** (hisab; also shravan/naad); STFT+mel glue remains |
 | **cross-attention** | (fusion) | ✅ (ASR) | yes — small generalization | attn11 / **rupantara** (the extracted blocks lib) |
 | bidirectional attn + 2D pos-embed | ✅ | (via spectrogram) | trivial | attn11 variant |
@@ -94,7 +94,7 @@ Once vision and audio encoders both emit *the same `f64` embedding-vector sequen
 ## Suggested sequencing (planning only — no scaffolds)
 
 1. ~~**Finish the attn11→libs extraction**~~ — **✅ DONE**: rosnet (tensor core) + tyche (PRNG) extracted, and the transformer blocks shipped as **rupantara** 0.4.0 (whole-forward parity bit-identical vs attn11, re-fold green — the kashi/sandhi extract-and-re-fold pattern, completed 2026-07-02).
-2. **conv2d + bwd → sight proof** (tiny ViT/CNN classifier). **Now the single gating primitive** — cheapest next win, and it unlocks hearing too (spectrogram-as-image). Also shared with Type-4 diffusion ([`generative-paradigms.md`](generative-paradigms.md)) — build once, both axes consume.
+2. ~~**conv2d + bwd**~~ — **✅ LANDED in rosnet** (2026-07-05: conv2d + conv1d, per-axis stride/pad, hand-derived dx/dW/db FD-gated incl. strided/padded/non-square, conv1d bit-parity; benched ~1.1 G MAC/s). Shared with Type-4 diffusion as planned. **The sight proof (tiny ViT/CNN classifier) is now fully unblocked** — the axis's next opener when a consumer/flex moment pulls it.
 3. ~~**Sovereign FFT**~~ — **✅ landed** (hisab FFT/DST/DCT/2D-FFT; shravan/naad carry their own). Remaining: **STFT framing + mel filterbank** glue — non-learned, no gradient work.
 4. **Cross-attention** — the gate for ASR *and* for real fusion. Comes when encoder-decoder is wanted, not before.
 5. Vision/audio **proof-apps** ride the existing FB substrate (`blit`#39, landed agnos 1.43.4) — no desktop required, same proof-app pattern as DOOM / agora.
