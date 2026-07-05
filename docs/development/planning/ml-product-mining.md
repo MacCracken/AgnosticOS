@@ -93,8 +93,8 @@ hoosh; GPU → mabda/ai-hwaccel; real hashing → sigil; provider routing → ho
 ### Updates to existing siblings — where the primitive value concentrates
 | Sibling | Feature | Priority | Spec |
 |---------|---------|----------|------|
-| **tarka** | DPO (reparam `reward.cyr` Bradley-Terry + frozen ref-policy, β=0.1) | **high** | [`tarka-preference-rlhf-extensions.md`](tarka-preference-rlhf-extensions.md) |
-| **tarka** | RLHF KL-to-reference-policy penalty (grep-confirmed absent) | med | same |
+| **tarka** | DPO (reparam `reward.cyr` Bradley-Terry + frozen ref-policy, β=0.1) | ✅ **SHIPPED 1.1.0** (2026-06; + IPO/KTO followed in 1.1.1) | [`tarka-preference-rlhf-extensions.md`](tarka-preference-rlhf-extensions.md) |
+| **tarka** | RLHF KL-to-reference-policy penalty (grep-confirmed absent) | ✅ **SHIPPED 1.1.0** | same |
 | **attn11** | KD soft-target objective (`--objective KD`) | med | gated on attn11 reopening (M20 is infra-only) |
 | **tarka** | Multi-armed bandits / Thompson sampling | med | seeds the black-box-opt continuum |
 | **tarka** | pass@k unbiased binomial estimator | low | the one real eval nugget (perplexity already in attn11) |
@@ -103,10 +103,12 @@ hoosh; GPU → mabda/ai-hwaccel; real hashing → sigil; provider routing → ho
 | **abaco** | z/t-test CDF · robust-aggregation stats | low | non-sibling system-math home |
 
 ### New-lib candidates (names deferred — second-consumer-triggered)
-- **QLoRA seed (LoRA adapter + NF4 quant)** — *high.* Routes to the already-planned
-  `generative-paradigms.md` **Type-3 "Pre-Trained"** reference (NOT attn11, NOT
-  tentib). The most-corroborated demand. Spec folded into
-  [`generative-paradigms.md`](generative-paradigms.md) Type-3.
+- **QLoRA seed (LoRA adapter + NF4 quant)** — *high.* Routes to the **Type-3
+  "Pre-Trained"** reference (NOT attn11, NOT tentib). The most-corroborated demand.
+  Since promoted to its own doc [`type3-weight-import.md`](type3-weight-import.md)
+  and **built**: the chain shipped its M1 headline 2026-07-02 (tula 1.0.0 /
+  rupantara 0.4.0 / anukūlana 0.2.0 — real GPT-2-small imports + runs); LoRA (M2)
+  then QLoRA/NF4 (M3) are the next milestones in `anukūlana`.
 - **Black-box / derivative-free optimization** (GP-BO + acquisition + CMA-ES) —
   *medium.* The **single true unmapped gap** (on no axis map, colliding with no
   sibling). Weak demand (both products ship only grid+random) → prototype on

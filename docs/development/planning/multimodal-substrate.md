@@ -9,7 +9,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Planning (forward design — not scaffolded) |
+| Status | Planning (forward design — not scaffolded). **Refreshed 2026-07-04:** two of the original gating lifts have since landed elsewhere — the transformer-blocks extraction (→ **rupantara** 0.4.0, attn11 re-fold green) and the sovereign FFT (**hisab** ships FFT/DST/DCT/2D-FFT; shravan `fft.cyr`, naad `dsp_spectral.cyr`). **The one remaining new learned primitive gating both modalities is conv2d/conv1d fwd+bwd.** |
 | Roadmap | Underpins Post-Beta **Phase 17** (local inference) + **Phase 18** (immersive communication); substrate is demand-gated |
 | Trigger | attn11 reached **v1.0** → the attn11→libs extraction trigger has fired (see [`shared-crates.md`](shared-crates.md) *Planned*) |
 | Gating new primitives | `conv2d`/`conv1d` fwd+bwd (learned); sovereign FFT/STFT + mel filterbank (fixed); cross-attention |
@@ -57,7 +57,7 @@ The elegant collapse: **a mel-spectrogram is an image.** Once you compute it, he
 
 | Need | New? | Notes |
 |------|------|-------|
-| **FFT / STFT + mel filterbank** | **Yes — the new DSP primitive** | Critically a **fixed feature extractor, not trained** → **no backprop through the FFT**, no new gradient derivation. abaco's [`dsp.cyr`](https://github.com/MacCracken/abaco) already has the groundwork (`window_hann`, batch math, dB conversions, `freq↔midi`); a real FFT/STFT + mel filterbank is the gating piece to confirm/build there. |
+| **FFT / STFT + mel filterbank** | **Mostly landed** (2026-07 refresh) | Critically a **fixed feature extractor, not trained** → **no backprop through the FFT**, no new gradient derivation. **Sovereign FFTs now exist:** [hisab](https://github.com/MacCracken/hisab) ships FFT/DST/DCT/2D-FFT as a registered lib; shravan carries `src/fft.cyr` (+ MDCT) and naad's Cyrius port landed `dsp_spectral.cyr`. abaco's [`dsp.cyr`](https://github.com/MacCracken/abaco) holds the windowing/dB/midi groundwork. Remaining: only the **STFT framing + mel filterbank glue** over an existing FFT. |
 | **1D convolution, fwd + bwd** | Special case of conv2d | Whisper's stem is 1D conv over spectrogram frames. |
 | **Cross-attention** | Yes (for ASR/seq2seq only) | Small generalization of attn11's self-attention: K/V come from a different source than Q. attn11 is decoder-only today; this is the one architectural addition, and it doubles as the **multimodal-fusion** primitive. |
 | **Audio I/O frontend** | On roadmap | `vani` (PCM device I/O) / `shravan` (codecs); pipeline `vani(in) → shravan(decode) → dhvani(process)`. Synthesis side: `naad → dhvani → shravan → vani(out)`. |
@@ -74,14 +74,14 @@ Because the FFT/mel frontend is fixed, **hearing ≈ sight (conv + transformer o
 
 | Primitive | Sight | Hearing | Learned? (needs backprop) | Where it lives / would live |
 |-----------|:-----:|:-------:|---------------------------|------------------------------|
-| **Tensor core** (matmul + grad, transpose, elementwise, softmax, layernorm) | ✅ | ✅ | already extracting from attn11 (rosnet) | attn11→libs / rosnet |
+| **Tensor core** (matmul + grad, transpose, elementwise, softmax, layernorm) | ✅ | ✅ | **extracted** (rosnet 0.2.0) | rosnet |
 | **conv2d / conv1d fwd + bwd** | ✅ | ✅ (1d stem) | **yes — main new gradient work** | new lib (name deferred) |
-| **FFT / STFT + mel** | — | ✅ | **no** (fixed frontend — big simplification) | abaco `dsp.cyr` (extend) |
-| **cross-attention** | (fusion) | ✅ (ASR) | yes — small generalization | attn11 / blocks lib |
+| **FFT / STFT + mel** | — | ✅ | **no** (fixed frontend — big simplification) | **FFT landed** (hisab; also shravan/naad); STFT+mel glue remains |
+| **cross-attention** | (fusion) | ✅ (ASR) | yes — small generalization | attn11 / **rupantara** (the extracted blocks lib) |
 | bidirectional attn + 2D pos-embed | ✅ | (via spectrogram) | trivial | attn11 variant |
 | image decode → `f64` tensor | ✅ | — | n/a | `kii` decoders (lift to lib) |
 
-The two real lifts are **convolution with hand-derived gradients** and **a sovereign FFT**. Everything else is attn11 reused or a trivial variant.
+The two real lifts *were* **convolution with hand-derived gradients** and **a sovereign FFT** — the FFT has since landed (hisab, 2026-07 refresh), so **the one remaining lift is convolution fwd+bwd**. Everything else is attn11/rupantara reused or a trivial variant.
 
 ---
 
@@ -93,9 +93,9 @@ Once vision and audio encoders both emit *the same `f64` embedding-vector sequen
 
 ## Suggested sequencing (planning only — no scaffolds)
 
-1. **Finish the attn11→libs extraction** (rosnet tensor core + tyche PRNG + optimizer + grad-check harness + transformer blocks). Both modalities sit on it; it's already triggered by the v1.0 cut and runs inside attn11's 1.x line (the kashi/sandhi extract-and-re-fold pattern).
-2. **conv2d + bwd → sight proof** (tiny ViT/CNN classifier). Cheapest next win, and it unlocks hearing too (spectrogram-as-image).
-3. **Sovereign FFT/STFT + mel** in abaco `dsp.cyr`, in parallel — non-learned, so no gradient work.
+1. ~~**Finish the attn11→libs extraction**~~ — **✅ DONE**: rosnet (tensor core) + tyche (PRNG) extracted, and the transformer blocks shipped as **rupantara** 0.4.0 (whole-forward parity bit-identical vs attn11, re-fold green — the kashi/sandhi extract-and-re-fold pattern, completed 2026-07-02).
+2. **conv2d + bwd → sight proof** (tiny ViT/CNN classifier). **Now the single gating primitive** — cheapest next win, and it unlocks hearing too (spectrogram-as-image). Also shared with Type-4 diffusion ([`generative-paradigms.md`](generative-paradigms.md)) — build once, both axes consume.
+3. ~~**Sovereign FFT**~~ — **✅ landed** (hisab FFT/DST/DCT/2D-FFT; shravan/naad carry their own). Remaining: **STFT framing + mel filterbank** glue — non-learned, no gradient work.
 4. **Cross-attention** — the gate for ASR *and* for real fusion. Comes when encoder-decoder is wanted, not before.
 5. Vision/audio **proof-apps** ride the existing FB substrate (`blit`#39, landed agnos 1.43.4) — no desktop required, same proof-app pattern as DOOM / agora.
 
@@ -135,8 +135,8 @@ This is **demand-gated, post-beta** work. It is not on the closed-beta (boot-to-
 ### In-ecosystem (the pieces that already exist or are planned)
 
 - **attn11** — the reference binary + `ops.cyr` / `tensor.cyr` / `attn.cyr` / `attn_linear.cyr` / `attn_ssm.cyr` / `train.cyr` / `persist.cyr`. The modality-agnostic core.
-- **attn11→libs extraction** (rosnet tensor core, tyche PRNG, optimizers, grad-check harness, transformer blocks) — [`shared-crates.md`](shared-crates.md) *Planned*; trigger fired at attn11 v1.0.
-- **abaco** [`src/dsp.cyr`](https://github.com/MacCracken/abaco) — DSP groundwork (windowing, batch math, dB/midi); FFT/STFT + mel to be added here.
+- **attn11→libs extraction** — **complete**: rosnet (tensor core) + tyche (PRNG) + **rupantara** (transformer blocks/forward, 0.4.0, re-fold green) — registry in [`shared-crates.md`](shared-crates.md).
+- **hisab** — sovereign **FFT/DST/DCT/2D-FFT** (registered numerical lib) — the audio frontend's transform; **abaco** [`src/dsp.cyr`](https://github.com/MacCracken/abaco) holds the windowing/dB/midi groundwork; STFT + mel filterbank glue still to be homed (hisab or abaco — decide at build time). shravan (`fft.cyr`, MDCT) + naad (`dsp_spectral.cyr`) carry codec/synthesis-local spectral paths.
 - **kii** — image raster decoders (PNG/JPEG → pixel array); lift to a shared decode lib for the vision frontend.
 - **vani / shravan / naad / dhvani / goonj / shruti** — audio device I/O, codecs, synth, engine, acoustics ([`shared-crates.md`](shared-crates.md) *Audio I/O*).
 - **drishti-av1 / -h264 / -h265 / -vpx / -rav1e** — sovereign video codecs ([`shared-crates.md`](shared-crates.md) *Video Codec Projects*); sight-adjacent decode surface.

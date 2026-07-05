@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — ML/AI-arc planning-doc currency sweep (2026-07-04)
+
+Review of the twelve ML/AI planning docs against live repo state (VERSION files, CHANGELOGs, source trees) found the plans lagging their own shipped results; five docs + state.md re-anchored:
+
+- **`planning/tarka-preference-rlhf-extensions.md`** — status "Planning — NOT authorized" → **SHIPPED** with a *Since This Was Written* footer: tarka **1.1.0** landed DPO + the KL-to-reference penalty and **1.1.1** landed IPO + KTO (past the doc's own "DPO only" scope wall), all FD-gated. Doc retained as the historical spec.
+- **`planning/ml-product-mining.md`** — harvest table's tarka DPO/KL rows ticked SHIPPED; the QLoRA new-lib bullet repointed at `type3-weight-import.md` + the shipped M1 chain. (Bandits/pass@k verified still absent from `tarka/src` — rows left open.)
+- **`planning/generative-paradigms.md`** — paradigm table re-anchored: attn11 1.7.2→**1.12.0 (parked M20, forward extracted → rupantara)**; **Type-3 "planned" → OPENED, M1 shipped 2026-07-02** (tula 1.0.0 / rupantara 0.4.0 / anukūlana 0.2.0) with a promotion banner on the Type-3 section; the sequencing bullet now records that Type-3 moved first (the original Type-2-first suggestion was overtaken).
+- **`planning/multimodal-substrate.md`** — the "two real lifts" (conv + sovereign FFT) reduced to **one**: sovereign FFTs have since landed (**hisab** FFT/DST/DCT/2D-FFT as a registered lib; shravan `fft.cyr`; naad `dsp_spectral.cyr`), and the attn11→libs transformer-blocks extraction completed as **rupantara** 0.4.0. **conv2d/conv1d fwd+bwd is now the single new learned primitive gating both sight and hearing** (and it's shared with Type-4 diffusion). Substrate table + sequencing + in-ecosystem refs updated; STFT framing + mel filterbank glue is what remains of the audio frontend.
+- **`planning/software-port-path.md`** — partial refresh: **svara** (3.0.0) + **nidhi** (2.0.0) ported 2026-07-03, moved Tier D → §1; counts 88→**90** Cyrius done / ~74→**~72** port targets.
+- **`docs/development/state.md`** — ML-arc sibling line: tarka 1.0.0 → **1.1.1** (the 1.1.x preference set *was* the change); tentib gate annotated as named-next in the cyrius v6.4.x opening sequence.
+
 ### Milestone — DOOM renders on AGNOS (2026-06-08)
 
 The first real userland application runs on the AGNOS kernel: **cyrius-doom 0.28.2 `--agnos` boots to the DOOM title screen** at agnos **1.43.6**. The 584 KB ELF exec's from disk in ring 3, reads the 4.2 MB DOOM1.WAD off the ext2 root, parses it, and blits a 240-colour frame via the kernel's `fbinfo`#38/`blit`#39 syscalls. *"agnsh launches DOOM."*

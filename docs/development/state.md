@@ -51,7 +51,7 @@ The sovereign ML/AI work runs as a **separate thread** from the kernel arc above
 | [`attn11`](https://github.com/MacCracken/attn11) | 1.12.0 | GPT transformer ref | CPU leaf-op re-fold onto rupantara `ru_*` (1049 grad-checks green in one binary) |
 | [`ganita`](https://github.com/MacCracken/ganita) | 1.0.2 | linalg/math lib | `f64_tanh` NaN-overflow fix (surfaced by the real forward; folded into cyrius stdlib **6.3.31**) |
 
-Other siblings (unchanged this thread): tarka 1.0.0 (RL), prajna 1.0.0 (meta), tentib 0.4.x (ternary — int-SIMD gate on cyrius), amuzesh 0.1.0 (classical). anukūlana pins cyrius **6.3.31** (to pick up the folded ganita fix). The three open ML gaps stay: Type-3 (this chain, M1 done), the ifran control-plane port, the puka model-studio GUI.
+Other siblings: **tarka 1.1.1** (RL — the 1.1.x preference set DPO+KL / IPO+KTO shipped, closing out [`planning/tarka-preference-rlhf-extensions.md`](planning/tarka-preference-rlhf-extensions.md)), prajna 1.0.0 (meta), tentib 0.4.0 (ternary — 0.4.1 int-SIMD gate on cyrius; named next in the cyrius v6.4.x opening sequence), amuzesh 0.1.0 (classical). anukūlana pins cyrius **6.3.31** (to pick up the folded ganita fix). The three open ML gaps stay: Type-3 (this chain, M1 done), the ifran control-plane port, the puka model-studio GUI.
 
 **Mapped-but-unbuilt lane (2026-07-03):** DeepSeek **DSpark** (speculative decoding) was investigated and homed as an **attn11 decode lane** (not a new sibling) — it reuses attn11's MTP heads (self-speculative draft) + planned KD objective (draft training); correctness gate = losslessness; load-aware verification splits to hoosh/murti. Forward-design map: [`planning/speculative-decoding.md`](planning/speculative-decoding.md). **Gated on attn11 reopening** (parked at infra-only M20) — design reserved, build not triggered.
 
@@ -80,7 +80,7 @@ Open housekeeping (none blocking; bundle with each repo's next natural touch):
 
 > **Completed ports (out of this table 2026-07-03):** goonj → **2.0.0** Cyrius (37 modules, 3585 parity asserts) · naad → **2.1.0** Cyrius (+ post-port audit). Both part of the audio-synthesis wave feeding the 1.52.x audio arc; svara → **3.0.0** and nidhi → **2.0.0** Cyrius ports also landed same day.
 
-> Note: **aethersafta** (0.50.0, media compositing scene graph) is DISTINCT from aethersafha — a near-stable lib, **not** a Cyrius port target.
+> Note: **aethersafta** (Rust 0.50.0, media-compositing scene graph) is DISTINCT from aethersafha (the Wayland compositor) — a near-stable lib and a **Rust→Cyrius port target** (a Cyrius-native version is where it goes). ⚠ The earlier "**not** a Cyrius port target" note was **false** — it confused *agnos running various-language binaries* (swallow/compat, for foreign third-party apps) with AGNOS's own components, which always go Cyrius-native for implementation sovereignty. "agnos could just run the Rust binary" is never a reason to leave one of our own libs in Rust. See [[project_os_agnostic_layer_is_the_swallow_mechanism]].
 
 ### Per-repo housekeeping (P1/P2, none blocking)
 

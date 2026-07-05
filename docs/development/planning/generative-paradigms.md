@@ -41,9 +41,9 @@ the metal up, with nothing borrowed?*
 
 | # | Paradigm | Reference proves | Status |
 |---|----------|------------------|--------|
-| 1 | **Transformer** | attention + backprop + optimizer in everything-is-i64 | **attn11** (1.7.2, active) |
+| 1 | **Transformer** | attention + backprop + optimizer in everything-is-i64 | **attn11** (1.12.0; parked at infra-only M20, forward extracted → **rupantara**) |
 | 2 | **Autoregressive** | recurrence + backprop-through-time; the autoregressive decode/sampling discipline | planned |
-| 3 | **Pre-Trained** | sovereign weight format + import a *real* foundation model + adapt (LoRA) | planned |
+| 3 | **Pre-Trained** | sovereign weight format + import a *real* foundation model + adapt (LoRA) | **OPENED — M1 shipped 2026-07-02** (tula 1.0.0 / rupantara 0.4.0 / anukūlana 0.2.0 — a real GPT-2-small runs on the sovereign stack) → [`type3-weight-import.md`](type3-weight-import.md) |
 | 4 | **Generative** | the **non-autoregressive** generative families (diffusion / VAE / GAN) | planned |
 | ∞ | **Beyond** | recurrence+attention hybrids (Griffin/Hawk) + test-time learned memory (Titans) — the architecture-evolution north star | research-watch |
 
@@ -95,6 +95,14 @@ shared decode/sampler shape attn11 already benchmarks against.
 ---
 
 ## Type 3 — Pre-Trained (the transfer / foundation pillar)
+
+> **✅ PROMOTED + OPENED — this type is now live.** Its own planning doc is
+> [`type3-weight-import.md`](type3-weight-import.md) (opened 2026-07-01 as gap #1),
+> and the chain **shipped its M1 headline 2026-07-02**: `tula` 1.0.0 (weight-file
+> format, frozen) · `rupantara` 0.4.0 (transformer-forward lib, extracted from
+> attn11 + re-folded) · `anukūlana` 0.2.0 (a **real GPT-2-small safetensors
+> imports and runs clean** on the sovereign stack). LoRA (M2) → QLoRA/NF4 (M3)
+> are next. The section below is the original framing, kept for the rationale.
 
 The pillar that turns "we trained a toy" into "we run a real one." Emphasis is
 **import + adapt**, not "train bigger." The pretraining-at-scale and corpus
@@ -300,10 +308,12 @@ per the 2026-06-08 decision.
 - **GPU-gated where noted.** Type 4 (diffusion) and any serious Type-3 scale want
   rosnet's **mabda-backed GPU path** — itself paused on mabda 3.x. The CPU-f64
   references (Type 2 recurrent, the small VAE) need no GPU and can open first.
-- **Suggested order when it moves:** Type 2 recurrent (cheapest, sets up the
-  memory lineage) → Type 3 weight-format + GPT-2 import (highest credibility per
-  unit effort) → Type 4 diffusion (needs conv + ideally GPU) → Titans
-  (research-watch; gated on all of the above).
+- **Order, as it actually moved:** **Type 3 went first** (opened 2026-07-01 on the
+  Type-3 weight-import demand; M1 shipped 2026-07-02 — the original "Type 2
+  cheapest-first" suggestion was overtaken by the highest-credibility-per-effort
+  pull). Remaining suggested order: Type 2 recurrent (sets up the memory lineage)
+  → Type 4 diffusion (needs conv + ideally GPU) → Titans (research-watch; gated on
+  all of the above).
 - **Each reference inherits attn11's discipline:** Cyrius-native, no
   BLAS/libc/autodiff, finite-difference-gated gradients, and a fairness-ruled
   benchmark vs a named real-world implementation (the B-series harness shape).

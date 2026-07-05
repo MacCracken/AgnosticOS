@@ -10,7 +10,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | **Planning — NOT authorized.** tarka is a separate repo at **1.0.0 (frozen public API)**. No tarka edits land until the user explicitly approves; this doc is the spec, not a license to edit. |
+| Status | **✅ SHIPPED — superseded by the tarka 1.1.x line.** Both bites landed as user-authorized additive cuts: **tarka 1.1.0** (DPO `src/dpo.cyr` + the RLHF KL-to-reference-policy penalty + the frozen `dpo_snapshot()` reference, FD-gated) and **tarka 1.1.1** (`src/preference_ext.cyr` **IPO + KTO** — going *beyond* this doc's "DPO only" scope wall). This doc is retained as the pre-build spec; current truth = tarka's CHANGELOG. |
 | Target | [tarka](https://github.com/MacCracken/tarka) — additive, post-1.0 levers |
 | Reuses | `tarka/src/reward.cyr` (Bradley-Terry loss, hand-derived backward) · `rl.cyr` (rollout + EMA baseline) · [rosnet](https://github.com/MacCracken/rosnet) · the 24/24 finite-difference grad-check discipline |
 | Created | 2026-06-25 |
@@ -110,3 +110,22 @@ last real gap in tarka's RLHF surface.
   sovereign form uses tarka's own trained reward/PRM as critic.
 - tarka `docs/development/roadmap.md` + `docs/api.md` (frozen 1.x surface) — where
   these become real roadmap entries once authorized.
+
+---
+
+## Since This Was Written (2026-07-04)
+
+Everything above shipped, user-authorized, as the **tarka 1.1.x preference line**:
+
+- **1.1.0** — Bite 1 **DPO** (`src/dpo.cyr`, softplus(−Δ) over the reparameterized
+  implicit reward; demo raises target frequency 0.94 → 24.00/24) **and** Bite 2
+  **KL-to-reference-policy** (`β·KL(π_θ ‖ π_ref)`, frozen `q`; demo pulls mean KL
+  3.33 → 2.46), sharing the `dpo_snapshot()` frozen-reference mechanism as planned.
+  All new gradient paths FD-gated (maxrel ≤ 9e-9).
+- **1.1.1** — **IPO + KTO** (`src/preference_ext.cyr`), completing the standard
+  preference-loss set on the same frozen-reference machinery. This went *past* the
+  scope wall above ("First bite is DPO only… defer IPO/KTO") in a later authorized
+  cut.
+
+The spec's math, reuse analysis (Bradley-Terry reparam), and sequencing all held.
+Current truth lives in tarka's CHANGELOG + `docs/api.md`; this doc is historical.

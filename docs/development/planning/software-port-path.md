@@ -2,7 +2,7 @@
 
 > **The software side of the sovereignty path** — the Rust→Cyrius port surface across the whole ecosystem, and the order to walk it. Companion to the kernel/iron side (handled separately). Reference snapshot; refresh via the procedure at the end.
 >
-> **Status:** snapshot **2026-07-01** · **Scope:** every AGNOS subsystem repo, port status + tier · **Source:** GitHub org inventory (`api.github.com/users/MacCracken/repos`, 200 repos) cross-referenced against local `cyrius.cyml`/`Cargo.toml`.
+> **Status:** snapshot **2026-07-01**, partial refresh **2026-07-04** (svara + nidhi ported → moved §2→§1) · **Scope:** every AGNOS subsystem repo, port status + tier · **Source:** GitHub org inventory (`api.github.com/users/MacCracken/repos`, 200 repos) cross-referenced against local `cyrius.cyml`/`Cargo.toml`.
 
 ---
 
@@ -12,13 +12,13 @@
 - **Heuristic for repos not cloned locally: not-local ⇒ probably Rust ⇒ port target** (user rule, 2026-07-01). The local clone set (109) is a subset of the org (200); ~91 repos aren't on disk and are treated as Rust until a clone proves otherwise.
 - **Do not port-plan from `ls ~/Repos`** — it undercounts by ~half the port surface (e.g. the entire bhava affect/simulation family is GitHub-only).
 
-**Counts:** 200 org repos → **88 Cyrius (done)** · **~74 AGNOS Rust port targets** · 9 `cyrius-*` games (separate lane, tracked in [`shared-crates.md`](shared-crates.md)) · ~29 excluded (websites, learning/forks, SecureYeoman, meta).
+**Counts:** 200 org repos → **90 Cyrius (done)** · **~72 AGNOS Rust port targets** · 9 `cyrius-*` games (separate lane, tracked in [`shared-crates.md`](shared-crates.md)) · ~29 excluded (websites, learning/forks, SecureYeoman, meta).
 
 ---
 
-## 1. DONE — Cyrius-native (88, `cyrius.cyml` present locally)
+## 1. DONE — Cyrius-native (90, `cyrius.cyml` present locally)
 
-abaco, aegis, agnodrm, agnos, agnoshi, agnostik, agnova, agora, ai-hwaccel, akshara, amuzesh, anuenue, argonaut, ark, attn11, avatara, bannermanor, bayan, bazaar, bhumi, bote, bsp, chakshu, chitra, cmdit, commandress, cyim, cyim-lsp, cyrius, cyrius-bb, cyrius-doom, cyrius-polyomino, cyrius-yeomans-descent, daimon, darshana, darshini, dig, encom-hits, ganita, gnoboot, goonj, hadara, hapi, hisab, hoosh, iam, itihas, kashi, kavach, kii, klug, kriya, kybernet, libro, mabda, majra, mehman, mela, mihi, mirshi, naad, nein, niyama, nous, owl, patra, phylax, prajna, puka, rosnet, sakshi, samvada, sandhi, sankoch, shakti, shravan, sigil, sit, szal, t-ron, taar, takumi, tarka, tentib, thoth, tyche, vani, varna
+abaco, aegis, agnodrm, agnos, agnoshi, agnostik, agnova, agora, ai-hwaccel, akshara, amuzesh, anuenue, argonaut, ark, attn11, avatara, bannermanor, bayan, bazaar, bhumi, bote, bsp, chakshu, chitra, cmdit, commandress, cyim, cyim-lsp, cyrius, cyrius-bb, cyrius-doom, cyrius-polyomino, cyrius-yeomans-descent, daimon, darshana, darshini, dig, encom-hits, ganita, gnoboot, goonj, hadara, hapi, hisab, hoosh, iam, itihas, kashi, kavach, kii, klug, kriya, kybernet, libro, mabda, majra, mehman, mela, mihi, mirshi, naad, nein, nidhi, niyama, nous, owl, patra, phylax, prajna, puka, rosnet, sakshi, samvada, sandhi, sankoch, shakti, shravan, sigil, sit, svara, szal, t-ron, taar, takumi, tarka, tentib, thoth, tyche, vani, varna
 
 *(This is the sovereign core: the kernel, compiler, the whole ML reference family + substrate, the serving/agent layer, security stack, coreutils/tools, most libs.)*
 
@@ -47,7 +47,7 @@ bhava `[L]` (emotion) · bodh `[·]` (psychology) · sangha `[·]` (sociology) �
 badal `[·]` (weather) · bijli `[·]` (EM) · brahmanda `[·]` (cosmology) · falak `[·]` (orbital) · hisab-mimamsa `[·]` (theoretical physics) · impetus `[·]` (physics) · jyotish `[·]` (astronomy) · kana `[·]` (quantum) · khanij `[·]` (geology) · kimiya `[·]` (chemistry) · dravya `[·]` (mineralogy) · pavan `[·]` (aerodynamics) · pravash `[·]` (fluid dynamics) · ushma `[·]` (thermodynamics) · tara `[·]` (stellar) · prakash `[·]` (optics/light) · tanmatra `[·]` (atomic/subatomic time) · sankhya `[L]` (ancient number systems)
 
 ### Tier D — audio / media
-dhvani `[L]` (audio engine) · shruti `[L]` (music DAW) · svara `[·]` (vocal synth) · garjan `[·]` (ambient) · ghurni `[·]` (mechanical sound) · shabda `[·]` (word/sound) · nidhi `[L]` (sample engine) · tarang `[·]` (media codec) · jalwa `[·]` (media player) · tazama `[·]` (video editor) · ranga `[·]` (image compositor) · soorat `[·]` (rendering engine)
+dhvani `[L]` (audio engine) · shruti `[L]` (music DAW) · garjan `[·]` (ambient) · ghurni `[·]` (mechanical sound) · shabda `[·]` (word/sound) · tarang `[·]` (media codec) · jalwa `[·]` (media player) · tazama `[·]` (video editor) · ranga `[·]` (image compositor) · soorat `[·]` (rendering engine) — *(svara + nidhi ported 2026-07-03 → §1)*
 
 ### Tier E — apps / desktop / tools
 abacus `[·]` · aequi `[·]` · rasa `[·]` (image editor) · taswir `[·]` · selah `[·]` (screenshot) · muharrir `[·]` (editor engine) · nazar `[·]` (sysmon/task mgr) · rahd `[·]` (calendar/contacts) · vidhana `[·]` (system settings) · salai `[·]` (game editor) · kiran `[·]` (game engine) · joshua `[·]` (game AI runtime) · mudra `[·]` (token/asset) · leela `[·]` (sports) · natya `[·]` (drama/narrative) · nyaya `[·]` (law/logic) · taal `[·]` (music theory) · shabdakosh `[·]` (dictionary) · kshetra `[·]` (geography) · raasta `[·]` (pathfinding) · aethersafha `[·]` (desktop) · aethersafta `[·]` (media compositing) · BullShift `[·]` (trading — see [`bullshift-split.md`](bullshift-split.md))

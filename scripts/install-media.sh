@@ -45,6 +45,7 @@ GNOBOOT_SRC="${GNOBOOT_SRC:-${REPO_ROOT}/../gnoboot/build/BOOTX64.EFI}"
 INITRAMFS_SRC="${INITRAMFS_SRC:-${SCRIPT_DIR}/build/initramfs}"
 ROOTFS_STAGE="${ROOTFS_STAGE:-${REPO_ROOT}/../agnos/build/rootfs}"   # stage-agnsh.sh → build/rootfs/bin/agnsh
 DOOM_BIN="${DOOM_BIN:-${REPO_ROOT}/../cyrius-doom/build/doom_agnos}" # cyrius-doom --agnos build → /bin/doom (1.43.6)
+TONEGEN_BIN="${TONEGEN_BIN:-${REPO_ROOT}/../agnos/audio-test/build/tonegen}" # agnos audio-path test → /bin/tonegen
 DOOM_WAD="${DOOM_WAD:-${REPO_ROOT}/../cyrius-doom/wad/DOOM1.WAD}"    # shareware IWAD → /DOOM1.WAD (doom's default path)
 MOUNT_POINT="/mnt/agnos-esp"
 MOUNT_POINT_DATA="/mnt/agnos-fs"
@@ -224,6 +225,12 @@ stage_doom() {
         echo "    staged /DOOM1.WAD ($(stat -c%s "$DOOM_WAD") bytes)"
     else
         echo "    WARNING: no WAD at $DOOM_WAD — /bin/doom staged WITHOUT it; 'run /bin/doom' will WadOpenFailed"
+    fi
+    # tonegen — the agnos audio-path test (clean tones via the snd_* band). Optional,
+    # staged alongside doom so `run /bin/tonegen` works on iron.
+    if [[ -f "$TONEGEN_BIN" ]]; then
+        cp "$TONEGEN_BIN" "${mnt}/bin/tonegen"; chmod +x "${mnt}/bin/tonegen"
+        echo "    staged /bin/tonegen ($(stat -c%s "$TONEGEN_BIN") bytes)"
     fi
 }
 
