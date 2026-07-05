@@ -10,7 +10,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | **✅ SHIPPED — superseded by the tarka 1.1.x line.** Both bites landed as user-authorized additive cuts: **tarka 1.1.0** (DPO `src/dpo.cyr` + the RLHF KL-to-reference-policy penalty + the frozen `dpo_snapshot()` reference, FD-gated) and **tarka 1.1.1** (`src/preference_ext.cyr` **IPO + KTO** — going *beyond* this doc's "DPO only" scope wall). This doc is retained as the pre-build spec; current truth = tarka's CHANGELOG. |
+| Status | **✅ SHIPPED — superseded by the tarka 1.1.x line.** Both bites landed as user-authorized additive cuts: **tarka 1.1.0** (DPO `src/dpo.cyr` + the RLHF KL-to-reference-policy penalty + the frozen `dpo_snapshot()` reference, FD-gated) and **tarka 1.1.1** (`src/preference_ext.cyr` **IPO + KTO** — going *beyond* this doc's "DPO only" scope wall), then **tarka 1.1.2** (2026-07-05, `--pref` preference-file ingestion — DPO/IPO/KTO train from an ifran `pref export`, closing ifran Lane 3 and the curate→export→align loop). This doc is retained as the pre-build spec; current truth = tarka's CHANGELOG. |
 | Target | [tarka](https://github.com/MacCracken/tarka) — additive, post-1.0 levers |
 | Reuses | `tarka/src/reward.cyr` (Bradley-Terry loss, hand-derived backward) · `rl.cyr` (rollout + EMA baseline) · [rosnet](https://github.com/MacCracken/rosnet) · the 24/24 finite-difference grad-check discipline |
 | Created | 2026-06-25 |
