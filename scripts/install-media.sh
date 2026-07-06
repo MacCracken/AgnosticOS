@@ -47,6 +47,8 @@ ROOTFS_STAGE="${ROOTFS_STAGE:-${REPO_ROOT}/../agnos/build/rootfs}"   # stage-agn
 DOOM_BIN="${DOOM_BIN:-${REPO_ROOT}/../cyrius-doom/build/doom_agnos}" # cyrius-doom --agnos build → /bin/doom (1.43.6)
 TONEGEN_BIN="${TONEGEN_BIN:-${REPO_ROOT}/../agnos/audio-test/build/tonegen}" # agnos audio-path test → /bin/tonegen
 DOOM_WAD="${DOOM_WAD:-${REPO_ROOT}/../cyrius-doom/wad/DOOM1.WAD}"    # shareware IWAD → /DOOM1.WAD (doom's default path)
+FPEX_BIN="${FPEX_BIN:-${REPO_ROOT}/../agnos/fp-test/build/fpex}"     # 1.53.x FP arc B4 — ring-3 f64 exerciser → /bin/fpex
+NAADEX_BIN="${NAADEX_BIN:-${REPO_ROOT}/../naad/build/naadex}"        # 1.53.x FP arc B6 — naad oscillator DSP exerciser → /bin/naadex
 MOUNT_POINT="/mnt/agnos-esp"
 MOUNT_POINT_DATA="/mnt/agnos-fs"
 
@@ -234,6 +236,32 @@ stage_doom() {
     fi
 }
 
+# Stage the 1.53.x FP/SIMD arc ring-3 f64 proofs (the arc iron-burn payload). Both are --agnos
+# builds; silently skipped if absent so non-FP installs are unaffected.
+#   /bin/fpex   (B4) — native cyrius f64 arithmetic (7*3=21/+1=22//2=11); exits 84 iff correct.
+#   /bin/naadex (B6) — naad's 440Hz sine oscillator, 256 samples via f64_sin/f64_mul; exits 88 iff
+#                      every sample is finite (a real shipping-library XMM-heavy DSP workload).
+# On iron (archaemenid): `run /bin/fpex` → "run: exit 84", `run /bin/naadex` → "run: exit 88" ==
+# real f64 / naad DSP runs correctly in ring 3 on real Zen. Build first:
+#   (cd ../agnos/fp-test && cyrius build fpex.cyr build/fpex --agnos)
+#   (cd ../naad && cyrius build naadex.cyr build/naadex --agnos)
+stage_fp() {
+    local mnt="$1"
+    mkdir -p "${mnt}/bin"
+    if [[ -f "$FPEX_BIN" ]]; then
+        cp "$FPEX_BIN" "${mnt}/bin/fpex"; chmod +x "${mnt}/bin/fpex"
+        echo "    staged /bin/fpex ($(stat -c%s "$FPEX_BIN") bytes)"
+    else
+        echo "  fpex: skipped (no --agnos build at $FPEX_BIN — cd ../agnos/fp-test && cyrius build fpex.cyr build/fpex --agnos)"
+    fi
+    if [[ -f "$NAADEX_BIN" ]]; then
+        cp "$NAADEX_BIN" "${mnt}/bin/naadex"; chmod +x "${mnt}/bin/naadex"
+        echo "    staged /bin/naadex ($(stat -c%s "$NAADEX_BIN") bytes)"
+    else
+        echo "  naadex: skipped (no --agnos build at $NAADEX_BIN — cd ../naad && cyrius build naadex.cyr build/naadex --agnos)"
+    fi
+}
+
 # --- agnos-fs refresh (stage /bin/agnsh + rootfs files), no wipe ---
 
 fs_update() {
@@ -275,6 +303,8 @@ fs_update() {
     chmod +x "${MOUNT_POINT_DATA}/bin/"*
     echo "  staged doom + WAD:"
     stage_doom "${MOUNT_POINT_DATA}"
+    echo "  staged FP-arc ring-3 f64 proofs:"
+    stage_fp "${MOUNT_POINT_DATA}"
     sync
 
     echo "  /bin size diff (old → new):"
@@ -444,6 +474,8 @@ if [[ -f "${ROOTFS_STAGE}/bin/agnsh" ]]; then
 fi
 echo "      staging doom + WAD..."
 stage_doom "${MOUNT_POINT_DATA}"
+echo "      staging FP-arc ring-3 f64 proofs (fpex + naadex)..."
+stage_fp "${MOUNT_POINT_DATA}"
 printf 'hello from agnos ext4 seed   provisioned %s\n' "$PROV_DATE" > "${MOUNT_POINT_DATA}/hello.txt"
 printf 'welcome — secondary hello on agnos-fs root   provisioned %s\n' "$PROV_DATE" > "${MOUNT_POINT_DATA}/welcome.txt"
 mkdir -p "${MOUNT_POINT_DATA}/agnos"
