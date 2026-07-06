@@ -41,7 +41,7 @@ the metal up, with nothing borrowed?*
 
 | # | Paradigm | Reference proves | Status |
 |---|----------|------------------|--------|
-| 1 | **Transformer** | attention + backprop + optimizer in everything-is-i64 | **attn11** (1.12.0; parked at infra-only M20, forward extracted → **rupantara**) |
+| 1 | **Transformer** | attention + backprop + optimizer in everything-is-i64 | **attn11** (1.13.0 — +vision lane, the sight proof; forward extracted → **rupantara**) |
 | 2 | **Autoregressive** | recurrence + backprop-through-time; the autoregressive decode/sampling discipline | planned |
 | 3 | **Pre-Trained** | sovereign weight format + import a *real* foundation model + adapt (LoRA) | **CHARTER BUILT 2026-07-04** (tula 1.0.0 / rupantara 0.4.0 / anukūlana **1.0.0 STABLE** — a real GPT-2-small runs on the sovereign stack, **matches HF exactly, adapts** [FD-gated LoRA + QLoRA over an NF4 4-bit base], **and persists** [signed 63.8 MB NF4 ckpt + adapter via tula, bit-identical round-trips]) → [`type3-weight-import.md`](type3-weight-import.md) |
 | 4 | **Generative** | the **non-autoregressive** generative families (diffusion / VAE / GAN) | planned |

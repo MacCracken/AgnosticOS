@@ -46,6 +46,18 @@ bhava `[L]` (emotion) · bodh `[·]` (psychology) · sangha `[·]` (sociology) �
 badal `[·]` (weather) · bijli `[·]` (EM) · brahmanda `[·]` (cosmology) · falak `[·]` (orbital) · hisab-mimamsa `[·]` (theoretical physics) · impetus `[·]` (physics) · jyotish `[·]` (astronomy) · kana `[·]` (quantum) · khanij `[·]` (geology) · kimiya `[·]` (chemistry) · dravya `[·]` (mineralogy) · pavan `[·]` (aerodynamics) · pravash `[·]` (fluid dynamics) · ushma `[·]` (thermodynamics) · tara `[·]` (stellar) · prakash `[·]` (optics/light) · tanmatra `[·]` (atomic/subatomic time) · sankhya `[L]` (ancient number systems)
 
 ### Tier D — audio / media
+
+> **2026-07-05 status (supersedes the `[L]`/`[·]` markers in this tier):**
+> **Cyrius-ported → §1:** dhvani (2.1.2 — full parity gated on the shabda + bhava
+> ports), garjan (2.0), ghurni (2.0) [svara + nidhi already noted below].
+> **Still Rust (local port targets):** shabda (2.0 — a dhvani-parity gate),
+> shruti, ranga (1.0). **soorat (1.0) is Rust but re-homed to the games lane** —
+> a *game* render engine, not the desktop path (desktop renders via mabda +
+> sadish/rekha). **Still Rust, deferred to later (user, 2026-07-05):** tarang,
+> jalwa, tazama. (aethersafta — media scene graph, Tier E — IS a Rust→Cyrius
+> port target, correcting the state.md "not a port target" misnote; bhava, the
+> other dhvani-parity gate, is in Tier B.)
+
 dhvani `[L]` (audio engine) · shruti `[L]` (music DAW) · garjan `[·]` (ambient) · ghurni `[·]` (mechanical sound) · shabda `[·]` (word/sound) · tarang `[·]` (media codec) · jalwa `[·]` (media player) · tazama `[·]` (video editor) · ranga `[·]` (image compositor) · soorat `[·]` (rendering engine) — *(svara + nidhi ported 2026-07-03 → §1)*
 
 ### Tier E — apps / desktop / tools
