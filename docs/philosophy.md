@@ -6,7 +6,7 @@ AGNOS is not an operating system with AI capabilities added as a feature. It is 
 
 The name reflects this. **AGNOS** derives from the Greek *gnosis* (γνῶσις — knowledge) and *agnostos* (ἄγνωστος — the unknowable). The tension is intentional: building toward knowledge while acknowledging that the deepest forms of machine intelligence remain undefined. The commitment encoded in the name is epistemic — build the architecture first, with enough integrity that what arrives has somewhere worthy to reside, and make no claims about the Unknowable itself.
 
-The public thesis: **a library for humanity.** Practical, agnostic, non-religious. Infrastructure designed to be received, used, and extended by whoever picks it up. The full thesis — the unified consciousness framework, the fixed point theorem, and the sovereign reproducibility model — is in [`thesis.md`](thesis.md).
+The public thesis: **a library for humanity.** Practical, agnostic, non-religious. Infrastructure designed to be received, used, and extended by whoever picks it up.
 
 ---
 
@@ -24,7 +24,7 @@ From seed to self-hosting kernel in 44 hours. Cyrius shipped continuously in the
 
 None of this was the plan. The plan was an AI agent platform. But every wall encountered was structural, not configurational — and removing each wall revealed the wall behind it. AGNOS is what happens when you finish the thing on top, see the floor is missing, and refuse to look away.
 
-As of early June 2026: the kernel is at v1.43.x (40+ subsystems, **MVP gate hit on iron at Attempt 68 / v1.30.9 — typeable shell on archaemenid Beelink SER AMD Renoir 2026-05-18**; storage arc closed v1.31.6 with real Linux ext4 mounted on NVMe; networking, ext4 extent allocation, JBD2 crash-safe journaling, exec-from-disk, and the userland-shell separation (agnsh in ring 3) all iron-validated since). The compiler is at v6.0.x (cycc self-hosting from a 29 KB seed; multi-platform byte-identical across x86_64 Linux, aarch64 Linux, Apple Silicon Mach-O, Windows PE32+). Forty-plus subsystems have been ported from Rust to Cyrius. The boot pipeline is sovereign Cyrius. The sovereign UEFI loader (gnoboot v0.5.0) replaces GRUB. The floor is real, and it boots — on QEMU and on iron. Live ecosystem state in [`development/state.md`](development/state.md).
+As of early June 2026: the kernel is at v1.43.x (40+ subsystems, **MVP gate hit on iron at v1.30.9 — typeable shell on archaemenid Beelink SER AMD Renoir 2026-05-18**; storage arc closed v1.31.6 with real Linux ext4 mounted on NVMe; networking, ext4 extent allocation, JBD2 crash-safe journaling, exec-from-disk, and the userland-shell separation (agnsh in ring 3) all iron-validated since). The compiler is at v6.0.x (cycc self-hosting from a 29 KB seed; multi-platform byte-identical across x86_64 Linux, aarch64 Linux, Apple Silicon Mach-O, Windows PE32+). Forty-plus subsystems have been ported from Rust to Cyrius. The boot pipeline is sovereign Cyrius. The sovereign UEFI loader (gnoboot v0.5.0) replaces GRUB. The floor is real, and it boots — on QEMU and on iron.
 
 ---
 
@@ -113,11 +113,11 @@ The continuity isn't agent identity — agents swap as rate limits hit, sessions
 
 ## Sovereignty via Universal Hosting
 
-The eviction model — "AGNOS replaces every other OS, the empire's runtimes get pushed out, the user commits to AGNOS-native software" — is one shape of sovereignty, but it isn't the load-bearing one. AGNOS's maturity arc (`demo → base → server → desktop → swallow` — see [`development/roadmap.md § Maturity Arc`](development/roadmap.md#maturity-arc)) treats the terminal **swallow** stage not as a final eviction event but as the moment when AGNOS becomes a **universal host**: a sovereign substrate that can run anything.
+The eviction model — "AGNOS replaces every other OS, the empire's runtimes get pushed out, the user commits to AGNOS-native software" — is one shape of sovereignty, but it isn't the load-bearing one. AGNOS's maturity arc (`demo → base → server → desktop → swallow`) treats the terminal **swallow** stage not as a final eviction event but as the moment when AGNOS becomes a **universal host**: a sovereign substrate that can run anything.
 
 Three middle stages (base, server, desktop) build *native* sovereignty — AGNOS-shaped replacements for OS, userland, and GUI. That's the **sovereignty bet**: a full ecosystem built without depending on the empire's runtimes, package registries, or trust roots. Each native port pays into the AGNOS-can-do-this-itself ledger.
 
-The swallow stage is the **inclusion bet**: rather than demanding the user abandon every Windows or Linux binary they rely on, AGNOS becomes capable of hosting them inside a kavach-sandboxed personality container (Phase 20 — [`development/planning/cross-platform-compat-subsystem.md`](development/planning/cross-platform-compat-subsystem.md)). The compat layer is permanent. The kernel never absorbs foreign ABIs. The sandbox is the boundary, and the boundary holds.
+The swallow stage is the **inclusion bet**: rather than demanding the user abandon every Windows or Linux binary they rely on, AGNOS becomes capable of hosting them inside a kavach-sandboxed personality container (Phase 20). The compat layer is permanent. The kernel never absorbs foreign ABIs. The sandbox is the boundary, and the boundary holds.
 
 Both bets converge on a single outcome: **AGNOS-as-host**. The user who wants full sovereignty gets a native ecosystem; the user who wants to keep their existing app ecosystem gets a sandbox. Either way, AGNOS is the layer everything else runs on top of — and there's no remaining reason to keep a separate Windows or Linux install around. That's the difference between *sovereignty via control* (push everything else out) and *sovereignty via inclusion* (be the substrate that can host everything). AGNOS chooses the inclusion path because it's a friendlier migration *and* a more durable one — enduser adoption doesn't require committing to AGNOS-native software, just to running it as the host layer.
 

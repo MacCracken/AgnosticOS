@@ -182,7 +182,7 @@ The original 5-layer plan listed VirtIO-Blk + FAT16. The 1.31.x cycle (Mar–May
 
 ### Layer 5 — Can Be Used
 
-- **Shell** — As of the **1.41.x shell-separation arc** (software-complete + QEMU-validated, iron burn pending — see [`development/iron-nuc-zen-log.md` #tracker-141x-cycle](development/iron-nuc-zen-log.md)), the full interactive shell is the **userland `agnsh`** (agnoshi binary, loaded from `/bin/agnsh` on the ext2 root and run in ring 3). The in-kernel shell shrank to a **recovery-only REPL** (`kernel/user/shell.cyr`, dropped 1149 → 813 LOC at 1.41.9 when the non-recovery verbs were deleted) that runs as the fallback when `/bin/agnsh` is absent. The recovery REPL retains a curated diagnostic/repair subset (27 verbs): `help echo uptime test halt` (base) + `cat ls cd pwd rm mv sync run` (FS read/repair + exec-from-disk, mount-routed across ext2/FAT/exFAT) + `blkread disk parts lspci cpus` (block/partition/hardware inspection) + `net send recv tcp pipe dns ping ntp date` (network diagnosis). The heavier interactive surface — `ps free bench`, the `mkdir rmdir touch ln` FS-mutation verbs, the `jbd2` journal diagnostic — moved out of the kernel into `agnsh`. `ls` accepts flag tokens (`-la` no-op for now); `cat` falls through to initrd on ext2 miss; `cd` + `pwd` consume `sh_cwd_inode` / `sh_cwd_path` globals for CWD-relative path resolution (1.31.7 bites D/B/C). Live LOC + per-cut detail: [`development/state.md`](development/state.md)
+- **Shell** — As of the **1.41.x shell-separation arc** (software-complete + QEMU-validated, iron burn pending), the full interactive shell is the **userland `agnsh`** (agnoshi binary, loaded from `/bin/agnsh` on the ext2 root and run in ring 3). The in-kernel shell shrank to a **recovery-only REPL** (`kernel/user/shell.cyr`, dropped 1149 → 813 LOC at 1.41.9 when the non-recovery verbs were deleted) that runs as the fallback when `/bin/agnsh` is absent. The recovery REPL retains a curated diagnostic/repair subset (27 verbs): `help echo uptime test halt` (base) + `cat ls cd pwd rm mv sync run` (FS read/repair + exec-from-disk, mount-routed across ext2/FAT/exFAT) + `blkread disk parts lspci cpus` (block/partition/hardware inspection) + `net send recv tcp pipe dns ping ntp date` (network diagnosis). The heavier interactive surface — `ps free bench`, the `mkdir rmdir touch ln` FS-mutation verbs, the `jbd2` journal diagnostic — moved out of the kernel into `agnsh`. `ls` accepts flag tokens (`-la` no-op for now); `cat` falls through to initrd on ext2 miss; `cd` + `pwd` consume `sh_cwd_inode` / `sh_cwd_path` globals for CWD-relative path resolution (1.31.7 bites D/B/C).
 - **kybernet PID 1** — service supervision, signal/event-loop, kernel-interface boundary. Per-repo benchmarks + test count in kybernet's own state.md.
 - **Signals** — per-process `proc_signals` / `proc_sigmask`, `kill` / `sigprocmask` / `signalfd`
 - **Epoll** — `epoll_create`, `epoll_ctl`, `epoll_wait`
@@ -199,7 +199,7 @@ The original 5-layer plan listed VirtIO-Blk + FAT16. The 1.31.x cycle (Mar–May
 | + Layer 5 (shell) | ~42–45 KB | — |
 | + VFS + signals + pipes | ~50 KB | — |
 | + VirtIO + basic TCP | ~65 KB | — |
-| Full Layer 1–5 + Path-C UEFI ABI + USB-HID + xHCI cmd-path | ~70–80 KB | **see [`development/state.md`](development/state.md) for live size** |
+| Full Layer 1–5 + Path-C UEFI ABI + USB-HID + xHCI cmd-path | ~70–80 KB | **live size drifts across the cycle** |
 
 The shipped kernel is several times the original estimate because it carries features outside the original 5-layer shortest-path plan: SMP infrastructure (APIC, IPI, trampoline, per-CPU stacks); cross-architecture (x86_64 + aarch64 in one binary); full TCP + DHCP + DNS + NTP + ICMP comms substrate (1.35.x) instead of UDP-only; slab allocator with 8 size classes; full FAT12/16/32 + exFAT read+write drivers (1.34.x) instead of FAT16 read-only; ext2/4 read **+ write + extent allocation + JBD2 crash-safe journaling** (1.33.x–1.38.x); Ring 3 with proper TSS; Local APIC timer; v1.30.x's Path-C sovereign UEFI handoff and native xHCI / USB-HID-boot driver added another sizable chunk; the 1.40.x exec-from-disk arc added the streaming ELF loader + ring-3 execution + process model (create/reap/waitpid). The 1.37.5 kashi vendoring (~+100 KB) brings the freestanding font-data core (full CP437 + 8x8 + 9x16-derived faces); the 1.38.x JBD2 stack (~+30 KB) adds the full probe → log reader → replay → write path → integration → crash smoke surface.
 
@@ -219,7 +219,7 @@ munmap(28)      getdents(29)    unlink(30)      rename(31)
 link(32)        stat(33)
 ```
 
-The FS group `getdents(29)` / `unlink(30)` / `rename(31)` / `link(32)` / `stat(33)` landed at 1.41.3 to give userland `agnsh` the directory-listing and file-metadata calls it needs. `mmap(27)` / `munmap(28)` are anonymous 2 MB-granular (1.35.3–1.35.4); `write_boot_checkpoint(26)` is the CMOS iron-boot diagnostic slot. This remains a small sovereign surface — **no socket / no splice / no AF_ALG family** (see [`development/state.md`](development/state.md) CVE-2026-31431 section). Live count: [`development/state.md`](development/state.md).
+The FS group `getdents(29)` / `unlink(30)` / `rename(31)` / `link(32)` / `stat(33)` landed at 1.41.3 to give userland `agnsh` the directory-listing and file-metadata calls it needs. `mmap(27)` / `munmap(28)` are anonymous 2 MB-granular (1.35.3–1.35.4); `write_boot_checkpoint(26)` is the CMOS iron-boot diagnostic slot. This remains a small sovereign surface — **no socket / no splice / no AF_ALG family**.
 
 ### Userland Alignment
 
@@ -239,11 +239,11 @@ The FS group `getdents(29)` / `unlink(30)` / `rename(31)` / `link(32)` / `stat(3
 | Wayland compositor (aethersafha) | Display-layer prereq for the GUI track; scaffold only at 0.1.0. Closed-beta MVP runs without it (agnoshi-as-console via argonaut 1.7.0 BOOT_MINIMAL). |
 | Per-backend GPT parsing | `gpt.cyr` currently only parses against `blk_active`; partitions on non-active backends aren't reachable. Deferred to next storage-cycle reopening or to a real consumer surfacing demand. |
 | ext2/ext4 write paths | ✅ **Shipped (1.33.x)** — block/inode allocator, dirent insertion/removal, file create/truncate/unlink, mkdir/rmdir/rename/ln/symlink, metadata_csum-stamping. W5 demo→base iron burn confirmed at 1.33.1 (`persist.txt` survives reboot on default `mkfs.ext4`). |
-| ext4 extent allocation | ✅ **Shipped (1.37.x)** — depth-0 append → depth-0→1 grow → multi-leaf depth-1 sibling split → depth-1→2 index-block grow (the full on-demand grow ladder). Iron-validated Attempt 1373 / 1.37.3. |
-| JBD2 crash-safe journaling | ✅ **Shipped + iron-validated (1.38.x)** — probe → log reader → replay-on-mount → in-memory transaction lifecycle → write path (3-barrier sync-checkpoint) → `put_inode` integration → crash-injection smoke + hardening + CSUM_V3 write/replay. AGNOS both consumes Linux-left journals AND produces its own. **Iron-validated at the 13810 burn (1.38.10)**: write-side commit + 100-tx crash stress + mid-cycle power-cut recovery, host `e2fsck -fn` clean throughout. |
-| FAT-family (FAT12/16/32 + exFAT) read+write | ✅ **Shipped + iron-validated (1.34.x / 1.40.13)** — partition-aware multi-backend mount, FAT-chain traversal, create/content/delete/truncate/LFN, exFAT allocation bitmap + typed dir-set + up-case table + directory growth, ESP-write guard. **Iron-validated through the shell at the 14013 burn** — mount-namespace routing (1.40.13) makes FAT/exFAT shell verbs reachable while ext2 owns `/`. |
-| exec-from-disk (ring-3 programs off the FS) | ✅ **Shipped + iron-validated (1.40.x)** — streaming ELF64 loader (`elf_load_from_file`) → ring-3 execution + exit-code capture → ENOEXEC/E2BIG + subdir/CWD paths → multi-run + argv → process teardown/reaping (1.40.14). **Iron-validated at the 1409 burn** (`/bin/prog2` + `/bin/argv` run in ring 3 on real Zen). Static-only; the interactive shell moving to userland `agnsh` is the 1.41.x shell-separation arc (software-complete + QEMU-validated, iron burn pending — see row below). |
-| Interactive shell (deliberately left the kernel) | ✅ **By design (1.41.x shell-separation arc)** — the full interactive shell is now the userland `agnsh` (agnoshi), loaded from `/bin/agnsh` and run in ring 3; the in-kernel `shell.cyr` shrank to a recovery-only REPL (1149 → 813 LOC at 1.41.9) used as fallback when `/bin/agnsh` is absent. The arc is **software-complete + QEMU-validated** (sweep.sh 7/7, FS_SYSCALL + SYSCALL_HARDEN selftests ALL PASS, agnsh-smoke PASS, check.sh 11/11) but **iron burn PENDING** — it has not booted on real hardware. Staged at [`development/iron-nuc-zen-log.md` #tracker-141x-cycle](development/iron-nuc-zen-log.md) with the A1–A4 rubric (boot-to-agnsh ring 3 / recovery fallback / FAT-exFAT write survives power-cycle + fsck clean / no exec-storage-net regression). |
+| ext4 extent allocation | ✅ **Shipped (1.37.x)** — depth-0 append → depth-0→1 grow → multi-leaf depth-1 sibling split → depth-1→2 index-block grow (the full on-demand grow ladder). Iron-validated 1.37.3. |
+| JBD2 crash-safe journaling | ✅ **Shipped + iron-validated (1.38.x)** — probe → log reader → replay-on-mount → in-memory transaction lifecycle → write path (3-barrier sync-checkpoint) → `put_inode` integration → crash-injection smoke + hardening + CSUM_V3 write/replay. AGNOS both consumes Linux-left journals AND produces its own. **Iron-validated on real hardware (1.38.10)**: write-side commit + 100-tx crash stress + mid-cycle power-cut recovery, host `e2fsck -fn` clean throughout. |
+| FAT-family (FAT12/16/32 + exFAT) read+write | ✅ **Shipped + iron-validated (1.34.x / 1.40.13)** — partition-aware multi-backend mount, FAT-chain traversal, create/content/delete/truncate/LFN, exFAT allocation bitmap + typed dir-set + up-case table + directory growth, ESP-write guard. **Iron-validated through the shell on real hardware** — mount-namespace routing (1.40.13) makes FAT/exFAT shell verbs reachable while ext2 owns `/`. |
+| exec-from-disk (ring-3 programs off the FS) | ✅ **Shipped + iron-validated (1.40.x)** — streaming ELF64 loader (`elf_load_from_file`) → ring-3 execution + exit-code capture → ENOEXEC/E2BIG + subdir/CWD paths → multi-run + argv → process teardown/reaping (1.40.14). **Iron-validated on real Zen** (`/bin/prog2` + `/bin/argv` run in ring 3). Static-only; the interactive shell moving to userland `agnsh` is the 1.41.x shell-separation arc (software-complete + QEMU-validated, iron burn pending — see row below). |
+| Interactive shell (deliberately left the kernel) | ✅ **By design (1.41.x shell-separation arc)** — the full interactive shell is now the userland `agnsh` (agnoshi), loaded from `/bin/agnsh` and run in ring 3; the in-kernel `shell.cyr` shrank to a recovery-only REPL (1149 → 813 LOC at 1.41.9) used as fallback when `/bin/agnsh` is absent. The arc is **software-complete + QEMU-validated** (sweep.sh 7/7, FS_SYSCALL + SYSCALL_HARDEN selftests ALL PASS, agnsh-smoke PASS, check.sh 11/11) but **iron burn PENDING** — it has not booted on real hardware. Staged with the A1–A4 rubric (boot-to-agnsh ring 3 / recovery fallback / FAT-exFAT write survives power-cycle + fsck clean / no exec-storage-net regression). |
 | HTREE indexed dirs + fast/slow symlinks (ext4) | Performance optimizations + extension; linear dirent scan + indirect-tree read suffices today. Queue when a real consumer needs them. |
 | Full USB hub / hot-plug | xHCI cmd-path + USB-HID + USB Mass Storage classes shipped (1.30.x → 1.31.3); hub topology + hot-add deferred to plug-and-play cycle. |
 | SMP scheduling (beyond infrastructure) | APIC/IPI/trampoline are in place; cross-core scheduler + AP-wakeup-on-real-hardware deferred. Gated on hardware-validation infra + the multi-threading kernel arc. |
@@ -253,7 +253,7 @@ The FS group `getdents(29)` / `unlink(30)` / `rename(31)` / `link(32)` / `stat(3
 
 ## Named Subsystems
 
-Every subsystem is a standalone repo at `/home/macro/Repos/{name}/`. Each has its own CLAUDE.md, CHANGELOG, and version. **Live versions and per-repo status**: [`development/state.md`](development/state.md) and [`development/planning/shared-crates.md`](development/planning/shared-crates.md). Per-subsystem version numbers intentionally elided below — they drift fast and the registry files are the canonical source.
+Every subsystem is a standalone repo at `/home/macro/Repos/{name}/`. Each has its own CLAUDE.md, CHANGELOG, and version. Per-subsystem version numbers intentionally elided below — they drift fast and the registry files are the canonical source.
 
 ### ark — Unified Package Manager
 
@@ -368,8 +368,8 @@ gnoboot (sovereign UEFI bootloader, Path-C handoff)
 
 | Layer | Technology | Notes |
 |-------|-----------|-------|
-| Kernel | Cyrius (AGNOS-native) | 40+ subsystems, a small sovereign syscall surface (no socket/splice). Live size + version + syscall count: [`development/state.md`](development/state.md) |
-| Compiler | Cyrius (cycc) | self-hosting from 29KB seed, 42+ stdlib modules. Live version + size: [`development/state.md`](development/state.md) |
+| Kernel | Cyrius (AGNOS-native) | 40+ subsystems, a small sovereign syscall surface (no socket/splice) |
+| Compiler | Cyrius (cycc) | self-hosting from 29KB seed, 42+ stdlib modules |
 | Bootloader | gnoboot | sovereign UEFI bootloader (PE32+ EFI Application). Replaces GRUB as of v1.30.0 Path-C. |
 | User space | Cyrius | All ported subsystems compile with `cyrius build` |
 | Host bootstrap | Linux kernel configs | For building cross-compiler on existing host only |
@@ -378,7 +378,7 @@ gnoboot (sovereign UEFI bootloader, Path-C handoff)
 
 ### Pending Cyrius Ports
 
-Per [`development/state.md`](development/state.md), these subsystems are still pending or in-flight (Rust authoritative):
+These subsystems are still pending or in-flight (Rust authoritative):
 
 | Subsystem | Notes |
 |-----------|-------|
@@ -388,13 +388,13 @@ Per [`development/state.md`](development/state.md), these subsystems are still p
 | goonj | Acoustics — Rust authoritative, port pending |
 | naad | Audio synthesis — Rust authoritative, port pending |
 
-Recently shipped (no longer pending): phylax, shakti, hisab, **aegis** (1.0+, Cyrius-native, May 2026), **gnoboot** (sovereign UEFI bootloader, replaced GRUB at the 1.30.0 Path-C cut), **kriya** (coreutils-equivalent multi-tool, M5 grep+find+xargs closeout). See [shared-crates registry](development/planning/shared-crates.md) for full status.
+Recently shipped (no longer pending): phylax, shakti, hisab, **aegis** (1.0+, Cyrius-native, May 2026), **gnoboot** (sovereign UEFI bootloader, replaced GRUB at the 1.30.0 Path-C cut), **kriya** (coreutils-equivalent multi-tool, M5 grep+find+xargs closeout). See the v1.0+ [library](applications/libs/README.md) and [binaries & tools](applications/binaries.md) registries for full status.
 
 ## Design Decisions
 
 ### 1. Sovereign Kernel
 
-AGNOS has its own kernel written in Cyrius — iron-validated on NUC AMD 2026-05-15. No Linux dependency at runtime. Linux kernel configs in this repo are for host bootstrap only. Live kernel size + version: [`development/state.md`](development/state.md).
+AGNOS has its own kernel written in Cyrius — iron-validated on NUC AMD 2026-05-15. No Linux dependency at runtime. Linux kernel configs in this repo are for host bootstrap only.
 
 ### 2. Cyrius for Everything
 
@@ -424,6 +424,5 @@ Every subsystem is extracted into its own repository. The genesis repo (agnostic
 
 ## Related Documentation
 
-- [Development Roadmap](development/roadmap.md)
 - [Security Guide](security/security-guide.md)
 - [ADR Index](adr/README.md)
