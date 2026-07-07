@@ -196,7 +196,7 @@ Don't mix test runs across repos — each one pins its own toolchain and deps.
 - **Issue tracker**: https://github.com/MacCracken/agnosticos/issues
 - **Per-subsystem issues**: file against the specific repo (`MacCracken/<name>/issues`)
 - **Security issues**: see [/SECURITY.md](/SECURITY.md) for private disclosure
-- **Roadmap**: [../development/roadmap.md](../development/roadmap.md)
+- **Roadmap**: tracked in the project's development docs
 - **Phase 13A (Beta blocker)**: tracks the ISO work that closes the "is AGNOS installable?" gap
 
 ---

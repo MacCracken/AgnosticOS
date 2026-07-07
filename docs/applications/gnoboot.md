@@ -17,7 +17,7 @@
 
 ## Why First-Party
 
-The AGNOS sovereignty pattern is: **own your stack**. Cyrius replaced gcc/clang/llvm; agnos replaced Linux; gnoboot replaces GRUB. Until gnoboot existed, AGNOS depended on a third-party bootloader whose multiboot2-EFI relocator broke under modern strict-W^X UEFI (see [iron-nuc-zen log § Diagnosis 2](../development/iron-nuc-zen-log-mvp.md)). gnoboot dissolves that dependency — AGNOS boots end-to-end on its own.
+The AGNOS sovereignty pattern is: **own your stack**. Cyrius replaced gcc/clang/llvm; agnos replaced Linux; gnoboot replaces GRUB. Until gnoboot existed, AGNOS depended on a third-party bootloader whose multiboot2-EFI relocator broke under modern strict-W^X UEFI. gnoboot dissolves that dependency — AGNOS boots end-to-end on its own.
 
 ## What It Does
 
@@ -33,7 +33,7 @@ After ExitBootServices, ConOut is gone; any further diagnostic comes from the ke
 
 ## Architecture
 
-See [Path C plan](../development/path-c-sovereign-uefi.md) for the full architecture, struct layout, and rationale.
+See the Path C plan for the full architecture, struct layout, and rationale.
 
 Key invariants:
 - **`fn efi_main(handle, st)` entry convention** — cyrius 5.11.52+ auto-emits the firmware-arg-capture trampoline (RCX → R14, RDX → R15) around `gvar_inits` + the call
@@ -43,12 +43,12 @@ Key invariants:
 ## Verification
 
 - **QEMU OVMF**: `tests/ovmf_smoke.sh` in the gnoboot repo. Builds a GPT-disk-with-ESP, boots under `qemu-system-x86_64 -cpu max -machine q35` + OVMF firmware. Verified continuously through every minor release.
-- **Iron (NUC AMD archaemenid)**: iron-validated end-to-end. MVP gate cleared at Attempt 68 (2026-05-18, agnos 1.30.9) — `agnos> echo "Assembly Up!"` echoed on iron USB Logitech keyboard. Storage iron debuts followed: NVMe Attempt 80 (Crucial P3 2 TB), AHCI/SATA Attempt 81 (WD Blue SA510 2 TB), USB-MS Attempt 87 (Silicon Motion stick, full INQUIRY/TUR/RC10).
+- **Iron (NUC AMD archaemenid)**: iron-validated end-to-end. MVP gate cleared on real hardware (2026-05-18, agnos 1.30.9) — `agnos> echo "Assembly Up!"` echoed on iron USB Logitech keyboard. Storage iron debuts followed: NVMe (Crucial P3 2 TB), AHCI/SATA (WD Blue SA510 2 TB), USB-MS (Silicon Motion stick, full INQUIRY/TUR/RC10).
 
 ## Status
 
 - ✓ MVP handoff verified on QEMU OVMF emulation (2026-05-13)
-- ✓ Iron MVP gate cleared on archaemenid NUC AMD at Attempt 68 (2026-05-18)
+- ✓ Iron MVP gate cleared on archaemenid NUC AMD (2026-05-18)
 - ✓ FB-handoff observability bundle (GOP mode capture, serial diagnostic, CMOS stamp) — 0.3.0 → 0.4.x
 - ⏳ AMD Zen Quiet-Boot scanout residue carry-forward (HUBP clear_tiling port or shadow-buffer eval) — parked at 0.4.2 closeout (2026-05-20)
 - ⏳ aarch64 UEFI port (Pi 4) — gnoboot v0.9.0
@@ -60,8 +60,8 @@ Full roadmap: [gnoboot/docs/development/roadmap.md](https://github.com/MacCracke
 
 - [agnos](agnos.md) (when added) — the kernel gnoboot loads. agnos 1.30.0 cut the sovereign-struct ABI break that originally paired with gnoboot v0.1.0; current pairing is agnos 1.31.4 + gnoboot 0.4.2.
 - [cyrius](https://github.com/MacCracken/cyrius) — toolchain. gnoboot's bring-up surfaced multiple cyrius issues that landed across v5.11.49 → v5.11.69 and into v6.0.x.
-- [Sovereign UEFI plan](../development/path-c-sovereign-uefi.md) — full architecture
-- [Iron-boot test log](../development/iron-nuc-zen-log.md) — active iron boot log (post-MVP). gnoboot ships from Attempt 5; full MVP-era arc (Attempts 1–68) at [`iron-nuc-zen-log-mvp.md`](../development/iron-nuc-zen-log-mvp.md).
+- Sovereign UEFI plan — full architecture
+- Iron-boot test log — active iron boot log (post-MVP). gnoboot ships from early in the iron boot arc; full MVP-era arc is tracked in the iron boot log.
 
 ## Related ADRs (in gnoboot)
 

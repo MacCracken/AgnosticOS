@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/badge/license-GPLv3-blue)](LICENSE)
 [![Kernel](https://img.shields.io/badge/kernel-AGNOS%201.51.2-orange)](https://github.com/MacCracken/agnos)
 [![Language](https://img.shields.io/badge/Cyrius-6.3.21-red)](https://github.com/MacCracken/cyrius)
-[![Status](https://img.shields.io/badge/status-pre--beta-yellow)](docs/development/roadmap.md)
+![Status](https://img.shields.io/badge/status-pre--beta-yellow)
 
 **AGNOS** is a sovereign operating system written in **Cyrius** — a systems language with a 29KB seed, zero external dependencies, and a self-hosting compiler. The kernel boots to a typeable shell on real AMD hardware (Boot-to-Shell MVP, 2026-05-15). Since then, validated **on real AMD Zen** unless noted:
 
@@ -13,12 +13,12 @@
 - **Networking** — full TCP/IP + DHCP + DNS + NTP + ICMP over an r8169 NIC, iron-validated.
 - **Filesystems** — read+write ext2/ext4 (incl. **ext4 extent allocation** + **JBD2 crash-safe journaling**), FAT12/16/32, exFAT; FS-crash-safety confirmed on hardware.
 - **exec-from-disk** — static programs load + run in ring 3 off the agnos-fs, iron-validated.
-- **Userland shell** — the interactive shell is the userland **agnsh** binary, exec'd from disk in ring 3 (the in-kernel shell is now a recovery-only REPL, locking the kernel↔userland boundary); shell-separation arc **iron-complete** at burn `14115` (2026-06-06, past a real DHCP lease). First AGNOS-tic tools (`bnrmr`/`cmdrs`/`klug`/`anuenue`) live on `/bin`, run via `run /bin/<tool>`.
-- **Graphics + DOOM** — a framebuffer / timing / input path (`fbinfo`/`blit`/`uptime_ms`/`sleep_ms`/`kbscan`) culminating in **DOOM (cyrius-doom) exec'd from disk in ring 3** — the first real userland app, **iron-complete** at burn `1439` (plays in-game, keyboard-driven).
+- **Userland shell** — the interactive shell is the userland **agnsh** binary, exec'd from disk in ring 3 (the in-kernel shell is now a recovery-only REPL, locking the kernel↔userland boundary); shell-separation arc **iron-complete** (2026-06-06, past a real DHCP lease). First AGNOS-tic tools (`bnrmr`/`cmdrs`/`klug`/`anuenue`) live on `/bin`, run via `run /bin/<tool>`.
+- **Graphics + DOOM** — a framebuffer / timing / input path (`fbinfo`/`blit`/`uptime_ms`/`sleep_ms`/`kbscan`) culminating in **DOOM (cyrius-doom) exec'd from disk in ring 3** — the first real userland app, **iron-complete** on real hardware (plays in-game, keyboard-driven).
 - **Preemptive scheduling** — the 1.44.x arc moved the kernel from cooperative single-core round-robin to **preemptive ring-3 time-slicing**: concurrent ring-3 processes (each on its own CR3, both syscalling), and a ring-3 **parent** that `spawn`s a child ELF + poll-`waitpid`s it entirely from ring 3 (**QEMU-validated** via `scripts/ring3-smoke.sh`; iron-validated at 1.46.x on real Zen).
 - **Console fonts** — vendored from **kashi 1.0.0** (parallel-agent-developed sibling repo).
 
-30+ subsystems ported from Rust to Cyrius. No Linux dependency at runtime — the kernel exposes a **small sovereign syscall surface with no socket/splice/AF_ALG layer** (structurally immune to that CVE class). Live binary sizes, per-repo versions, syscall count, and cycle state: [`docs/development/state.md`](docs/development/state.md).
+30+ subsystems ported from Rust to Cyrius. No Linux dependency at runtime — the kernel exposes a **small sovereign syscall surface with no socket/splice/AF_ALG layer** (structurally immune to that CVE class). Live binary sizes, per-repo versions, syscall count, and cycle state track in the ecosystem state ledger.
 
 > *AGI doesn't run on infrastructure built for web apps. It runs on infrastructure built for AGI.*
 >
@@ -64,7 +64,7 @@
 | **Packages** | ark + nous | package manager + resolver |
 | **Recipes** | zugot | 421 base + 90 bazaar |
 
-> Live versions, binary sizes, per-repo state: [`docs/development/state.md`](docs/development/state.md). Full crate registry: [`docs/development/planning/shared-crates.md`](docs/development/planning/shared-crates.md) (incl. pre-1.0); v1.0+ stable subset: [`docs/applications/libs/README.md`](docs/applications/libs/README.md).
+> v1.0+ stable libraries: [`docs/applications/libs/README.md`](docs/applications/libs/README.md); v1.0+ binaries & tools: [`docs/applications/binaries.md`](docs/applications/binaries.md).
 
 ## Port Receipts (Rust to Cyrius)
 
@@ -105,7 +105,7 @@ All ship as `.agnos-agent` marketplace bundles:
 |-----------|--------|
 | Sovereign kernel (40+ subsystems, iron-validated NUC AMD 2026-05-15) | Done |
 | Kernel perf + hardening (heap-zero perf, page-map/RBP/reap hardening) + sysinfo/klog syscalls (`uname`/`sysinfo`/`klog`) | **QEMU-validated, iron-pending** (1.42.x) |
-| Graphics path + first real userland app — DOOM (cyrius-doom) exec'd from disk in ring 3 | **Iron-complete** (burn `1439`, plays in-game on real Zen) — 1.43.x |
+| Graphics path + first real userland app — DOOM (cyrius-doom) exec'd from disk in ring 3 | **Iron-complete** (plays in-game on real Zen) — 1.43.x |
 | Preemptive ring-3 multi-threading (per-proc CR3, time-slicing, concurrent exec + clean exit, real ELF spawn) | **iron-validated on real Zen** (1.44.x arc; SMP/preempt iron-confirmed 1.46.x) |
 | Cyrius compiler (self-hosting, 42+ stdlib modules) | Done |
 | 30+ subsystem ports (Rust to Cyrius) | Done |
@@ -113,14 +113,14 @@ All ship as `.agnos-agent` marketplace bundles:
 | LFS base recipes (421 base + 90 bazaar) | Done |
 | Security stack (kavach, sigil, libro, aegis at v1.0+) | Done |
 | 19+ consumer apps with MCP integration | Done |
-| **Self-hosting (AGNOS builds AGNOS)** | **Public-beta scope — not a closed-beta gate.** Kernel already builds + boots against current Cyrius; the bare-metal toolchain target lands in Cyrius **v6.0.x** but does not gate the MVP (per roadmap §MVP — the earlier "closed-beta blocker" framing was pre-monolith-extraction residue, corrected 2026-05-12) |
+| **Self-hosting (AGNOS builds AGNOS)** | **Public-beta scope — not a closed-beta gate.** Kernel already builds + boots against current Cyrius; the bare-metal toolchain target lands in Cyrius **v6.0.x** but does not gate the MVP (the earlier "closed-beta blocker" framing was pre-monolith-extraction residue, corrected 2026-05-12) |
 | Closed-beta tester cohort (5–15 trusted testers) | Pending closed-beta cut |
 | Third-party security audit | Public-beta gate |
 | Community testing program (formal enrollment) | Public-beta gate |
 
 **Closed-beta target: late August 2026** (preceded by a ~July founder solo-dogfood month) | **Public-beta target: deferred post-summer** | **GA target: late fall / early winter 2026**
 
-See [docs/development/roadmap.md](docs/development/roadmap.md) for full details.
+See [CHANGELOG.md](CHANGELOG.md) for full details.
 
 ## Quick Start
 
@@ -157,17 +157,15 @@ make boot-test
 - **aegis** — System security daemon (threat detection, quarantine, scanning)
 - **AGNOS kernel** — Security hardening 13/13 closed (S1-S13 incl. KASLR data-only, KPTI-light, IBRS Spectre v2 mitigations, VT-d IOMMU, stack canaries); structurally immune to CVE-2026-31431 (no socket/splice/AF_ALG surface in the sovereign syscall table)
 
-Versions + per-subsystem detail in [`docs/development/state.md`](docs/development/state.md). See [SECURITY.md](SECURITY.md) for vulnerability reporting.
+See [SECURITY.md](SECURITY.md) for vulnerability reporting.
 
 ## Documentation
 
 | Document | Description |
 |----------|-------------|
-| [roadmap.md](docs/development/roadmap.md) | Development roadmap, KPIs |
 | [architecture.md](docs/architecture.md) | System architecture |
-| [shared-crates.md](docs/development/planning/shared-crates.md) | Shared crate registry (full, incl. pre-1.0) |
-| [doc-health.md](docs/doc-health.md) | Living doc-health ledger |
-| [state.md](docs/development/state.md) | Live ecosystem state (cycle, pins, sweeps) |
+| [libs/README.md](docs/applications/libs/README.md) | v1.0+ stable library registry |
+| [binaries.md](docs/applications/binaries.md) | v1.0+ binaries & tools registry |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution guidelines |
 | [SECURITY.md](SECURITY.md) | Security policies |
 

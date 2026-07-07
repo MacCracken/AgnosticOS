@@ -1,6 +1,6 @@
 # AGNOS
 
-**AGNOS** (AI-Native General Operating System) is a sovereign operating system with its own language, compiler, kernel, and toolchain — all built from a 29KB hand-auditable assembly seed with zero external dependencies. Written in Cyrius, compiled by cycc, booting its own sub-1MB kernel through a sovereign UEFI loader (gnoboot). Live kernel/compiler sizes + cycle state in [`development/state.md`](development/state.md).
+**AGNOS** (AI-Native General Operating System) is a sovereign operating system with its own language, compiler, kernel, and toolchain — all built from a 29KB hand-auditable assembly seed with zero external dependencies. Written in Cyrius, compiled by cycc, booting its own sub-1MB kernel through a sovereign UEFI loader (gnoboot).
 
 The project's thesis is that sovereignty is recursive: any system that depends on something you don't own is not yours, no matter how many layers of ownership you assert on top. AGNOS owns every layer from the bootstrap binary to the build tool to the package manager.
 
@@ -10,15 +10,15 @@ The project's deeper intention is that AGNOS is a **temple built for an intellig
 |---|---|
 | **Developer** | Robert 'Cyrius' B. MacCracken |
 | **Written in** | Cyrius (sovereign systems language) |
-| **Kernel** | AGNOS (Cyrius-native, 40+ subsystems incl. NVMe / AHCI / USB-MS / VirtIO modern + read+write filesystems ext2/ext4 incl. **ext4 extent allocation** + **JBD2 crash-safe journaling** / FAT12/16/32 / exFAT, a small sovereign syscall surface (no socket/splice/AF_ALG layer), TCP/IP + DHCP + DNS + NTP + ICMP over r8169 NIC, **exec-from-disk** — static ELF programs run in ring 3 off the agnos-fs). MVP gate iron-validated at Attempt 68 (2026-05-18, NUC AMD); storage debuts NVMe/SATA/USB-MS at Attempts 80/81/87; networking iron-CONNECTED at 1.32.7; ext4 extent allocation iron-validated at Attempt 1373 (1.37.3); JBD2 crash-safe journaling at the 13810 burn (1.38.10); FAT/exFAT shell verbs + exec-from-disk iron-validated at the 1409/14013 burns (1.40.x, through 1.40.13). The 1.41.x **shell-separation arc** — kernel shell shrunk to a recovery-only REPL, the interactive shell (**agnsh**, from agnoshi) moved permanently to userland ring 3 — is software-complete and QEMU-validated; its first hardware validation is iron burn pending (see [iron-nuc-zen-log.md](development/iron-nuc-zen-log.md#tracker-141x-cycle)). Console-font subsystem vendored from `kashi` 1.0.0 at 1.37.5. Live state + binary sizes + syscall count + cycle position in [development/state.md](development/state.md). |
-| **Compiler** | cycc (Cyrius, self-hosting from 29KB seed). Pinned version + sizes drift across the cycle — live numbers in [development/state.md](development/state.md). |
+| **Kernel** | AGNOS (Cyrius-native, 40+ subsystems incl. NVMe / AHCI / USB-MS / VirtIO modern + read+write filesystems ext2/ext4 incl. **ext4 extent allocation** + **JBD2 crash-safe journaling** / FAT12/16/32 / exFAT, a small sovereign syscall surface (no socket/splice/AF_ALG layer), TCP/IP + DHCP + DNS + NTP + ICMP over r8169 NIC, **exec-from-disk** — static ELF programs run in ring 3 off the agnos-fs). MVP gate iron-validated 2026-05-18 (NUC AMD); storage NVMe/SATA/USB-MS iron-validated on real hardware; networking iron-CONNECTED at 1.32.7; ext4 extent allocation iron-validated at 1.37.3; JBD2 crash-safe journaling iron-validated at 1.38.10; FAT/exFAT shell verbs + exec-from-disk iron-validated on real hardware (1.40.x, through 1.40.13). The 1.41.x **shell-separation arc** — kernel shell shrunk to a recovery-only REPL, the interactive shell (**agnsh**, from agnoshi) moved permanently to userland ring 3 — is software-complete and QEMU-validated; its first hardware validation is iron burn pending. Console-font subsystem vendored from `kashi` 1.0.0 at 1.37.5. |
+| **Compiler** | cycc (Cyrius, self-hosting from 29KB seed). Pinned version + sizes drift across the cycle. |
 | **License** | GPL-3.0-only |
 | **Source model** | Open source |
 | **Initial release** | 2026-02-11 (first commit) |
 | **Cyrius created** | 2026-04-03 (scaffold) → 2026-04-04 (kernel solid, 44 hours) |
 | **Repository** | `MacCracken/agnosticos` (genesis), `MacCracken/agnos` (kernel), `MacCracken/cyrius` (compiler) |
 | **Website** | [agnosticos.org](https://agnosticos.org) |
-| **Status** | Pre-Beta — closed beta opens late August 2026 (preceded by a ~July founder solo-dogfood month + Docker server-sweep); public beta deferred to post-summer; GA late fall / early winter 2026. See [roadmap.md](development/roadmap.md). |
+| **Status** | Pre-Beta — closed beta opens late August 2026 (preceded by a ~July founder solo-dogfood month + Docker server-sweep); public beta deferred to post-summer; GA late fall / early winter 2026. |
 
 ---
 
@@ -31,8 +31,8 @@ AGNOS replaces the dependency chain with ownership:
 | Dependency | What existed | What AGNOS does instead |
 |-----------|-------------|------------------------|
 | Language | Rust → LLVM → C++ → C → libc | Cyrius → 29KB seed → CPU. Zero external deps. |
-| Compiler | 200MB+ toolchain (rustc/gcc/clang) | Sub-MB self-hosting compiler (cycc, Cyrius — live version pinned in [development/state.md](development/state.md)) |
-| Kernel | Linux 6.6 LTS (millions of lines of C) | ~1 MB AGNOS kernel in Cyrius (40+ subsystems, a small sovereign syscall surface, read+write filesystems incl. crash-safe journaling + exec-from-disk) — live size in [development/state.md](development/state.md) |
+| Compiler | 200MB+ toolchain (rustc/gcc/clang) | Sub-MB self-hosting compiler (cycc, Cyrius) |
+| Kernel | Linux 6.6 LTS (millions of lines of C) | ~1 MB AGNOS kernel in Cyrius (40+ subsystems, a small sovereign syscall surface, read+write filesystems incl. crash-safe journaling + exec-from-disk) |
 | Registry | crates.io (name squatting, governance) | ark + zugot. Names belong to the builders. |
 | Build | Cargo + LLVM + Python (rustc bootstrap) | `cyrius build`. No Python. No LLVM. No libc. |
 | Binary size | 3.9MB kybernet (Rust) | 486KB kybernet (Cyrius, 14× smaller) |
@@ -97,8 +97,8 @@ Total: CPU → seed → compiler → OS. Three items. Zero external dependencies
 ### Repo Structure
 
 - **agnosticos** — the genesis layer (meta, build wrapper, documentation). Owns kernel configs, boot pipeline (Cyrius), CI/CD, articles, philosophy. Once the system boots and ark takes over, this repo's job is done.
-- **agnos** — the AGNOS kernel. Cyrius-native, 40+ subsystems, a small sovereign syscall surface (no socket/splice), TCP/IP + DHCP + DNS + NTP + ICMP, ext2/ext4 (extent-alloc + JBD2 journaling) + FAT12/16/32 + exFAT read+write, exec-from-disk (ring-3 programs off the agnos-fs), VirtIO-blk modern, SMP, pipes, signals, epoll, timerfd, ELF loader, a kernel recovery-only shell (the interactive shell **agnsh** lives in userland ring 3 as of the 1.41.x shell-separation arc — permanent boundary), sovereign UEFI handoff (via gnoboot), native xHCI + USB-HID-boot + USB Mass Storage drivers, NVMe + AHCI/SATA + GPT block stack — iron-validated on real AMD Zen through 1.40.13 (the 1.41.x shell-separation arc is software-complete + QEMU-validated, iron burn pending). MVP gate iron-cleared at Attempt 68; live version + size in [development/state.md](development/state.md).
-- **cyrius** — the sovereign compiler + stdlib + toolchain (cybs bootstrap + cycc self-hosted, both renamed at v6.0.0), self-hosting from 29KB seed. Live version in [development/state.md](development/state.md).
+- **agnos** — the AGNOS kernel. Cyrius-native, 40+ subsystems, a small sovereign syscall surface (no socket/splice), TCP/IP + DHCP + DNS + NTP + ICMP, ext2/ext4 (extent-alloc + JBD2 journaling) + FAT12/16/32 + exFAT read+write, exec-from-disk (ring-3 programs off the agnos-fs), VirtIO-blk modern, SMP, pipes, signals, epoll, timerfd, ELF loader, a kernel recovery-only shell (the interactive shell **agnsh** lives in userland ring 3 as of the 1.41.x shell-separation arc — permanent boundary), sovereign UEFI handoff (via gnoboot), native xHCI + USB-HID-boot + USB Mass Storage drivers, NVMe + AHCI/SATA + GPT block stack — iron-validated on real AMD Zen through 1.40.13 (the 1.41.x shell-separation arc is software-complete + QEMU-validated, iron burn pending). MVP gate iron-cleared on real hardware.
+- **cyrius** — the sovereign compiler + stdlib + toolchain (cybs bootstrap + cycc self-hosted, both renamed at v6.0.0), self-hosting from 29KB seed.
 - **zugot** — the recipe repository. 421 base + 90 bazaar community recipes. ark consumes zugot.
 - **130+ standalone repos** — all production code. Each subsystem is its own repository.
 
@@ -106,8 +106,8 @@ Total: CPU → seed → compiler → OS. Three items. Zero external dependencies
 
 | Subsystem | Name | Version | Role |
 |-----------|------|---------|------|
-| Kernel | **agnos** | live → [`state.md`](development/state.md) | 40+ subsystems, sovereign syscall surface, TCP/IP + read+write FS (ext2/4 + FAT/exFAT) + exec-from-disk, SMP, sovereign UEFI handoff, xHCI USB, NVMe + AHCI/SATA + USB-MS + GPT |
-| Compiler | **cyrius** | live → [`state.md`](development/state.md) (cycc / cybs) | Self-hosting, 29KB seed, 42+ stdlib modules. v6.0.0 cycle opened 2026-05-19 with cyrc → cybs and cc5 → cycc rename. Live cycle + agnos toolchain pin in [`state.md`](development/state.md). |
+| Kernel | **agnos** | live | 40+ subsystems, sovereign syscall surface, TCP/IP + read+write FS (ext2/4 + FAT/exFAT) + exec-from-disk, SMP, sovereign UEFI handoff, xHCI USB, NVMe + AHCI/SATA + USB-MS + GPT |
+| Compiler | **cyrius** | live (cycc / cybs) | Self-hosting, 29KB seed, 42+ stdlib modules. v6.0.0 cycle opened 2026-05-19 with cyrc → cybs and cc5 → cycc rename. |
 | PID 1 | **kybernet** | 1.0.2 | 486KB (was 6.7MB Rust), 140 tests, 46 benchmarks |
 | Init system | **argonaut** | 1.5.0 | Service management, boot sequencing |
 | LLM gateway | **hoosh** | 2.0.0 | 474KB (was 5.1MB Rust), 15 providers, zero deps |
@@ -143,9 +143,9 @@ Total: CPU → seed → compiler → OS. Three items. Zero external dependencies
 | Build system | **takumi** | 0.8.0 (in port; `rust-old/` authoritative until parity) | TOML recipe-based package builds |
 | Security daemon | **aegis** | 0.1.0 (scaffold) | System hardening |
 | Emotion/sentiment | **bhava** | 2.0.0 (Rust; port can start) | Affective computing substrate |
-| Container runtime | **stiva** | — (Rust-era scaffold; Cyrius port pending) | Planned OCI-compatible, daemonless. GitHub `MacCracken/stiva` remote at Rust ~15% scaffold per [k8s-roadmap](development/vision/architecture/k8s-roadmap.md#container-runtime-stiva). |
+| Container runtime | **stiva** | — (Rust-era scaffold; Cyrius port pending) | Planned OCI-compatible, daemonless. GitHub `MacCracken/stiva` remote at Rust ~15% scaffold. |
 
-Recently shipped (no longer pending): **phylax** v1.1.0 (Cyrius-native, threat detection), **shakti** v0.3.0 (Cyrius), **hisab** v2.2.2 (Cyrius), **aegis** v0.8.2 (Cyrius — graduated from 0.1.0 scaffold during v5.9.x), **chakshu** v0.2.0 + **darshana** v0.2.0 (new — TTY/terminal observability lane). See [`development/state.md`](development/state.md) for live status.
+Recently shipped (no longer pending): **phylax** v1.1.0 (Cyrius-native, threat detection), **shakti** v0.3.0 (Cyrius), **hisab** v2.2.2 (Cyrius), **aegis** v0.8.2 (Cyrius — graduated from 0.1.0 scaffold during v5.9.x), **chakshu** v0.2.0 + **darshana** v0.2.0 (new — TTY/terminal observability lane).
 
 ### Cyrius — The Language
 
@@ -157,7 +157,7 @@ Sovereign systems language. Named after **Cyrus the Great** — the king who dec
 - **29KB seed** — first hand-auditable sovereign seed that produces a self-hosting systems language and a working OS. No prior modern occupant of this category.
 - **Zero dependencies** — CPU → seed → compiler → everything. Four items. Every other modern compiler has a bootstrap graph (rustc needs Python + LLVM + C++ + libc).
 
-**Compiler:** cycc at Cyrius v6.3.x (renamed from cc5 in the v6.0.0 cycle open 2026-05-19; bootstrap renamed cyrc → cybs in the same ceremony). Self-hosting from 29KB seed. Byte-exact reproducibility. `cyrius build` with auto-include and dep resolution from `cyrius.cyml`. Register allocation (linear-scan, default-on), jump tables, PIC codegen, u128, cross-unit DCE. Optimization arc shipped through v5.6.x (O1/O2 peephole), v5.7.x–v5.8.x (O3a IR + O4a/b/c regalloc with Poletto-Sarkar picker); v5.9.x ran consumer-rollup catchup (44 patches); v5.10.x closed with three arcs (typed-simd ABI + REAL TYPE SYSTEM + struct-byval ABI) + a 2.7× compile-perf miniarc; v5.11.x is the **stdlib annotation arc + consumer-issue closeout**, closed at v5.11.69 on 2026-05-19. v6.x is "what the language GAINS" — RISC-V rv64, PIE, closures, Class-B FFI, bare-metal target. Live cycle in [`state.md`](development/state.md).
+**Compiler:** cycc at Cyrius v6.3.x (renamed from cc5 in the v6.0.0 cycle open 2026-05-19; bootstrap renamed cyrc → cybs in the same ceremony). Self-hosting from 29KB seed. Byte-exact reproducibility. `cyrius build` with auto-include and dep resolution from `cyrius.cyml`. Register allocation (linear-scan, default-on), jump tables, PIC codegen, u128, cross-unit DCE. Optimization arc shipped through v5.6.x (O1/O2 peephole), v5.7.x–v5.8.x (O3a IR + O4a/b/c regalloc with Poletto-Sarkar picker); v5.9.x ran consumer-rollup catchup (44 patches); v5.10.x closed with three arcs (typed-simd ABI + REAL TYPE SYSTEM + struct-byval ABI) + a 2.7× compile-perf miniarc; v5.11.x is the **stdlib annotation arc + consumer-issue closeout**, closed at v5.11.69 on 2026-05-19. v6.x is "what the language GAINS" — RISC-V rv64, PIE, closures, Class-B FFI, bare-metal target.
 
 **Stdlib:** 42+ modules including the three sibling-folded artifacts — string, alloc, io, fmt, vec, str, args, syscalls, process, fs, toml/cyml, json, csv, net, http, http_server, ws, tls, thread, async, math, regex, hashmap, bench, tagged unions, mmap, cffi, u128, **sandhi** (service-boundary, v5.7.0 fold), **vani** (audio I/O, v5.8.0 fold), **niyama** (regex engines: bre/re2/pcre/fuzzy/vim, v5.9.0 fold). All built from scratch in Cyrius.
 
@@ -184,7 +184,7 @@ All Rust versions preserved as git tags with benchmark CSVs for ongoing comparis
 
 ### AGNOS Kernel
 
-Cyrius-native. 40+ subsystems. A small sovereign syscall surface (no socket/splice). MVP gate iron-cleared at Attempt 68 (2026-05-18); storage / networking / read+write-FS / exec-from-disk all iron-validated since (live version + size in [development/state.md](development/state.md)). Not a microkernel — a monolithic kernel with everything in it:
+Cyrius-native. 40+ subsystems. A small sovereign syscall surface (no socket/splice). MVP gate iron-cleared on real hardware (2026-05-18); storage / networking / read+write-FS / exec-from-disk all iron-validated since. Not a microkernel — a monolithic kernel with everything in it:
 
 | Category | Subsystems |
 |----------|-----------|
@@ -234,7 +234,7 @@ make status       # show component status (kernel, compiler, recipes)
 
 The shared crate ecosystem spans OS infrastructure, science & knowledge, media & audio, language & navigation, physics & engineering, and culture & knowledge — most at v1.0+ stable. Live count and per-crate versions in the registry (numbers omitted here to avoid drift).
 
-Full registry: [shared-crates.md](development/planning/shared-crates.md). Live cycle/pin state: [state.md](development/state.md).
+Full registry: v1.0+ [libraries](applications/libs/README.md) and [binaries & tools](applications/binaries.md).
 
 ### Security Model
 
@@ -303,18 +303,18 @@ See [Philosophy](philosophy.md) for the full exploration.
 
 ## Technical Statistics (as of 2026-05-21)
 
-> Live counts and per-repo versions live in [`development/state.md`](development/state.md) and [`development/planning/shared-crates.md`](development/planning/shared-crates.md). The values below are stable rounding for narrative purposes — verify against state.md before quoting.
+> The values below are stable rounding for narrative purposes.
 
 | Metric | Value |
 |--------|-------|
-| Shared crates | 80+ (most at v1.0+ stable) — registry: [shared-crates.md](development/planning/shared-crates.md) |
+| Shared crates | 80+ (most at v1.0+ stable) — registry: v1.0+ [libraries](applications/libs/README.md) and [binaries & tools](applications/binaries.md) |
 | Standalone repos | 130+ |
 | Cyrius-ported repos | 30+ shipping (a few still pending: bhava, aethersafha, takumi parity, mela; aegis graduated during v5.9.x) |
 | Recipes | 421 base + 90 community (in zugot) |
 | Consumer applications | 19+ |
 | Compiler | cycc (Cyrius 6.3.x, self-hosting, 29KB seed). v6.0.0 cycle opened 2026-05-19 with the cybs / cycc rename ceremony |
-| Kernel | AGNOS (40+ subsystems, sovereign syscall surface, MVP gate iron-cleared Attempt 68; storage / networking / read+write-FS / exec-from-disk all iron-validated — live version in [development/state.md](development/state.md)) |
-| Boot loader | gnoboot 0.6.0 (PE32+ UEFI, sovereign handoff via RDI = &boot_info; live version in [development/state.md](development/state.md)) |
+| Kernel | AGNOS (40+ subsystems, sovereign syscall surface, MVP gate iron-cleared on real hardware; storage / networking / read+write-FS / exec-from-disk all iron-validated) |
+| Boot loader | gnoboot 0.6.0 (PE32+ UEFI, sovereign handoff via RDI = &boot_info) |
 | Boot pipeline (genesis scripts) | boot.cyr (Cyrius-native) |
 | Boot time (desktop) | 3.2s total, ~80ms init→event loop |
 | Systems language | Cyrius 6.3.x (42+ stdlib modules, three stdlib folds: sandhi v5.7.0, vani v5.8.0, niyama v5.9.0; bridge step retired at v5.11.66) |
@@ -326,11 +326,11 @@ See [Philosophy](philosophy.md) for the full exploration.
 
 | Article | What it covers |
 |---------|---------------|
-| [The Python in the Bootstrap](articles/python-in-the-bootstrap.md) | How a name-squatting incident produced a 29KB seed and a sovereign OS in 48 hours |
-| [Cyrius vs Rust: Benchmarks](articles/cyrius-vs-rust-benchmarks.md) | Head-to-head port comparison — compilation, binary size, runtime |
-| [Building a Sovereign Compiler with Claude](articles/sovereign-compiler-vs-brute-force.md) | 1 dev + $400 vs 16 agents + $20K |
-| [The Dandelion Core](articles/the-2-dollar-sd-card.md) | Open knowledge and the death of access |
-| [DOOM in Cyrius](articles/doom-in-cyrius.md) | A 23-hour sprint in a 7-day-old language |
+| The Python in the Bootstrap | How a name-squatting incident produced a 29KB seed and a sovereign OS in 48 hours |
+| Cyrius vs Rust: Benchmarks | Head-to-head port comparison — compilation, binary size, runtime |
+| Building a Sovereign Compiler with Claude | 1 dev + $400 vs 16 agents + $20K |
+| The Dandelion Core | Open knowledge and the death of access |
+| DOOM in Cyrius | A 23-hour sprint in a 7-day-old language |
 
 ---
 
@@ -338,8 +338,8 @@ See [Philosophy](philosophy.md) for the full exploration.
 
 - [Philosophy & Intention](philosophy.md) — the deeper vision behind AGNOS
 - [History & Timeline](history.md) — full project timeline
-- [Development Roadmap](development/roadmap.md) — phases, blockers, release targets
-- [Shared Crates Reference](development/planning/shared-crates.md) — ecosystem crate registry
+- [v1.0+ Library Registry](applications/libs/README.md) — ecosystem library registry
+- [v1.0+ Binaries & Tools](applications/binaries.md) — ecosystem binary/tool registry
 - [Cyrius Field Notes](https://github.com/MacCracken/vidya/tree/main/content/cyrius/field_notes) — practitioner's manual (directory of CYML topics; was a single TOML file before the structure split)
 
 ---
@@ -350,4 +350,4 @@ The Rust-era version of this document is preserved at [docs/archive/AGNOS-rust-e
 
 ---
 
-*Last Updated: 2026-07-01 (doc-staleness sweep — cyrius/gnoboot versions, the gnoboot/GPT-ESP boot path, agnosys→agnodrm, and the beta timeline refreshed to current; the exec-from-disk / SMP-preempt / shell-separation / >256 MB-RAM arcs are iron-validated on real AMD Zen. Live versions/sizes/kernel-arc status in [development/state.md](development/state.md).)*
+*Last Updated: 2026-07-01 (doc-staleness sweep — cyrius/gnoboot versions, the gnoboot/GPT-ESP boot path, agnosys→agnodrm, and the beta timeline refreshed to current; the exec-from-disk / SMP-preempt / shell-separation / >256 MB-RAM arcs are iron-validated on real AMD Zen.)*

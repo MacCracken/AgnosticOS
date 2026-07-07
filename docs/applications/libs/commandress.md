@@ -9,4 +9,4 @@ Structured shell-prompt renderer (binary `cmdrs`, starship-equivalent).
 
 Segment renderer + config layer; adapter-based prompt hook for agnoshi / bash / zsh. English-wordplay naming lane; `cmdrs` vowel-dropped.
 
-See the [shared-crates registry](../../development/planning/shared-crates.md) for full context and dependency graph.
+See the [libs registry](../README.md) for the full catalog and dependency context.

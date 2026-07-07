@@ -1,6 +1,6 @@
 # End of 4.x: An Independent Audit on Neutral Hardware (archived)
 
-> **🗄 ARCHIVED 2026-05-12** — point-in-time audit from 2026-04-14 preserved for narrative continuity. The audit's "Bootstrap Chain ✓" finding still holds (seed → cyrc → byte-identical fixpoint is intact through v5.11.31). The "Kernel Boot ✓" finding was for **QEMU only** and was subsequently contradicted on real hardware on 2026-05-12 when iron-boot Attempt 1 hit `grub_elf32_get_shnum` rejection (the Cyrius ELF emitter had `e_shoff=0`). Repair shipped across Cyrius v5.11.29/.30/.31; full chain in [`../development/iron-nuc-zen-log-mvp.md`](../development/iron-nuc-zen-log-mvp.md). Don't update this file — it's a frozen receipt of what was true at audit time.
+> **🗄 ARCHIVED 2026-05-12** — point-in-time audit from 2026-04-14 preserved for narrative continuity. The audit's "Bootstrap Chain ✓" finding still holds (seed → cyrc → byte-identical fixpoint is intact through v5.11.31). The "Kernel Boot ✓" finding was for **QEMU only** and was subsequently contradicted on real hardware on 2026-05-12 when the first iron-boot attempt hit `grub_elf32_get_shnum` rejection (the Cyrius ELF emitter had `e_shoff=0`). Repair shipped across Cyrius v5.11.29/.30/.31. Don't update this file — it's a frozen receipt of what was true at audit time.
 >
 > On April 14, 2026, the Cyrius toolchain was cold-cloned and verified on Anthropic's hosted infrastructure — no local configuration, no warm caches, no prior context. The auditor started skeptical. The evidence changed the assessment.
 

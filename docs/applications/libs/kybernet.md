@@ -7,4 +7,4 @@ PID 1 init binary — 486KB, Cyrius-native, 140 tests, 46 benchmarks. `is_mounte
 - **Status**: Stable - See Repo
 - **Language**: Cyrius
 
-See the [shared-crates registry](../../development/planning/shared-crates.md) for full context and dependency graph.
+See the [libs registry](../README.md) for the full catalog and dependency context.

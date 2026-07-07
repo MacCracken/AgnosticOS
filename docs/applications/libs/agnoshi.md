@@ -7,4 +7,4 @@ AI shell (Cyrius). Depends on hoosh, daimon.
 - **Status**: Stable - See Repo
 - **Language**: Cyrius
 
-See the [shared-crates registry](../../development/planning/shared-crates.md) for full context and dependency graph.
+See the [libs registry](../README.md) for the full catalog and dependency context.

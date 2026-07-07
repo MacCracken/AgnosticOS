@@ -2,7 +2,7 @@
 
 > **Last Updated**: 2026-06-04
 >
-> Live ecosystem state (cycle, per-repo pins, sweeps): [`development/state.md`](development/state.md). Live kernel/cyrius versions + binary sizes: [`development/state.md`](development/state.md). Per-subsystem versions intentionally elided in this doc per the lib-doc precedent — refer to the registry files when quoting numbers.
+> Per-subsystem versions intentionally elided in this doc per the lib-doc precedent — refer to the registry files when quoting numbers.
 
 This document provides the technical architecture of AGNOS (AI-Native General Operating System).
 
@@ -86,13 +86,13 @@ AGNOS is a sovereign operating system written in Cyrius. The architecture consis
 
 ### Reading this diagram through the maturity lens
 
-The three-layer diagram above is **simultaneously present** in the codebase — every layer has some Cyrius-native existence today. But the **maturity arc** (see [`development/roadmap.md § Maturity Arc`](development/roadmap.md#maturity-arc)) shifts emphasis across the layers as AGNOS matures:
+The three-layer diagram above is **simultaneously present** in the codebase — every layer has some Cyrius-native existence today. But the **maturity arc** shifts emphasis across the layers as AGNOS matures:
 
 - **demo stage** (current): kernel layer is the active surface (boot, init, scheduler, syscalls, drivers, ext4 read). Subsystems exist but most run host-side; userland is minimal (agnoshi shell only).
 - **base stage** (post-1.33.x WRITE): kernel reaches "solid"; package manager (ark + nous) and update mechanism land; subsystems begin running AGNOS-side.
 - **server stage**: the **Named Subsystems** band fills in — installer (agnova), BBS/MUD apps, server daemons, more libs. Most Linux-shaped workloads become AGNOS-replaceable.
 - **desktop stage**: the **Userland Surface** band fills in — aethersafha (Wayland compositor) + GUI apps. The diagram's top tier becomes user-facing.
-- **swallow stage**: a fourth layer activates — the **compat sandbox** (Phase 20, [`development/planning/cross-platform-compat-subsystem.md`](development/planning/cross-platform-compat-subsystem.md)) — kavach-bounded Linux personality container hosting non-AGNOS-native binaries. **The boundary between the kernel and the interpretive layer is permanent** — the kernel never absorbs foreign ABIs (per [[project_agnos_kernel_growth_rules]] / [[project_agnos_empire_defense_layers]]). Sovereignty via universal hosting, not eviction.
+- **swallow stage**: a fourth layer activates — the **compat sandbox** (Phase 20) — kavach-bounded Linux personality container hosting non-AGNOS-native binaries. **The boundary between the kernel and the interpretive layer is permanent** — the kernel never absorbs foreign ABIs (per [[project_agnos_kernel_growth_rules]] / [[project_agnos_empire_defense_layers]]). Sovereignty via universal hosting, not eviction.
 
 The four-layer empire-defense architecture (compat / wire / trust / governance — roadmap.md Phases 20-23) lays out *how the boundaries hold*; the maturity arc lays out *when each capability arrives*. Together they describe both the static structure and the dynamic emergence.
 
@@ -100,23 +100,23 @@ The four-layer empire-defense architecture (compat / wire / trust / governance �
 
 AGNOS runs its own sovereign kernel, written in Cyrius. No Linux dependency at runtime.
 
-**AGNOS kernel** — 40+ subsystems, a small sovereign syscall surface (no socket/splice/AF_ALG layer). Iron-validated end-to-end on NUC AMD archaemenid: kernel-init layer cleared 2026-05-15 (Attempt 28, agnos 1.30.0); closed-beta MVP gate (typeable shell via xHCI HID keyboard) hit 2026-05-18 (Attempt 68, agnos 1.30.9); the base-maturity legs — FS-crash-safety (1.37–1.39) + exec-from-disk (1.40.x, ring-3 programs off the agnos-fs) — both iron-validated through the 1409 / 14013 burns. Full arc captured in [`development/iron-nuc-zen-log-mvp.md`](development/iron-nuc-zen-log-mvp.md); post-MVP work continues in [`development/iron-nuc-zen-log.md`](development/iron-nuc-zen-log.md). Live kernel size, version, build trajectory: [`development/state.md`](development/state.md):
+**AGNOS kernel** — 40+ subsystems, a small sovereign syscall surface (no socket/splice/AF_ALG layer). Iron-validated end-to-end on NUC AMD archaemenid: kernel-init layer cleared 2026-05-15 (agnos 1.30.0); closed-beta MVP gate (typeable shell via xHCI HID keyboard) hit 2026-05-18 (agnos 1.30.9); the base-maturity legs — FS-crash-safety (1.37–1.39) + exec-from-disk (1.40.x, ring-3 programs off the agnos-fs) — both iron-validated on real hardware:
 - Memory management, process management, SMP
 - TCP/IP networking, VirtIO-Net/Blk
 - ext2/ext4 + FAT12/16/32 + exFAT filesystems (read+write), ELF loader (streaming, ring-3 exec-from-disk)
 - Pipes, signals, epoll, timerfd
 - Recovery-REPL shell (the interactive shell moved to userland `agnsh` in the 1.41.x shell-separation arc)
 - kybernet as PID 1
-- Sovereign UEFI handoff (Path C, RDI = `&boot_info` via gnoboot; live version in [`development/state.md`](development/state.md))
+- Sovereign UEFI handoff (Path C, RDI = `&boot_info` via gnoboot)
 - Native XHCI + USB-HID-boot keyboard driver (all 5 phases landed; iron-side blocker remains on archaemenid silent-absorb arc)
 
 The `kernel/` directory in this repo contains Linux kernel configs for **host bootstrap only** — building the cross-compiler toolchain on an existing Linux host before AGNOS can self-host.
 
 ## Kernel Layers
 
-> Conceptual decomposition. Layers 1–5 shipped. Live per-subsystem status: [agnos repo](https://github.com/MacCracken/agnos). Live size: [`development/state.md`](development/state.md).
+> Conceptual decomposition. Layers 1–5 shipped. Live per-subsystem status: [agnos repo](https://github.com/MacCracken/agnos).
 
-The kernel was originally planned as five layers — *boots*, *runs programs*, *storage*, *talks to the world*, *usable*. All five landed inside a ~7-week window (Cyrius scaffold 2026-04-03 → kernel v1.22.0 on 2026-04-14, hardened to v1.26.1 by 2026-04-28). Subsequent 1.27.x → 1.30.x work has been bring-up and hardening: KASLR data-only shipped at 1.28.0 (closed the security-track gate 13/13), sovereign-struct kernel ABI shipped 1.30.0 (Path-C UEFI handoff via gnoboot v0.5.0), native XHCI + USB-HID-boot driver across 1.30.1 → 1.30.5, xHCI cmd-path repair arc 1.30.6 (Repairs FF through QQ, MSI-X table programming closeout). The decomposition below reflects where each layer sits today; live per-version detail in [`development/state.md`](development/state.md).
+The kernel was originally planned as five layers — *boots*, *runs programs*, *storage*, *talks to the world*, *usable*. All five landed inside a ~7-week window (Cyrius scaffold 2026-04-03 → kernel v1.22.0 on 2026-04-14, hardened to v1.26.1 by 2026-04-28). Subsequent 1.27.x → 1.30.x work has been bring-up and hardening: KASLR data-only shipped at 1.28.0 (closed the security-track gate 13/13), sovereign-struct kernel ABI shipped 1.30.0 (Path-C UEFI handoff via gnoboot v0.5.0), native XHCI + USB-HID-boot driver across 1.30.1 → 1.30.5, xHCI cmd-path repair arc 1.30.6 (Repairs FF through QQ, MSI-X table programming closeout). The decomposition below reflects where each layer sits today.
 
 ### Layer 1 — Can Boot and Respond
 
@@ -137,7 +137,7 @@ The kernel was originally planned as five layers — *boots*, *runs programs*, *
 
 ### Layer 3 — Can Access Storage
 
-The original 5-layer plan listed VirtIO-Blk + FAT16. The 1.31.x cycle (Mar–May 2026) substantially expanded this layer into a full storage stack on real silicon. Five iron debuts on archaemenid (Beelink SER, AMD Renoir) — see Attempts 80 / 81 / 87 / 88 / 90 in [`development/iron-nuc-zen-log.md`](development/iron-nuc-zen-log.md).
+The original 5-layer plan listed VirtIO-Blk + FAT16. The 1.31.x cycle (Mar–May 2026) substantially expanded this layer into a full storage stack on real silicon. Five iron debuts on archaemenid (Beelink SER, AMD Renoir).
 
 **VFS layer:**
 - **VFS** — file table, **8 file types**: device, memfile, signalfd, epoll, timerfd, pipe, regular, ext2_file (added 1.31.5 Phase 3)
@@ -148,15 +148,15 @@ The original 5-layer plan listed VirtIO-Blk + FAT16. The 1.31.x cycle (Mar–May
 - **`blk_registered` bitmask** + **`blk_read_on(tag, sector, buf)`** — explicit per-backend dispatch independent of `blk_active`; lets the filesystem probe walk all registered backends instead of just the active one (1.31.6 bite G)
 
 **Storage device drivers:**
-- **NVMe (Phase 1-5)** — probe + admin queue + I/O queue + R/W + PRP1/2/list dispatch. Iron-validated on Crucial P3 2 TB at Attempt 80 (1.31.0, first-try clean)
-- **AHCI/SATA (Phase 1-4)** — HBA probe + per-port CL+FIS bring-up + IDENTIFY DEVICE + READ/WRITE DMA EXT. Iron-validated on WD Blue SA510 2 TB at Attempt 81 (1.31.1); three carry-forward patches (port quiescence gate / ATA-string right-trim / RW_DEMO compile gate) landed in 1.31.2
-- **USB Mass Storage (Phase 1-2.8)** — BBB transport + SCSI INQUIRY/TUR/RC10/READ(10)/WRITE(10). Eight-bug repair stack (bulk-timeout extension + strict TRB matching + SHORT_PACKET residue check + unified retry-recover wrapper + drain reposition + 64-bit param_hi). Iron-validated on Silicon Motion 125 GB stick at Attempt 87 (1.31.3)
+- **NVMe (Phase 1-5)** — probe + admin queue + I/O queue + R/W + PRP1/2/list dispatch. Iron-validated on Crucial P3 2 TB (1.31.0, first-try clean)
+- **AHCI/SATA (Phase 1-4)** — HBA probe + per-port CL+FIS bring-up + IDENTIFY DEVICE + READ/WRITE DMA EXT. Iron-validated on WD Blue SA510 2 TB (1.31.1); three carry-forward patches (port quiescence gate / ATA-string right-trim / RW_DEMO compile gate) landed in 1.31.2
+- **USB Mass Storage (Phase 1-2.8)** — BBB transport + SCSI INQUIRY/TUR/RC10/READ(10)/WRITE(10). Eight-bug repair stack (bulk-timeout extension + strict TRB matching + SHORT_PACKET residue check + unified retry-recover wrapper + drain reposition + 64-bit param_hi). Iron-validated on Silicon Motion 125 GB stick (1.31.3)
 - **VirtIO-blk modern (1.x)** — full PCI cap-list + MMIO + 64-bit FEATURES_OK + polled used-ring rewrite (1.31.4); replaces the legacy 0.9.5 transitional driver. QEMU-only by design
 - **RAM-disk** — `pmm_alloc`-backed, `RAMDISK_ENABLE=1` compile-flag gated (1.31.4)
 
 **Partition + filesystem layer:**
-- **GPT (Phase 1-3)** — header + full 16 KB array walk + UTF-16LE partition names + table-less CRC32 + backup-header recovery + 7-GUID type classifier + `parts` shell command. Iron-validated multi-partition layouts at Attempts 81/89/90
-- **ext2 / ext4 read + write + extent allocation + JBD2 journaling** — superblock + BGDT + inode (direct + single/double/triple indirect tree) + dirent walk + absolute-path resolution + `VFS_EXT2_FILE` FD type + ext4 extents header/leaf walker (FreeBSD-shape) + 64BIT support (s_desc_size + dynamic BGDT stride + bg_inode_table_hi guard) + **write path** (create / write / unlink / mkdir / rmdir / rename / ln / symlink / truncate, metadata_csum-stamping, `e2fsck -fn`-clean — 1.33.x WRITE arc) + **ext4 extent allocation** (depth-0 append → depth-0→1 grow → multi-leaf depth-1 sibling split → depth-1→2 index-block grow, the full on-demand grow ladder — 1.37.x) + **JBD2 journaling** (probe → log reader → replay-on-mount → in-memory transaction lifecycle → write path with 3-barrier sync-checkpoint → `put_inode` integration → crash-injection smoke + hardening — 1.38.x). **Iron-validated** on real Linux ext4 on NVMe at Attempt 90 (1.31.6 read-only baseline), Attempt 91 (1.31.7 ext4 64BIT shell UX), Attempt 1331 (1.33.1 write-survives-reboot demo→base exit), Attempt 1373 (1.37.3 extent allocation depth-2)
+- **GPT (Phase 1-3)** — header + full 16 KB array walk + UTF-16LE partition names + table-less CRC32 + backup-header recovery + 7-GUID type classifier + `parts` shell command. Iron-validated multi-partition layouts on real hardware
+- **ext2 / ext4 read + write + extent allocation + JBD2 journaling** — superblock + BGDT + inode (direct + single/double/triple indirect tree) + dirent walk + absolute-path resolution + `VFS_EXT2_FILE` FD type + ext4 extents header/leaf walker (FreeBSD-shape) + 64BIT support (s_desc_size + dynamic BGDT stride + bg_inode_table_hi guard) + **write path** (create / write / unlink / mkdir / rmdir / rename / ln / symlink / truncate, metadata_csum-stamping, `e2fsck -fn`-clean — 1.33.x WRITE arc) + **ext4 extent allocation** (depth-0 append → depth-0→1 grow → multi-leaf depth-1 sibling split → depth-1→2 index-block grow, the full on-demand grow ladder — 1.37.x) + **JBD2 journaling** (probe → log reader → replay-on-mount → in-memory transaction lifecycle → write path with 3-barrier sync-checkpoint → `put_inode` integration → crash-injection smoke + hardening — 1.38.x). **Iron-validated** on real Linux ext4 on NVMe (1.31.6 read-only baseline; 1.31.7 ext4 64BIT shell UX; 1.33.1 write-survives-reboot demo→base exit; 1.37.3 extent allocation depth-2)
 - **Partition-aware mount via GPT consumption** — `ext2_try_partition_mount` iterates Linux-FS-GUID partitions when whole-disk probe misses; mounts the first match
 - **fatfs (FAT12/16/32 read + write)** — partition-aware multi-backend mount + FAT-chain traversal + create / content / delete / truncate + LFN. `fsck.fat -n`-clean (1.34.x FAT-family arc)
 - **exFAT (read + write)** — allocation bitmap + typed dir-set (SetChecksum / NameHash) + up-case table for Unicode names + directory growth (root extension + spanning dir-set append). `fsck.exfat -n`-clean (1.34.x)

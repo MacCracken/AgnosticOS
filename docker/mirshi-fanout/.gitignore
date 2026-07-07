@@ -1,4 +1,0 @@
-# build.sh stages into a mktemp dir; nothing should land here, but ignore any
-# local scratch just in case.
-stage/
-*.log

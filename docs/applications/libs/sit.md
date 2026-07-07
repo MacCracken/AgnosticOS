@@ -7,6 +7,6 @@ Cyrius-native version control — a git replacement (binary `sit`).
 - **Status**: Stable — v1.0+
 - **Language**: Cyrius
 
-Keeps git's object model (content-addressed DAG, distributed, SHA-integrity) and drops the accretion (submodules, shell hooks, LFS, the porcelain/plumbing split — one CLI for humans and scripts). Built on already-sovereign deps: [sankoch](sankoch.md) (compression), [sigil](sigil.md) (crypto), [patra](patra.md) (storage). See the article [*Memory Should Be Sovereign Too*](../../articles/memory-should-be-sovereign-too.md).
+Keeps git's object model (content-addressed DAG, distributed, SHA-integrity) and drops the accretion (submodules, shell hooks, LFS, the porcelain/plumbing split — one CLI for humans and scripts). Built on already-sovereign deps: [sankoch](sankoch.md) (compression), [sigil](sigil.md) (crypto), [patra](patra.md) (storage). See the article *Memory Should Be Sovereign Too*.
 
-See the [shared-crates registry](../../development/planning/shared-crates.md) for full context and dependency graph.
+See the [libs registry](../README.md) for the full catalog and dependency context.

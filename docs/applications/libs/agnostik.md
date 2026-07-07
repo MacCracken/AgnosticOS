@@ -9,4 +9,4 @@ Shared types & domain primitives — the foundation layer every AGNOS crate buil
 
 Common error types, domain primitives (AgentId, TraceContext, Version, AuditEntry, InjectionScores, AgentStats), and serde helpers shared across the stack.
 
-See the [shared-crates registry](../../development/planning/shared-crates.md) for full context and dependency graph.
+See the [libs registry](../README.md) for the full catalog and dependency context.

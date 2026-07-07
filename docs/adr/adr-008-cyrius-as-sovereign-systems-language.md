@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-04-04
-**Recorded:** 2026-05-06 (catch-up entry — see [doc-health.md](../doc-health.md))
+**Recorded:** 2026-05-06 (catch-up entry)
 **Supersedes:** [ADR-001](adr-001-foundation-and-architecture.md) — *Rust as Primary Language* section only. Other ADR-001 decisions (daimon orchestration, hoosh gateway, cross-project integration) remain in force.
 
 ---
@@ -49,7 +49,7 @@ Four items between silicon and the OS. The 29KB seed is a single hand-auditable 
 ### 3. Cyrius owns the full stack — language, compiler, stdlib, package manager, build system
 
 - **Compiler**: cc5 (self-hosting from 29KB seed). cc5 → cyc rename queued for v6.0 — single one-and-done cleanup so the binary name decouples from the version.
-- **Standard library**: 42+ modules (string, alloc, io, fmt, vec, str, args, syscalls, process, fs, toml/cyml, json, csv, net, http, http_server, ws, tls, thread, async, math, regex, hashmap, bench, tagged unions, mmap, cffi, u128, …). Built from scratch in Cyrius. Sibling distfiles (sandhi, vani, niyama) absorb into the stdlib via the **fold-in pattern** when multi-consumer gates are met (see [`design-patterns.md`](../design-patterns.md) and [*What Justifies a Stdlib Foldin*](../articles/what-justifies-a-stdlib-foldin.md)).
+- **Standard library**: 42+ modules (string, alloc, io, fmt, vec, str, args, syscalls, process, fs, toml/cyml, json, csv, net, http, http_server, ws, tls, thread, async, math, regex, hashmap, bench, tagged unions, mmap, cffi, u128, …). Built from scratch in Cyrius. Sibling distfiles (sandhi, vani, niyama) absorb into the stdlib via the **fold-in pattern** when multi-consumer gates are met.
 - **Package manager**: ark (Cyrius-native, 4× smaller than the Rust predecessor). Distribution through ark, not crates.io. **Names belong to the builders, not the squatters.**
 - **Build system**: `cyrius build` (auto-resolves deps from `cyrius.cyml`, auto-prepends includes). Replaces Cargo. Manifest is single source of truth — no separate `.cyrius-toolchain` file.
 - **Recipes**: zugot (421 base + 90 bazaar). takumi consumes zugot (Cyrius port active; Rust-old authoritative until parity).
@@ -72,7 +72,7 @@ This is the explicit answer to the toolchain-politics concern in the Context sec
 
 - **Registry sovereignty achieved.** crates.io is no longer in AGNOS's dependency graph. Names belong to whoever builds them, distributed through ark.
 - **Hand-auditable bootstrap.** A reader with assembly fluency can audit the entire chain from silicon to OS in one sitting. The 29KB seed is the smallest sovereign starting point known for a self-hosting language + working OS.
-- **Port receipts are dramatic.** kybernet 6.7MB (Rust) → 486KB (Cyrius, 14× smaller); hoosh 5.1MB / 40 crates → 474KB / 0 deps (10.8× smaller, 70× faster compile); agnosys 6.9MB → 117KB (59× smaller). The minimum-viable `exit42` baseline is ~2,269× smaller than Rust stripped (152 B vs 345 KB). See [cyrius-vs-rust-benchmarks.md](../articles/cyrius-vs-rust-benchmarks.md).
+- **Port receipts are dramatic.** kybernet 6.7MB (Rust) → 486KB (Cyrius, 14× smaller); hoosh 5.1MB / 40 crates → 474KB / 0 deps (10.8× smaller, 70× faster compile); agnosys 6.9MB → 117KB (59× smaller). The minimum-viable `exit42` baseline is ~2,269× smaller than Rust stripped (152 B vs 345 KB).
 - **Multi-platform byte-identical** across x86_64 Linux, aarch64 Linux (real Pi), Apple Silicon Mach-O, Windows PE32+ — closed by Cyrius v5.5.x.
 - **First-class OS primitives become possible.** Agents, sandboxes, capabilities can become language-level constructs in later Cyrius cycles, not library abstractions.
 - **Bootstrap chain is permanent.** No future change in Rust governance, LLVM licensing, or Python tooling can derail AGNOS at the language layer.
@@ -102,11 +102,4 @@ This is the explicit answer to the toolchain-politics concern in the Context sec
 ## References
 
 - [`philosophy.md`](../philosophy.md) — sovereignty as recursive, ideological basis
-- [`design-patterns.md`](../design-patterns.md) — fold-in pattern, structural-immunity pattern, sovereign-stack pattern
-- [`articles/python-in-the-bootstrap.md`](../articles/python-in-the-bootstrap.md) — name-squatting incident → 29KB seed → sovereign OS
-- [`articles/sovereign-compiler-vs-brute-force.md`](../articles/sovereign-compiler-vs-brute-force.md) — economics of building this vs. funding LLM-fork attempts
-- [`articles/cyrius-vs-rust-benchmarks.md`](../articles/cyrius-vs-rust-benchmarks.md) — head-to-head port receipts
-- [`articles/what-justifies-a-stdlib-foldin.md`](../articles/what-justifies-a-stdlib-foldin.md) — fold-in gate framework
-- [`development/state.md`](../development/state.md) — live cycle status, pin-lag spectrum, active sweeps
-- [`development/roadmap.md`](../development/roadmap.md) — current phase + closed-beta target
 - `cyrius` repo `docs/adr/` — language-level ADRs (governed inside AGNOS, not outside)

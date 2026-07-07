@@ -13,8 +13,6 @@ Before opening an issue, please check the documentation:
 | [docs/architecture.md](docs/architecture.md) | System architecture |
 | [docs/installation/README.md](docs/installation/README.md) | Installation & build guide |
 | [docs/installation/troubleshooting.md](docs/installation/troubleshooting.md) | Common issues and solutions |
-| [docs/development/roadmap.md](docs/development/roadmap.md) | Development roadmap |
-| [docs/development/state.md](docs/development/state.md) | Live ecosystem state |
 
 ## Community Channels
 

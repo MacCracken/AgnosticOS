@@ -25,23 +25,23 @@ docs/archive/
 
 | File | What it was | Archived | Superseded by |
 |------|-------------|----------|---------------|
-| `AGNOS-rust-era-2026-04-03.md` | Overall AGNOS description, Rust era | 2026-04-13 | `../AGNOS.md` + `../development/roadmap.md` |
+| `AGNOS-rust-era-2026-04-03.md` | Overall AGNOS description, Rust era | 2026-04-13 | `../AGNOS.md` + the development roadmap |
 | `agent-runtime-rust-era.md` | Daimon agent runtime spec (Rust) | 2026-04-07 | `MacCracken/daimon` repo |
 | `agnostik-roadmap-pre-cyrius.md` | Agnostik 0.90→1.0 roadmap, pre-Cyrius | 2026-04-03 | `MacCracken/agnostik` repo (now v0.97.1 Cyrius-ported) |
 | `api-readme-rust-era.md` | AGNOS API reference, Rust-era | 2026-03-11 | Pending — full API re-docs land with Phase 13A |
 | `cyrius-lang-migration.md` | The migration planning doc that triggered the pivot | 2026-04-04 | Complete — `MacCracken/cyrius` is the successor. Kept as the "before" artifact of the pivot decision. |
 | `desktop-environment-rust-era.md` | aethersafha desktop environment spec, Rust era | 2026-03-11 | `MacCracken/aethersafha` (pending Cyrius port) |
 | `example_claude-rust-era.md` | CLAUDE.md template for Rust-era sibling repos | 2026-04-13 | Each active repo now maintains its own Cyrius-era CLAUDE.md |
-| `first-party-standards-rust-era.md` | First-party application standards, Rust era | 2026-04-08 | `../development/planning/` docs + per-repo CONTRIBUTING.md |
+| `first-party-standards-rust-era.md` | First-party application standards, Rust era | 2026-04-08 | development planning docs + per-repo CONTRIBUTING.md |
 | `license-fixes-rust-era.md` | 42-item license-cleanup TODO checklist (Cargo.toml, crates.io, SPDX-string fixes) | 2026-05-06 | Moot post-Cyrius pivot — `cyrius.cyml` replaces Cargo.toml, ark/zugot replaces crates.io. Per-repo LICENSE accuracy is per-repo housekeeping. |
-| `monolith-extraction.md` | The extraction roadmap doc — code extraction completed 2026-04-01 but the doc kept describing "reassembly in progress" through April-15 | 2026-05-12 | `../development/state.md` (live ecosystem state) + `../development/iso-pipeline.md` (ISO assembly) + `../development/iron-nuc-zen-log-mvp.md` (iron-boot attempts) |
-| `end-of-4x-independent-audit.md` | Neutral-infra cold-clone audit from 2026-04-14 finding "Bootstrap ✓ / Kernel Boot ✓" | 2026-05-12 | Bootstrap finding still holds; Kernel-Boot finding contradicted on real iron 2026-05-12 (GRUB rejected `e_shoff=0` ELF; repair in Cyrius v5.11.29/.30/.31). See `../development/iron-nuc-zen-log-mvp.md`. |
+| `monolith-extraction.md` | The extraction roadmap doc — code extraction completed 2026-04-01 but the doc kept describing "reassembly in progress" through April-15 | 2026-05-12 | live ecosystem state + ISO-assembly + iron-boot development docs |
+| `end-of-4x-independent-audit.md` | Neutral-infra cold-clone audit from 2026-04-14 finding "Bootstrap ✓ / Kernel Boot ✓" | 2026-05-12 | Bootstrap finding still holds; Kernel-Boot finding contradicted on real iron 2026-05-12 (GRUB rejected `e_shoff=0` ELF; repair in Cyrius v5.11.29/.30/.31). |
 
 ## `libs-pre-cyrius/` — Library docs before the Cyrius port
 
 Each file documents a library as it existed in Rust before being ported (or retired) under Cyrius. Where a current successor exists, it lives as a standalone repo at `MacCracken/<name>`.
 
-> **Successor-column accuracy note (2026-05-12 sweep)**: prior cleanup passes labeled several entries "Retired" based on local-filesystem absence (`/home/macro/Repos/<name>/` missing). On a fresh-flashed devbox where only a handful of repos are recloned, that's a false-positive signal. The 2026-05-12 sweep `curl`'d every "Retired" entry against `github.com/MacCracken/<name>` — **all of them were alive**. The Successor column below reflects the corrected verdict. **Rule for future audits**: see [[feedback-github-remote-authoritative]].
+> **Successor-column accuracy note (2026-05-12 sweep)**: prior cleanup passes labeled several entries "Retired" based on local-filesystem absence (`/home/macro/Repos/<name>/` missing). On a fresh-flashed devbox where only a handful of repos are recloned, that's a false-positive signal. The 2026-05-12 sweep `curl`'d every "Retired" entry against `github.com/MacCracken/<name>` — **all of them were alive**. The Successor column below reflects the corrected verdict. **Rule for future audits**: treat the GitHub remote as authoritative over local-filesystem absence.
 
 | File | Successor |
 |------|-----------|

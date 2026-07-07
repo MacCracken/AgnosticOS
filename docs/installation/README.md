@@ -2,23 +2,23 @@
 
 > **Version:** 2026.5.6 | **Last Updated:** 2026-05-06
 >
-> **Status:** AGNOS is **Pre-Beta** — closed beta opens late August 2026 (preceded by a ~July founder solo-dogfood month + Docker server-sweep); public beta is deferred to post-summer, with GA targeted late fall/early winter 2026 (see [roadmap](../development/roadmap.md)). The kernel boots in QEMU and the sovereign boot pipeline is active. The full installer (`agnova`) and bootable distribution ISO land with **Phase 1** — see [ISO pipeline](../development/iso-pipeline.md) for stage status. This guide describes what is buildable and testable **today**, and what is coming.
+> **Status:** AGNOS is **Pre-Beta** — closed beta opens late August 2026 (preceded by a ~July founder solo-dogfood month + Docker server-sweep); public beta is deferred to post-summer, with GA targeted late fall/early winter 2026. The kernel boots in QEMU and the sovereign boot pipeline is active. The full installer (`agnova`) and bootable distribution ISO land with **Phase 1**. This guide describes what is buildable and testable **today**, and what is coming.
 
 ---
 
 ## What Works Today
 
 - **Sovereign boot pipeline** — `scripts/boot.cyr` (Cyrius, ~67KB compiled) launches the AGNOS kernel in QEMU.
-- **AGNOS kernel** — Cyrius-native, 40+ subsystems, a small sovereign syscall surface (no socket/splice). Boots to shell on iron (NUC AMD); current version + size in [`development/state.md`](../development/state.md).
+- **AGNOS kernel** — Cyrius-native, 40+ subsystems, a small sovereign syscall surface (no socket/splice). Boots to shell on iron (NUC AMD).
 - **Component verification** — `make iso-check` walks every downstream repo and confirms the artifacts an ISO would need are present and current.
 - **Per-subsystem builds** — every subsystem (kybernet, ark, nous, sigil, libro, agnoshi, …) builds standalone from its own repo via `cyrius build`.
 
 ## What is Coming (Phase 1)
 
-- **ISO Stages 1–4** — source download, cross-toolchain bootstrap, base-system build in chroot, ISO packaging. See `docs/development/iso-pipeline.md`.
+- **ISO Stages 1–4** — source download, cross-toolchain bootstrap, base-system build in chroot, ISO packaging.
 - **agnova** (installer) — currently at 0.1.0 scaffold. Will own disk partitioning, LUKS2, bootloader install, profile selection (Desktop / Server / Minimal).
 - **takumi** (build system) — pending Cyrius port. Drives recipe builds during ISO assembly.
-- **Target**: closed beta cut, **late August 2026** — gated on the Cyrius bare-metal target (v6.x line; current toolchain in [`development/state.md`](../development/state.md)). See `docs/development/roadmap.md` Phase 13A.
+- **Target**: closed beta cut, **late August 2026** — gated on the Cyrius bare-metal target (v6.x line).
 
 ---
 
@@ -93,13 +93,13 @@ cd /home/macro/Repos/kybernet
 cyrius build src/main.cyr build/kybernet
 ```
 
-Repo map: `MEMORY.md` → [reference_sibling_repos.md](../../../.claude/…/memory/reference_sibling_repos.md) (local); public map in `docs/architecture.md`.
+Repo map: see the public map in [`docs/architecture.md`](../architecture.md).
 
 ---
 
 ## Installer and ISO — Status
 
-The installer (`agnova`) and the bootable ISO do not exist yet as user-facing artifacts. They are tracked under **Phase 13A** in [../development/roadmap.md](../development/roadmap.md).
+The installer (`agnova`) and the bootable ISO do not exist yet as user-facing artifacts. They are tracked under **Phase 13A** on the roadmap.
 
 Progress against the ISO pipeline:
 
@@ -111,7 +111,7 @@ Progress against the ISO pipeline:
 | 3 | Build base system in chroot | Not started |
 | 4 | Package into ISO | Not started |
 
-Phase 13B (Arch-Neutral Boot Pipeline) is being neutralized on the Cyrius v6.x line to keep both the bare-metal and RISC-V rv64 targets clean (current toolchain in [`development/state.md`](../development/state.md)). See [roadmap Phase 13B](../development/roadmap.md#phase-13b--arch-neutral-boot-pipeline).
+Phase 13B (Arch-Neutral Boot Pipeline) is being neutralized on the Cyrius v6.x line to keep both the bare-metal and RISC-V rv64 targets clean.
 
 ---
 
@@ -140,7 +140,7 @@ Phase 13B (Arch-Neutral Boot Pipeline) is being neutralized on the Cyrius v6.x l
 
 - **Issue Tracker**: https://github.com/MacCracken/agnosticos/issues
 - **Security Issues**: see [SECURITY.md](/SECURITY.md)
-- **Roadmap**: [../development/roadmap.md](../development/roadmap.md)
+- **Roadmap**: tracked in the project's development docs
 
 ---
 

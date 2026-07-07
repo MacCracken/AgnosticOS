@@ -1,6 +1,6 @@
 # USB-HID Keyboard Driver — Scoping & Roadmap (ARCHIVED — shipped)
 
-> **ARCHIVED 2026-05-21** — All 5 phases shipped and iron-validated end-to-end through the MVP gate. Iron-cleared at Attempt 68 on archaemenid (2026-05-18, agnos 1.30.9) — `agnos> echo "Assembly Up!"` echoed on iron Logitech keyboard (VID=0x5AC, PID=0x24F). The 10-letter Phase-3 silent-absorb arc that consumed Attempts 38-55 turned out to be a Cyrius compiler bug (gvar-init-order zero-reads at file scope), root-caused and fixed in cyrius v5.11.64; the entire letter ladder was falsified silicon hypotheses chasing a compile-time bug. Full arc in [`iron-nuc-zen-log-mvp.md`](../development/iron-nuc-zen-log-mvp.md) Attempts 30-68. Body preserved below for engineering-history reference.
+> **ARCHIVED 2026-05-21** — All 5 phases shipped and iron-validated end-to-end through the MVP gate. Iron-cleared on archaemenid (2026-05-18, agnos 1.30.9) — `agnos> echo "Assembly Up!"` echoed on iron Logitech keyboard (VID=0x5AC, PID=0x24F). The 10-letter Phase-3 silent-absorb arc turned out to be a Cyrius compiler bug (gvar-init-order zero-reads at file scope), root-caused and fixed in cyrius v5.11.64; the entire letter ladder was falsified silicon hypotheses chasing a compile-time bug. Body preserved below for engineering-history reference.
 >
 > Original status header (preserved for record):
 >

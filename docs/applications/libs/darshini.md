@@ -9,4 +9,4 @@
 
 Part of the terminal-aesthetics cohort (with commandress / bannermanor / iam / kii). Sanskrit दर्शिनी — "she who shows / reveals."
 
-See the [shared-crates registry](../../development/planning/shared-crates.md) for full context and dependency graph.
+See the [libs registry](../README.md) for the full catalog and dependency context.

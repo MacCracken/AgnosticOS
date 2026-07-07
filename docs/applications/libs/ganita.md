@@ -9,4 +9,4 @@ Linear algebra (matrix, linalg) + advanced math (transcendental functions + numb
 
 Foldable into the Cyrius stdlib per the sandhi pattern.
 
-See the [shared-crates registry](../../development/planning/shared-crates.md) for full context and dependency graph.
+See the [libs registry](../README.md) for the full catalog and dependency context.

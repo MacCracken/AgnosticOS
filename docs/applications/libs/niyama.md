@@ -9,4 +9,4 @@ Regex engines — BRE / RE2 / PCRE / fuzzy / vim (Cyrius-native).
 
 A sibling distfile vendored byte-identical into the Cyrius stdlib `lib/` (the sandhi fold pattern); the standalone repo remains for consumers needing newer surface than the folded snapshot. 6,664 lines / 7 modules. Multi-consumer gate: cyim + the queued AGNOS bare-metal kernel.
 
-See the [shared-crates registry](../../development/planning/shared-crates.md) for full context and dependency graph.
+See the [libs registry](../README.md) for the full catalog and dependency context.

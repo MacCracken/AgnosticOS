@@ -1,4 +1,0 @@
-{"ts":1781937225,"service":"sched-net","dim":"D1-churn","input":"256 seq conns","observed":"all 256 served; reclaim holds","severity":"info"}
-{"ts":1781937256,"service":"sched-net","dim":"D2-concurrency","input":"24 x5 bursts","observed":"worst 21 refused (8-conn cap, expected); recovers","severity":"info"}
-{"ts":1781937256,"service":"sched-net","dim":"D3-fuzz","input":"garbage/partial/4KB/binary","observed":"RX path robust; recovers","severity":"info"}
-{"ts":1781937286,"service":"sched-net","dim":"D4-soak","input":"30s sustained","observed":"no hang/panic; 153 conns","severity":"info"}
