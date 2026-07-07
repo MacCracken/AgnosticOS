@@ -1,6 +1,6 @@
 # AGNOS — Project Timeline
 
-> **Status**: Active | **Last Updated**: 2026-06-04
+> **Status**: Active | **Last Updated**: 2026-07-07
 >
 > All dates verified from git commit history (`git log --format="%ai"`).
 > Times are Pacific (PT).
@@ -84,7 +84,7 @@
 | **2026-04-10** | 58 | Patra dep integration. Crate ports accelerating | `cyrius` |
 | **2026-04-13** | 61 | **Cyrius 4.0.0** tagged. **DOOM Sprint 2** — gameplay end-to-end, P(-1) security audit, 5 CVE-class findings fixed. AGNOS kernel hardening: 6 buffer overflow fixes, security phases 1-3 | `cyrius tag 4.0.0`, `cyrius-doom`, `agnos` |
 | | | | Kernel v1.21.0 (220KB). kybernet 1.0.1 ported. Boot pipeline active | |
-| **2026-04-14** | 62 | **Cyrius 4.8.5-1** tagged. 22+ Cyrius ports complete. kavach 3.0.0, abaco 2.0.0, bote 2.5.1 shipped. Kernel v1.22.0 (260KB). **Independent audit on Anthropic infrastructure** — bootstrap verified, kernel booted, benchmarks green. **Sankoch named** — compression library identified as last git blocker | `cyrius tag 4.8.5-1`, `agnos`, audit conversation |
+| **2026-04-14** | 62 | **Cyrius 4.8.5-1** tagged. 22+ Cyrius ports complete. kavach 3.0.0, abaco 2.0.0, bote 2.5.1 shipped. Kernel v1.22.0 (260KB). **Independent verification (external env)** — bootstrap verified, kernel booted, benchmarks green. **Sankoch named** — compression library identified as last git blocker | `cyrius tag 4.8.5-1`, `agnos`, audit conversation |
 
 ### Week 4: Sankoch, 5.0, Releases (Apr 15)
 
@@ -121,7 +121,7 @@
 | DOOM Sprint 2 (plays, hardened) | 2026-04-13 | 61 |
 | Kernel v1.22.0 (260KB) | 2026-04-14 | 62 |
 | Cyrius 4.8.5-1 (373KB, 42 stdlib modules) | 2026-04-14 | 62 |
-| Independent audit (Anthropic infra) | 2026-04-14 | 62 |
+| Independent verification (external env) | 2026-04-14 | 62 |
 | Sankoch v1.0 (beats C zlib) | 2026-04-15 | 63 |
 | hisab 2.2.0, shravan 2.3.2 | 2026-04-15 | 63 |
 | **Cyrius 5.0.0 shipped** | **2026-04-15 12:31 PT** | **63** |
@@ -137,7 +137,7 @@
 | **2026-04-28** | 76 | **AGNOS kernel v1.26.1 (248KB)** — replaces v1.26.0's CI/release-hygiene workaround with a real fix | `agnosticos/CHANGELOG.md` |
 | **2026-05-01 → 2026-05-05** | 79–83 | **Cyrius v5.8.x — 66 patches in 4 days** (3-phase: audit closeout, language vocabulary, stdlib foldin sweep with vani-fold at slot 1) | `cyrius` repo |
 | **2026-05-06** | 84 | **Cyrius v5.9.0 cut — niyama-fold opener** (8th sibling distfile, 5 regex engines: bre/re2/pcre/fuzzy/vim, 6,664 lines vendored). cc5 binary at 741,048 B | `cyrius` repo |
-| **2026-05-06** | 84 | **Beta rescoped — two-stage**: closed beta (early June 2026, 13A + friend-tester cohort) + public beta (Q4 2026, adds audit + community testing) | agnosticos CHANGELOG |
+| **2026-05-06** | 84 | **Beta rescoped — two-stage**: closed beta (13A + friend-tester cohort) + public beta (adds verification + community testing). *(Later rescoped again — see the note below the timeline: closed beta late August 2026 after a ~July founder solo-dogfood month; public beta deferred post-summer; GA late fall/early winter 2026.)* | agnosticos CHANGELOG |
 | **2026-05-06** | 84 | **ADR-008 catch-up** — Cyrius pivot (2026-04-04) formally recorded; ADR-001 marked partially superseded (language only) | `agnosticos/docs/adr/adr-008-cyrius-as-sovereign-systems-language.md` |
 | **2026-05-08** | 87 | **Cyrius v5.9.x cycle close at 5.9.43** — 44 patches over 3 days. Catchup + niyama-fold cycle. Pin-lag bands collapse: agnosys / vyakarana / sandhi / cyim / agnostik / owl roll forward. **aegis graduates** 0.1.0 → 0.8.2. **darshana** (TTY/raw-mode primitives, दर्शन — *viewing*) extracted from cyim's `src/tty.cyr` when chakshu became second consumer | `cyrius/CHANGELOG.md` |
 | **2026-05-08 → 2026-05-09** | 87–88 | **Cyrius v5.10.x — REAL TYPE SYSTEM arc** opens. v5.10.0 ships per-phase compile-time profiling instrumentation; v5.10.5 pivots to type vocabulary (cstring / Result / Option / Tagged); v5.10.24 lands Phase 2 call-site type checking. 24 patches in 2 days. cc5 binary at **783,408 B** (+42 KB from instrumentation + type machinery) | `cyrius/CHANGELOG.md` |
@@ -160,7 +160,18 @@
 | **2026-05-28** | 107 | **ext4 extent allocation iron-validated** at 1.37.3 (depth-2 PASS + e2fsck-clean on real NVMe). **1.37.5 arc-close: kashi 0.6.0 vendored into kernel** (retires inline VGA 8x16 tables in `fb_console.cyr`; consumes via `[deps.kashi]`). **kashi v1.0.0 (API freeze)** later same day. **1.38.x JBD2 journaling arc COMPLETE in a single day** — 9 bites (probe / probe-deepen / log reader / replay / lifecycle / write path / integration / crash smoke / hardening + iron-burn audit). AGNOS now both *consumes* Linux-left journals AND *produces* its own; sync-checkpoint with 3 FLUSH-CACHE barriers; `jbd2-crash-smoke.sh` 4/4 e2fsck-clean across SIGKILL points | `agnos/CHANGELOG.md` `[1.37.x]` / `[1.38.x]`, `kashi/CHANGELOG.md` `[1.0.0]` |
 | **2026-05-30** | 108 | **JBD2 crash-safe journaling iron-validated** (1.38.10 — CSUM_V3 write-side commit + 100-tx crash stress + mid-cycle power-cut recovery; host `e2fsck -fn` clean throughout). **1.39.x VFS generic-write lift COMPLETE** — FAT/exFAT shell verbs + subdir paths, capped by 1.40.13 mount-namespace routing | `agnos/CHANGELOG.md` `[1.38.10]`–`[1.39.9]` |
 | **2026-05-31** | 109 | **🎯 exec-from-disk iron-validated — base-maturity exec leg closed on real Zen** (`/bin/prog2` + `/bin/argv` ring-3, exit 42/90). A single iron boot validated the whole 1.40.x arc — exec + scheduler-reset fix + boot-stack relocation + VFS mount routing; FAT shell verbs pass with ext2 at `/`, clean boot past scheduler to kybernet. **1.40.14 process teardown/reaping.** **1.41.0 shell-separation arc OPENS** (interactive shell → userland `agnoshi`; cyrius-gated `CYRIUS_TARGET_AGNOS` ABI prereq) | `agnos/CHANGELOG.md` `[1.40.x]`–`[1.41.0]` |
-| **2026-05-31 → 2026-06-04** | 109–113 | **Shell-separation arc software-complete** across 1.41.1 → 1.41.11. FS syscalls land (getdents 29 / unlink 30 / rename 31 / link 32 / stat 33 — surface now 0–33) at **1.41.3**; **boot-to-`agnsh`** ring-3 userland shell at **1.41.4** (cyrius pin leaps 6.0.14 → 6.0.56 to land `lib/args_agnos.cyr` + `lib/process_agnos.cyr` under `CYRIUS_TARGET_AGNOS`); syscall-ingress hardening at **1.41.5**; kernel shell shrinks to a recovery-only REPL at **1.41.9** (`shell.cyr` 1149 → 813 LOC, −336); **software-complete at 1.41.11** (build 1,070,720 B). QEMU-green (`sweep.sh` 7/7, `fssys` ALL PASS, `shsys` ALL PASS, `agnsh-smoke` PASS, `check.sh` 11/11) — **iron burn PENDING** (A1–A4 rubric staged; not yet booted on real hardware) | `agnos/CHANGELOG.md` `[1.41.1]`–`[1.41.11]` |
+| **2026-05-31 → 2026-06-04** | 109–113 | **Shell-separation arc software-complete** across 1.41.1 → 1.41.11. FS syscalls land (getdents 29 / unlink 30 / rename 31 / link 32 / stat 33 — surface now 0–33) at **1.41.3**; **boot-to-`agnsh`** ring-3 userland shell at **1.41.4** (cyrius pin leaps 6.0.14 → 6.0.56 to land `lib/args_agnos.cyr` + `lib/process_agnos.cyr` under `CYRIUS_TARGET_AGNOS`); syscall-ingress hardening at **1.41.5**; kernel shell shrinks to a recovery-only REPL at **1.41.9** (`shell.cyr` 1149 → 813 LOC, −336); **software-complete at 1.41.11** (build 1,070,720 B). QEMU-green (`sweep.sh` 7/7, `fssys` ALL PASS, `shsys` ALL PASS, `agnsh-smoke` PASS, `check.sh` 11/11); iron burn staged (A1–A4 rubric) | `agnos/CHANGELOG.md` `[1.41.1]`–`[1.41.11]` |
+
+### Base Kernel-Internals Completion (June – July 7)
+
+| Date | Event | Source |
+|------|-------|--------|
+| **June** | **Shell-separation iron-validated** — `agnoshi`, the ring-3 interactive shell loaded from disk, boots and runs typeable on archaemenid (real Zen). The kernel REPL is recovery-only; the shell is now a userland program | `agnos/CHANGELOG.md` |
+| **June** | **Graphics + DOOM in-game on iron** — framebuffer scanout + DOOM playable end-to-end on real hardware | `agnos/CHANGELOG.md`, `cyrius-doom` |
+| **June** | **Multi-threading + preemptive scheduling + SMP** iron-validated — round-robin preemption and multi-core bring-up on archaemenid | `agnos/CHANGELOG.md` |
+| **1.52.x** | **HDA audio iron-validated — DOOM-WITH-SOUND out the analog front jack** on real Zen (HDA/Azalia driver + ring-3 `snd_*` band + cyrius `vani` agnos backend; LAPIC-calibration fix at 1.52.8) | `agnos/CHANGELOG.md` `[1.52.x]` |
+| **1.53.x** | **Kernel FP/SIMD iron-validated — real `f64` in ring 3** on real Zen (per-proc XMM state, lazy `#NM` save/restore; `fpex` → 84, `naadex` sine-oscillator DSP → 88) | `agnos/CHANGELOG.md` `[1.53.x]` |
+| **2026-07-07** | **Kernel head agnos 1.53.5.** Base kernel-internals essentially complete: boot → disk → FS-crash-safe → exec-from-disk → networking → ring-3 shell → graphics/DOOM → SMP → audio → FP/SIMD, all iron-validated on archaemenid. Toolchain: **Cyrius 6.4.16**, **gnoboot 0.6.0** (sovereign UEFI). Focus shifts to a ~July founder solo-dogfood month ahead of late-August closed beta | `agnos`, `cyrius`, `gnoboot` |
 
 ### Pace
 
@@ -170,9 +181,10 @@
 - **Cyrius era week 5** (May 7–9, 3 days): v5.9.x close (44 patches; consumer-rollup catchup; aegis graduates; darshana extracted) → v5.10.x REAL TYPE SYSTEM arc opens (24 patches in 2 days)
 - **Iron-boot week 6** (May 13–18, 5 days): GRUB MB2-EFI W^X blocker → Path-C sovereign UEFI ladder → MVP spine → typeable-shell MVP gate (xhci silent-absorb arc closed by cyrius v5.11.64)
 - **Arc-series surge** (May 19–31, 13 days): cyrius v6.0.0 + binary renames → kashi extracted → storage (1.31.x) → networking (1.32.x) → ext2/4 WRITE (1.33.x) → FAT-family (1.34.x) → networking-comms (1.35.x) → refactor ops (1.36.x) → extent allocation (1.37.x) + kashi fold-in + kashi v1.0 → JBD2 journaling (1.38.x) → VFS generic-write lift (1.39.x) → exec-from-disk (1.40.x) → shell-separation arc opens (1.41.0). **11 minor arcs in 13 days**; the FS-crash-safe (1.37–1.39) + exec-from-disk (1.40.x) base-maturity legs both iron-validated on real Zen.
-- **Shell-separation arc** (May 31 – Jun 4, ~5 days): 1.41.1 → 1.41.11 — FS syscalls (surface 0–33) → boot-to-`agnsh` ring-3 userland shell (cyrius pin 6.0.14 → 6.0.56) → ingress hardening → kernel shell shrunk to recovery-only REPL (`shell.cyr` 1149 → 813 LOC). **Software-complete + QEMU-validated; iron burn PENDING** — has not yet booted on real hardware.
-- **Language versions in ~16 weeks**: 1.0 → 2.0 → 3.0 → 4.0 → 5.0 → 5.5.x → 5.6.x → 5.7.x → 5.8.x → 5.9.x → 5.10.x → 5.11.x → 6.0.x
+- **Shell-separation arc** (May 31 – Jun 4, ~5 days): 1.41.1 → 1.41.11 — FS syscalls (surface 0–33) → boot-to-`agnsh` ring-3 userland shell (cyrius pin 6.0.14 → 6.0.56) → ingress hardening → kernel shell shrunk to recovery-only REPL (`shell.cyr` 1149 → 813 LOC). Software-complete + QEMU-validated, then **iron-validated in June** — the ring-3 shell (`agnoshi`) boots typeable on real hardware.
+- **Base kernel-internals completion** (June – Jul 7): shell-separation iron-validated → graphics + DOOM in-game on iron → multi-threading + preemptive scheduling + SMP → HDA audio (**DOOM-with-sound out the analog front jack**, 1.52.x) → kernel FP/SIMD (real `f64` in ring 3, 1.53.x). **Kernel head 1.53.5; base internals essentially complete**, all major legs iron-validated on archaemenid.
+- **Language versions in ~16 weeks**: 1.0 → 2.0 → 3.0 → 4.0 → 5.0 → 5.5.x → 5.6.x → 5.7.x → 5.8.x → 5.9.x → 5.10.x → 5.11.x → 6.0.x → … → **6.4.16** (current)
 
 ---
 
-*All timestamps from `git log` or canonical CHANGELOG/state.md sources. No estimates, no approximations. Last updated 2026-06-04.*
+*All timestamps from `git log` or canonical CHANGELOG/state.md sources. No estimates, no approximations. Last updated 2026-07-07.*

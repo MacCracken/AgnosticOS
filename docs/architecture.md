@@ -1,10 +1,10 @@
 # AGNOS System Architecture
 
-> **Last Updated**: 2026-06-04
+> **Last Updated**: 2026-07-07
 >
 > Per-subsystem versions intentionally elided in this doc per the lib-doc precedent — refer to the registry files when quoting numbers.
 
-This document provides the technical architecture of AGNOS (AI-Native General Operating System).
+This document provides the technical architecture of AGNOS (**A** **G**eneral **N**etworked **O**perating **S**ystem, spelling **A-GNOS**). "AI-Native" means the system is *ready for* AI, not *dependent on* it: the kernel, shell, tools, and network all work with zero AI running. AI is an optional layer you turn on or off — a toggleable capability, never a mandatory core.
 
 ## Table of Contents
 
@@ -60,7 +60,7 @@ AGNOS is a sovereign operating system written in Cyrius. The architecture consis
 |  +---------------------------------------------------------------+   |
 |  |              AGNOS Kernel (Cyrius-native)                     |   |
 |  |  +---------------------------------------------------+       |   |
-|  |  |         35+ subsystems · live size in state.md      |       |   |
+|  |  |         40+ subsystems · live size in state.md      |       |   |
 |  |  |  +-----------+ +-----------+ +----------------+    |       |   |
 |  |  |  |  Memory   | | Process  | |   Network      |    |       |   |
 |  |  |  |  Manager  | | Manager  | |   (TCP/IP)     |    |       |   |
@@ -91,7 +91,7 @@ The three-layer diagram above is **simultaneously present** in the codebase — 
 - **demo stage** (current): kernel layer is the active surface (boot, init, scheduler, syscalls, drivers, ext4 read). Subsystems exist but most run host-side; userland is minimal (agnoshi shell only).
 - **base stage** (post-1.33.x WRITE): kernel reaches "solid"; package manager (ark + nous) and update mechanism land; subsystems begin running AGNOS-side.
 - **server stage**: the **Named Subsystems** band fills in — installer (agnova), BBS/MUD apps, server daemons, more libs. Most Linux-shaped workloads become AGNOS-replaceable.
-- **desktop stage**: the **Userland Surface** band fills in — aethersafha (Wayland compositor) + GUI apps. The diagram's top tier becomes user-facing.
+- **desktop stage** (planned / future — desktop + GUI not started): the **Userland Surface** band fills in — aethersafha (native compositor) + GUI apps. The diagram's top tier becomes user-facing.
 - **swallow stage**: a fourth layer activates — the **compat sandbox** (Phase 20) — kavach-bounded Linux personality container hosting non-AGNOS-native binaries. **The boundary between the kernel and the interpretive layer is permanent** — the kernel never absorbs foreign ABIs (per [[project_agnos_kernel_growth_rules]] / [[project_agnos_empire_defense_layers]]). Sovereignty via universal hosting, not eviction.
 
 The four-layer empire-defense architecture (compat / wire / trust / governance — roadmap.md Phases 20-23) lays out *how the boundaries hold*; the maturity arc lays out *when each capability arrives*. Together they describe both the static structure and the dynamic emergence.
@@ -100,7 +100,7 @@ The four-layer empire-defense architecture (compat / wire / trust / governance �
 
 AGNOS runs its own sovereign kernel, written in Cyrius. No Linux dependency at runtime.
 
-**AGNOS kernel** — 40+ subsystems, a small sovereign syscall surface (no socket/splice/AF_ALG layer). Iron-validated end-to-end on NUC AMD archaemenid: kernel-init layer cleared 2026-05-15 (agnos 1.30.0); closed-beta MVP gate (typeable shell via xHCI HID keyboard) hit 2026-05-18 (agnos 1.30.9); the base-maturity legs — FS-crash-safety (1.37–1.39) + exec-from-disk (1.40.x, ring-3 programs off the agnos-fs) — both iron-validated on real hardware:
+**AGNOS kernel** (head **1.53.5**) — 40+ subsystems, a small sovereign syscall surface (no socket/splice/AF_ALG layer). Base kernel-internals are essentially complete. Iron-validated end-to-end on NUC AMD archaemenid: kernel-init layer cleared 2026-05-15 (agnos 1.30.0); closed-beta MVP gate (typeable shell via xHCI HID keyboard) hit 2026-05-18 (agnos 1.30.9); FS-crash-safety (1.37–1.39) + exec-from-disk (1.40.x, ring-3 programs off the agnos-fs); **agnoshi** as the ring-3 userland shell loaded from disk (shell-separation arc); **graphics + DOOM playable in-game on iron**; **multi-threading + preemptive scheduling + SMP**; **HDA audio — DOOM-with-sound out the analog front jack (1.52.x)**; and kernel **FP/SIMD — real f64 in ring 3 (1.53.x)** — all iron-validated on real hardware:
 - Memory management, process management, SMP
 - TCP/IP networking, VirtIO-Net/Blk
 - ext2/ext4 + FAT12/16/32 + exFAT filesystems (read+write), ELF loader (streaming, ring-3 exec-from-disk)
@@ -236,7 +236,7 @@ The FS group `getdents(29)` / `unlink(30)` / `rename(31)` / `link(32)` / `stat(3
 | Gap | Why it's deferred |
 |-----|-------------------|
 | Framebuffer text rendering quality (Quiet-Boot legibility on AMD Zen) | Banding observed on archaemenid Quiet-Boot framebuffer; closeout-pinned at gnoboot 0.4.2 / agnos 1.30.12 after two GOP SetMode levers were falsified. Next-cycle options: HUBP `clear_tiling` port or shadow-buffer architectural eval. Doesn't block MVP (VGA-path legible). |
-| Wayland compositor (aethersafha) | Display-layer prereq for the GUI track; scaffold only at 0.1.0. Closed-beta MVP runs without it (agnoshi-as-console via argonaut 1.7.0 BOOT_MINIMAL). |
+| Native compositor (aethersafha) | Display-layer prereq for the GUI track; **planned / future — desktop + GUI not started** (scaffold only at 0.1.0). Closed-beta MVP runs without it (agnoshi-as-console via argonaut 1.7.0 BOOT_MINIMAL). |
 | Per-backend GPT parsing | `gpt.cyr` currently only parses against `blk_active`; partitions on non-active backends aren't reachable. Deferred to next storage-cycle reopening or to a real consumer surfacing demand. |
 | ext2/ext4 write paths | ✅ **Shipped (1.33.x)** — block/inode allocator, dirent insertion/removal, file create/truncate/unlink, mkdir/rmdir/rename/ln/symlink, metadata_csum-stamping. W5 demo→base iron burn confirmed at 1.33.1 (`persist.txt` survives reboot on default `mkfs.ext4`). |
 | ext4 extent allocation | ✅ **Shipped (1.37.x)** — depth-0 append → depth-0→1 grow → multi-leaf depth-1 sibling split → depth-1→2 index-block grow (the full on-demand grow ladder). Iron-validated 1.37.3. |
@@ -293,11 +293,11 @@ MCP security monitor.
 
 ### daimon — Agent Orchestrator
 
-Agent lifecycle, sandboxing, and inter-agent communication. Ships 140+ MCP tools.
+Agent lifecycle, sandboxing, and inter-agent communication. Ships a broad MCP tool catalog (count in the registry).
 
 ### hoosh — LLM Gateway
 
-OpenAI-compatible API proxy with 15 provider backends, caching, rate limiting, hardware acceleration.
+OpenAI-compatible API proxy with a suite of provider backends (count in the registry), caching, rate limiting, hardware acceleration.
 
 ### agnoshi — AI Shell
 
@@ -305,7 +305,7 @@ Natural language terminal shell.
 
 ### aethersafha — Desktop Compositor
 
-Wayland compositor with plugin host architecture. Cyrius port pending.
+Native compositor with plugin host architecture. **Planned / future — desktop + GUI not started.**
 
 ## Security Architecture
 
@@ -383,7 +383,7 @@ These subsystems are still pending or in-flight (Rust authoritative):
 | Subsystem | Notes |
 |-----------|-------|
 | bhava | Rust 2.0.0 — emotion/sentiment port pending (Rust authoritative) |
-| aethersafha | Scaffold — Wayland compositor real implementation pending |
+| aethersafha | Scaffold — native compositor real implementation planned / future (desktop + GUI not started) |
 | takumi | Cyrius port active, `rust-old/` authoritative until parity |
 | goonj | Acoustics — Rust authoritative, port pending |
 | naad | Audio synthesis — Rust authoritative, port pending |
@@ -398,7 +398,7 @@ AGNOS has its own kernel written in Cyrius — iron-validated on NUC AMD 2026-05
 
 ### 2. Cyrius for Everything
 
-Cyrius is the sovereign systems language — 29KB seed, zero external dependencies, self-hosting compiler. All production subsystems are being ported from Rust to Cyrius. 30+ ports complete.
+Cyrius is the sovereign systems language — 29KB seed, zero external dependencies, self-hosting compiler. All production subsystems are being ported from Rust to Cyrius. 40+ ports complete (live count in the registry).
 
 ### 3. Landlock + seccomp-bpf
 

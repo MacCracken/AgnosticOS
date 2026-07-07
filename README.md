@@ -1,10 +1,10 @@
-# AGNOS — AI-Native General Operating System
+# AGNOS — A General Networked Operating System
 
-> **A**rtificial **G**eneral **N**etwork **O**perating **S**ystem
+> **A** **G**eneral **N**etworked **O**perating **S**ystem
 
 [![License](https://img.shields.io/badge/license-GPLv3-blue)](LICENSE)
-[![Kernel](https://img.shields.io/badge/kernel-AGNOS%201.51.2-orange)](https://github.com/MacCracken/agnos)
-[![Language](https://img.shields.io/badge/Cyrius-6.3.21-red)](https://github.com/MacCracken/cyrius)
+[![Kernel](https://img.shields.io/badge/kernel-AGNOS%201.53.5-orange)](https://github.com/MacCracken/agnos)
+[![Language](https://img.shields.io/badge/Cyrius-6.4.16-red)](https://github.com/MacCracken/cyrius)
 ![Status](https://img.shields.io/badge/status-pre--beta-yellow)
 
 **AGNOS** is a sovereign operating system written in **Cyrius** — a systems language with a 29KB seed, zero external dependencies, and a self-hosting compiler. The kernel boots to a typeable shell on real AMD hardware (Boot-to-Shell MVP, 2026-05-15). Since then, validated **on real AMD Zen** unless noted:
@@ -13,14 +13,18 @@
 - **Networking** — full TCP/IP + DHCP + DNS + NTP + ICMP over an r8169 NIC, iron-validated.
 - **Filesystems** — read+write ext2/ext4 (incl. **ext4 extent allocation** + **JBD2 crash-safe journaling**), FAT12/16/32, exFAT; FS-crash-safety confirmed on hardware.
 - **exec-from-disk** — static programs load + run in ring 3 off the agnos-fs, iron-validated.
-- **Userland shell** — the interactive shell is the userland **agnsh** binary, exec'd from disk in ring 3 (the in-kernel shell is now a recovery-only REPL, locking the kernel↔userland boundary); shell-separation arc **iron-complete** (2026-06-06, past a real DHCP lease). First AGNOS-tic tools (`bnrmr`/`cmdrs`/`klug`/`anuenue`) live on `/bin`, run via `run /bin/<tool>`.
-- **Graphics + DOOM** — a framebuffer / timing / input path (`fbinfo`/`blit`/`uptime_ms`/`sleep_ms`/`kbscan`) culminating in **DOOM (cyrius-doom) exec'd from disk in ring 3** — the first real userland app, **iron-complete** on real hardware (plays in-game, keyboard-driven).
-- **Preemptive scheduling** — the 1.44.x arc moved the kernel from cooperative single-core round-robin to **preemptive ring-3 time-slicing**: concurrent ring-3 processes (each on its own CR3, both syscalling), and a ring-3 **parent** that `spawn`s a child ELF + poll-`waitpid`s it entirely from ring 3 (**QEMU-validated** via `scripts/ring3-smoke.sh`; iron-validated at 1.46.x on real Zen).
+- **Userland shell** — the interactive shell is the userland **agnoshi** binary, exec'd from disk in ring 3 (the in-kernel shell is now a recovery-only REPL, locking the kernel↔userland boundary); shell-separation arc **iron-validated** on real Zen. First AGNOS-tic tools (`bnrmr`/`cmdrs`/`klug`/`anuenue`) live on `/bin`, run via `run /bin/<tool>`.
+- **Graphics + DOOM** — a framebuffer / timing / input path (`fbinfo`/`blit`/`uptime_ms`/`sleep_ms`/`kbscan`) culminating in **DOOM (cyrius-doom) exec'd from disk in ring 3** — the first real userland app, **iron-validated** on real hardware (plays in-game, keyboard-driven).
+- **Multi-threading + preemptive scheduling + SMP** — the kernel moved from cooperative single-core round-robin to **preemptive ring-3 time-slicing**: concurrent ring-3 processes (each on its own CR3, all syscalling), a ring-3 **parent** that `spawn`s a child ELF + poll-`waitpid`s it entirely from ring 3, and multi-core SMP — **iron-validated** on real Zen.
+- **Audio** — an HDA/Azalia driver + ring-3 `snd_*` syscall band, culminating in **DOOM with sound out the analog front jack** (1.52.x) — **iron-validated** on real Zen.
+- **FP/SIMD** — per-process XMM state (SSE-enable, per-proc FXSAVE, lazy `#NM` save/restore) delivering **real f64 in ring 3** (1.53.x) — **iron-validated** on real Zen.
 - **Console fonts** — vendored from **kashi 1.0.0** (parallel-agent-developed sibling repo).
 
-30+ subsystems ported from Rust to Cyrius. No Linux dependency at runtime — the kernel exposes a **small sovereign syscall surface with no socket/splice/AF_ALG layer** (structurally immune to that CVE class). Live binary sizes, per-repo versions, syscall count, and cycle state track in the ecosystem state ledger.
+40+ subsystems ported from Rust to Cyrius. Base kernel-internals are essentially complete. No Linux dependency at runtime — the kernel exposes a **small sovereign syscall surface with no socket/splice/AF_ALG layer** (structurally immune to that CVE class). Live binary sizes, per-repo versions, syscall count, and cycle state track in the ecosystem state ledger.
 
-> *AGI doesn't run on infrastructure built for web apps. It runs on infrastructure built for AGI.*
+AGNOS is a general, sovereign OS that stands on its own — kernel, shell, tools, and network all work with zero AI. It's **AI-native across the system**, but never AI-bound: the intelligence layer is one you turn on, off, or shape into whatever you want it to be — a feature, not a mandate.
+
+> *A worthy substrate isn't built for web apps. It's built to be a home for whatever intelligence may arrive — or for none.*
 >
 > *A system that can't prove its own integrity can't be trusted with autonomous action.*
 
@@ -30,18 +34,19 @@
 
 ```
 +------------------------------------------------------------------+
-|  Desktop                |  Agent Runtime          |  Kernel       |
+|  Desktop (planned)      |  Agent Runtime          |  Kernel       |
 |  +--------------------+ |  +--------------------+ |  +----------+ |
 |  | aethersafha        | |  | daimon             | |  | AGNOS    | |
-|  | Wayland compositor | |  | 144+ MCP tools     | |  | kernel   | |
+|  | native compositor  | |  | MCP tool host      | |  | kernel   | |
 |  |                    | |  | Agent orchestrator | |  | 40+ sub- | |
 |  +--------------------+ |  +--------------------+ |  | systems  | |
 |  | agnoshi            | |  | hoosh              | |  | sovereign| |
 |  | AI shell           | |  | LLM gateway        | |  | syscalls | |
-|  |                    | |  | 15 providers       | |  | Cyrius-  | |
+|  |                    | |  | multi-backend      | |  | Cyrius-  | |
 |  +--------------------+ |  +--------------------+ |  | native   | |
-|  | 23+ consumer apps  | |  | aegis + sigil      | |  | iron-    | |
+|  | consumer apps      | |  | aegis + sigil      | |  | iron-    | |
 |  | marketplace (mela) | |  | kavach (sandbox)   | |  | validated| |
+|  |  (reference)       | |  |                    | |  |          | |
 |  +--------------------+ |  +--------------------+ |  +----------+ |
 +------------------------------------------------------------------+
 ```
@@ -58,7 +63,7 @@
 | **Crypto** | sigil | Ed25519, trust verification |
 | **Audit** | libro | Hash-chained event log |
 | **MCP** | bote | message pipeline + host registry |
-| **LLM** | hoosh | OpenAI-compatible proxy, 15 providers, hardware accel |
+| **LLM** | hoosh | OpenAI-compatible proxy, multi-backend, hardware accel |
 | **Agents** | daimon | agent orchestrator, MCP tool host |
 | **Shell** | agnoshi | natural-language terminal |
 | **Packages** | ark + nous | package manager + resolver |
@@ -77,9 +82,9 @@
 | ai-hwaccel | 708KB | 217KB | 3.3x smaller, 518 tests |
 | avatara | — | — | 2,761x faster cached access |
 
-## Consumer Apps (23)
+## Consumer Apps (planned / reference)
 
-All ship as `.agnos-agent` marketplace bundles:
+Desktop and GUI work has **not started** — these are the planned marketplace roster, targeted to ship as `.agnos-agent` bundles:
 
 | App | Description |
 |-----|-------------|
@@ -105,14 +110,16 @@ All ship as `.agnos-agent` marketplace bundles:
 |-----------|--------|
 | Sovereign kernel (40+ subsystems, iron-validated NUC AMD 2026-05-15) | Done |
 | Kernel perf + hardening (heap-zero perf, page-map/RBP/reap hardening) + sysinfo/klog syscalls (`uname`/`sysinfo`/`klog`) | **QEMU-validated, iron-pending** (1.42.x) |
-| Graphics path + first real userland app — DOOM (cyrius-doom) exec'd from disk in ring 3 | **Iron-complete** (plays in-game on real Zen) — 1.43.x |
-| Preemptive ring-3 multi-threading (per-proc CR3, time-slicing, concurrent exec + clean exit, real ELF spawn) | **iron-validated on real Zen** (1.44.x arc; SMP/preempt iron-confirmed 1.46.x) |
-| Cyrius compiler (self-hosting, 42+ stdlib modules) | Done |
-| 30+ subsystem ports (Rust to Cyrius) | Done |
+| Graphics path + first real userland app — DOOM (cyrius-doom) exec'd from disk in ring 3 | **Iron-validated** (plays in-game on real Zen) — 1.43.x |
+| Preemptive ring-3 multi-threading + SMP (per-proc CR3, time-slicing, concurrent exec + clean exit, real ELF spawn) | **iron-validated on real Zen** (1.44.x arc; SMP/preempt iron-confirmed 1.46.x) |
+| HDA audio — DOOM with sound out the analog front jack | **Iron-validated on real Zen** — 1.52.x |
+| Kernel FP/SIMD — real f64 in ring 3 (per-proc XMM state, lazy `#NM` save/restore) | **Iron-validated on real Zen** — 1.53.x |
+| Cyrius compiler (self-hosting from 29KB seed) | Done |
+| 40+ subsystem ports (Rust to Cyrius) | Done |
 | Sovereign boot pipeline (Cyrius) — sovereign UEFI handoff via gnoboot | Done |
 | LFS base recipes (421 base + 90 bazaar) | Done |
 | Security stack (kavach, sigil, libro, aegis at v1.0+) | Done |
-| 19+ consumer apps with MCP integration | Done |
+| Consumer apps with MCP integration (desktop/GUI) | **Planned — not started** (reference roster) |
 | **Self-hosting (AGNOS builds AGNOS)** | **Public-beta scope — not a closed-beta gate.** Kernel already builds + boots against current Cyrius; the bare-metal toolchain target lands in Cyrius **v6.0.x** but does not gate the MVP (the earlier "closed-beta blocker" framing was pre-monolith-extraction residue, corrected 2026-05-12) |
 | Closed-beta tester cohort (5–15 trusted testers) | Pending closed-beta cut |
 | Third-party security audit | Public-beta gate |

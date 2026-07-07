@@ -1,6 +1,6 @@
 # AGNOS — Project History & Timeline
 
-> **Status**: Active | **Last Updated**: 2026-06-04
+> **Status**: Active | **Last Updated**: 2026-07-07
 
 ---
 
@@ -30,7 +30,7 @@
 | **2026-03-20** | Self-hosted runner repaired. ISO build pipeline work continues |
 | **2026-03-21** | Build improvements. stiva, nein, t-ron, impetus scaffolded. Multiple ISO build iterations |
 | **2026-03-22** | **First successful ISO build** (early morning, after ~9 days of iteration). Abacus desktop calculator released. 266 commits, 298 recipes, 10,800+ tests, ~84.3% coverage |
-| **2026-03-24** | Science stack push: 9 crates reach v1.0 in one session (impetus, hisab, bhava, bodh, sangha, and others). Agnosys integration ready for consumers |
+| **2026-03-24** | Science stack push: 9 crates reach v1.0 in one session (impetus, hisab, bodh, sangha, and others). Agnosys integration ready for consumers |
 | **2026-03-25** | Massive session: process refinement, SY migration planning, NPO groundwork |
 | **2026-03-28** | AgnosAI benchmarks (4/5 wins vs CrewAI, 2000-4500x faster cached). Release `2026.3.29` |
 | **2026-03-31** | **First fully clean release** (`2026.3.31`). All 17 artifacts built successfully — x86_64 ISO (desktop + minimal + edge), aarch64 SD card images (desktop + minimal + edge), userland tarballs, multi-arch Docker container. First release with zero build failures across all architectures. 80 shared crates (45 at v1.0+). 3 new science crates scaffolded (mastishk, rasayan, varna). 336 commits, 19 tagged releases |
@@ -49,9 +49,9 @@ AGNOS went from initial commit to first bootable ISO in **39 days** (2026-02-11 
 
 From first commit to sovereign self-hosting language with its own kernel in **53 days** (2026-02-11 to 2026-04-04).
 
-The Cyrius language went from nothing to a self-hosting compiler with a kernel in **one day** (2026-04-04), and through major-version cuts (1.0 → 2.0 → 3.0 → 4.0 → 5.0) reaching the v5.x stdlib-foldin cycle (sandhi v5.7.0, vani v5.8.0, niyama v5.9.0) by week 12, then the **REAL TYPE SYSTEM arc** at v5.10.x (24 patches in 2 days). The AGNOS kernel hardened from 143KB (with 14 buffer overflows — "The 143KB Lie") through 220KB (v1.21.0) → 260KB (v1.22.0) → 248KB (v1.26.1), then past 1 MB through the 1.3x–1.4x storage / networking / filesystem / exec-from-disk / shell-separation arcs. 30+ subsystems ported from Rust to Cyrius, each measured against its Rust predecessor.
+The Cyrius language went from nothing to a self-hosting compiler with a kernel in **one day** (2026-04-04), and through major-version cuts (1.0 → 2.0 → 3.0 → 4.0 → 5.0) reaching the v5.x stdlib-foldin cycle (sandhi v5.7.0, vani v5.8.0, niyama v5.9.0) by week 12, then the **REAL TYPE SYSTEM arc** at v5.10.x (24 patches in 2 days). The AGNOS kernel hardened from 143KB (with 14 buffer overflows — "The 143KB Lie") through 220KB (v1.21.0) → 260KB (v1.22.0) → 248KB (v1.26.1), then past 1 MB through the 1.3x–1.4x storage / networking / filesystem / exec-from-disk / shell-separation arcs, and on through the 1.5x graphics / audio / FP arcs to **agnos 1.53.5** — base kernel-internals essentially complete. 40+ subsystems ported from Rust to Cyrius, each measured against its Rust predecessor.
 
-The shared crate ecosystem now spans 80+ crates (most at v1.0+ stable), with 19+ consumer applications developed in parallel.
+The shared crate ecosystem spans a large registry of crates (most at v1.0+ stable) — see [`docs/applications/libs/README.md`](applications/libs/README.md) for the live count — with consumer applications developed in parallel.
 
 ---
 
@@ -80,7 +80,7 @@ The shared crate ecosystem now spans 80+ crates (most at v1.0+ stable), with 19+
 | **AGNOS kernel v1.26.1 (248KB)** — replaces v1.26.0's CI/release-hygiene workaround with a real fix | 2026-04-28 | 76 |
 | Cyrius v5.8.x — **66 patches in 4 days** (3-phase: audit closeout, language vocabulary, stdlib foldin sweep with vani-fold at slot 1) | 2026-05-01 → 2026-05-05 | 79–83 |
 | **Cyrius v5.9.0 cut — niyama-fold opener** (8th sibling distfile, 5 regex engines, 6,664 lines vendored). cc5 binary at 741,048 B | 2026-05-06 | 84 |
-| **Beta rescoped — two-stage**: closed beta (early June 2026, 13A + friend-tester cohort) + public beta (Q4 2026, adds audit + community testing); ADR-008 catch-up records the Cyrius pivot | 2026-05-06 | 84 |
+| **Beta rescoped — two-stage**: closed beta (13A + friend-tester cohort) + public beta (adds independent verification + community testing); ADR-008 catch-up records the Cyrius pivot. *(Dates later re-scoped — closed beta → late August 2026 after a founder solo-dogfood month, public beta deferred post-summer; see Target rows below.)* | 2026-05-06 | 84 |
 | **Cyrius v5.9.x close — 44 patches over 3 days** (catchup + niyama-fold cycle); pin-lag bands collapse — agnosys/vyakarana/sandhi/cyim/agnostik/owl all roll forward; aegis graduates 0.1.0 → 0.8.2; **darshana** extracted from cyim's TTY layer when chakshu became second consumer | 2026-05-08 | 87 |
 | **Cyrius v5.10.x — REAL TYPE SYSTEM arc** opens with per-phase compile-time profiling instrumentation (v5.10.0), pivots at v5.10.5 to type vocabulary (cstring / Result / Option / Tagged) and call-site type checking (Phase 2 at v5.10.24); 24 patches in 2 days. cc5 binary at 783,408 B (+42 KB). Bare-metal + RISC-V rv64 reservation slips to v5.12.x; v5.11.x reserved for TS testing suite + bug sweep | 2026-05-08 → 2026-05-09 | 87–88 |
 | **Iron boot — MVP spine alive on archaemenid** (NUC AMD Beelink SER). Path C sovereign UEFI (`gnoboot`) hands off to `agnos` 1.30.1 via the sovereign boot-info struct at RDI; kernel completes its full init spine on real hardware — GDT/TSS/IDT, APIC + timer, paging, PMM, heap, ACPI/PCI enumeration, VFS, initrd, SYSCALL, stack canary, scheduler arming (closed-beta gate cp_fb 0x11 MAGENTA re-held), userland exec test, kybernet-launch site. Four checkpoints past the closed-beta gate. The mem-iso ladder closed when a repair deleted the offending 303-line test block per `uefi-boot-prior-art.md` §6. Closes the "boots-on-iron" front; remaining work to typeable-shell MVP is fb glyph renderer + PS/2-emulation verification for USB keyboards. | 2026-05-15 | 93 |
@@ -95,13 +95,20 @@ The shared crate ecosystem now spans 80+ crates (most at v1.0+ stable), with 19+
 | **JBD2 crash-safe journaling iron-validated** (1.38.10 — CSUM_V3 write-side commit + 100-tx crash stress + mid-cycle power-cut recovery, host `e2fsck -fn` clean throughout). **1.39.x VFS generic-write lift COMPLETE** (FAT/exFAT shell verbs + subdir paths + mount-namespace routing). | 2026-05-30 | 108 |
 | **🎯 exec-from-disk iron-validated — base-maturity exec leg closed on real Zen** (`/bin/prog2` + `/bin/argv` run in ring 3, `run: exit 42`/`90`). A single iron boot validated the whole 1.40.x arc — exec (1.40.9) + scheduler-reset fix (1.40.10) + boot-stack relocation (1.40.12) + VFS mount routing (1.40.13): FAT shell verbs pass with ext2 at `/`, clean boot past scheduler to kybernet. **1.40.14 process teardown/reaping.** **1.41.0 shell-separation arc OPENS** (interactive shell → userland `agnoshi`; cyrius-gated `CYRIUS_TARGET_AGNOS` syscall-ABI prereq). | 2026-05-31 | 109 |
 | **Shell-separation arc software-complete (agnos 1.41.1 → 1.41.11)** — the interactive shell left the kernel: `kybernet` now execs `/bin/agnsh` in ring 3, and the in-kernel shell shrank to a recovery-only REPL (`shell.cyr` 1149 → 813 LOC at 1.41.9). The `CYRIUS_TARGET_AGNOS` leap (pin 6.0.14 → 6.0.56 at 1.41.4) landed `args_agnos`/`process_agnos` so `agnsh` could run; FS syscall group (getdents/unlink/rename/link/stat) brought the surface to 0-33 (34 calls) at 1.41.3. **Permanent kernel↔userland boundary locked.** QEMU-validated (sweep.sh 7/7, fssys ALL PASS, shsys ALL PASS, agnsh-smoke PASS, check.sh 11/11). **Iron burn PENDING** (first hardware validation of the arc staged with the A1-A4 rubric; not yet booted on real hardware). | 2026-06-04 | 113 |
-| **Target: Closed beta cut** | **early June 2026** | ~115 |
+| **Shell-separation iron-validated — `agnoshi` (ring-3 shell from disk) runs on archaemenid.** The A1–A4 rubric burn cleared: the interactive shell now runs in ring 3, loaded from disk, on real Zen. | 2026-06 | — |
+| **1.4x graphics + DOOM in-game on iron** — framebuffer glyph/graphics path and the DOOM engine run in-game on real hardware. | 2026-06 | — |
+| **Multi-threading + preemptive scheduling + SMP iron-validated** — preemptive round-robin across cores on real hardware. | 2026-06 | — |
+| **1.52.x HDA audio arc — DOOM-WITH-SOUND on iron** — the HDA/Azalia driver drives DOOM audio out the analog front jack on archaemenid. | 2026-07 | — |
+| **1.53.x kernel FP/SIMD arc — real f64 in ring 3 on iron** — per-process XMM state; `f64`/SIMD DSP validated on real Zen. **agnos 1.53.5 — base kernel-internals essentially complete.** | 2026-07 | — |
+| **Target: Closed beta cut** (after a ~July founder solo-dogfood month) | **late August 2026** | — |
+| **Target: Public beta** | **deferred post-summer 2026** | — |
+| **Target: GA** | **late fall / early winter 2026** | — |
 
 ---
 
 ## Compiler Binary Naming
 
-The Cyrius compiler binary has been renamed four times over the language's evolution. Each rename created drift across scripts, CI, install paths, and docs — which motivates the final rename to `cyc` at v6.0 to end the treadmill by decoupling binary name from language version.
+The Cyrius compiler binary has been renamed four times over the language's evolution. Each rename created drift across scripts, CI, install paths, and docs — which motivates the final rename to `cycc` at v6.0 to end the treadmill by decoupling binary name from language version.
 
 | Binary | Cyrius era | Notes |
 |--------|------------|-------|
@@ -115,4 +122,4 @@ Four renames total across four language-major transitions. The `cc5` → `cycc` 
 
 ---
 
-*Last Updated: 2026-06-04*
+*Last Updated: 2026-07-07*

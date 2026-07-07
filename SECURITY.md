@@ -1,6 +1,6 @@
 # Security Policy
 
-This document outlines the security policies, procedures, and best practices for AGNOS (AI-Native General Operating System).
+This document outlines the security policies, procedures, and best practices for AGNOS (A General Networked Operating System).
 
 ## Supported Versions
 
