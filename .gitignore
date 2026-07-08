@@ -316,12 +316,11 @@ docs/private/
 /docs/development/
 /docs/doc-health.md
 /iron-nuc-zen-photos/
-# docker/ is iron/QEMU dev-sweep harnesses (net/sched/mirshi/descent), NOT
-# shippable images — only docker/archive-pre-cyrius/ ships.
-/docker/net-sweep/
-/docker/sched-sweep/
+# mirshi-fanout = the LIVE container path: agnos userland run NATIVELY on the
+# host kernel via mirshi (the AGNOS↔Linux syscall shim / Linux-swallow +
+# cloud-deploy bridge) — NO VM. Internal for now; may graduate to a shippable
+# container image. NOT a sweep. See docs/development/planning/mirshi.md.
 /docker/mirshi-fanout/
-/docker/descent-sweep/
 # Iron-specific (archaemenid) scripts
 /scripts/iron-jbd2-prep.sh
 /scripts/iron-jbd2-validate.sh

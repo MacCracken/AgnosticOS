@@ -1,7 +1,20 @@
 # ADR-005: Desktop Environment
 
-**Status:** Accepted
+**Status:** Accepted — ⚠ **Superseded (display protocol) 2026-07-06** (Wayland refused; see the note below)
 **Date:** 2026-03-07
+
+> **Display-protocol supersession (2026-07-06).** The *Wayland Compositor
+> (aethersafha)* decision below — Wayland as the display protocol, built on
+> `smithay`, with XWayland for legacy X11 — is **superseded**. AGNOS will not
+> port Wayland; aethersafha speaks a **native, first-principles display protocol**
+> (Wayland refused, not ported). Foreign Wayland/X11 clients, if ever wanted,
+> arrive only through the firewalled `mehman` swallow lane — never the native
+> path. Canonical rationale: [`../design-patterns.md`](../design-patterns.md)
+> §"Sovereign substitution at the protocol layer — Wayland refused"; per-repo
+> decision: `aethersafha/docs/adr/0001-native-display-protocol.md`; cross-repo
+> seam: `dhancha/docs/development/sovereign-desktop.md`. The rest of this ADR
+> (accessibility, plugins, agent-window ownership, capture/recording, gestures)
+> remains in force; preserved as historical record.
 
 ## Context
 
