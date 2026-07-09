@@ -7,30 +7,37 @@ Shippable AGNOS container images. Test-sweep harnesses do **not** live here — 
 
 | Path | Image | Status | What it is |
 |---|---|---|---|
-| `Dockerfile.dev` | `agnos-dev` | **0.1.0 target** | The agnos dev userland on the **mirshi model**: `FROM scratch` + `/mirshi` (the shim) + agnos-target static ELFs (iam / kii / owl / kriya / sit / cyim / bnrmr / cmdrs) + `/data`. **No Linux base, no GNU shell, no QEMU** — the agnos tools run as native Linux processes under mirshi's syscall translation (cf. [`mirshi/docker/Dockerfile`](https://github.com/MacCracken/mirshi/blob/main/docker/Dockerfile)). Built by `build-dev.sh`. |
+| `Dockerfile.thin` | `agnos-thin` | **base** | `FROM scratch` + `/mirshi` + **iam** (identity) + **ark** (package mgr) — no shell. **~430 KB, 3 layers.** The minimal agnos container: know what it is, install onto it. `CMD` = `/bin/iam`. |
+| `Dockerfile.shell` | `agnos-shell` | **usable env** | `FROM agnos-thin` **+ agnsh** (the interactive shell). **~468 KB, 4 layers** — just the agnsh delta over the base. `run` / `&` / `>` / `\|` under mirshi. `CMD` = `/bin/agnsh`. |
+| `Dockerfile.dev` | `agnos-dev` | **0.1.0 target** | `FROM agnos-shell` **+ kriya · owl · kii · bnrmr · cmdrs · cyim · sit · shu · hapi · yo · dig** — the full dev userland (coreutils · cat · image · banner · prompt · editor · VCS · monitor · dotfiles · net-tools). **~2.0 MB, 5 layers.** `CMD` = `/bin/agnsh`. Net-tools (yo/dig) need mirshi's net band — pass `--net`/`--net-allow` (egress is default-deny). `whirl` + `darshini` fold in as their conversions land. |
 | `mirshi-fanout/` | `agnos-mirshi-fanout` | internal | The **native** container path: the real agnos-target userland ELF run on the host kernel via [mirshi](https://github.com/MacCracken/mirshi) (the AGNOS↔Linux syscall shim) — **no VM**. The Linux-swallow + cloud-deployability surface. Plan: [`../docs/development/planning/mirshi.md`](../docs/development/planning/mirshi.md). |
 | `archive-pre-cyrius/` | — | **reference only** | 17 Rust-era Dockerfiles (Ubuntu + rustc). Historical; **do not resurrect** — AGNOS builds with `cycc` now, not Rust. |
 
-### Build & run the dev image
+### Build & run the stack
 
-`build-dev.sh` compiles `mirshi` (Linux-target) + the agnos dev tools
-(agnos-target, via cyrius) and stages them into a `FROM scratch` context. Stock
-Docker's default seccomp blocks `ptrace`, so add the caps to run:
+The images are a **clean layered stack** — each is the one below it + one delta
+layer: `agnos-thin` (base) → `agnos-shell` (+agnsh) → `agnos-dev` (+CLI tools).
+`build-dev.sh` compiles `mirshi` (Linux-target) + the agnos tools (agnos-target,
+via cyrius) and docker-builds each tier `FROM` its parent. Stock Docker's default
+seccomp blocks `ptrace`, so add the caps to run:
 
 ```sh
-docker/build-dev.sh                                  # -> agnos-dev (FROM scratch)
-docker run --rm --cap-add=SYS_PTRACE --security-opt seccomp=unconfined \
-  agnos-dev /bin/iam
-docker run --rm --cap-add=SYS_PTRACE --security-opt seccomp=unconfined \
-  agnos-dev /bin/kii /data/logo.png
+docker/build-dev.sh                  # build the whole stack: thin -> shell -> dev
+PROFILE=thin  docker/build-dev.sh    # just the base (agnos-thin)
+PROFILE=shell docker/build-dev.sh    # base + shell (agnos-thin, agnos-shell)
+
+# interactive agnos shell (agnos-shell or agnos-dev; default CMD = /bin/agnsh):
+docker run --rm -it --cap-add=SYS_PTRACE --security-opt seccomp=unconfined agnos-shell
+#   at the [ASSIST] > prompt:  run /bin/iam  ·  run /bin/ark status  ·  exit
+# the thin base (identity + package mgr, no shell):
+docker run --rm --cap-add=SYS_PTRACE --security-opt seccomp=unconfined agnos-thin /bin/ark list
 ```
 
-**No interactive `agnsh` shell yet** — agnsh runs programs via `execwait#37`,
-which mirshi returns ENOSYS for (the #36–39 ABI gap; mirshi has `spawn#3` /
-`waitpid#4`, but agnsh binds execwait). So the image ships the agnos dev *tools*
-that run within mirshi's covered surface (info-getters / fs / console / winsize /
-net), one tool per `docker run`. A shell env waits on mirshi `execwait#37`
-coverage.
+**`agnsh` is the interactive shell** (in `agnos-shell` and up). Its `run` / `&` /
+`>` / `|` land on mirshi's exec band (`execwait#37` / `spawn_path#43` /
+`exec_redirect#62` / `symlink#63`), complete as of **mirshi 1.10.2**. Proven:
+`docker run agnos-shell` drops into agnsh, and `run /bin/<tool>` executes it in
+the `FROM scratch` container — no VM.
 
 ## The installer is the ISO, not a Docker image
 

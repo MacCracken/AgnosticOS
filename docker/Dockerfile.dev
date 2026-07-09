@@ -1,40 +1,22 @@
-# AGNOS dev image — the sovereign agnos userland, containerized the AGNOS way.
+# AGNOS dev image — the full sovereign agnos userland dev environment.
 #
-# FROM scratch (the mirshi model — cf. mirshi/docker/Dockerfile): the image is
-# ONLY /mirshi (the AGNOS↔Linux syscall shim, a Linux-target static no-libc ELF)
-# + the agnos-target dev tools (agnos-ABI static ELFs) + a tiny rootfs. There is
-# NO Linux base, NO GNU shell, and — the load-bearing property — NO QEMU. mirshi
-# ptrace-traps each agnos tool's syscalls and translates the agnos ABI -> Linux
-# ABI, so the agnos userland runs as native Linux processes on the host kernel
-# (direction 1). This is how agnos goes in a container.
+# Layered (clean stack): FROM agnos-shell (thin base + agnsh) + the CLI toolset.
+# Each image in the family is the one below it plus one delta layer:
+#     agnos-thin (base)  ->  agnos-shell (usable)  ->  agnos-dev (full)
+# NO Linux base, NO GNU shell, NO QEMU — agnos userland runs natively under mirshi
+# (cf. mirshi/docker/Dockerfile). agnsh's `run` / `&` / `>` / `|` land on mirshi's
+# exec band (mirshi >= 1.10.2).
 #
-# Built by docker/build-dev.sh (compiles mirshi Linux-target + the dev tools
-# agnos-target via cyrius, stages them into the scratch context) — cf.
-# mirshi/docker/build.sh.
+# Built by:  docker/build-dev.sh    (builds thin -> shell -> dev)
 #
-# Run a tool (stock Docker's seccomp blocks ptrace, so add the caps):
-#   docker run --rm --cap-add=SYS_PTRACE --security-opt seccomp=unconfined \
-#     agnos-dev /bin/iam
-#   docker run --rm --cap-add=SYS_PTRACE --security-opt seccomp=unconfined \
-#     agnos-dev /bin/kii /data/logo.png
-#
-# NOTE — no interactive `agnsh` shell yet: agnsh runs programs via execwait#37,
-# which mirshi returns ENOSYS for (the #36-39 ABI gap; mirshi has spawn#3/
-# waitpid#4 but agnsh binds execwait). So this image ships the agnos dev *tools*
-# that run within mirshi's covered surface (info-getters / fs / console / winsize
-# / net), one tool per `docker run`. A shell env waits on mirshi execwait#37
-# coverage (or an agnsh spawn#3 path).
-FROM scratch
+# Run (add the caps; -it for the interactive shell):
+#   docker run --rm -it --cap-add=SYS_PTRACE --security-opt seccomp=unconfined agnos-dev
+#     # at [ASSIST] >:  run /bin/iam  ·  run /bin/bnrmr AGNOS  ·  run /bin/kriya ls  ·  exit
+ARG PARENT=agnos-shell
+FROM ${PARENT}
 
-# The AGNOS<->Linux syscall shim (entrypoint) — Linux-target static ELF.
-COPY mirshi /mirshi
-# The agnos-target dev userland — agnos-ABI static ELFs mirshi supervises.
-# Covered-surface tools: iam (sysinfo) · kii (image->ANSI) · owl (cat) · kriya
-# (coreutils) · bnrmr (banner) · cmdrs (prompt) · sit (VCS) · cyim (editor).
+# + the CLI dev toolset: kriya (coreutils) · owl (cat) · kii (image→ANSI) ·
+#   bnrmr (banner) · cmdrs (prompt). agnsh + iam + ark come from the base layers.
 COPY bin/ /bin/
-# Sample data the tools read (kii's image, sit repo, etc.).
-COPY data/ /data/
 
-# mirshi supervises; the agnos tool path + its args are the arguments.
-ENTRYPOINT ["/mirshi"]
-CMD ["/bin/iam"]
+CMD ["/bin/agnsh"]
