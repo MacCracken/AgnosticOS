@@ -15,7 +15,7 @@
 | Web Browser | Chromium 134.0.6998.88 | `zugot/browser/chromium.toml` | Alternative, sandboxed |
 | Terminal | Foot | `zugot/desktop/foot.toml` | Wayland-native, fast, minimal deps |
 | Text Editor | Helix | `zugot/desktop/helix.toml` | Rust-native, default config included |
-| File Manager | yazi | `zugot/desktop/yazi.toml` | Rust TUI, async, rich previews |
+| File Manager | yazi | `zugot/desktop/yazi.toml` | **Retired interim** — superseded by first-party `crab` 🦀; still bazaar-installable |
 | PDF Viewer | Zathura | `zugot/desktop/zathura.toml` | Lightweight, plugin-based (PDF/DJVU/PS) |
 | Image Viewer | imv | `zugot/desktop/imv.toml` | Wayland-native, HEIF/SVG/WebP |
 | Media Player | mpv | `zugot/desktop/mpv.toml` | PipeWire, Vulkan, VA-API hwdec |
@@ -54,7 +54,7 @@ Installed via `ark bazaar install <pkg>`. 90 recipes across 8 categories.
 
 **Hybrid** — ship the package now, build AI-native later:
 - Zathura now → AI PDF suite later (Priority 1)
-- yazi now → AI file manager later (Priority 1)
+- ~~yazi now → AI file manager later~~ → **`crab` 🦀 first-party, scaffolded v0.1.0** — the later is now (yazi retired as interim, Priority 1)
 - nm-applet in bazaar → AI network manager later (Priority 2)
 
 ---

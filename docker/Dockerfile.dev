@@ -16,7 +16,10 @@ ARG PARENT=agnos-shell
 FROM ${PARENT}
 
 # + the CLI dev toolset: kriya (coreutils) · owl (cat) · kii (image→ANSI) ·
-#   bnrmr (banner) · cmdrs (prompt). agnsh + iam + ark come from the base layers.
+#   bnrmr (banner) · cmdrs (prompt) · cyim (editor) · sit (VCS) · shu (monitor) ·
+#   hapi (dotfiles) · yo · dig · whirl (HTTP) · darshini (file-list) · anuenue
+#   (rainbow) — plus the flagship servers agora (telnet BBS) · descent (MUD).
+#   agnsh + iam + ark come from the base layers.
 COPY bin/ /bin/
 
 CMD ["/bin/agnsh"]

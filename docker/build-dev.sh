@@ -38,10 +38,12 @@ declare -A TOOL=(
   [shu]="chakshu src/main.cyr"       [hapi]="hapi src/main.cyr"
   [yo]="yo src/main.cyr"             [dig]="dig src/main.cyr"
   [whirl]="whirl src/main.cyr"       [darshini]="darshini src/main.cyr"
+  [anuenue]="anuenue src/main.cyr"
+  [agora]="agora src/main.cyr"       [descent]="cyrius-yeomans-descent src/main.cyr"
 )
 # the stack (base -> up): delta tools · Dockerfile · keystone tool (must build; "-" = none)
 tiers=(thin shell dev)
-declare -A DELTA=( [thin]="iam ark" [shell]="agnsh" [dev]="kriya owl kii bnrmr cmdrs cyim sit shu hapi yo dig whirl darshini" )
+declare -A DELTA=( [thin]="iam ark" [shell]="agnsh" [dev]="kriya owl kii bnrmr cmdrs cyim sit shu hapi yo dig whirl darshini anuenue agora descent" )
 declare -A DFILE=( [thin]=Dockerfile.thin [shell]=Dockerfile.shell [dev]=Dockerfile.dev )
 declare -A KEY=(   [thin]=ark [shell]=agnsh [dev]="-" )
 
