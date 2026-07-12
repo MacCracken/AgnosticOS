@@ -305,6 +305,18 @@ fs_update() {
     stage_doom "${MOUNT_POINT_DATA}"
     echo "  staged FP-arc ring-3 f64 proofs:"
     stage_fp "${MOUNT_POINT_DATA}"
+    # /fw microcode blobs (GPU arc 1.54.x) ride in on the cp -a above (build/rootfs/fw/ → /fw),
+    # but cp -a is silent — read the tree back off the mount so a missing/short blob is VISIBLE
+    # here rather than surfacing as "RLC blob not found" mid-burn. Same "did this land?" intent
+    # as the /bin size-diff block.
+    echo "  on-disk /fw (GPU microcode blobs):"
+    if [[ -d "${MOUNT_POINT_DATA}/fw" ]]; then
+        for f in "${MOUNT_POINT_DATA}/fw/"*; do
+            [[ -f "$f" ]] && echo "    $(basename "$f") ($(stat -c%s "$f") bytes)"
+        done
+    else
+        echo "    (none — build/rootfs/fw/ was empty at stage time)"
+    fi
     sync
 
     echo "  /bin size diff (old → new):"

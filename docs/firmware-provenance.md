@@ -55,9 +55,16 @@ real modeset lands), PSP-loaded at GPU init. (2) **Display-only max-sovereignty 
 ucode, DCN pipe lit from the gnoboot/GOP linear framebuffer; forfeits compute + accel, offered as an
 explicit maximum-sovereignty mode, not a substitute.
 
-**Staging (TODO at C1b):** decompress the subset (`zstd -d`) and stage into the agnos-fs rootfs (or
-an `ark` firmware package); the kernel reads + feeds each blob to the PSP via `LOAD_IP_FW`. The
-image must carry AMD's notice text.
+**Staging (DONE, C1b-2 + C1c):** the subset is decompressed (`zstd -d`) from the host linux-firmware
+`amdgpu/` (Cezanne = `green_sardine`, symlinked from `renoir_*`) and staged into the agnos-fs rootfs
+at `build/rootfs/fw/` under short names — `rlc.bin` (C1b-2, 39,928 B), `ce.bin` (9,344), `pfp.bin`
+(21,632), `me.bin` (17,536), `mec.bin` (268,224) (C1c) — reaching the box at `/fw/` via
+`install-media.sh --update-all` (the `on-disk /fw` echo lists them). The kernel (`gpu_fw_load` +
+`gpu_fw_load_set`) reads each blob and feeds it to the PSP via `LOAD_IP_FW`; the PSP validates AMD's
+signature. **`mec2` is NOT staged/loaded** — `renoir_mec2.bin` symlinks to the identical
+`green_sardine_mec.bin`, and gfx9.3.0 loads no separate MEC2 (the single MEC ucode serves both
+pipes). RLC restore-lists (GFXOFF) + `sdma`/`dmcub` (later arcs) not yet staged. The distributed
+image must carry AMD's `LICENSE.amdgpu` notice text.
 
 ---
 
