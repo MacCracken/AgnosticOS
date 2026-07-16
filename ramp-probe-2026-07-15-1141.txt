@@ -1,0 +1,49 @@
+panel on hw:0,7 — DIG1
+Starting a 440 Hz tone. IT SHOULD BE AUDIBLE.
+
+=== THE RAMP BLOCK ON THE WORKING PATH (never read before, on either path) ===
+    DIG1_AFMT_RAMP_CONTROL0                        0x01598c  0x00000000
+    DIG1_AFMT_RAMP_CONTROL1                        0x015990  0x00000000
+    DIG1_AFMT_RAMP_CONTROL2                        0x015994  0x00000000
+    DIG1_AFMT_RAMP_CONTROL3                        0x015998  0x00000000
+    DIG1_AFMT_INTERRUPT_STATUS                     0x0158e4  0x00000000
+
+  (agnos has NEVER read these either — if they differ, this is the last unread block in the diff)
+  saved originals: 0x00000000 0x00000000 0x00000000 0x00000000
+
+=== BASELINE ===
+    tap0:   RESULT = 0x7d96f401  ->  CRC_DONE=1  CRC=0x7d96f4
+    tap1:   RESULT = 0x51820301  ->  CRC_DONE=1  CRC=0x518203
+
+================================================================
+ PERTURB 1: zero the whole RAMP block (MAX/MIN/INC/DEC = 0)
+================================================================
+    0x00000000 -> wrote 0x00000000 -> reads 0x00000000
+    0x00000000 -> wrote 0x00000000 -> reads 0x00000000
+    0x00000000 -> wrote 0x00000000 -> reads 0x00000000
+    0x00000000 -> wrote 0x00000000 -> reads 0x00000000
+    tap0:   RESULT = 0xe5408801  ->  CRC_DONE=1  CRC=0xe54088
+    tap1:   RESULT = 0xefaf0f01  ->  CRC_DONE=1  CRC=0xefaf0f
+  (still audible)
+
+================================================================
+ PERTURB 2: AFMT_AUDIO_TEST_CH_DISABLE = 0xFF (RAMP_CONTROL1 [31:24])
+================================================================
+    0x00000000 -> wrote 0xff000000 -> reads 0xff000000
+    tap0:   RESULT = 0x38ed2901  ->  CRC_DONE=1  CRC=0x38ed29
+    tap1:   RESULT = 0xe8022101  ->  CRC_DONE=1  CRC=0xe80221
+  (still audible)
+
+=== RESTORED — tone should be back ===
+    tap0:   RESULT = 0x9615d801  ->  CRC_DONE=1  CRC=0x9615d8
+    tap1:   RESULT = 0x19404b01  ->  CRC_DONE=1  CRC=0x19404b
+
+=== HOW TO READ THIS ===
+  EITHER perturbation kills the tone -> the RAMP block is LIVE on this hardware, "gated by
+  AFMT_AUDIO_TEST_EN" is refuted by demonstration, and agnos's unread RAMP values are the prime suspect.
+  Next: add the RAMP block to agnos's gpu_audio_dump and compare.
+
+  Neither kills it, and the values above match agnos's -> the block is genuinely inert, the register file
+  is exhausted for real, and the cause is SEQUENCE or STATE, not any value.
+
+  Either way this is the last unread register block. After it, "wrong value somewhere" is finished.

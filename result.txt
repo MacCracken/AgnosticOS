@@ -1,0 +1,15 @@
+Panel found on /proc/asound/card0/eld#0.1 -> ALSA device hw:0,7
+  eld_valid		1
+  codec_pin_nid		0x5
+  codec_cvt_nid		0x4
+  monitor_name		XB323U
+
+Playing a 440 Hz sine to hw:0,7 for 45s (stereo, 48 kHz) ...
+
+recorded: AUDIBLE — amdgpu plays sound out this panel over HDMI. The sink works, so agnos's silence is agnos's bug.
+
+Wrote /home/macro/Repos/agnosticos/docs/development/prior-art/dcn-audio-live-linux-register-dump-2026-07-15.md
+
+Next: diff the DCN half against agnos's own `gpu_audio_dump()` output, which prints the
+same registers in the same order. Build agnos with HDMI_AUDIO_DUMP=1 and capture with
+`run /bin/klug > dump.txt`.
