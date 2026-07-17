@@ -195,9 +195,15 @@ DIG_REGS = [
     # EXHAUSTIVELY, so no future session repeats the set-subtraction (which has now been done twice and got
     # a different answer each time -- the authoritative count is 40 mmDIG0_AFMT_* defs in
     # dcn_2_1_0_offset.h, 24 known to agnos, 16 unknown, 5 genuinely residual).
-    # NONE of these is a candidate cause: RAMP_CONTROL* is a test-tone generator gated by
-    # AFMT_AUDIO_TEST_EN, which reads 0 byte-identically on both paths, and amdgpu never writes them
-    # either (grep -c ramp = 0 across dcn10/dcn20 stream encoders). Captured for completeness only.
+    # RAMP_CONTROL* — RETRACTION (2026-07-16): the old note here said "none of these is a candidate cause
+    # (test-tone generator gated by AFMT_AUDIO_TEST_EN)". That was inference from a field name, not a
+    # measurement, and it is now a LIVE candidate: agnos reads ALL FOUR = 0 (never programmed; the GOP does
+    # not touch them), while radeon's MMIO HDMI-audio lineage (r600_hdmi.c / evergreen_hdmi.c, the same AFMT
+    # family) programs 0xFFFFFF/0x7FFFFF/1/1 on every audio enable. amdgpu-DCN writes them via no traced
+    # MMIO — consistent with DMUB/vBIOS-init programming that the register-diff corpus never captured.
+    # A ramp ceiling of 0 = output attenuated to exact silence with every upstream instrument reading
+    # healthy. >>> The ONE decisive capture this script can still take: run it under amdgpu WHILE AUDIO IS
+    # AUDIBLY PLAYING and read these four rows — non-zero confirms the mute mechanism, 0 kills it. <<<
     ("AFMT_RAMP_CONTROL0",           0x20A3, None),   # RAMP_MAX_COUNT[23:0], RAMP_DATA_SIGN[31]
     ("AFMT_RAMP_CONTROL1",           0x20A4, None),   # RAMP_MIN_COUNT[23:0], AUDIO_TEST_CH_DISABLE[31:24]
     ("AFMT_RAMP_CONTROL2",           0x20A5, None),   # RAMP_INC_COUNT[23:0]

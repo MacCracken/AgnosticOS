@@ -1,0 +1,273 @@
+AGNOS kernel v1.55.19
+64-bit long mode
+KASLR: kernel_base=100000
+RAM: usable=62305MB top=1030000000
+GDT loaded
+TSS loaded (ring 3 ready)
+IDT loaded
+PIC remapped
+Timer ISR installed
+APIC: id=0 timer active
+LAPIC: reload=998152
+SMP: 1 CPUs online
+Keyboard ISR installed (full US QWERTY)
+Page tables: 1024MB mapped
+SSE enabled
+PMM: 63488 free / 65536 pages
+PMM: alloc_top=65535
+PMM: 2mb_top_region=31601
+directmap: >256MB OK (kernel CR3)
+kernel CR3: own PML4 (0x1000)
+pmm: bitmap-dm OK free2mb=31139
+KASLR: pmm_next_free=1066
+PMM test: 16176833 free
+VMM: 57005 (expect 57005)
+Heap initialized
+Devices registered
+boot_info: initramfs=0x0 sz=0x0
+boot_info: cmdline=0x0 rsdp=0xcc597014
+ACPI: RSDP at 983056
+PCI: 32 devices
+amdvi: cap@64 mmio=4247781376 en=1
+amdvi: disabled, ctrl_rb=0
+xhci: MSI-X enabled (no function-mask)
+xhci: found at 4237295616, ver=272, 64 slots, 6 ports
+xhci: caplen=32 csz=1 ac64=1 intrs=8
+xhci: dboff=1440 rtsoff=1152 xecp=616
+xhci: scratchpad bufs=2
+xhci: USBLEGSUP already OS-owned
+xhci: dev_notifications enabled
+xhci: halted, reset clean
+xhci: scratchpad ready, array=268165120
+xhci: controller running, HCH=0, ERDP=268148736
+xhci: port 2 connected, FS, slot=1, VID=1452 PID=591, class=0
+hid: keyboard layer initialized
+hid: keyboard configured, boot protocol on, EP=129, polling 8-byte reports
+r8169: found at 0xfcf04000
+r8169: MAC=b0:41:6f:0c:e4:25
+r8169: chip-rev byte=0x57
+r8169: reset OK
+r8169: PHY link up (preserved from BIOS)
+r8169: link up or async
+r8169: RX ring up (64 desc x 2KB buf)
+r8169: RX MSI armed -> IDT vector 0x50
+r8169: TX ring up (16 desc x 2KB buf)
+Wall clock: RTC seed Unix 1784237070
+nvme: found at 4241489920, version=1.4.0
+nvme: MQES=65535 DSTRD=0 TO=255x500ms CSS_NVM=1 MPSMIN=0 MPSMAX=0
+nvme: controller disabled, RDY=0
+nvme: admin queue ready, CC.EN=1 RDY=1
+nvme: VID=49321 SSVID=49321 NN=1 MDTS=6
+nvme: model='CT1000P3PSSD8                           '
+nvme: serial='2320E6D767BF        '
+nvme: firmware='P9CR40A '
+nvme: ns1 NSZE=1953525168 LBAS=512B size=953869MB
+nvme: I/O queue 1 ready (64 entries SQ+CQ)
+nvme: ns1 LBA0 first 8 bytes: 0 0 0 0 0 0 0 0
+nvme: registered as block_dev (1953525168 LBAs x 512B)
+hda: found 1022:15e3 OSS=4 ISS=4 v1.0
+hda: reset OK, codecs=0x0001
+hda: codec0 vendor=0x10ec0897 nodes=1
+hda: pin 0x11 cfg=0x40000000 dev=0 conn=1 loc=0x00 sense=0x0
+hda: pin 0x14 cfg=0x1014020 dev=0 conn=0 loc=0x01 sense=0x0
+hda: pin 0x15 cfg=0x411111f0 dev=1 conn=1 loc=0x01 sense=0x0
+hda: pin 0x16 cfg=0x411111f0 dev=1 conn=1 loc=0x01 sense=0x0
+hda: pin 0x17 cfg=0x411111f0 dev=1 conn=1 loc=0x01 sense=0x0
+hda: pin 0x18 cfg=0x1a19030 dev=10 conn=0 loc=0x01 sense=0x0
+hda: pin 0x19 cfg=0x2a1903f dev=10 conn=0 loc=0x02 sense=0x0
+hda: pin 0x1a cfg=0x1813040 dev=8 conn=0 loc=0x01 sense=0x0
+hda: pin 0x1b cfg=0x2214010 dev=2 conn=0 loc=0x02 sense=0x0
+hda: pin 0x1e cfg=0x411111f0 dev=1 conn=1 loc=0x01 sense=0x0
+hda: afg 0x01 dacs=7 pins=14 outpins=10
+hda: route pin=0x1b dac=0x02 dev=2 path=2 digi=0
+hda: output path enabled
+hda: sweep streaming (B5 refill armed)
+hda: stream sd=0x100 tag=1 fifos=128 lpib=360
+hda: stream running (LPIB advancing)
+hda: ctl1 probing 2nd controller (HDMI/DP)
+hda: found 1002:1637 OSS=4 ISS=0 v1.0
+hda: reset OK, codecs=0x0001
+hda: codec0 vendor=0x1002aa01 nodes=1
+hda: pin 0x03 cfg=0x185600f0 dev=5 conn=0 loc=0x18 sense=0x7fffffff
+hda: pin 0x05 cfg=0x185600f0 dev=5 conn=0 loc=0x18 sense=0x7fffffff
+hda: pin 0x07 cfg=0x185600f0 dev=5 conn=0 loc=0x18 sense=0x7fffffff
+hda: pin 0x09 cfg=0x185600f0 dev=5 conn=0 loc=0x18 sense=0x7fffffff
+hda: pin 0x0b cfg=0x585600f0 dev=5 conn=1 loc=0x18 sense=0x7fffffff
+hda: pin 0x0d cfg=0x585600f0 dev=5 conn=1 loc=0x18 sense=0x7fffffff
+hda: afg 0x01 dacs=6 pins=6 outpins=6
+hda: hdmi enable pin=0x03 cvt=0x02
+hda: hdmi enable pin=0x05 cvt=0x04
+hda: hdmi enable pin=0x07 cvt=0x06
+hda: hdmi enable pin=0x09 cvt=0x08
+hda: route pin=0x03 dac=0x02 dev=5 path=1 digi=1
+hda: output path enabled
+hda: sweep streaming (B5 refill armed)
+hda: stream sd=0x80 tag=3 fifos=260 lpib=360
+hda: stream running (LPIB advancing)
+hda: ctl1 bound codecs=0x0001 afg=0x01
+gpu: found 1002:1638 [AMD gfx90c/DCN2.1] BAR5=0xfcb00000 UC
+gpu: 3072MB VRAM
+gpu: register aperture mapped
+gpu: firmware not resident, loading via PSP
+gpu: PSP secure memory region ready
+ahci: found at 4240441344, version=1.769
+ahci: NP=1 NCS=32 ISS=3 SAM=1 SSS=0 SNCQ=1 S64A=1
+ahci: GHC=2147483648 PI=1
+ahci: port 0 DET=3 SPD=3 SIG=257 (SATA)
+ahci: port 0 initialized (CL @ 267718656, FIS @ 267714560)
+ahci: port 0 model='WD Blue SA510 2.5 2TB' serial='24313QD00663' fw='530400WD'
+ahci: port 0 LBA48=3907029168 sectors (1907729 MiB)
+ahci: port 0 LBA0 first 8 bytes: 0 0 0 0 0 0 0 0
+ahci: port 0 model='WD Blue SA510 2.5 2TB' serial='24313QD00663' fw='530400WD'
+ahci: port 0 LBA48=3907029168 sectors (1907729 MiB)
+ahci: registered as secondary block_dev (port 0, 3907029168 LBAs x 512B; NVMe primary)
+gpt: present, first=34 last=1953525134 parts=3/128 hdr-CRC-OK arr-CRC-OK
+partitions (3 active / 128 reserved):
+  [0] EFI System AGNOS-BOOT  LBA 2048-524287 (255 MiB)
+  [1] Linux FS agnos-fs  LBA 524288-52953087 (25600 MiB)
+  [2] MSFT Basic fstest  LBA 52953088-54001663 (512 MiB)
+VFS initialized
+ext2: probe matched backend=2 partition_lba=524288
+ext2: mounted (blocksize=4096, inode_size=256, inodes_per_group=8192)
+jbd2: clean journal ino=8 size=32768 seq=520
+fat: mounted FAT32 backend=2 partition_lba=52953088
+gpu: RLC firmware loaded (PSP-validated)
+gpu: loading CP/MEC firmware...
+gpu: CP/MEC firmware loaded (5/5, PSP-validated)
+gpu: starting compute engines...
+gpu: compute engines online (idle)
+gpu: firmware already resident (engines running)
+gpu: probing memory controller...
+gpu: no GART page tables
+gpu: memory pipe disabled (enabling caches)
+gpu: memory: UMA carveout via framebuffer aperture
+gpu: memory controller ready (L2 on, idle)
+gpu: compute queue ready (MEC1)
+gpu: command ring active
+gpu: GPU-to-CPU coherence verified
+gpu: compute shader executed
+gpu: parallel compute online (64 threads)
+gpu: kernarg compute online (64 operand reads)
+gpu: reduction-loop compute online (64 dot products)
+gpu: integer matmul online (8x8, bit-correct vs CPU)
+gpu: f64 matmul online (8x8, bit-correct vs CPU)
+gpu: f64 matmul rosnet-bit-correct (8x8, rounding)
+gpu: display pipe 0 live (scanout matches framebuffer)
+gpu: display vblank pacing online (frame counter + blank)
+gpu: audio probe rate=0 pixclk=0 dpref=23b21b78
+gpu: audio probe dtosrc=30 dto0=0/1 dto1=0/1
+gpu: audio probe dig0 fe=0 be=100 mode=1 dpvid=100200 afmt=0
+gpu: audio probe dig1 fe=1000000 be=101 mode=2 dpvid=100200 afmt=0
+gpu: audio probe dig2 fe=0 be=100 mode=1 dpvid=100200 afmt=0
+gpu: audio probe dig3 fe=0 be=100 mode=1 dpvid=100200 afmt=0
+gpu: audio probe dig4 fe=0 be=100 mode=1 dpvid=100200 afmt=0
+gpu: audio probe az0 pre=0 back=54 hpc=0 rcd=185600f0 csi=30
+gpu: audio probe az1 pre=0 back=54 hpc=0 rcd=185600f0 csi=30
+gpu: audio probe az2 pre=0 back=54 hpc=0 rcd=185600f0 csi=30
+gpu: audio probe az3 pre=0 back=54 hpc=0 rcd=185600f0 csi=30
+gpu: audio endpoint window alive on 4 of 4
+gpu: display audio path is HDMI on dig 1
+gpu: display link 2560x1440 total 2720x1481 blanking 160x41
+gpu: display refresh 59951 mHz, windows agree within 12 ppm
+gpu: display pixel clock 241503 kHz, 13 ppm from the 241500 kHz step
+gpu: hdmi flip preconditions met
+gpu: display link switched to HDMI signalling
+gpu: hdmi endpoint clock on (hotplug 80000011)
+gpu: hdmi audio online (endpoint 1 on dig 1)
+gpu: hdmi audio drain armed on empty FIFO (feed starts after bind)
+gpu: hdmi audio tap 0 saw no samples (crc did not complete)
+gpu: hdmi audio tap 1 saw no samples (crc did not complete)
+hda: hdmi bound pin 0x05 cvt 0x04 only (others unbound)
+gpu: hdmi audio tap 0 saw samples (crc 37c0ff)
+gpu: hdmi audio tap 1 saw samples (crc 9c4a3a)
+gpu: hdmi AFMT drain steady after feed (bit24 clear)
+hda: sink ctl=1 present=1 dac=4 pin=5 digital=1
+hda: dma running lpib=2088 run=1
+== agnos display-audio dump ==
+DCCG_AUDIO_DTO_SOURCE  0
+DCCG_AUDIO_DTO0_PHASE  3a980
+DCCG_AUDIO_DTO0_MODULE 24d9b8
+DIG_FE_CNTL            1000100
+HDMI_CONTROL           10019
+HDMI_STATUS            0
+HDMI_DB_CONTROL        1000
+HDMI_ACR_STATUS_0      3af5f000
+HDMI_ACR_STATUS_1      1800
+HDMI_AUDIO_PKT_CONTROL 30010
+HDMI_ACR_PKT_CONTROL   11000
+HDMI_VBI_PKT_CONTROL   31
+HDMI_INFOFRAME_CNTL0   10
+HDMI_INFOFRAME_CNTL1   200
+HDMI_GENERIC_PKT_CNTL0 3
+HDMI_GENERIC_PKT_CNTL1 2
+HDMI_GC                4
+AFMT_GENERIC_HDR       d0282
+AFMT_GENERIC_0         81ecf
+AFMT_GENERIC_2         5ca
+AFMT_GENERIC_3         aa1
+AFMT_VBI_PKT_CONTROL   0
+AFMT_AUDIO_PKT_CONTROL 801
+AFMT_AUDIO_PKT_CNTL2   300
+AFMT_AUDIO_SRC_CONTROL 1
+AFMT_INFOFRAME_CNTL0   0
+AFMT_AUDIO_INFO0       170
+AFMT_60958_0           100000
+AFMT_60958_1           200000
+AFMT_60958_2           876543
+AFMT_STATUS            40000010
+AFMT_CNTL              101
+AFMT_RAMP_CONTROL0     0
+AFMT_RAMP_CONTROL1     0
+AFMT_RAMP_CONTROL2     0
+AFMT_RAMP_CONTROL3     0
+AFMT_INTERRUPT_STATUS  0
+AFMT_AUDIO_CRC_CONTROL 0
+AFMT_AUDIO_CRC_RESULT  4359e500
+HDMI_ACR_48_1          1800
+DIG_BE_CNTL            10030200
+AZ_CONVERTER_FORMAT    11
+AZ_CHANNEL_STREAM_ID   30
+AZ_CHANNEL_SPEAKER     10001
+AZ_MULTICHANNEL_ENABLE 1
+AZ_HOT_PLUG_CONTROL    80000000
+AZ_AUDIO_ENABLE_STATUS 1
+AZ_DIGITAL_OUT_STATUS  1
+AZ_LPIB                3724 then 3aac
+AZ_DIGITAL_CONVERTER   1
+AZ_CONV_WIDGET_CAPS    221
+AZ_PIN_WIDGET_CONTROL  40
+AZ_PIN_CAPS            94
+AZ_PIN_SENSE           7fffffff
+AZ_AUDIO_DESCRIPTOR0   7070701
+AZ_MULTICHANNEL_MODE   1
+AZ_RESPONSE_HBR        1
+AZ_SINK_INFO0          7757204
+AZ_CODING_TYPE         0
+AZ_FORMAT_CHANGED      0
+== end dump ==
+SYSCALL/SYSRET initialized
+Stack canary initialized
+Interrupts enabled
+r8169: receiver ring healthy at sti, no restart needed
+Timer ticks before sched: 16
+Activating scheduler...
+smp: cpus online: 4
+dhcp: DISCOVER
+r8169: RX MSI LIVE (first hardware IRQ serviced, vector 0x50)
+dhcp: OFFER ip=192.168.1.138
+dhcp: REQUEST
+dhcp: ACK ip=192.168.1.138 gw=192.168.1.1 mask=255.255.255.0 dns=192.168.1.1
+arp: request -> gateway
+arp: REPLY gw_mac=d4:6a:91:ce:70:60
+net: L2 OK -- gateway MAC cached
+Launching kybernet...
+kybernet: starting init
+kybernet: 5 processes
+kybernet: 16175175 free pages
+kybernet: exec /bin/agnsh
+agnoshi 1.8.4
+AI-native shell -- type a natural-language command, or 'exit' to quit.
+Built-ins: help, version, mode, history, clear, exit
+Files: cp mv rm ls mkdir rmdir touch echo wc find grep (kriya) - owl FILE (cat)   Run: run
+
+[ASSIST] > klug > audio_re_4.txt
