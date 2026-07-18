@@ -86,17 +86,45 @@ NV=$(grep -cE 'hda_send_cmd' "$OUT" 2>/dev/null || echo 0)
 echo ""
 echo "captured $NW register writes + $NV codec verbs -> $OUT"
 echo ""
-echo "=== display register writes in the DCN encoder/audio region (dword 0x5400-0x5900 = DIG/AFMT/AZ) ==="
-grep -E 'amdgpu_dc_wreg' "$OUT" | awk '
-  { r=""; v="";
-    if (match($0,/reg=0x[0-9a-fA-F]+/))   r=substr($0,RSTART+4,RLENGTH-4);
-    if (match($0,/value=0x[0-9a-fA-F]+/)) v=substr($0,RSTART+6,RLENGTH-6);
-    if (r!="") { d=strtonum("0x" r);
-      if ((d>=0x5400 && d<=0x5900) || (d>=0xC0 && d<=0x200))
-        printf "  reg=0x%05x  value=0x%s\n", d, v; } }' | head -80
+if [ "$MODE" = "modeset" ]; then
+    # === P5a: the TRANSMITTER bring-up. The audio region is already byte-matched; what we need is the
+    # encoder + PHY writes agnos never does. Show EVERY dc_wreg + device_wreg write, grouped by region,
+    # so the DIG back-end / UNIPHY / DCIO / DCCG writes (the transmitter enable) are not filtered out.
+    # SEG[2]=0x34C0: audio/DIG dword region is ~0x5400-0x5900. Anything OUTSIDE that (esp. the PHY) is the
+    # P5a prize. amdgpu's ATOM TransmitterControl writes may land in device_wreg, not dc_wreg — capture both.
+    echo "=== ALL register writes during the modeset, in ORDER (dc_wreg + device_wreg), deduped-adjacent ==="
+    grep -E 'amdgpu_dc_wreg|amdgpu_device_wreg' "$OUT" | awk '
+      { r=""; v=""; src="dc"; if ($0 ~ /device_wreg/) src="dev";
+        if (match($0,/reg=0x[0-9a-fA-F]+/))   r=substr($0,RSTART+4,RLENGTH-4);
+        if (match($0,/value=0x[0-9a-fA-F]+/)) v=substr($0,RSTART+6,RLENGTH-6);
+        if (r=="") next; d=strtonum("0x" r);
+        region="OTHER";
+        if (d>=0x5400 && d<=0x5900) region="DIG/AFMT/AZ(audio-matched)";
+        else if (d>=0xC0 && d<=0x200) region="DCCG/OTG-rate(seg1)";
+        else if (d>=0x6C00 && d<=0x6F00) region="OTG/OPTC(seg2)";
+        line=sprintf("%-4s reg=0x%06x value=0x%-8s [%s]", src, d, v, region);
+        if (line!=prev) printf "  %s\n", line; prev=line; }'
+    echo ""
+    echo "=== write COUNT by region (where is the transmitter bring-up?) ==="
+    grep -E 'amdgpu_dc_wreg|amdgpu_device_wreg' "$OUT" | awk '
+      { if (match($0,/reg=0x[0-9a-fA-F]+/)) { d=strtonum("0x" substr($0,RSTART+4,RLENGTH-4));
+          if (d>=0x5400 && d<=0x5900) a++; else if (d>=0xC0 && d<=0x200) c++;
+          else if (d>=0x6C00 && d<=0x6F00) o++; else other++; } }
+      END { printf "  audio(0x5400-5900)=%d  dccg(0xC0-200)=%d  otg(0x6C00-6F00)=%d  OTHER(PHY/misc)=%d\n",
+                   a,c,o,other }'
+else
+    echo "=== display register writes in the DCN encoder/audio region (dword 0x5400-0x5900 = DIG/AFMT/AZ) ==="
+    grep -E 'amdgpu_dc_wreg' "$OUT" | awk '
+      { r=""; v="";
+        if (match($0,/reg=0x[0-9a-fA-F]+/))   r=substr($0,RSTART+4,RLENGTH-4);
+        if (match($0,/value=0x[0-9a-fA-F]+/)) v=substr($0,RSTART+6,RLENGTH-6);
+        if (r!="") { d=strtonum("0x" r);
+          if ((d>=0x5400 && d<=0x5900) || (d>=0xC0 && d<=0x200))
+            printf "  reg=0x%05x  value=0x%s\n", d, v; } }' | head -80
+fi
 echo ""
 echo "=== HDA codec verbs during the capture ==="
 grep -E 'hda_send_cmd' "$OUT" | head -60
 echo ""
-echo "Full trace in $OUT — send it and I'll map every offset to its DCN register name, decode the"
-echo "codec verbs, and diff amdgpu+ALSA's real bring-up against exactly what AGNOS does."
+echo "Full trace in $OUT — send it and I'll map every offset to its DCN register name, isolate the"
+echo "transmitter/encoder/PHY writes (the P5a prize), and turn them into agnos's sovereign bring-up."

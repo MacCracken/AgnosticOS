@@ -357,6 +357,11 @@ def main():
                          "The confound control for --sample-send: 0x801 has bit11 SET, so muting alone may "
                          "hold the FIFO in reset -- which is NOT agnos's state (agnos's FIFO OVERFLOWS, "
                          "i.e. is not reset). WRITES.")
+    ap.add_argument("--pipe", type=int, default=None, metavar="N",
+                    help="ALSO range-dump the OTG<N> + DCCG pipe/clock blocks (READ-ONLY). Use this to capture "
+                         "what amdgpu's cold HDMI modeset set in the pipe/clock registers agnos never touches "
+                         "(agnos inherits the GOP's DVI values). Diff the result against agnos's gpu.cyr writes "
+                         "to find the missing modeset step. N = the display OTG (0 on archaemenid).")
     args = ap.parse_args()
 
     if os.geteuid() != 0:
@@ -411,6 +416,16 @@ def main():
         emit(bar, f"AZF0ENDPOINT{i}_ENDPOINT_INDEX", 2, io, None, args.raw)
         emit(bar, f"AZF0ENDPOINT{i}_ENDPOINT_DATA", 2, io + 1, None, args.raw)
     print()
+
+    if args.pipe is not None:
+        # DISABLED — DO NOT RE-ENABLE AS A RANGE SCAN. A blind read-sweep of the OTG (BASE_IDX 2 0x1B00+) and
+        # DCCG (BASE_IDX 1 0x00..0xC0) blocks LOCKED THE WHOLE MACHINE on archaemenid (2026-07-17): some
+        # registers in those ranges sit behind gated clock domains and reading them hangs the bus (same hazard
+        # class as the DMU/DMCUB mailbox at seg3 0x9000 — see memory). GPU register READS are NOT universally
+        # safe. Any future pipe capture must read ONLY specific offsets verified against dcn_2_1_0_offset.h and
+        # known to be in an ungated domain — never a range sweep.
+        sys.exit("--pipe is disabled: a range read-sweep of the OTG/DCCG blocks hangs the machine (gated-clock "
+                 "registers). Do not blind-scan GPU registers. Use verified single offsets only.")
 
     if args.az:
         print("== Azalia indexed ordinals (INDEX written, DATA read) ==")

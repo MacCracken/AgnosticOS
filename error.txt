@@ -1,0 +1,8 @@
+==========================================================================
+ agnos-hdmi-linux — AGNOS's HDMI-audio FEED process, in Linux userspace, no agnos
+ Reproduces hda.cyr (controller+codec+DMA feed) verbatim; DCN set to known-good.
+ Sound => agnos's feed logic is correct, the bug is agnos's bare-metal environment.
+ Silence => agnos's feed logic is the bug; iterate HERE by ear, no reflash.
+==========================================================================
+  (rebind later with: echo 0000:04:00.1 | sudo tee /sys/bus/pci/drivers/None/bind  — or just reboot)
+  DMA hugepage phys=0x1be400000

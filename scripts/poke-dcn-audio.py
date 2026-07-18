@@ -240,20 +240,112 @@ def bisect(bar, dig):
     print("=" * 74)
 
 
+# bit constants — verbatim from agnos kernel/core/gpu_regs.cyr
+AVMUTE       = 0x1          # HDMI_GC bit0
+DIG_ENABLE   = 0x1          # DIG_BE_EN_CNTL bit0
+SYMCLK_BE_ON = 0x100        # DIG_BE_EN_CNTL bit8 (RO ack)
+SAMPLE_SEND  = 0x1          # AFMT_AUDIO_PACKET_CONTROL bit0
+OVERFLOW_ACK = 0x800000     # bit23
+CS_UPDATE    = 0x4000000    # bit26
+AUDIO_CLOCK_EN = 0x1        # AFMT_CNTL bit0
+AUDIO_INFO_SEND = 0x10      # HDMI_INFOFRAME_CONTROL0 bit4
+
+
+def replay_agnos_enable(bar, dig):
+    """Run AGNOS's gpu_hdmi_audio_enable SEQUENCE (the process, incl. the disruptive edges a register
+    snapshot cannot show) onto the LIVE, already-audibly-playing amdgpu path. Staged with an ear verdict
+    after each edge so we localise WHICH step of agnos's process kills a working stream. This is the
+    operator's 'write the driver on Linux to confirm the process works without agnos' — for the DCN half."""
+    def R(n): return bar.rd(reg_addr(n, dig))
+    def W(n, v): bar.wr(reg_addr(n, dig), v)
+
+    print("=" * 74)
+    print(" REPLAY AGNOS'S HDMI-AUDIO ENABLE SEQUENCE onto the LIVE amdgpu path")
+    print(f" DIG {dig}.  START WITH AUDIO AUDIBLY PLAYING to the monitor and KEEP it playing.")
+    print(" We apply agnos's process one edge at a time and you report, by ear, when it dies.")
+    print(" !! One step drops the HDMI link for 120ms (agnos does this and recovers). If the DISPLAY")
+    print("    does not come back, reboot — amdgpu is not told this happened. Nothing is written to disk.")
+    print("=" * 74)
+    orig = {n: R(n) for n in ("HDMI_GC", "DIG_BE_EN_CNTL", "AFMT_AUDIO_PACKET_CONTROL",
+                              "AFMT_CNTL", "HDMI_INFOFRAME_CONTROL0")}
+    print("  captured originals:", {k: hex(v) for k, v in orig.items()})
+
+    def verdict(step):
+        r = ask(f"    >>> {step}: is audio STILL playing?", ["y", "n", "q"])
+        return r
+
+    if ask("  begin?", ["y", "n"]) == "n":
+        return
+
+    # --- STEP 1: the non-disruptive re-writes agnos does (clock-en, info-send, drain re-arm).
+    # These match amdgpu's end-state so they should be inert on a live stream — a control.
+    W("AFMT_CNTL", R("AFMT_CNTL") | AUDIO_CLOCK_EN)
+    W("HDMI_INFOFRAME_CONTROL0", R("HDMI_INFOFRAME_CONTROL0") | AUDIO_INFO_SEND)
+    W("AFMT_AUDIO_PACKET_CONTROL", R("AFMT_AUDIO_PACKET_CONTROL") | CS_UPDATE | SAMPLE_SEND)
+    time.sleep(0.3)
+    if verdict("STEP 1 (clock/info/drain re-arm — expected inert)") == "q": return
+
+    # --- STEP 2: agnos's Stage-1 LINK EVENT — SET AVMUTE, close tap, DIG_ENABLE DOWN 120ms, UP, re-arm.
+    print("    STEP 2: applying agnos's DIG_ENABLE down->up link event (120ms; screen will blank)...")
+    W("HDMI_GC", R("HDMI_GC") | AVMUTE)
+    W("AFMT_AUDIO_PACKET_CONTROL", R("AFMT_AUDIO_PACKET_CONTROL") & ~SAMPLE_SEND)
+    W("DIG_BE_EN_CNTL", R("DIG_BE_EN_CNTL") & ~DIG_ENABLE)         # link DOWN
+    time.sleep(0.120)
+    W("DIG_BE_EN_CNTL", R("DIG_BE_EN_CNTL") | DIG_ENABLE)          # link UP
+    for _ in range(20000):
+        if R("DIG_BE_EN_CNTL") & SYMCLK_BE_ON:
+            break
+    time.sleep(0.020)
+    W("AFMT_AUDIO_PACKET_CONTROL", R("AFMT_AUDIO_PACKET_CONTROL") | OVERFLOW_ACK)
+    W("HDMI_GC", R("HDMI_GC") & ~AVMUTE)                            # AVMUTE clear
+    W("AFMT_AUDIO_PACKET_CONTROL", R("AFMT_AUDIO_PACKET_CONTROL") | CS_UPDATE | SAMPLE_SEND)
+    time.sleep(0.3)
+    v = verdict("STEP 2 (agnos's DIG link event — THE prime suspect)")
+    if v == "q":
+        return
+    if v == "n":
+        print("\n    ##### agnos's DIG_ENABLE link event KILLED a working stream — REPRODUCED on Linux. #####")
+        print("    That edge is in gpu.cyr gpu_hdmi_audio_enable Stage 1. amdgpu never does it post-setup.")
+        # try to recover the stream the way a fresh modeset would, to prove it's the edge not the end-state
+        print("    Attempting recovery by re-asserting drain only (no link event)...")
+        W("AFMT_AUDIO_PACKET_CONTROL", R("AFMT_AUDIO_PACKET_CONTROL") | OVERFLOW_ACK | CS_UPDATE | SAMPLE_SEND)
+        time.sleep(0.3)
+        verdict("recovery attempt (drain re-arm only)")
+
+    # --- STEP 3: the post-feed AVMUTE pulse agnos does last (main.cyr gpu_hdmi_avmute_pulse).
+    print("    STEP 3: agnos's terminal AVMUTE SET->CLEAR pulse (~48ms mute)...")
+    W("HDMI_GC", R("HDMI_GC") | AVMUTE)
+    time.sleep(0.048)
+    W("HDMI_GC", R("HDMI_GC") & ~AVMUTE)
+    time.sleep(0.3)
+    verdict("STEP 3 (terminal AVMUTE pulse)")
+
+    print("\n  restoring captured originals...")
+    for n, v in orig.items():
+        W(n, v)
+    print("  done. If audio did not return, restart the tone / reboot. Reboot before normal use anyway.")
+    print("=" * 74)
+
+
 def main():
-    ap = argparse.ArgumentParser(description="Kill-bisect agnos DCN audio state against live amdgpu (by ear).")
+    ap = argparse.ArgumentParser(description="Kill-bisect / process-replay agnos DCN audio against live amdgpu (by ear).")
     ap.add_argument("--dev", default="0000:04:00.0")
     ap.add_argument("--dig", type=int, default=1, help="DIG instance (default 1 — the live encoder on archaemenid)")
     ap.add_argument("--read", metavar="WHAT", help="read-only: 'RAMP', 'ALL', or comma-separated names")
     ap.add_argument("--write", action="append", metavar="NAME=HEX", help="poke one register (repeatable)")
     ap.add_argument("--bisect", action="store_true", help="guided block-by-block kill-bisect")
+    ap.add_argument("--replay-enable", action="store_true",
+                    help="replay agnos's ENABLE SEQUENCE (edges incl. DIG link event) onto the live playing path")
     args = ap.parse_args()
 
     path = f"/sys/bus/pci/devices/{args.dev}/resource5"
-    writable = bool(args.write or args.bisect)
+    writable = bool(args.write or args.bisect or args.replay_enable)
     if writable and os.geteuid() != 0:
         sys.exit("writes need root")
     bar = Bar(path, writable)
+    if args.replay_enable:
+        replay_agnos_enable(bar, args.dig)
+        return
 
     if args.read:
         if args.read.upper() == "RAMP":

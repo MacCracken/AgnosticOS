@@ -1,0 +1,16 @@
+==========================================================================
+ agnos-hdmi-linux — AGNOS's HDMI-audio FEED process, in Linux userspace, no agnos
+ Reproduces hda.cyr (controller+codec+DMA feed) verbatim; DCN set to known-good.
+ Sound => agnos's feed logic is correct, the bug is agnos's bare-metal environment.
+ Silence => agnos's feed logic is the bug; iterate HERE by ear, no reflash.
+==========================================================================
+  (rebind later with: echo 0000:04:00.1 | sudo tee /sys/bus/pci/drivers/None/bind  — or just reboot)
+  DMA hugepage phys=0x1be400000
+  [0] GCAP / 64-bit-DMA + stream-layout guard
+  GCAP=0x4001  OSS=4 ISS=0 64OK=1
+  [1] controller reset
+  [2] CORB/RIRB ring init
+  [2b] RIRB DMA + codec round-trip (RAM-safety gate)
+  RIRB (DMA) VENDOR_ID round-trip: resp=0x00000000 vendor=0x0000  (RIRBWP=1)
+  immediate-command VENDOR_ID (DMA-free): resp=0x1002aa01 vendor=0x1002 [ATI OK]
+  --- diagnosis ---
