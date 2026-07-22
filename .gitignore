@@ -333,3 +333,13 @@ docs/private/
 /docs/creative/
 /docs/thesis.md
 /docs/design-patterns.md
+# Local iron artifacts — kept on the dev box, not repo content. vbios.rom is archaemenid's ATOM VBIOS image
+# (dumped from /sys/kernel/debug/dri/*/amdgpu_vbios); the ATOM-interpreter/A-series docs reference it AT THIS
+# PATH, so it stays here rather than moving — it just isn't committed (55 KB vendor blob, re-dumpable on the
+# box). shift.cyr is a scratch Cyrius snippet. Root klug/burn .txt dumps are disposable and swept
+# periodically; keeper captures get promoted to docs/development/prior-art/ (see its README).
+/vbios.rom
+/shift.cyr
+# ROOT-ONLY (leading slash): klug dumps land here from `run /bin/klug > foo.txt`. Must NOT be a bare
+# `*.txt` — that matches recursively and would shadow docs/development/prior-art/*.txt, the promoted keepers.
+/*.txt
