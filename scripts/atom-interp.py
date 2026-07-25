@@ -1272,6 +1272,45 @@ def build_encoder_generic_v1_5(digid, action):
 # ============================================================================
 #  phyid / digfe_sel / connobj_id derivation from the object-info data table
 # ============================================================================
+#  phyid from a REAL register snapshot — the only trustworthy derivation
+# ----------------------------------------------------------------------------
+# DIG_BE_CNTL is BASE_IDX-2 relative 0x20AF with a 0x100 per-instance stride; absolute = +0x34C0, so
+# instance N lives at 0x556F + N*0x100. DIG_BE_EN_CNTL is one dword higher (0x20B0 -> 0x5570 + N*0x100).
+_DIG_BE_CNTL_ABS0 = 0x556F
+_DIG_BE_EN_ABS0 = 0x5570
+_DIG_STRIDE = 0x100
+_DIG_COUNT = 5                      # Renoir: 5 stream encoders
+
+
+def derive_phyid_from_snapshot(snap):
+    """Which link-encoder instance is actually driving? Mirrors kernel gpu_phy_discover().
+
+    Three conditions, all required — any one alone can read stale on a re-routed pipe, and a wrong answer
+    aims ATOM #76 (a PHY power-cycle) at the wrong transmitter:
+      1. DIG_BE_EN_CNTL bit0 (DIG_ENABLE) set  — the back end is live
+      2. DIG_BE_CNTL FE_SOURCE_SELECT [15:8] non-zero — a front end is routed to it
+      3. DIG_BE_CNTL DIG_MODE [18:16] in {2 DVI, 3 HDMI} — a real signalling mode (1 = off)
+
+    Returns (phyid, note) or (None, None) when no snapshot / nothing live. NEVER falls back to 0: "0" is
+    the wrong-and-plausible answer a dead PHY accepts in silence.
+    """
+    if not snap:
+        return None, None
+    for i in range(_DIG_COUNT):
+        be = snap.get(_DIG_BE_CNTL_ABS0 + i * _DIG_STRIDE)
+        en = snap.get(_DIG_BE_EN_ABS0 + i * _DIG_STRIDE)
+        if be is None or en is None:
+            continue
+        mode = (be >> 16) & 0x7
+        fesel = (be >> 8) & 0xFF
+        if (en & 1) and fesel and mode in (2, 3):
+            sig = "DVI" if mode == 2 else "HDMI"
+            return i, (f"phyid={i} DERIVED FROM SNAPSHOT: DIG_BE_CNTL[{i}]=0x{be:08X} "
+                       f"(mode={mode} {sig}, FE_SOURCE=0x{fesel:02X}), DIG_BE_EN_CNTL[{i}]=0x{en:08X} "
+                       f"(DIG_ENABLE set)")
+    return None, None
+
+
 def derive_transmitter_routing(atom):
     """Walk display_object_info_table_v1_4 and find the HDMI connector's path.
     Returns a dict with the raw objids + a best-effort phyid/digfe_sel/connobj,
@@ -1410,11 +1449,24 @@ def main():
     print("\nTransmitter routing derivation (object-info data table):")
     for n in route["notes"]:
         print("  " + n)
-    phyid = args.phyid if args.phyid is not None else route["phyid"]
+    # ---- PREFER a snapshot-derived phyid over the object-table guess -------------------------------
+    # The object-table value is a GUESS (enc ENUM_ID - 1) and it was WRONG on archaemenid: it said 0, the
+    # live transmitter is 1, and #76 at phyid=0 would have power-cycled a dead PHY. See the M8d tracker.
+    # When a --regsnapshot of real hardware is supplied we can do far better than guess — ask the back end
+    # the same way the kernel's gpu_phy_discover() does: the live link encoder is the DIG_BE_CNTL instance
+    # that is ENABLED, has a front end routed, and carries a real signalling mode (2=DVI, 3=HDMI; 1=off).
+    snap_phyid, snap_note = derive_phyid_from_snapshot(snap)
+    if snap_phyid is not None:
+        print(f"  {snap_note}")
+    phyid = args.phyid if args.phyid is not None else (
+        snap_phyid if snap_phyid is not None else route["phyid"])
+    src = ("--phyid override" if args.phyid is not None else
+           "snapshot-derived" if snap_phyid is not None else
+           "object-table GUESS -- UNRELIABLE, supply --regsnapshot or --phyid")
     digfe_sel = route["digfe_sel"]
     connobj = route["connobj_id"]
     print(f"  => using phyid={phyid}, digfe_sel=0x{digfe_sel:02X}, connobj_id=0x{connobj:02X}"
-          f"{'  (--phyid override)' if args.phyid is not None else ''}\n")
+          f"  ({src})\n")
 
     digmode = {"hdmi": ATOM_ENCODER_MODE_HDMI, "dvi": ATOM_ENCODER_MODE_DVI,
                "dp": ATOM_ENCODER_MODE_DP}[args.digmode]
