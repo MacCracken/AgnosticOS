@@ -23,7 +23,7 @@
 #                                                        no wipe. Targets agnos-fs by label unless PART given.
 #   sudo ./scripts/install-media.sh --update-all         ESP + agnos-fs, both by label, no wipe.
 #
-# Stage first:  (cd ../agnos && ./scripts/stage-agnsh.sh --build && ./scripts/stage-tools.sh --build)
+# Stage first:  (cd ../agnos && ./scripts/burn/stage-agnsh.sh --build && ./scripts/burn/stage-tools.sh --build)
 #
 # Host-side bash; destructive disk ops need root. No Linux initramfs is built — gnoboot loads an
 # OPTIONAL sovereign INDR \boot\initramfs if one is staged at build/initramfs; otherwise the kernel
@@ -45,9 +45,9 @@ GNOBOOT_SRC="${GNOBOOT_SRC:-${REPO_ROOT}/../gnoboot/build/BOOTX64.EFI}"
 INITRAMFS_SRC="${INITRAMFS_SRC:-${SCRIPT_DIR}/build/initramfs}"
 ROOTFS_STAGE="${ROOTFS_STAGE:-${REPO_ROOT}/../agnos/build/rootfs}"   # stage-agnsh.sh → build/rootfs/bin/agnsh
 DOOM_BIN="${DOOM_BIN:-${REPO_ROOT}/../cyrius-doom/build/doom_agnos}" # cyrius-doom --agnos build → /bin/doom (1.43.6)
-TONEGEN_BIN="${TONEGEN_BIN:-${REPO_ROOT}/../agnos/audio-test/build/tonegen}" # agnos audio-path test → /bin/tonegen
+TONEGEN_BIN="${TONEGEN_BIN:-${REPO_ROOT}/../agnos/tests/audio/build/tonegen}" # agnos audio-path test → /bin/tonegen
 DOOM_WAD="${DOOM_WAD:-${REPO_ROOT}/../cyrius-doom/wad/DOOM1.WAD}"    # shareware IWAD → /DOOM1.WAD (doom's default path)
-FPEX_BIN="${FPEX_BIN:-${REPO_ROOT}/../agnos/fp-test/build/fpex}"     # 1.53.x FP arc B4 — ring-3 f64 exerciser → /bin/fpex
+FPEX_BIN="${FPEX_BIN:-${REPO_ROOT}/../agnos/tests/fp/build/fpex}"     # 1.53.x FP arc B4 — ring-3 f64 exerciser → /bin/fpex
 NAADEX_BIN="${NAADEX_BIN:-${REPO_ROOT}/../naad/build/naadex}"        # 1.53.x FP arc B6 — naad oscillator DSP exerciser → /bin/naadex
 MOUNT_POINT="/mnt/agnos-esp"
 MOUNT_POINT_DATA="/mnt/agnos-fs"
@@ -243,7 +243,7 @@ stage_doom() {
 #                      every sample is finite (a real shipping-library XMM-heavy DSP workload).
 # On iron (archaemenid): `run /bin/fpex` → "run: exit 84", `run /bin/naadex` → "run: exit 88" ==
 # real f64 / naad DSP runs correctly in ring 3 on real Zen. Build first:
-#   (cd ../agnos/fp-test && cyrius build fpex.cyr build/fpex --agnos)
+#   (cd ../agnos/tests/fp && cyrius build fpex.cyr build/fpex --agnos)
 #   (cd ../naad && cyrius build naadex.cyr build/naadex --agnos)
 stage_fp() {
     local mnt="$1"
@@ -252,7 +252,7 @@ stage_fp() {
         cp "$FPEX_BIN" "${mnt}/bin/fpex"; chmod +x "${mnt}/bin/fpex"
         echo "    staged /bin/fpex ($(stat -c%s "$FPEX_BIN") bytes)"
     else
-        echo "  fpex: skipped (no --agnos build at $FPEX_BIN — cd ../agnos/fp-test && cyrius build fpex.cyr build/fpex --agnos)"
+        echo "  fpex: skipped (no --agnos build at $FPEX_BIN — cd ../agnos/tests/fp && cyrius build fpex.cyr build/fpex --agnos)"
     fi
     if [[ -f "$NAADEX_BIN" ]]; then
         cp "$NAADEX_BIN" "${mnt}/bin/naadex"; chmod +x "${mnt}/bin/naadex"
@@ -270,8 +270,8 @@ fs_update() {
     refuse_whole_disk "$part" agnos-fs
     refuse_system_disk "$part"
     refuse_mounted_elsewhere "$part" "$MOUNT_POINT_DATA"
-    [[ -d "$ROOTFS_STAGE" ]] || die "staged rootfs not found at $ROOTFS_STAGE — run: (cd ../agnos && ./scripts/stage-agnsh.sh --build)"
-    [[ -f "${ROOTFS_STAGE}/bin/agnsh" ]] || die "${ROOTFS_STAGE}/bin/agnsh missing — run: (cd ../agnos && ./scripts/stage-agnsh.sh --build)"
+    [[ -d "$ROOTFS_STAGE" ]] || die "staged rootfs not found at $ROOTFS_STAGE — run: (cd ../agnos && ./scripts/burn/stage-agnsh.sh --build)"
+    [[ -f "${ROOTFS_STAGE}/bin/agnsh" ]] || die "${ROOTFS_STAGE}/bin/agnsh missing — run: (cd ../agnos && ./scripts/burn/stage-agnsh.sh --build)"
 
     echo "=== agnos-fs refresh (no wipe) ==="
     echo "Target agnos-fs: $part  (disk /dev/$(disk_base_of "$part"))"
@@ -365,7 +365,7 @@ Usage:
   sudo $0 --update-fs [PART]  agnos-fs refresh (/bin/agnsh + staged rootfs), no wipe   [default: label agnos-fs]
   sudo $0 --update-all        ESP + agnos-fs, both by label, no wipe
 
-Stage first:  (cd ../agnos && ./scripts/stage-agnsh.sh --build && ./scripts/stage-tools.sh --build)
+Stage first:  (cd ../agnos && ./scripts/burn/stage-agnsh.sh --build && ./scripts/burn/stage-tools.sh --build)
 
 Block devices:
 EOF
@@ -503,5 +503,5 @@ echo "  p1 AGNOSBOOT (ESP)  p2 agnos-fs (root, /bin/agnsh)  p3 fstest (FAT)"
 echo "============================================================"
 echo ""
 echo "Iteration loop (no re-provision):"
-echo "  (cd ../agnos && sh scripts/build.sh && ./scripts/stage-agnsh.sh --build)"
+echo "  (cd ../agnos && sh scripts/build.sh && ./scripts/burn/stage-agnsh.sh --build)"
 echo "  sudo $0 --update-all      # ESP kernel + agnos-fs /bin/agnsh, by label, no wipe"
