@@ -393,6 +393,10 @@ class Atom:
         self.cs_above = False
         self.execute_depth = 0
         self.iio = [0] * 256
+        # ⭐ PS-read attestation: which parameter dwords the executed table actually consumed.
+        # Lives on Atom, not ExecContext -- ExecContext is __slots__'d and per-invocation, and the
+        # question ("did this table read the field I think I packed?") spans the whole run.
+        self.ps_read = set()
 
         # scratch (GPU scratch dwords). Modelled as zeros for dry-run; FB ops
         # are rare in the tables under test.
@@ -512,6 +516,13 @@ class Atom:
         elif arg == ATOM_ARG_PS:
             idx = self.U8(ptr[0]); ptr[0] += 1
             if idx < ctx_ps_size(self):
+                # ⭐ ATTEST THE PARAMETER LAYOUT INSTEAD OF ASSUMING IT. Every parameter struct in
+                # this tool is transcribed from a header, and a mis-transcribed field is invisible:
+                # the table just reads a zero and does something plausible. Recording which PS
+                # dwords the bytecode ACTUALLY consumes turns the layout into a measurement. This is
+                # the same discipline that made FE_SOURCE_SELECT trustworthy (two iron captures, not
+                # a header) and that MD-2's phyid lacked when it stood wrong for six days.
+                self.ps_read.add(idx)
                 val = ps_dword(self.ectx, idx)
             else:
                 self.tr.note(f"PS index out of range: {idx} > {ctx_ps_size(self)}")
@@ -1242,6 +1253,45 @@ def build_transmitter_v1_6(phyid, action, digmode, lanenum, symclk_10khz,
     return bytes(b)
 
 
+CMD_SetPixelClock = 12   # (already defined above as a bare constant; this is its first USE)
+
+# PIXEL_CLOCK_V7_DEEPCOLOR_RATIO_* — 0 = no deep colour (8 bpc), which is what this panel runs.
+PIXEL_CLOCK_V7_DEEPCOLOR_DIS = 0
+
+
+def build_set_pixel_clock_v1_7(pixclk_100hz, pll_id, encoderobjid, encoder_mode,
+                               miscinfo=0, crtc_id=0,
+                               deep_color_ratio=PIXEL_CLOCK_V7_DEEPCOLOR_DIS):
+    """struct set_pixel_clock_parameter_v1_7 (16 bytes):
+         pixclk_100hz     u32@0   target pixel clock, 100 Hz units
+         pll_id           u8 @4   WHICH PLL -- see the refusal in main(); this is #12's phyid
+         encoderobjid     u8 @5
+         encoder_mode     u8 @6   ATOM_ENCODER_MODE_*
+         miscinfo         u8 @7   PIXEL_CLOCK_V7_MISC_*
+         crtc_id          u8 @8
+         deep_color_ratio u8 @9
+         reserved1[2]     u8 @10
+         reserved2        u32@12
+       Padded to an 8-dword ps_allocation, matching how #76 is invoked (ps_size=8).
+
+    ⚠ REVISION DERIVED FROM THE ROM, NOT ASSUMED: the MasterCommandTable entry for index 12 on
+    archaemenid's VBIOS reports rev 1.7 (table @0x98EE, 1052 bytes, WS 16 B). If a different card
+    reports another revision this struct is WRONG and must not be sent -- check before trusting it.
+    """
+    b = bytearray(32)
+    struct.pack_into("<I", b, 0, pixclk_100hz & M32)
+    b[4] = pll_id & 0xFF
+    b[5] = encoderobjid & 0xFF
+    b[6] = encoder_mode & 0xFF
+    b[7] = miscinfo & 0xFF
+    b[8] = crtc_id & 0xFF
+    b[9] = deep_color_ratio & 0xFF
+    b[10] = 0
+    b[11] = 0
+    struct.pack_into("<I", b, 12, 0)
+    return bytes(b)
+
+
 def build_encoder_stream_setup_v1_5(digid, digmode, lanenum, pclk_10khz,
                                     bitpercolor=0, dplinkrate=0):
     """struct dig_encoder_stream_setup_parameters_v1_5 (12 bytes):
@@ -1411,7 +1461,7 @@ def main():
                     default="/sys/bus/pci/devices/0000:04:00.0/resource5")
     ap.add_argument("--regsnapshot", help="dry-run: file of 'IDX VALUE' seed reads")
     ap.add_argument("--command", default="transmitter",
-                    choices=["transmitter", "encoder-setup", "encoder-enable"])
+                    choices=["transmitter", "encoder-setup", "encoder-enable", "pixelclock"])
     ap.add_argument("--action", default="enable",
                     help="transmitter action: enable|disable|init|enable_output|setup")
     ap.add_argument("--phyid", type=lambda s: int(s, 0), default=None,
@@ -1419,6 +1469,14 @@ def main():
     ap.add_argument("--digmode", default="hdmi", choices=["hdmi", "dvi", "dp"])
     ap.add_argument("--lanenum", type=int, default=4)
     ap.add_argument("--symclk", type=int, default=24150, help="symclk in 10kHz (241.50MHz)")
+    ap.add_argument("--pixclk", type=int, default=2415020,
+                    help="pixelclock: target pixel clock in 100Hz units "
+                         "(default 2415020 = 241.502 MHz, the measured inherited clock)")
+    ap.add_argument("--pll-id", type=lambda s: int(s, 0), default=None,
+                    help="pixelclock: WHICH PLL. No default on purpose -- see the refusal below")
+    ap.add_argument("--crtc-id", type=int, default=0, help="pixelclock: OTG/pipe index")
+    ap.add_argument("--miscinfo", type=lambda s: int(s, 0), default=0,
+                    help="pixelclock: PIXEL_CLOCK_V7_MISC_* bits")
     ap.add_argument("--loop-timeout", type=float, default=2.0,
                     help="dry-run: seconds before a HW-poll loop is declared stuck")
     ap.add_argument("--histogram-only", action="store_true",
@@ -1502,6 +1560,43 @@ def main():
                                               digmode, args.lanenum, args.symclk)
         run_command(atom, tracer, CMD_DIGxEncoderControl, enc,
                     f"DIGxEncoderControl(STREAM_SETUP, {args.digmode}, DIG1)")
+    elif args.command == "pixelclock":
+        # ⛔⛔ REFUSE RATHER THAN GUESS -- THIS IS #12's phyid AND THE LESSON IS SIX DAYS OLD.
+        # MD-2 recorded phyid=0 "SETTLED, object-info-derived" and it was the DEAD instance; firing
+        # #76 at it produced an 87,292-read poll storm against unconfigured silicon. The kernel's fix
+        # was NOT to flip the constant but to make atom_run_transmitter_enable_hdmi() REFUSE when it
+        # cannot derive the target. pll_id is the same shape of parameter for the same command class,
+        # so it gets the same treatment here: no default, no fallback, no "probably 0".
+        if args.pll_id is None:
+            print("\nREFUSED: --pll-id is required for --command pixelclock.")
+            print("  pll_id selects WHICH PLL #12 programs. It is this command's phyid, and phyid")
+            print("  stood wrong at 0 for six days while pointing at a dead instance. There is no")
+            print("  safe default: guessing sends a clock command at a PLL that may be driving the")
+            print("  live pipe. Derive it from a --regsnapshot of real silicon, or pass it")
+            print("  explicitly and record where the value came from.")
+            return 2
+        rev = atom.U8(atom.U16(atom.cmd_table + 4 + CMD_SetPixelClock * 2) + 3)
+        if rev != 7:
+            print(f"\nREFUSED: this ROM's SetPixelClock table is rev 1.{rev}, not 1.7.")
+            print("  build_set_pixel_clock_v1_7 would pack the WRONG struct. Transcribe the")
+            print(f"  matching set_pixel_clock_parameter_v1_{rev} before running this.")
+            return 2
+        pc = build_set_pixel_clock_v1_7(args.pixclk, args.pll_id,
+                                        encoderobjid=connobj, encoder_mode=digmode,
+                                        miscinfo=args.miscinfo, crtc_id=args.crtc_id)
+        run_command(atom, tracer, CMD_SetPixelClock, pc,
+                    f"SetPixelClock(v1.7, pixclk={args.pixclk} x100Hz, pll_id={args.pll_id}, "
+                    f"crtc={args.crtc_id}, {args.digmode})")
+        # ⭐ THE ATTESTATION: which parameter dwords did the bytecode actually read?
+        rd = sorted(atom.ps_read)
+        print(f"\nPS attestation -- dwords the table READ: {rd}")
+        print(f"  bytes covered: {[f'{i*4}..{i*4+3}' for i in rd]}")
+        if not rd:
+            print("  ⚠ NONE. The table consumed no parameters on this path -- either it bailed")
+            print("    early (read the trace) or the struct is not reaching it. Do not conclude")
+            print("    the layout is right from a clean run that read nothing.")
+        return 0
+
     elif args.command == "encoder-enable":
         enc = build_encoder_generic_v1_5(ATOM_ENCODER_CONFIG_V5_DIG1_ENCODER,
                                          ATOM_ENCODER_CMD_ENABLE_DIG)
@@ -1510,4 +1605,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main() or 0)
