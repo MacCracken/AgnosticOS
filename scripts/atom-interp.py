@@ -1575,6 +1575,22 @@ def main():
             print("  live pipe. Derive it from a --regsnapshot of real silicon, or pass it")
             print("  explicitly and record where the value came from.")
             return 2
+        # ⛔⛔ THE 20-24 BAND DRIVES A PHY, NOT A PLL. Measured 2026-07-30 by sweeping the WHOLE
+        # parameter space against a real iron snapshot, which the original 3..8 sweep did not reach:
+        #     0-2      bail, 9 opcodes, zero activity (reads exactly like success)
+        #     3-19     benign — 55 opcodes, writes 0x0140/0x0141 (DCCG), reads 0x5001 (OTG0_CONTROL)
+        #     20-24    ⛔ 175k-510k opcodes, up to 177k reads (a poll storm, the wrong-phyid #76
+        #              signature), each value writing a DIFFERENT PHY/RDPCS instance block on a 0xD8
+        #              stride, and CALLING ATOM TABLE 77
+        #     25-254   bail, 7 opcodes        255  ATOM_PPLL_INVALID — benign, same DCCG footprint
+        # This tool exists to CHARACTERISE those, so it warns rather than refusing — but it must say
+        # so loudly, because "#12's blast radius is disjoint from #76's" was written into this repo
+        # on the strength of the 3..8 slice and is false for exactly this band.
+        if 20 <= args.pll_id <= 24:
+            print(f"\n⛔ WARNING: pll_id={args.pll_id} is in the PHY band (20-24), not the PLL band.")
+            print("   On real silicon this writes a PHY/RDPCS instance block and calls table 77 —")
+            print("   a SUPERSET of what #76 writes, and #76 has blanked this panel twice.")
+            print("   The kernel's atom_run_set_pixel_clock() REFUSES this band. Dry-run only.\n")
         rev = atom.U8(atom.U16(atom.cmd_table + 4 + CMD_SetPixelClock * 2) + 3)
         if rev != 7:
             print(f"\nREFUSED: this ROM's SetPixelClock table is rev 1.{rev}, not 1.7.")

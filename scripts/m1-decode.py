@@ -103,22 +103,121 @@ NAMES = {
 ATOM76_READS = [0x5535, 0x556F, 0x5570, 0x55A1, 0x5D2D, 0x5D2E, 0x5DE9, 0x5DF0,
                 0x5DF7, 0x5DFC, 0x5E03, 0x5E06, 0x5E0F, 0x5E10, 0x5E11, 0x5E12]
 
-LINE = re.compile(r"^\s*(rd1?)\s+(\d+)\s+(\d+)\s*$")
+# ── COORDINATE SYSTEMS: three tags, one absolute space ────────────────────────────────────────────
+# ⛔⛔ THE DEFECT THIS CLOSES (found 2026-07-30 while seeding #12): the kernel's `mdo_rd2` prints
+# BASE_IDX-2-RELATIVE offsets and `mdo_rd2a` prints ABSOLUTE ones, and until 1.56.33 BOTH tagged their
+# line `rd ` — in a scheme where `rd1` exists for no other purpose than telling this decoder which base
+# a line is in. This script wrote every `rd` line into the ATOM seed AS ABSOLUTE, so 87 of the last
+# capture's 97 entries were relative offsets labelled absolute (H_TOTAL's value filed at 0x1B2A when
+# its absolute index is 0x4FEA). Harmless only by luck: #4/#76/#12 read solely the mdo_rd2a groups.
+#
+# ⭐ THE TRANSFORM IS PROVEN BY THE CAPTURE ITSELF, not asserted. `rd 6977` (relative 0x1B41) and
+# `rd 20481` (absolute 0x5001) are the SAME REGISTER read by the two different printers in one dump,
+# and 0x1B41 + 0x34C0 == 0x5001. They must carry the same value; XCHECKS below makes that mechanical.
+BASE_DCN_1 = 0xC0        # kernel GPU_BASE_DCN_1
+BASE_DCN_2 = 0x34C0      # kernel GPU_BASE_DCN_2
+
+# Groups whose `rd` lines are ABSOLUTE in LEGACY captures (pre-1.56.33, before the `rda` tag existed).
+# From the kernel's own mdo_dump call sites — these four use mdo_rd2a, everything else uses mdo_rd2.
+LEGACY_ABS_GROUPS = ("M2-PHY/RDPCS", "M8-76readset", "M8-digbe", "M12-pixclk")
+
+# Registers reachable through BOTH printers in one dump. Each is (relative_tag, relative_off, abs_off).
+# ⚠ A pair that is ABSENT from a capture must report "not present", never pass silently — a check that
+# cannot fail has not passed, and this file's whole subject is a conflation that looked fine for weeks.
+XCHECKS = [("rd",  0x1B41, 0x5001, "OTG_CONTROL"),
+           ("rd1", 0x0082, 0x0142, "DP_DTO_MODULO")]
+
+LINE = re.compile(r"^\s*(rd1|rda|rd)\s+(\d+)\s+(\d+)\s*$")
+GROUP = re.compile(r"^\s*modeset: dump group\s+(\S+)")
 
 
 def main():
     if len(sys.argv) < 2:
         sys.exit("usage: m1-decode.py <m1.txt>")
-    vals = {}      # (base, off) -> value
+    vals = {}      # (base, off) -> value          — as PRINTED, for naming + the existing anchors
+    absv = {}      # absolute dword -> value       — the ATOM coordinate system, for the seed
+    raw = []       # (tag, off, val, group)
+    group = "?"
     with open(sys.argv[1], errors="replace") as f:
         for ln in f:
+            g = GROUP.match(ln)
+            if g:
+                group = g.group(1)
+                continue
             m = LINE.match(ln)
             if not m:
                 continue
-            base = 1 if m.group(1) == "rd1" else 2
-            vals[(base, int(m.group(2)))] = int(m.group(3))
+            raw.append((m.group(1), int(m.group(2)), int(m.group(3)), group))
 
-    print(f"parsed {len(vals)} register reads\n")
+    groups_seen = {g for _, _, _, g in raw}
+    have_rda = any(t == "rda" for t, _, _, _ in raw)
+    legacy = 0
+    for tag, off, val, grp in raw:
+        if tag == "rd1":
+            base, abs_off = 1, off + BASE_DCN_1
+        elif tag == "rda":
+            base, abs_off = 2, off
+        else:
+            # ⚠ LEGACY BRANCH. Before 1.56.33 mdo_rd2a shared this tag, so `rd` alone does not say
+            # which coordinate system the number is in. Resolve by the group header — the only other
+            # evidence the capture carries — and COUNT it, so the report says how much of this decode
+            # rests on a heuristic rather than on a self-describing line.
+            if not have_rda and grp in LEGACY_ABS_GROUPS:
+                base, abs_off = 2, off
+                legacy += 1
+            else:
+                base, abs_off = 2, off + BASE_DCN_2
+        vals[(base, off)] = val
+        absv[abs_off] = val
+
+    print(f"parsed {len(raw)} register reads")
+    if have_rda:
+        print("  tags: rd / rd1 / rda present -- every line is SELF-DESCRIBING (kernel >= 1.56.33)\n")
+    else:
+        print(f"  ⚠ LEGACY capture (no `rda` tag): {legacy} `rd` lines resolved as ABSOLUTE by group")
+        print(f"    header {LEGACY_ABS_GROUPS}, the rest as BASE_IDX-2 relative (+0x{BASE_DCN_2:X}).")
+        print("    Re-dump on a >= 1.56.33 kernel to make this mechanical instead of inferred.\n")
+
+    # ── the transform's own gate: the same register through two different printers ────────────────
+    print("=== COORDINATE CROSS-CHECK (the capture proves its own transform, or says it cannot) ===")
+    xfail = 0
+    for tag, rel, ab, name in XCHECKS:
+        rb = 1 if tag == "rd1" else 2
+        # ⛔ THE FIRST DRAFT OF THIS CHECK COULD NOT FAIL, and two mutations proved it. It compared the
+        # two raw PRINTED values — which are equal because both printers read the same silicon, no
+        # matter what arithmetic this script does — so corrupting BASE_DCN_2 left it green. The claim
+        # under test is about the INDEX MAPPING, so the mapping is what must be asserted:
+        #   (1) rel + base == abs        the base constant itself
+        #   (2) the two reads agree      the two printers really did hit one register
+        #   (3) absv[abs] == that value  normalisation actually FILED it there
+        # (3) is what catches a mis-resolved group; (1) is what catches a wrong base.
+        a = vals.get((rb, rel))
+        b = vals.get((2, ab))
+        if a is None or b is None:
+            miss = "relative" if a is None else "absolute"
+            print(f"  n/a   {name}: the {miss} read is NOT in this capture -- proves nothing here")
+            continue
+        base = BASE_DCN_1 if tag == "rd1" else BASE_DCN_2
+        mapped = rel + base
+        if mapped != ab:
+            print(f"  FAIL  {name}: rel 0x{rel:04X} + 0x{base:X} = 0x{mapped:04X}, but the absolute "
+                  f"read of the same register is 0x{ab:04X}  ⛔ THE BASE CONSTANT IS WRONG")
+            xfail += 1
+        elif a != b:
+            print(f"  FAIL  {name}: rel 0x{rel:04X}=0x{a:08X} != abs 0x{ab:04X}=0x{b:08X}"
+                  f"  ⛔ two printers, one register, two values")
+            xfail += 1
+        elif absv.get(ab) != a:
+            got = absv.get(ab)
+            got_s = "absent" if got is None else f"0x{got & 0xFFFFFFFF:08X}"
+            print(f"  FAIL  {name}: 0x{ab:04X} normalised to {got_s}, want 0x{a & 0xFFFFFFFF:08X}"
+                  f"  ⛔ a group was resolved into the WRONG coordinate system")
+            xfail += 1
+        else:
+            print(f"  OK    {name}: rel 0x{rel:04X} + 0x{base:X} = abs 0x{ab:04X}, both read "
+                  f"0x{a & 0xFFFFFFFF:08X}, filed there")
+    print()
+
     print(f"{'reg':<32} {'off':>7}  {'hex':>10}  {'dec':>12}")
     for (base, off) in sorted(vals, key=lambda k: (k[0], k[1])):
         v = vals[(base, off)]
@@ -163,14 +262,30 @@ def main():
     # The snapshot-seeded DRY is only meaningful when every index #76 reads has a REAL captured value.
     # Report coverage mechanically, and emit the seed file atom-interp.py --regsnapshot consumes.
     print("\n=== M8b: ATOM #76 read-set coverage (H5 snapshot seed) ===")
-    have = [o for o in ATOM76_READS if (2, o) in vals]
-    miss = [o for o in ATOM76_READS if (2, o) not in vals]
+    # ⛔ MEASURED IN `absv`, NOT `vals` — 1.56.33. This looked up the offset AS PRINTED, which made it
+    # blind to the very thing it exists to certify: coverage is a claim about the SEED's index space,
+    # and the seed is written from absv. Emptying LEGACY_ABS_GROUPS (i.e. mis-converting every absolute
+    # group) left this reporting a serene 16/16 while the seed's indices were all wrong. A gate that
+    # reads a different variable from the artifact it certifies is not a gate.
+    have = [o for o in ATOM76_READS if o in absv]
+    miss = [o for o in ATOM76_READS if o not in absv]
     print(f"  captured {len(have)}/{len(ATOM76_READS)} of the indices #76 reads")
     if miss:
         print("  MISSING: " + " ".join(f"0x{o:04X}" for o in miss))
         print("  => the H5 snapshot-DRY of #76 is NOT yet meaningful; those reads would return 0.")
     else:
         print("  => full coverage: the snapshot-DRY of #76 can take iron's branches.")
+
+    # ⭐ AND IF THE CAPTURE CARRIES THE GROUP, THE INDICES MUST SURVIVE NORMALISATION. Partial coverage
+    # is legitimately informational — an old capture may simply not have read those registers. But a
+    # capture that DID read them, whose indices then fail to appear in the absolute space, is a
+    # CONVERSION bug, not a missing capture, and the two must not report the same way.
+    # ⛔ This is the assertion that catches a mis-resolved group: emptying LEGACY_ABS_GROUPS takes
+    # coverage 16/16 -> 0/16 while every other check in this file stays green.
+    if "M8-76readset" in groups_seen and miss:
+        print(f"  ⛔ FAIL: the M8-76readset group IS in this capture, yet {len(miss)} of its indices")
+        print("     are absent from the absolute space. That is a normalisation defect, not a gap.")
+        xfail += 1
 
     # === MD-2: which link encoder does ATOM's `phyid` have to name? ===
     # Mirrors kernel gpu_phy_discover() and atom-interp.py's derive_phyid_from_snapshot(): the live
@@ -204,13 +319,42 @@ def main():
         with open(seed_path, "w") as sf:
             sf.write("# H5 snapshot seed for atom-interp.py --regsnapshot\n")
             sf.write("# Captured from an agnos iron dump (`run /bin/modeset --dump`), decoded by m1-decode.py.\n")
-            sf.write("# Format: IDX VALUE (both hex). IDX is the ABSOLUTE BASE_IDX-2 dword the ATOM tables use.\n")
-            for (base, off) in sorted(vals, key=lambda k: (k[0], k[1])):
-                if base == 2:
-                    sf.write(f"0x{off:04X} 0x{vals[(base, off)] & 0xFFFFFFFF:08X}\n")
+            sf.write("# Format: IDX VALUE (both hex). IDX is the ABSOLUTE dword the ATOM tables use.\n")
+            # ⛔ THIS LOOP USED TO WRITE THE OFFSET AS PRINTED and call it absolute, which was true for
+            # the mdo_rd2a groups and FALSE for every other `rd` line (+0x34C0) and every `rd1` line
+            # (+0xC0). #4/#76/#12 happened to read only the absolute-printed groups, so no seed that
+            # ever mattered was wrong -- but the cold path needs raster registers, which are exactly
+            # the ones that were mislabelled. Now every entry goes through the same normalisation, and
+            # the CROSS-CHECK above proves that normalisation against the capture itself.
+            # ⛔⛔ 0xFFFFFFFF IS NOT A REGISTER VALUE, IT IS THE APERTURE SAYING "NOTHING HERE" — and
+            # on 2026-07-30 a wide PLL-block read POISONED the aperture mid-dump: from 0x5FA5 onward
+            # every read in that boot returned all-ones, including registers that had returned real
+            # values on the previous burn. Seeding those would hand the interpreter confident garbage
+            # and steer it down branches iron never takes, which is strictly worse than an absent
+            # entry: an absent one reads 0 and shows up in the unseeded count, a poisoned one lies.
+            poison = [a for a in absv if absv[a] & 0xFFFFFFFF == 0xFFFFFFFF]
+            for ab in sorted(absv):
+                if absv[ab] & 0xFFFFFFFF == 0xFFFFFFFF:
+                    continue
+                sf.write(f"0x{ab:04X} 0x{absv[ab] & 0xFFFFFFFF:08X}\n")
+            if poison:
+                print(f"  ⛔ DROPPED {len(poison)} all-ones (0xFFFFFFFF) reads from the seed —"
+                      f" first at 0x{min(poison):04X}.")
+                print("     An all-ones read is a dead/poisoned aperture, not a value. If they run")
+                print("     CONTIGUOUSLY to the end of a group, suspect a read that killed the")
+                print("     aperture and treat every later register in that boot as VOID.")
         print(f"  wrote snapshot seed -> {seed_path}")
 
     print()
+    # ⛔ THE CROSS-CHECK MUST BE ABLE TO FAIL THE RUN, not merely print. It was written reporting-only
+    # in the first draft, which would have made it a citation rather than a gate — the exact shape this
+    # file's own subject already cost the tree once.
+    if xfail:
+        print(f"=== M1 decode: {xfail} COORDINATE CHECK(S) FAILED — a base constant or a group")
+        print("    resolution is wrong, so the seed's indices are in the wrong space.")
+        print("    Do NOT feed it to atom-interp.py: a wrong-index seed reads as zeros, and a")
+        print("    zero-seeded dry run is exactly what #76 taught us not to trust. ===")
+        return 1
     if fails == 0:
         print("=== M1 decode: ALL ANCHORS HOLD — the H7 transform is iron-attested (M2 phyid rides a re-burn) ===")
         return 0
