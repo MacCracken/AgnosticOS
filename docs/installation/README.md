@@ -1,24 +1,25 @@
 # AGNOS Installation Guide
 
-> **Version:** 2026.5.6 | **Last Updated:** 2026-05-06
+> **Last Updated:** 2026-08-05
 >
-> **Status:** AGNOS is **Pre-Beta** — closed beta opens late August 2026 (preceded by a ~July founder solo-dogfood month + Docker server-sweep); public beta is deferred to post-summer, with GA targeted late fall/early winter 2026. The kernel boots in QEMU and the sovereign boot pipeline is active. The full installer (`agnova`) and bootable distribution ISO land with **Phase 1**. This guide describes what is buildable and testable **today**, and what is coming.
+> **Status:** AGNOS is **Pre-Beta** — closed beta opens late August 2026 (preceded by a founder solo-dogfood month + the server-stage weak-point sweep, windowed ~July / early-Aug 2026; the sweep's harness is **TBD** and explicitly **not** Docker — the QEMU-in-a-Docker-container design was retired 2026-07-07). Public beta is deferred to post-summer, with GA targeted late fall/early winter 2026. The kernel boots both in QEMU and on real AMD Zen hardware, and the sovereign boot pipeline is active. There is still **no end-user install path**: the distributable image (the **ISO Stage-4 cut**) and `agnova`'s native installer are both open stage-exit work. This guide describes what is buildable and testable **today**, and what is coming.
 
 ---
 
 ## What Works Today
 
-- **Sovereign boot pipeline** — `scripts/boot.cyr` (Cyrius, ~67KB compiled) launches the AGNOS kernel in QEMU.
-- **AGNOS kernel** — Cyrius-native, 40+ subsystems, a small sovereign syscall surface (no socket/splice). Boots to shell on iron (NUC AMD).
+- **Sovereign boot pipeline** — `scripts/src/boot.cyr` (Cyrius) launches the AGNOS kernel in QEMU. Compiled size drifts every cut; `make status` prints the live figure.
+- **AGNOS kernel** — Cyrius-native, 40+ subsystems, a small sovereign syscall surface (no BSD socket family, no `socket()` over arbitrary domains, no splice, no AF_ALG). Boots on real AMD Zen (the NUC devbox, archaemenid) to the ring-3 userland shell **agnsh**, exec'd from the agnos-fs. ⚠ Iron validation is **per-cut, not blanket** — the current head is an open, unburned cut, and not every released cut has been burned. Per-cut burn status: [`../development/state.md`](../development/state.md).
+- **Iron boot media** — `scripts/install-media.sh` (the old `install-usb.sh` is now a forwarding shim) provisions a USB stick or an internal disk with gnoboot's ESP + the kernel + an ext4 `agnos-fs` root, and refreshes either without a wipe. Iron-proven on archaemenid — but it is a developer provisioning tool, **not** an end-user installer.
 - **Component verification** — `make iso-check` walks every downstream repo and confirms the artifacts an ISO would need are present and current.
 - **Per-subsystem builds** — every subsystem (kybernet, ark, nous, sigil, libro, agnoshi, …) builds standalone from its own repo via `cyrius build`.
 
-## What is Coming (Phase 1)
+## What is Coming
 
-- **ISO Stages 1–4** — source download, cross-toolchain bootstrap, base-system build in chroot, ISO packaging.
-- **agnova** (installer) — currently at 0.1.0 scaffold. Will own disk partitioning, LUKS2, bootloader install, profile selection (Desktop / Server / Minimal).
-- **takumi** (build system) — pending Cyrius port. Drives recipe builds during ISO assembly.
-- **Target**: closed beta cut, **late August 2026** — gated on the Cyrius bare-metal target (v6.x line).
+- **ISO Stage-4 cut** — package the iron-proven boot media as a distributable writable `.img` with a writable ext4 rootfs. Decisions are **LOCKED**; `scripts/src/iso.cyr` is **not started but unblocked**. Plan: [`iso-stage4-plan.md`](../development/iso-stage4-plan.md). The LFS-style Stages 1–3 (source download, cross-toolchain bootstrap, chroot base-system build) are deferred behind it; the read-only `.iso` is a follow-on gated on gnoboot initramfs-load.
+- **agnova** (installer) — Cyrius-native, past the scaffold stage, but a finished *port* is not a finished *installer*: the native installer capability is still owed to the server stage. Will own disk partitioning, LUKS2, bootloader install, profile selection (Desktop / Server / Minimal). ⛔ Hard prerequisite chain: sovereign ark → agnova → server-stage exit.
+- **takumi** (build system) — the Cyrius port is **done**; what is still coming is its use in ISO assembly, driving recipe builds out of zugot.
+- **Target**: closed beta cut, **late August 2026**. ⚠ It is **not** gated on the Cyrius toolchain — the bare-metal target shipped at Cyrius **v6.2.x**, and the kernel already builds and boots against the current pin. The remaining dependency is agnosticos-side: the ISO Stage-4 cut plus a first non-founder boot session.
 
 ---
 
@@ -29,10 +30,10 @@
 | CPU | x86_64 or aarch64, 2 cores | x86_64, 4+ cores; or Raspberry Pi 4/5 (aarch64) |
 | RAM | 2 GB | 8 GB (16 GB for local LLM workloads) |
 | Disk | 20 GB | 100 GB NVMe SSD |
-| Boot | UEFI or Legacy BIOS | UEFI with Secure Boot |
+| Boot | UEFI (GPT + FAT ESP) — Legacy BIOS **not supported** | UEFI with Secure Boot |
 | GPU | — (CLI/server) | NVIDIA, AMD, or Intel integrated (for desktop) |
 
-Full hardware matrix: [system-requirements.md](system-requirements.md).
+These are **targets for the first bootable image**, not today's support matrix — only x86_64 boots right now; the kernel's aarch64 tree is compile-only, with no boot harness and not gated by CI. Full hardware matrix: [system-requirements.md](system-requirements.md).
 
 ---
 
@@ -82,7 +83,7 @@ Walks every downstream repo (agnos, kybernet, ark, nous, sigil, libro, …) and 
 make boot-test
 ```
 
-Direct-boots the AGNOS kernel in QEMU via `boot.cyr`. No rootfs, no userland — just the kernel reaching shell. Serves as the ongoing smoke test for kernel + boot pipeline health.
+Direct-boots the AGNOS kernel in QEMU via `boot.cyr`. No rootfs, no userland — so it reaches the kernel's **recovery-only** in-kernel REPL, not the interactive shell (**agnsh** is a ring-3 binary and needs a rootfs to exec from). Serves as the ongoing smoke test for kernel + boot pipeline health.
 
 ### Build a Specific Subsystem
 
@@ -99,19 +100,19 @@ Repo map: see the public map in [`docs/architecture.md`](../architecture.md).
 
 ## Installer and ISO — Status
 
-The installer (`agnova`) and the bootable ISO do not exist yet as user-facing artifacts. They are tracked under **Phase 13A** on the roadmap.
+The installer (`agnova`) and the bootable ISO do not exist yet as user-facing artifacts. They are tracked as **open stage-exit work** on the [roadmap](../development/roadmap.md) — the ISO Stage-4 cut is the base→server blocker, and agnova's native installer is a server-stage exit item. (The roadmap's old Phase 13A–24 numbering was deleted 2026-08-01; cite a maturity-arc stage or a named spec, never a phase number.)
 
 Progress against the ISO pipeline:
 
 | Stage | What it does | Status |
 |-------|--------------|--------|
 | 0 | Resolve components (verify artifacts across all repos) | **Implemented** — `make iso-check` |
-| 1 | Download / vendor upstream sources | Not started |
-| 2 | Bootstrap cross-toolchain from source | Not started |
-| 3 | Build base system in chroot | Not started |
-| 4 | Package into ISO | Not started |
+| 1 | Download / vendor upstream sources | Deferred behind the Stage-4 cut |
+| 2 | Bootstrap cross-toolchain from source | Deferred behind the Stage-4 cut |
+| 3 | Build base system in chroot | Deferred behind the Stage-4 cut |
+| 4 | Package the boot media into a distributable image | **Not started, unblocked** — `scripts/src/iso.cyr`, decisions LOCKED |
 
-Phase 13B (Arch-Neutral Boot Pipeline) is being neutralized on the Cyrius v6.x line to keep both the bare-metal and RISC-V rv64 targets clean.
+The **arch-neutral boot pipeline** (`boot.cyr` arch detection, per-arch branch tables, arch-aware ISO stages keyed on the target triple) is a medium-priority roadmap item, not a gate on any of the above. Cyrius's bare-metal target shipped at **v6.2.x**; RISC-V rv64 has **not** shipped and is pinned to Cyrius **v6.7.x / v6.8.x**.
 
 ---
 

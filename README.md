@@ -3,8 +3,8 @@
 > **A** **G**eneral **N**etworked **O**perating **S**ystem
 
 [![License](https://img.shields.io/badge/license-GPLv3-blue)](LICENSE)
-[![Kernel](https://img.shields.io/badge/kernel-AGNOS%201.53.5-orange)](https://github.com/MacCracken/agnos)
-[![Language](https://img.shields.io/badge/Cyrius-6.4.16-red)](https://github.com/MacCracken/cyrius)
+[![Kernel](https://img.shields.io/badge/kernel-AGNOS%201.56.40-orange)](https://github.com/MacCracken/agnos)
+[![Language](https://img.shields.io/badge/Cyrius-6.5.7-red)](https://github.com/MacCracken/cyrius)
 ![Status](https://img.shields.io/badge/status-pre--beta-yellow)
 
 **AGNOS** is a sovereign operating system written in **Cyrius** — a systems language with a 29KB seed, zero external dependencies, and a self-hosting compiler. The kernel boots to a typeable shell on real AMD hardware (Boot-to-Shell MVP, 2026-05-15). Since then, validated **on real AMD Zen** unless noted:
@@ -18,9 +18,13 @@
 - **Multi-threading + preemptive scheduling + SMP** — the kernel moved from cooperative single-core round-robin to **preemptive ring-3 time-slicing**: concurrent ring-3 processes (each on its own CR3, all syscalling), a ring-3 **parent** that `spawn`s a child ELF + poll-`waitpid`s it entirely from ring 3, and multi-core SMP — **iron-validated** on real Zen.
 - **Audio** — an HDA/Azalia driver + ring-3 `snd_*` syscall band, culminating in **DOOM with sound out the analog front jack** (1.52.x) — **iron-validated** on real Zen.
 - **FP/SIMD** — per-process XMM state (SSE-enable, per-proc FXSAVE, lazy `#NM` save/restore) delivering **real f64 in ring 3** (1.53.x) — **iron-validated** on real Zen.
-- **Console fonts** — vendored from **kashi 1.0.0** (parallel-agent-developed sibling repo).
+- **GPU compute** — the AMD Cezanne iGPU brought up from nothing (PSP firmware load, GFXHUB, a mapped compute queue, hand-assembled gfx90c shaders) with **no amdgpu and no ROCm**, culminating in f64 matmul on the shader cores **bit-identical to the CPU reference including rounding**, dispatchable from ring 3 (1.54.x) — **iron-validated** on real Zen.
+- **Display + power** — a sovereign DCN 2.1 scanout path (flip, vblank pacing, tear-free double-buffered present), a **sovereign ATOM BIOS interpreter** whose encoder and transmitter runs emit exactly the vendor oracle's write sequences on iron (a *dry* build — no MMIO, no amdgpu: it proves the emission matches the vendor, not a hardware effect; the *wet* transmitter drive — ATOM `#76` `DIG1TransmitterControl` ENABLE via `/bin/modeset --transmitter`, 1.56.13/14 — is a separate run and was never itself oracle-diffed), hardware 2D via CP-DMA, and **AGNOS powering itself off** through a full ACPI S5 sequence (1.55.x) — **iron-validated** on real Zen.
+- **3D raster + native scanout** — a GPU triangle rasteriser (167 hand-authored gfx90c instructions, 20 of 20 cases byte-identical to the CPU reference), barycentric RGBA interpolation, perspective-correct texturing, depth test, and a kernel-side DCN modeset that puts the console at **native 2560x1440** with the scaler bypassed and a hardware pan (1.56.0–1.56.38) — **iron-validated** on real Zen.
+- **Sovereign desktop** — on 2026-08-03 at `cpus online: 4`, the native **aethersafha** compositor hosted **two real client windows** — a present probe and **crab**'s dual-pane file manager — composited on the panel, 278 frames, keys delivered to the client, clean quit — **iron-validated** on real Zen. Not Wayland: the desktop speaks the sovereign **setu** protocol.
+- **Console fonts** — vendored from **kashi** (parallel-agent-developed sibling repo).
 
-40+ subsystems ported from Rust to Cyrius. Base kernel-internals are essentially complete. No Linux dependency at runtime — the kernel exposes a **small sovereign syscall surface with no socket/splice/AF_ALG layer** (structurally immune to that CVE class). Live binary sizes, per-repo versions, syscall count, and cycle state track in the ecosystem state ledger.
+40+ subsystems ported from Rust to Cyrius. Base kernel-internals are complete — the GPU, display and desktop arcs sit on top of them. No Linux dependency at runtime — the kernel exposes a **small sovereign syscall surface with no BSD socket family, no `socket()` over arbitrary domains, no splice and no AF_ALG** (structurally immune to that CVE class). Live binary sizes, per-repo versions, syscall count, and cycle state track in the ecosystem state ledger.
 
 AGNOS is a general, sovereign OS that stands on its own — kernel, shell, tools, and network all work with zero AI. It's **AI-native across the system**, but never AI-bound: the intelligence layer is one you turn on, off, or shape into whatever you want it to be — a feature, not a mandate.
 
@@ -34,7 +38,7 @@ AGNOS is a general, sovereign OS that stands on its own — kernel, shell, tools
 
 ```
 +------------------------------------------------------------------+
-|  Desktop (planned)      |  Agent Runtime          |  Kernel       |
+|  Desktop (on iron)      |  Agent Runtime          |  Kernel       |
 |  +--------------------+ |  +--------------------+ |  +----------+ |
 |  | aethersafha        | |  | daimon             | |  | AGNOS    | |
 |  | native compositor  | |  | MCP tool host      | |  | kernel   | |
@@ -84,7 +88,7 @@ AGNOS is a general, sovereign OS that stands on its own — kernel, shell, tools
 
 ## Consumer Apps (planned / reference)
 
-Desktop and GUI work has **not started** — these are the planned marketplace roster, targeted to ship as `.agnos-agent` bundles:
+The desktop tier itself is live — the native **aethersafha** compositor hosts real client windows on real hardware (2026-08-03). The consumer-app roster below has **not started**; it is the planned marketplace roster, targeted to ship as `.agnos-agent` bundles:
 
 | App | Description |
 |-----|-------------|
@@ -109,23 +113,28 @@ Desktop and GUI work has **not started** — these are the planned marketplace r
 | Milestone | Status |
 |-----------|--------|
 | Sovereign kernel (40+ subsystems, iron-validated NUC AMD 2026-05-15) | Done |
-| Kernel perf + hardening (heap-zero perf, page-map/RBP/reap hardening) + sysinfo/klog syscalls (`uname`/`sysinfo`/`klog`) | **QEMU-validated, iron-pending** (1.42.x) |
+| Kernel perf + hardening (heap-zero perf, page-map/RBP/reap hardening) + sysinfo/klog syscalls (`uname`/`sysinfo`/`klog`) | **QEMU-validated; rode later burns, no per-arc iron PASS recorded** (1.42.x — the tracker is still open as a burn-prep ride-along. The `klog`#36 reader `klug` is in routine use as the standard iron burn readout) |
 | Graphics path + first real userland app — DOOM (cyrius-doom) exec'd from disk in ring 3 | **Iron-validated** (plays in-game on real Zen) — 1.43.x |
 | Preemptive ring-3 multi-threading + SMP (per-proc CR3, time-slicing, concurrent exec + clean exit, real ELF spawn) | **iron-validated on real Zen** (1.44.x arc; SMP/preempt iron-confirmed 1.46.x) |
 | HDA audio — DOOM with sound out the analog front jack | **Iron-validated on real Zen** — 1.52.x |
 | Kernel FP/SIMD — real f64 in ring 3 (per-proc XMM state, lazy `#NM` save/restore) | **Iron-validated on real Zen** — 1.53.x |
+| Kernel GPU compute — hand-assembled gfx90c shaders on the AMD iGPU with no amdgpu and no ROCm; f64 matmul bit-identical to the CPU reference, dispatchable from ring 3 | **Iron-validated on real Zen** — 1.54.x |
+| Display + ACPI — DCN 2.1 scanout, vblank-paced tear-free present, sovereign ATOM BIOS interpreter, CP-DMA hardware 2D, self-poweroff via ACPI S5 | **Iron-validated on real Zen** — 1.55.x |
+| GPU 3D raster + native scanout — triangle rasteriser (20/20 byte-identical to the CPU reference), perspective-correct texturing, depth test; kernel-side DCN modeset to native 2560x1440 with a hardware-panned console | **Iron-validated on real Zen** — 1.56.0–1.56.38 |
+| **Sovereign desktop on iron — aethersafha hosts two real client windows** (a present probe + crab's dual-pane file manager) composited on the panel at `cpus online: 4`, 278 frames, keys delivered, clean quit | **Iron-validated on real Zen 2026-08-03** — 1.56.35 |
+| Local display IPC — a kernel channel band, replacing TCP-on-loopback (retired 2026-08-03 as the wrong primitive for a local protocol) | **Open cycle — not yet burned** (1.56.40) |
 | Cyrius compiler (self-hosting from 29KB seed) | Done |
 | 40+ subsystem ports (Rust to Cyrius) | Done |
 | Sovereign boot pipeline (Cyrius) — sovereign UEFI handoff via gnoboot | Done |
 | LFS base recipes (421 base + 90 bazaar) | Done |
 | Security stack (kavach, sigil, libro, aegis at v1.0+) | Done |
-| Consumer apps with MCP integration (desktop/GUI) | **Planned — not started** (reference roster) |
-| **Self-hosting (AGNOS builds AGNOS)** | **Public-beta scope — not a closed-beta gate.** Kernel already builds + boots against current Cyrius; the bare-metal toolchain target lands in Cyrius **v6.0.x** but does not gate the MVP (the earlier "closed-beta blocker" framing was pre-monolith-extraction residue, corrected 2026-05-12) |
+| Consumer apps with MCP integration (marketplace roster) | **Planned — not started** (reference roster) |
+| **Self-hosting (AGNOS builds AGNOS)** | **Public-beta scope — not a closed-beta gate.** Kernel already builds + boots against current Cyrius; the bare-metal toolchain target landed in Cyrius **v6.2.x** and does not gate the MVP (the earlier "closed-beta blocker" framing was pre-monolith-extraction residue, corrected 2026-05-12) |
 | Closed-beta tester cohort (5–15 trusted testers) | Pending closed-beta cut |
 | Third-party security audit | Public-beta gate |
 | Community testing program (formal enrollment) | Public-beta gate |
 
-**Closed-beta target: late August 2026** (preceded by a ~July founder solo-dogfood month) | **Public-beta target: deferred post-summer** | **GA target: late fall / early winter 2026**
+**Closed-beta target: late August 2026** | **Public-beta target: deferred post-summer** | **GA target: late fall / early winter 2026**
 
 See [CHANGELOG.md](CHANGELOG.md) for full details.
 
@@ -162,7 +171,7 @@ make boot-test
 - **sigil** — Ed25519 trust verification, revocation
 - **libro** — Cryptographic audit chain, hash-linked event log
 - **aegis** — System security daemon (threat detection, quarantine, scanning)
-- **AGNOS kernel** — Security hardening 13/13 closed (S1-S13 incl. KASLR data-only, KPTI-light, IBRS Spectre v2 mitigations, VT-d IOMMU, stack canaries); structurally immune to CVE-2026-31431 (no socket/splice/AF_ALG surface in the sovereign syscall table)
+- **AGNOS kernel** — Security hardening 13/13 closed (S1-S13 incl. KASLR data-only, KPTI-light, IBRS Spectre v2 mitigations, VT-d IOMMU, stack canaries); structurally immune to CVE-2026-31431 (no BSD socket family, no `socket()` over arbitrary domains, no `splice`, no AF_ALG in the sovereign syscall table)
 
 See [SECURITY.md](SECURITY.md) for vulnerability reporting.
 

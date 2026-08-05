@@ -1,6 +1,6 @@
 # AGNOS — Project History & Timeline
 
-> **Status**: Active | **Last Updated**: 2026-07-07
+> **Status**: Active | **Last Updated**: 2026-08-05
 
 ---
 
@@ -49,7 +49,7 @@ AGNOS went from initial commit to first bootable ISO in **39 days** (2026-02-11 
 
 From first commit to sovereign self-hosting language with its own kernel in **53 days** (2026-02-11 to 2026-04-04).
 
-The Cyrius language went from nothing to a self-hosting compiler with a kernel in **one day** (2026-04-04), and through major-version cuts (1.0 → 2.0 → 3.0 → 4.0 → 5.0) reaching the v5.x stdlib-foldin cycle (sandhi v5.7.0, vani v5.8.0, niyama v5.9.0) by week 12, then the **REAL TYPE SYSTEM arc** at v5.10.x (24 patches in 2 days). The AGNOS kernel hardened from 143KB (with 14 buffer overflows — "The 143KB Lie") through 220KB (v1.21.0) → 260KB (v1.22.0) → 248KB (v1.26.1), then past 1 MB through the 1.3x–1.4x storage / networking / filesystem / exec-from-disk / shell-separation arcs, and on through the 1.5x graphics / audio / FP arcs to **agnos 1.53.5** — base kernel-internals essentially complete. 40+ subsystems ported from Rust to Cyrius, each measured against its Rust predecessor.
+The Cyrius language went from nothing to a self-hosting compiler with a kernel in **one day** (2026-04-04), and through major-version cuts (1.0 → 2.0 → 3.0 → 4.0 → 5.0) reaching the v5.x stdlib-foldin cycle (sandhi v5.7.0, vani v5.8.0, niyama v5.9.0) by week 12, then the **REAL TYPE SYSTEM arc** at v5.10.x (24 patches in 2 days). The AGNOS kernel hardened from 143KB (with 14 buffer overflows — "The 143KB Lie") through 220KB (v1.21.0) → 260KB (v1.22.0) → 248KB (v1.26.1), then past 1 MB through the 1.3x–1.4x storage / networking / filesystem / exec-from-disk / shell-separation arcs, and on through the 1.5x graphics / audio / FP arcs to **agnos 1.53.5** — base kernel-internals essentially complete — then straight into the kernel graphics stack: GPU compute on archaemenid's Cezanne shader cores with no amdgpu and no ROCm (1.54.x), display/scanout plus a sovereign ATOM BIOS interpreter and **ACPI S5 self-poweroff** (1.55.x), and shaders → a GPU triangle rasteriser → perspective-correct texturing → native-resolution modeset (1.56.x), arriving 2026-08-03 at **the aethersafha desktop compositing two real client windows on iron**. Live kernel head, binary size and Cyrius pins are in [`docs/development/state.md`](development/state.md). 40+ subsystems ported from Rust to Cyrius, each measured against its Rust predecessor.
 
 The shared crate ecosystem spans a large registry of crates (most at v1.0+ stable) — see [`docs/applications/libs/README.md`](applications/libs/README.md) for the live count — with consumer applications developed in parallel.
 
@@ -100,6 +100,13 @@ The shared crate ecosystem spans a large registry of crates (most at v1.0+ stabl
 | **Multi-threading + preemptive scheduling + SMP iron-validated** — preemptive round-robin across cores on real hardware. | 2026-06 | — |
 | **1.52.x HDA audio arc — DOOM-WITH-SOUND on iron** — the HDA/Azalia driver drives DOOM audio out the analog front jack on archaemenid. | 2026-07 | — |
 | **1.53.x kernel FP/SIMD arc — real f64 in ring 3 on iron** — per-process XMM state; `f64`/SIMD DSP validated on real Zen. **agnos 1.53.5 — base kernel-internals essentially complete.** | 2026-07 | — |
+| **Kernel GPU-compute arc (1.54.x) — opened and closed in four days.** From the first write to archaemenid's AMD Cezanne iGPU (PSP GPCOM ring-create) through PSP firmware load, GFXHUB GMC setup and the first PM4 packet + doorbell, to hand-assembled gfx90c shaders running integer tiled matmul (1.54.29) and full-precision f64 matmul (1.54.31) with **no amdgpu and no ROCm** — the f64 result **bit-identical to rosnet's CPU math including rounding** (1.54.32). Exposed to ring 3 at `#82` / `#83 gpu_dispatch_f64` | 2026-07-11 → 2026-07-14 | 150–153 |
+| **★ AGNOS POWERS ITSELF OFF — ACPI S5, iron-validated** (1.55.26): the full S5 sequence from the agnsh prompt, power LED out on archaemenid, `_S5_` read live off the AMI DSDT. Same day the **sovereign ATOM BIOS interpreter is PROVEN ON IRON** (1.55.24) — VBIOS from the ACPI VFCT table; encoder and transmitter runs emit *exactly* the amdgpu oracle's write sequences | 2026-07-19 | 158 |
+| **First hardware 2D on agnos** — CP-DMA copy, fill and true strided blit all verified on iron in one boot (1.55.30), the blit's inter-row padding untouched. The next day the **GPU compositor seam `#86`–`#89` is IRON-PROVEN: a whole mock compositor frame with zero per-pixel CPU work** (1.55.32), closing the display arc as the 1.56.x shader arc opens | 2026-07-21 → 2026-07-22 | 160–161 |
+| **agnos has a GPU triangle rasteriser** (1.56.17) — 167 hand-authored gfx90c instructions, **20 of 20 cases byte-identical** to the CPU reference on iron with every negative control firing. The rung ladder then closed barycentric RGBA, texturing, bilinear, depth test, and **perspective-correct texturing** (1.56.31) — the last proven on a corpus where the affine and perspective references differ at 731 of 1541 covered pixels | 2026-07-25 → 2026-07-29 | 164–168 |
+| **⭐ THE DESKTOP COMPOSITES TWO REAL CLIENT WINDOWS ON IRON.** archaemenid boots to `smp: cpus online: 4` and the aethersafha compositor hosts `present_probe` and **crab's dual-pane file manager** as windows on the panel — 278 frames, keys delivered to the client, clean Esc quit. The blocker was one line (agnos 1.56.35): the AP trampoline set `EFER \|= 0x100` (LME only) where the BSP sets `0x900` (LME\|NXE), so bit 63 of every NX paging entry was RESERVED and each W^X data page faulted on an AP. Cross-CPU TLB shootdown landed in the same cut | 2026-08-03 | 173 |
+| **Native 2560x1440 scanout + a hardware-panned boot console — RELEASED and BURNED PASS** (1.56.36 / 1.56.37 / 1.56.38): the scaler in DSCL bypass, no banded first frame, and a modeset latch that releases itself at clean shutdown. `Timer ticks before sched` 28 (800x600) → 149 (native, software scroll) → **11** (native + pan) | 2026-08-03 → 2026-08-04 | 173–174 |
+| **Kernel head agnos 1.56.40 — OPEN, not burned**: the local-IPC **channel band** (`chan_*`), replacing TCP-on-loopback, retired 2026-08-03 as the *wrong primitive* for local display IPC — ⚠ retired as wrong, **not** as a thing that never worked. Decisions closed the same day: `#96` = `fork`, `#97` = `chan_op`, no codename. Live versions, sizes and pins → [`state.md`](development/state.md) | 2026-08-05 | 175 |
 | **Target: Closed beta cut** (after a ~July founder solo-dogfood month) | **late August 2026** | — |
 | **Target: Public beta** | **deferred post-summer 2026** | — |
 | **Target: GA** | **late fall / early winter 2026** | — |
@@ -115,11 +122,11 @@ The Cyrius compiler binary has been renamed four times over the language's evolu
 | `cc` | v1.x | Initial self-hosting compiler (2026-04-04) |
 | `cc2` | v2.x | First rename (v2.0, ~2026-04-08) |
 | `cc3` | v3.x and v4.x | Stayed across both major versions (v3.0 shipped ~2026-04-09; persisted through v4.8.x on 2026-04-14) |
-| `cc5` | v5.x (current) | `cc3` → `cc5` at v5.0.0 (2026-04-15) — **cc4 was never shipped**; that binary name/version was skipped |
+| `cc5` | v5.x | `cc3` → `cc5` at v5.0.0 (2026-04-15) — **cc4 was never shipped**; that binary name/version was skipped |
 | `cycc` | v6.x (current) | `cc5` → `cycc` ("Cyrius Computer Compiler") at v6.0.0 ceremony on 2026-05-19. Bootstrap `cyrc` → `cybs` ("Cyrius Bootstrap") in the same ceremony. **Names are now permanent** — no `cycc7` at v7.0.0; the cc3 → cc5 (v5.0.0) → cycc (v6.0.0) sequence was the LAST name-change penalty paid |
 
-Four renames total across four language-major transitions. The `cc5` → `cycc` event at v6.0 (landed 2026-05-19) is the one-and-done cleanup that future major versions inherit without further renaming. Back-compat symlinks `cc5 → cycc` + `cyrc → cybs` ship through the v6.0.x window (drop at v6.1.0).
+Four renames total across four language-major transitions. The `cc5` → `cycc` event at v6.0 (landed 2026-05-19) is the one-and-done cleanup that future major versions inherit without further renaming. Back-compat symlinks `cc5 → cycc` + `cyrc → cybs` shipped through the v6.0.x window and were dropped at v6.1.0; `~/.cyrius/bin/` now carries `cycc` and `cybs` only.
 
 ---
 
-*Last Updated: 2026-07-07*
+*Last Updated: 2026-08-05*

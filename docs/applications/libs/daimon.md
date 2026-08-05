@@ -1,6 +1,6 @@
 # daimon
 
-Agent orchestrator — 144 MCP tools.
+Agent orchestrator — MCP tool dispatch (tool count drifts per cut).
 
 - **Repository**: [github.com/MacCracken/daimon](https://github.com/MacCracken/daimon)
 - **License**: GPL-3.0-only

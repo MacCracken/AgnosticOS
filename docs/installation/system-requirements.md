@@ -1,9 +1,9 @@
 # AGNOS System Requirements
 
 > Minimum and recommended hardware for running AGNOS across all profiles.
-> Last Updated: 2026-06-04
+> Last Updated: 2026-08-05
 >
-> **Pre-Beta note:** AGNOS is not yet installable as an end-user OS. These figures are the **targets** for the Phase 13A ISO. For what is buildable and testable today, see [README.md](README.md).
+> **Pre-Beta note:** AGNOS is not yet installable as an end-user OS. These figures are the **targets** for the first bootable ISO. For what is buildable and testable today, see [README.md](README.md).
 
 ---
 
@@ -27,7 +27,7 @@ AGNOS supports three installation profiles with different hardware floors.
 ### Server / CLI Profile
 
 Headless operation — daimon (agent runtime), hoosh (LLM gateway), agnoshi (AI shell).
-No GPU, no Wayland, no desktop packages.
+No GPU, no compositor, no desktop packages.
 
 | Component | Minimum | Notes |
 |-----------|---------|-------|
@@ -44,7 +44,7 @@ No GPU, no Wayland, no desktop packages.
 
 ### Desktop Profile
 
-Full Wayland desktop — aethersafha compositor, browser, creative apps, all CLI services.
+Full sovereign desktop — the aethersafha compositor (⛔ **not** Wayland; it speaks the sovereign **setu** protocol), browser, creative apps, all CLI services.
 
 | Component | Minimum | Notes |
 |-----------|---------|-------|
@@ -61,6 +61,8 @@ Full Wayland desktop — aethersafha compositor, browser, creative apps, all CLI
 - **AMD**: Mesa radeonsi (GCN 1.0 and newer, HD 7000+)
 - **Intel**: Mesa iris/i965 (Broadwell and newer, HD 5500+)
 - **Software rendering**: Mesa swrast (llvmpipe) — functional but slow
+
+**Sovereign display path** (AGNOS kernel — no Mesa, no amdgpu): the kernel drives AMD Cezanne (gfx90c / DCN 2.1) directly via a sovereign ATOM BIOS interpreter plus kernel-side DCN modeset, **iron-confirmed at native 2560x1440 with the scaler in bypass** on archaemenid (agnos 1.56.36–1.56.38, burned PASS). ⚠️ That is one GPU family on one box — the Mesa rows above still describe the Linux-host bootstrap path, and no other silicon has been burned. Current status: [`../development/state.md`](../development/state.md).
 
 **Desktop memory budget**: 2 GB for aethersafha compositor.
 
@@ -95,11 +97,11 @@ Minimal footprint for embedded devices — fleet management, OTA updates, teleme
 | Architecture | Status | Notes |
 |--------------|--------|-------|
 | x86_64 (AMD64) | Full support | Primary development target; Cyrius self-hosts byte-identical |
-| ARM64 (AArch64) | Full support | Cyrius cross-compiler + native Pi self-host byte-identical (v5.3.15+) |
+| ARM64 (AArch64) | Toolchain full; kernel compile-only | Cyrius cross-compiler + native Pi self-host byte-identical (v5.3.15+). The AGNOS kernel's aarch64 tree builds but has no boot harness and is not gated |
 | Apple Silicon (Mach-O) | Compiler toolchain only | Cyrius self-hosts byte-identically on M-series (v5.3.13); AGNOS kernel targets Linux ABI |
 | Windows PE32+ | Compiler toolchain only | Cyrius native self-host byte-identical on real Windows 11 (v5.5.10) |
-| RISC-V (rv64) | Queued | Cyrius **v6.0.x** (rv64 backend + bare-metal target live in the active v6.0.x cycle; the never-opened v5.12.x slot folded in here) |
-| Bare-metal (no host OS) | Queued | Cyrius **v6.0.x** (paired with rv64; public-beta self-hosting scope, not a closed-beta gate) |
+| RISC-V (rv64) | Queued | Cyrius **v6.7.x / v6.8.x** — re-scheduled off the v6.0.x line; not shipped and not imminent (`cyrius/docs/development/roadmap.md`) |
+| Bare-metal (no host OS) | Toolchain target shipped | Cyrius **v6.2.x** (bare-metal target formalized at the v6.2.52 close); public-beta self-hosting scope, not a closed-beta gate |
 | x86 (32-bit) | Not supported | No kernel configs, no recipes |
 | ARM (32-bit) | Not supported | Out of scope |
 
@@ -109,7 +111,7 @@ Minimal footprint for embedded devices — fleet management, OTA updates, teleme
 
 | Feature | Required? | Notes |
 |---------|-----------|-------|
-| UEFI | Required | gnoboot 0.6.0 (sovereign UEFI PE32+ EFI Application) is the default bootloader, on GPT + FAT ESP |
+| UEFI | Required | gnoboot 0.6.1 (sovereign UEFI PE32+ EFI Application) is the default bootloader, on GPT + FAT ESP; it selects the largest RGB/BGR GOP mode the firmware offers rather than inheriting whatever mode was left |
 | Legacy BIOS | Not supported | GRUB / multiboot2 path retired; boot is UEFI-only via gnoboot |
 | Secure Boot | Optional | Full MOK enrollment support; recommended for production |
 | TPM 2.0 | Optional | Enables disk encryption key sealing, measured boot, device attestation |
@@ -125,10 +127,11 @@ AGNOS uses **two kernels** depending on profile — the AGNOS kernel is primary;
 
 ### AGNOS Kernel (sovereign, primary)
 
-- **Version**: Cyrius-native, 40+ subsystems, a small sovereign syscall surface (no socket/splice/AF_ALG layer); the exec-from-disk, SMP, and shell-separation arcs plus >256 MB RAM support are all iron-validated on NUC AMD
+- **Version**: Cyrius-native, with a small sovereign syscall surface — no BSD `socket` call, no `splice`, no AF_ALG family. (AGNOS *does* have a kernel TCP/UDP/ICMP stack; its `sock_*` / `udp_*` calls are purpose-built and take no address-family argument, so there is no family to select.) Head version, module count and build size drift every cut — see [`../development/state.md`](../development/state.md) rather than a figure quoted here
+- **Iron-validated on AMD**: exec-from-disk, SMP, shell-separation and >256 MB RAM support; HDA analog audio (1.52.x); kernel FP/SIMD (1.53.x); GPU compute on the Cezanne iGPU with no amdgpu and no ROCm (1.54.x); display scanout, the sovereign ATOM BIOS interpreter and ACPI S5 self-poweroff (1.55.x); GPU 3D raster, kernel-side DCN modeset and native-resolution scanout (1.56.0–1.56.38). ⚠️ 1.56.39 is QEMU-only and was never burned, and 1.56.40 is an open cut — neither is iron-validated
 - **Repo**: `MacCracken/agnos`
-- **Multi-arch split** (v1.1.0): `kernel/arch/x86_64/`, `kernel/arch/aarch64/`, `kernel/core/`, `kernel/user/`
-- **Boot**: gnoboot 0.6.0 (sovereign UEFI PE32+ EFI Application) from a GPT + FAT ESP; boots in QEMU via `make boot-test` from the genesis repo
+- **Multi-arch split** (v1.1.0): `kernel/arch/x86_64/`, `kernel/arch/aarch64/`, `kernel/core/`, `kernel/user/`. ⚠️ Only x86_64 boots — the aarch64 tree is **compile-only, with no boot harness and not gated** by the test suite or CI
+- **Boot**: gnoboot 0.6.1 (sovereign UEFI PE32+ EFI Application) from a GPT + FAT ESP; boots in QEMU via `make boot-test` from the genesis repo
 
 ### Linux Kernel (host bootstrap, transitional)
 
@@ -189,4 +192,4 @@ The Rust / GCC / Python / Docker toolchain was retired during the Cyrius pivot (
 
 ---
 
-*For installation instructions, see [docs/installation/](installation/). For development setup, see [CONTRIBUTING.md](/CONTRIBUTING.md).*
+*For installation instructions, see [README.md](README.md). For development setup, see [CONTRIBUTING.md](../../CONTRIBUTING.md).*

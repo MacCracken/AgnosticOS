@@ -1,6 +1,6 @@
 # AGNOS System Architecture
 
-> **Last Updated**: 2026-07-07
+> **Last Updated**: 2026-08-05
 >
 > Per-subsystem versions intentionally elided in this doc per the lib-doc precedent — refer to the registry files when quoting numbers.
 
@@ -73,6 +73,10 @@ AGNOS is a sovereign operating system written in Cyrius. The architecture consis
 |  |  |  |  Signals  | |  Pipes   | |  ELF Loader    |    |       |   |
 |  |  |  |  + epoll  | | + IPC    | |  + recov. sh   |    |       |   |
 |  |  |  +-----------+ +-----------+ +----------------+    |       |   |
+|  |  |  +-----------+ +-----------+ +----------------+    |       |   |
+|  |  |  |   GPU +   | |   HDA    | |  Block + FS    |    |       |   |
+|  |  |  |  Display  | |  Audio   | |  (5 backends)  |    |       |   |
+|  |  |  +-----------+ +-----------+ +----------------+    |       |   |
 |  |  +---------------------------------------------------+       |   |
 |  |                          |                                    |   |
 |  |  +------------------------------------------------------+    |   |
@@ -88,27 +92,29 @@ AGNOS is a sovereign operating system written in Cyrius. The architecture consis
 
 The three-layer diagram above is **simultaneously present** in the codebase — every layer has some Cyrius-native existence today. But the **maturity arc** shifts emphasis across the layers as AGNOS matures:
 
-- **demo stage** (current): kernel layer is the active surface (boot, init, scheduler, syscalls, drivers, ext4 read). Subsystems exist but most run host-side; userland is minimal (agnoshi shell only).
-- **base stage** (post-1.33.x WRITE): kernel reaches "solid"; package manager (ark + nous) and update mechanism land; subsystems begin running AGNOS-side.
+- **demo stage** (**fired 2026-05-25**): kernel layer was the active surface (boot, init, scheduler, syscalls, drivers, ext4 read). Exit trigger was ext2/4 WRITE persisting across a reboot on iron.
+- **base stage** (current, post-1.33.x WRITE): kernel reaches "solid". Kernel internals are done; the remaining base work is **ecosystem** — ISO Stage-4, a sovereign ark, soak. Exit trigger is the agnova native installer plus the server ecosystem landing.
 - **server stage**: the **Named Subsystems** band fills in — installer (agnova), BBS/MUD apps, server daemons, more libs. Most Linux-shaped workloads become AGNOS-replaceable.
-- **desktop stage** (planned / future — desktop + GUI not started): the **Userland Surface** band fills in — aethersafha (native compositor) + GUI apps. The diagram's top tier becomes user-facing.
-- **swallow stage**: a fourth layer activates — the **compat sandbox** (Phase 20) — kavach-bounded Linux personality container hosting non-AGNOS-native binaries. **The boundary between the kernel and the interpretive layer is permanent** — the kernel never absorbs foreign ABIs (per [[project_agnos_kernel_growth_rules]] / [[project_agnos_empire_defense_layers]]). Sovereignty via universal hosting, not eviction.
+- **desktop stage**: the **Userland Surface** band fills in — aethersafha (native compositor, speaking the sovereign **setu** protocol on the **bhumi** backend — ⛔ not Wayland) + GUI apps. The stage has not *exited* its predecessor, but its work is already landing: the kernel's display/GPU half shipped across 1.54.x–1.56.x, and on 2026-08-03 aethersafha composited two real client windows on archaemenid at `cpus online: 4`.
+- **swallow stage**: a fourth layer activates — the **compat sandbox**, AGNOS hosting non-AGNOS-native binaries. Named instantiation is **mirshi** (userland syscall-translation supervisor, pico-process model) + **mehman** (compat surface backend); the older "kavach-bounded Linux personality container" architecture is superseded. **The boundary between the kernel and the interpretive layer is permanent** — the kernel never absorbs foreign ABIs (per [[project_agnos_kernel_growth_rules]] / [[project_agnos_empire_defense_layers]]). Sovereignty via universal hosting, not eviction.
 
-The four-layer empire-defense architecture (compat / wire / trust / governance — roadmap.md Phases 20-23) lays out *how the boundaries hold*; the maturity arc lays out *when each capability arrives*. Together they describe both the static structure and the dynamic emergence.
+The empire-defense architecture (compat / wire / trust / governance) lays out *how the boundaries hold*; the maturity arc lays out *when each capability arrives*. Together they describe both the static structure and the dynamic emergence. Stage definitions and exit triggers live in [`development/roadmap.md`](development/roadmap.md) — cite a stage or a named spec, never a phase number (the Phase 13A–24 numbering was deleted, not merged).
 
 ## Kernel
 
 AGNOS runs its own sovereign kernel, written in Cyrius. No Linux dependency at runtime.
 
-**AGNOS kernel** (head **1.53.5**) — 40+ subsystems, a small sovereign syscall surface (no socket/splice/AF_ALG layer). Base kernel-internals are essentially complete. Iron-validated end-to-end on NUC AMD archaemenid: kernel-init layer cleared 2026-05-15 (agnos 1.30.0); closed-beta MVP gate (typeable shell via xHCI HID keyboard) hit 2026-05-18 (agnos 1.30.9); FS-crash-safety (1.37–1.39) + exec-from-disk (1.40.x, ring-3 programs off the agnos-fs); **agnoshi** as the ring-3 userland shell loaded from disk (shell-separation arc); **graphics + DOOM playable in-game on iron**; **multi-threading + preemptive scheduling + SMP**; **HDA audio — DOOM-with-sound out the analog front jack (1.52.x)**; and kernel **FP/SIMD — real f64 in ring 3 (1.53.x)** — all iron-validated on real hardware:
+**AGNOS kernel** — 40+ subsystems, a small sovereign syscall surface (no BSD socket family / no splice / no AF_ALG). Base kernel-internals are complete; the live head, kernel size and Cyrius pin are in [`development/state.md`](development/state.md). Iron-validated end-to-end on NUC AMD archaemenid: kernel-init layer cleared 2026-05-15 (agnos 1.30.0); closed-beta MVP gate (typeable shell via xHCI HID keyboard) hit 2026-05-18 (agnos 1.30.9); FS-crash-safety (1.37–1.39) + exec-from-disk (1.40.x, ring-3 programs off the agnos-fs); **agnoshi** as the ring-3 userland shell loaded from disk (1.41.x shell-separation arc); **graphics + DOOM playable in-game on iron**; **multi-threading + preemptive scheduling + SMP**; **HDA audio — DOOM-with-sound out the analog front jack (1.52.x)**; kernel **FP/SIMD — real f64 in ring 3 (1.53.x)**; **GPU compute on the Cezanne shader cores with no amdgpu and no ROCm (1.54.x)**; **display / scanout + a sovereign ATOM BIOS interpreter + ACPI S5 self-poweroff (1.55.x)**; and **shader compositing, a GPU triangle rasteriser, native-resolution modeset and a hardware-panned console (1.56.x)** — all iron-validated on real hardware, and on **2026-08-03** the aethersafha desktop hosted two real client windows on that box at `smp: cpus online: 4`:
 - Memory management, process management, SMP
 - TCP/IP networking, VirtIO-Net/Blk
 - ext2/ext4 + FAT12/16/32 + exFAT filesystems (read+write), ELF loader (streaming, ring-3 exec-from-disk)
-- Pipes, signals, epoll, timerfd
+- Pipes, signals, epoll, timerfd, shared memory
 - Recovery-REPL shell (the interactive shell moved to userland `agnsh` in the 1.41.x shell-separation arc)
 - kybernet as PID 1
 - Sovereign UEFI handoff (Path C, RDI = `&boot_info` via gnoboot)
-- Native XHCI + USB-HID-boot keyboard driver (all 5 phases landed; iron-side blocker remains on archaemenid silent-absorb arc)
+- Native XHCI + USB-HID-boot keyboard driver (all 5 phases landed; the archaemenid silent-absorb arc closed at the 1.30.9 MVP gate — root cause was an upstream Cyrius gvar-init-order bug, not silicon)
+- HDA audio out (`snd_*` band), FP/SIMD (per-core SSE + per-proc FXSAVE)
+- GPU compute, display scanout, CP-DMA 2D, shader compositing and DCN modeset — see *Beyond the Five Layers* below
 
 The `kernel/` directory in this repo contains Linux kernel configs for **host bootstrap only** — building the cross-compiler toolchain on an existing Linux host before AGNOS can self-host.
 
@@ -116,7 +122,7 @@ The `kernel/` directory in this repo contains Linux kernel configs for **host bo
 
 > Conceptual decomposition. Layers 1–5 shipped. Live per-subsystem status: [agnos repo](https://github.com/MacCracken/agnos).
 
-The kernel was originally planned as five layers — *boots*, *runs programs*, *storage*, *talks to the world*, *usable*. All five landed inside a ~7-week window (Cyrius scaffold 2026-04-03 → kernel v1.22.0 on 2026-04-14, hardened to v1.26.1 by 2026-04-28). Subsequent 1.27.x → 1.30.x work has been bring-up and hardening: KASLR data-only shipped at 1.28.0 (closed the security-track gate 13/13), sovereign-struct kernel ABI shipped 1.30.0 (Path-C UEFI handoff via gnoboot v0.5.0), native XHCI + USB-HID-boot driver across 1.30.1 → 1.30.5, xHCI cmd-path repair arc 1.30.6 (Repairs FF through QQ, MSI-X table programming closeout). The decomposition below reflects where each layer sits today.
+The kernel was originally planned as five layers — *boots*, *runs programs*, *storage*, *talks to the world*, *usable*. All five landed inside a ~7-week window (Cyrius scaffold 2026-04-03 → kernel v1.22.0 on 2026-04-14, hardened to v1.26.1 by 2026-04-28). Subsequent 1.27.x → 1.30.x work has been bring-up and hardening: KASLR data-only shipped at 1.28.0 (closed the security-track gate 13/13), sovereign-struct kernel ABI shipped 1.30.0 (Path-C UEFI handoff via gnoboot v0.5.0), native XHCI + USB-HID-boot driver across 1.30.1 → 1.30.5, xHCI cmd-path repair arc 1.30.6 (Repairs FF through QQ, MSI-X table programming closeout). Everything after that grew the layers rather than adding a sixth: storage (1.31.x–1.40.x), networking (1.32.x–1.35.x), SMP + preemption (1.44.x–1.46.x), and then a whole capability band the original plan never scoped — audio, FP/SIMD, GPU, display and modeset (1.52.x–1.56.x), collected under *Beyond the Five Layers* below. The decomposition below reflects where each layer sits today.
 
 ### Layer 1 — Can Boot and Respond
 
@@ -164,7 +170,7 @@ The original 5-layer plan listed VirtIO-Blk + FAT16. The 1.31.x cycle (Mar–May
 
 **Multi-source convergent prior-art audits**: every non-trivial subsystem in this layer gets a written audit before its iron burn. Linux is one source of many — FreeBSD / OpenBSD / NetBSD / Haiku / EDK2 / SeaBIOS / U-Boot / Plan 9 + vendor errata triangulated.
 
-**Not yet shipped at this layer**: HTREE indexed directories, ext4 hole-fill + out-of-order extent inserts, JBD2 full revoke handling, bitmap/group-desc/extent-tree journaling (1.38.x integration narrowly routes the inode-table write only), NTFS / squashfs read, optical via USB-MS SCSI MMC (non-512-B sectors). Framebuffer/MMIO graphics belongs to a separate display layer, not Layer 3.
+**Not yet shipped at this layer**: HTREE indexed directories, ext4 hole-fill + out-of-order extent inserts, JBD2 full revoke handling, bitmap/group-desc/extent-tree journaling (1.38.x integration narrowly routes the inode-table write only), NTFS / squashfs read, optical via USB-MS SCSI MMC (non-512-B sectors). Framebuffer/MMIO graphics belongs to the display band, not Layer 3 — see *Beyond the Five Layers*.
 
 ### Layer 4 — Can Talk to the World
 
@@ -182,12 +188,28 @@ The original 5-layer plan listed VirtIO-Blk + FAT16. The 1.31.x cycle (Mar–May
 
 ### Layer 5 — Can Be Used
 
-- **Shell** — As of the **1.41.x shell-separation arc** (software-complete + QEMU-validated, iron burn pending), the full interactive shell is the **userland `agnsh`** (agnoshi binary, loaded from `/bin/agnsh` on the ext2 root and run in ring 3). The in-kernel shell shrank to a **recovery-only REPL** (`kernel/user/shell.cyr`, dropped 1149 → 813 LOC at 1.41.9 when the non-recovery verbs were deleted) that runs as the fallback when `/bin/agnsh` is absent. The recovery REPL retains a curated diagnostic/repair subset (27 verbs): `help echo uptime test halt` (base) + `cat ls cd pwd rm mv sync run` (FS read/repair + exec-from-disk, mount-routed across ext2/FAT/exFAT) + `blkread disk parts lspci cpus` (block/partition/hardware inspection) + `net send recv tcp pipe dns ping ntp date` (network diagnosis). The heavier interactive surface — `ps free bench`, the `mkdir rmdir touch ln` FS-mutation verbs, the `jbd2` journal diagnostic — moved out of the kernel into `agnsh`. `ls` accepts flag tokens (`-la` no-op for now); `cat` falls through to initrd on ext2 miss; `cd` + `pwd` consume `sh_cwd_inode` / `sh_cwd_path` globals for CWD-relative path resolution (1.31.7 bites D/B/C).
+- **Shell** — As of the **1.41.x shell-separation arc** (iron-validated June 2026 — `agnoshi` runs in ring 3 off the disk on archaemenid), the full interactive shell is the **userland `agnsh`** (agnoshi binary, loaded from `/bin/agnsh` on the ext2 root and run in ring 3). The in-kernel shell shrank to a **recovery-only REPL** (`kernel/user/shell.cyr`, dropped 1149 → 813 LOC at 1.41.9 when the non-recovery verbs were deleted) that runs as the fallback when `/bin/agnsh` is absent. The recovery REPL retains a curated diagnostic/repair subset (27 verbs): `help echo uptime test halt` (base) + `cat ls cd pwd rm mv sync run` (FS read/repair + exec-from-disk, mount-routed across ext2/FAT/exFAT) + `blkread disk parts lspci cpus` (block/partition/hardware inspection) + `net send recv tcp pipe dns ping ntp date` (network diagnosis). The heavier interactive surface — `ps free bench`, the `mkdir rmdir touch ln` FS-mutation verbs, the `jbd2` journal diagnostic — moved out of the kernel into `agnsh`. `ls` accepts flag tokens (`-la` no-op for now); `cat` falls through to initrd on ext2 miss; `cd` + `pwd` consume `sh_cwd_inode` / `sh_cwd_path` globals for CWD-relative path resolution (1.31.7 bites D/B/C).
 - **kybernet PID 1** — service supervision, signal/event-loop, kernel-interface boundary. Per-repo benchmarks + test count in kybernet's own state.md.
 - **Signals** — per-process `proc_signals` / `proc_sigmask`, `kill` / `sigprocmask` / `signalfd`
 - **Epoll** — `epoll_create`, `epoll_ctl`, `epoll_wait`
 - **Timerfd** — `timerfd_create`, `timerfd_settime`
 - **Pipes** — circular buffer IPC, read/write ends, VFS type 6
+
+### Beyond the Five Layers — Audio, FP/SIMD, GPU, Display
+
+The original plan stopped at *usable*. Everything below was scoped after it and now constitutes the largest single band in the kernel by module count. The iron target throughout is **archaemenid** — a Beelink SER NUC, AMD Cezanne APU (PCI `1002:1638`), gfx90c compute + DCN 2.1 display. ⚠ **QEMU is structurally blind to this band**: there is no Cezanne iGPU to match, so every GPU branch is dead for a whole QEMU run. A green QEMU boot proves the CPU fallback and nothing about the GPU.
+
+- **HDA audio (1.52.x)** — Azalia/HDA controller driver and the `snd_open/config/write/close/drain/avail` ring-3 band. **Iron-validated**: DOOM-with-sound out the analog front jack. ⛔ **HDMI audio has never produced sound and is PARKED** by operator decision — the register-poke class of fix is closed (agnos reached byte-identity with the amdgpu answer key and the sink stayed silent), and sequencing is **not** eliminated. Do not read "audio works" as covering the display path.
+- **FP/SIMD (1.53.x)** — `arch/x86_64/fpu.cyr`: per-core SSE enablement plus per-process FXSAVE state with lazy `#NM` save/restore, so two f64 processes cannot corrupt each other's XMM. **Iron-validated** — real `f64` in ring 3. The production kernel itself stays FP-free by invariant; the f64 proofs live behind a selftest gate.
+- **GPU compute (1.54.x)** — PSP GPCOM ring-create and `SETUP_TMR` (the first DMA round-trip), the CP/MEC/RLC firmware set loaded through PSP, GFXHUB GMC setup, a mapped compute queue, PM4 packets and doorbell, then hand-assembled gfx90c shaders on the shader cores. Integer tiled matmul and full-precision f64 matmul both bit-correct against the CPU, and **rosnet-bit-correct including rounding** because both sides sum k-ascending. Exposed to ring 3 as `#82 gpu_dispatch` / `#83 gpu_dispatch_f64`. **No amdgpu, no ROCm.**
+- **Display / scanout (1.55.x)** — read-only DCN 2.1 live-pipe probe → the first DCN write → the scanout flip → vblank pacing → a double-buffered present loop paced by the display's own clock. Ring 3 sees it as `blit`#39's `defer` bit plus `present`#84: tear-free full-screen apps with **no app change**. The AMD-Zen quiet-boot banding was root-caused here as a surface/raster **scale** mismatch (an 800×600 surface DCN-scaled to 2560×1440), fixed read-only by matching `fb_console`'s geometry to the real HUBP viewport — ⛔ it was neither tiling nor DCC.
+- **Sovereign ATOM BIOS interpreter (1.55.23/24)** — `core/atom.cyr`, a faithful Cyrius port of the ATOM bytecode VM. The VBIOS image is acquired from the ACPI VFCT table (Cezanne is an APU, no discrete flash ROM) and the interpreter drives `DIGxEncoderControl` and `DIG1TransmitterControl`. **Iron-proven bit-correct**: the encoder and transmitter runs emitted exactly the reference oracle's write sequences.
+- **Orderly shutdown + ACPI S5 (1.55.25/26)** — `core/power.cyr` with `core/acpi.cyr`: a durability barrier, then device quiesce across storage / net / USB / audio / GPU, the FADT + `\_S5` decode, reset, and poweroff. **Iron-validated** — `poweroff` at the agnsh prompt takes the machine down and the power LED goes out.
+- **Hardware 2D — CP-DMA (1.55.30)** — a 7-dword PM4 `DMA_DATA` on the proven MEC compute ring gives copy, constant-fill and true strided blit. **Iron-verified** in one boot, the blit proven by leaving the destination's inter-row padding untouched. ⛔ **SDMA is PARKED** — it rings up on iron but never fetched a packet; an agnos setup gap, not a hardware limit.
+- **The GPU compositor seam (1.55.32)** — `#86 shm_create_gpu` (a page from the GPU carveout, because a `#71` shm page is system RAM the GPU cannot reach at all), `#87 gpu_blit_shm`, `#88 gpu_fill_rect`, `#89 gpu_caps`, with `#90 gpu_readback_shm` and `#91 gpu_blit_bb` alongside. **Iron-proven**: a whole mock compositor frame with **zero per-pixel CPU work**.
+- **Shader compositing and 3D raster (1.56.x)** — 20 machine-assembled gfx90c shader programs live in `kernel/shaders/` as `.s` sources, a category of kernel artifact that did not exist before 1.54.14. They are reached through **one** descriptor syscall, `#92 gpu_shader_op`, carrying an array of 64-byte op records with the opcode inside the payload — new ops need no new syscall number. Fourteen op codes are live — `NOP`, `BLEND_RECT`, `BLEND_COV`, `GLYPH_1BPP`, `GRAD_LINEAR`, `EDGE_COV`, `TRI_RGBA`, `TRI_LIST`, `TRI_TEX`, `TEX_LIST`, `DEPTH_CLEAR`, `TRI_DEPTH`, `TRI_PERSP`, `RT_READ` — and every one has a worker. The rung ladder built from there to a **GPU triangle rasteriser** (20 of 20 cases byte-identical to the CPU reference), barycentric RGBA interpolation, texturing with WRAP / FULLCOV / COLMAJOR / bilinear, depth clear and depth test, and perspective-correct texturing — each closed on iron.
+- **Modeset (1.56.10 → 1.56.38)** — `#93 gpu_modeset_op`, deliberately a different number from `#92` because modeset is a distinct capability class. Write ops sit behind an **arm-once ext2 latch** (`core/modeset_latch.cyr`, `/.modeset-armed`) so a display write that blanks the console non-recoverably costs exactly one bad boot and never a reflash; the latch releases itself at clean shutdown. `core/mode_raster.cyr` computes the raster program from a mode description and **writes no register**, which is what lets a host test include the real file rather than a copy of it. `MDO_OP_NATIVE` retargets the pipe to **2560×1440 with the scaler in DSCL bypass**; `MDO_OP_PAN` scrolls the console by moving the scanout start instead of copying 14.7 MB. **Released and burned PASS**: `Timer ticks before sched` 28 (800×600) → 149 (native, software scroll) → **11** (native + pan), proving native and the pan are one change and either alone is a regression.
+- **The desktop's kernel half (1.56.35, iron 2026-08-03)** — the AP trampoline set `EFER |= LME` only where the BSP sets `LME|NXE`, so with NXE clear bit 63 of a paging entry is *reserved* and every W^X data page and user stack faulted on an AP. With that fixed and a cross-CPU TLB shootdown added, archaemenid boots to `smp: cpus online: 4` and the **aethersafha compositor hosts two real client windows** — setu's `present_probe` and `crab`'s dual-pane file manager — composited on the panel, 278 frames, keys delivered, clean Esc quit. ⚠ Scope: that run used the **CPU blit path**; the GPU composite path is iron-proven separately for a single opaque surface.
 
 ### Size — Projected vs Actual
 
@@ -201,25 +223,35 @@ The original 5-layer plan listed VirtIO-Blk + FAT16. The 1.31.x cycle (Mar–May
 | + VirtIO + basic TCP | ~65 KB | — |
 | Full Layer 1–5 + Path-C UEFI ABI + USB-HID + xHCI cmd-path | ~70–80 KB | **live size drifts across the cycle** |
 
-The shipped kernel is several times the original estimate because it carries features outside the original 5-layer shortest-path plan: SMP infrastructure (APIC, IPI, trampoline, per-CPU stacks); cross-architecture (x86_64 + aarch64 in one binary); full TCP + DHCP + DNS + NTP + ICMP comms substrate (1.35.x) instead of UDP-only; slab allocator with 8 size classes; full FAT12/16/32 + exFAT read+write drivers (1.34.x) instead of FAT16 read-only; ext2/4 read **+ write + extent allocation + JBD2 crash-safe journaling** (1.33.x–1.38.x); Ring 3 with proper TSS; Local APIC timer; v1.30.x's Path-C sovereign UEFI handoff and native xHCI / USB-HID-boot driver added another sizable chunk; the 1.40.x exec-from-disk arc added the streaming ELF loader + ring-3 execution + process model (create/reap/waitpid). The 1.37.5 kashi vendoring (~+100 KB) brings the freestanding font-data core (full CP437 + 8x8 + 9x16-derived faces); the 1.38.x JBD2 stack (~+30 KB) adds the full probe → log reader → replay → write path → integration → crash smoke surface.
+The shipped kernel is several times the original estimate because it carries features outside the original 5-layer shortest-path plan: SMP infrastructure (APIC, IPI, trampoline, per-CPU stacks); cross-architecture (x86_64 + aarch64 in one binary); full TCP + DHCP + DNS + NTP + ICMP comms substrate (1.35.x) instead of UDP-only; slab allocator with 8 size classes; full FAT12/16/32 + exFAT read+write drivers (1.34.x) instead of FAT16 read-only; ext2/4 read **+ write + extent allocation + JBD2 crash-safe journaling** (1.33.x–1.38.x); Ring 3 with proper TSS; Local APIC timer; v1.30.x's Path-C sovereign UEFI handoff and native xHCI / USB-HID-boot driver added another sizable chunk; the 1.40.x exec-from-disk arc added the streaming ELF loader + ring-3 execution + process model (create/reap/waitpid). The 1.37.5 kashi vendoring (~+100 KB) brings the freestanding font-data core (full CP437 + 8x8 + 9x16-derived faces); the 1.38.x JBD2 stack (~+30 KB) adds the full probe → log reader → replay → write path → integration → crash smoke surface. The 1.52.x–1.56.x band — HDA audio, FP/SIMD state, the GPU register/firmware/ring stack, the ATOM interpreter, DCN display and modeset, and 20 gfx90c shader programs compiled in — is the largest single addition since; it took the binary past 1.4 MB at 1.54.1, past 1.6 MB at 1.55.25 and past 1.7 MB at 1.56.5. Live size: [`development/state.md`](development/state.md).
 
 The conceptual 5-layer model still maps. The kernel simply carries more per layer than the MVP "boots into shell" scope intended.
 
-### Syscalls (0–33, 34 calls)
+### Syscalls (0–95, 96 numbers)
 
-```
-exit(0)         write(1)        getpid(2)       spawn(3)
-waitpid(4)      read(5)         close(6)        open(7)
-dup(8)          mkdir(9)        rmdir(10)       mount(11)
-sync(12)        reboot(13)      pause(14)       getuid(15)
-kill(16)        sigprocmask(17) signalfd(18)    epoll_create(19)
-epoll_ctl(20)   epoll_wait(21)  timerfd_create(22)  timerfd_settime(23)
-umount(24)      pipe(25)        write_boot_checkpoint(26)  mmap(27)
-munmap(28)      getdents(29)    unlink(30)      rename(31)
-link(32)        stat(33)
-```
+The surface was 34 calls (0–33) at the 1.41.x shell-separation cut and has grown to **96 implemented numbers, 0 through 95**, as ring 3 took over more of the system. Per-call contracts — arguments, blocking behaviour, error conventions and the Linux number collisions to watch for — live in the agnos repo's [`agnos-userland-abi.md`](https://github.com/MacCracken/agnos/blob/main/docs/development/agnos-userland-abi.md). This doc names the bands only:
 
-The FS group `getdents(29)` / `unlink(30)` / `rename(31)` / `link(32)` / `stat(33)` landed at 1.41.3 to give userland `agnsh` the directory-listing and file-metadata calls it needs. `mmap(27)` / `munmap(28)` are anonymous 2 MB-granular (1.35.3–1.35.4); `write_boot_checkpoint(26)` is the CMOS iron-boot diagnostic slot. This remains a small sovereign surface — **no socket / no splice / no AF_ALG family**.
+| Band | Numbers | Content |
+|------|---------|---------|
+| Core process / FS / IPC | 0–33 | the original surface — exit/write/getpid/spawn/waitpid/read/close/open/dup, mkdir/rmdir/mount/sync/umount, reboot/pause/getuid, kill/sigprocmask/signalfd, epoll ×3, timerfd ×2, pipe, `write_boot_checkpoint` (the CMOS iron-boot diagnostic slot), mmap/munmap (anonymous, 2 MB-granular), getdents/unlink/rename/link/stat (the 1.41.3 group `agnsh` needed) |
+| Identity + kernel log | 34–36 | `uname`, `sysinfo`, `klug` (the unified kernel-log ring, dmesg-shaped) |
+| Exec + framebuffer | 37–39 | `execwait` (run-to-completion in ring 3), `fbinfo`, `blit` |
+| Timing + raw input | 40–42 | `uptime_ms`, `sleep_ms`, `kbscan` (non-blocking scancode drain — games need key up/down, not cooked lines) |
+| Concurrency | 43–44 | `spawn_path` (non-blocking from-disk spawn), `sched_yield` |
+| Entropy + wall clock | 45–46 | `getrandom` (RDRAND), `time_unix` (RTC/CMOS) |
+| Network | 47–57 | TCP client + server, UDP, ICMP echo |
+| File + terminal extras | 58–63, 70, 81 | `lseek`, `flock`, `winsize`, `net_config`, `exec_redirect`, `symlink`, `readlink`, `readdir` |
+| Audio | 64–69 | `snd_open` / `snd_config` / `snd_write` / `snd_close` / `snd_drain` / `snd_avail` — HDA output |
+| Shared memory | 71–74 | `shm_create` / `shm_write` / `shm_read` / `shm_free` |
+| Raw block (installer) | 75–80 | `blk_enum` / `blk_open` / `blk_read` / `blk_write` / `blk_info` / `blk_close`; RW is capability-gated, not merely requested |
+| GPU + display | 82–94 | compute dispatch (`#82`/`#83`), present + fill (`#84`/`#85`), the compositor seam (`#86`–`#89`), readback + back-buffer blit (`#90`/`#91`), the shader-op descriptor seam (`#92`), the modeset seam (`#93`), GPU hang/recovery (`#94`) |
+| Clock | 95 | `uptime_us` — microsecond monotonic, readable with interrupts disabled; returns −1 rather than a plausible 0 when calibration was refused |
+
+Both remaining numbers were assigned by the operator on 2026-08-05. `#96` (`fork`) is **reserved and not yet minted**. `#97` (`chan_op`, the local-IPC channel band that replaces TCP-on-loopback for display transport) **was minted in the OPEN, unburned 1.56.40 cut** — the boot-reserved 2 MB region plus a single `CH_CAPS` op, with `CH_HANDOFF` / `CH_DIAL` reserved and reading 0 in the capability mask. ⛔ Treat it as in-flight, not shipped: its kill criterion is **half met** (the selftest proves the kernel-CR3 half of region reachability, not the spawned-client half), and `check.sh` is red on it by design until the Cyrius stdlib lands the matching `SYS_CHAN_OP = 97`. The next free number is `#98`.
+
+⚠ `#44 sched_yield` is dispatched from the ring-3 SYSCALL entry stub — `syscall_handler` in `arch/x86_64/syscall_hw.cyr`, not `ksyscall` — because the abandon-frame yield needs the entry stub's `sc_entry_regs` capture, which is valid by construction only on that path (in-kernel callers reach `ksyscall` directly with stale captures). A count of `ksyscall` dispatch arms therefore comes up one short of the minted numbering; that gap is the entry-stub dispatch, not a missing call. `#14 pause` also yields there first but still has its own `ksyscall` arm, so it does not widen the gap.
+
+This remains a small sovereign surface. The network band is a **fixed TCP/UDP/ICMP set with slot-indexed connections** — there is no generic BSD socket family, no `socket()` over arbitrary domains, **no splice, no AF_ALG**. Several GPU numbers collide with unrelated Linux calls (`#90` `chmod`, `#91` `fchmod`, `#92` `chown`, `#95` `umask`); a file-level `#ifdef CYRIUS_TARGET_AGNOS` gate in the Cyrius stdlib is the only barrier off-agnos.
 
 ### Userland Alignment
 
@@ -230,26 +262,29 @@ The FS group `getdents(29)` / `unlink(30)` / `rename(31)` / `link(32)` / `stat(3
 | Signals + epoll + timerfd (Layer 5) | kybernet event loop, service supervision |
 | SYSCALL/SYSRET (Layer 2) | cyrius stdlib per-target syscall layer (`syscalls_*.cyr`); the bindings moved here from agnosys in the agnos→agnodrm decomposition — agnodrm is now the device/DRM model, not the syscall layer |
 | Pipes (Layer 3/5) | Shell pipelines, inter-service IPC |
+| Framebuffer + GPU seam (`#38`/`#39`/`#84`–`#94`) | cyrius-doom draws through `fbinfo` + `blit`; aethersafha composites client surfaces out of GPU-visible shared memory with no per-pixel CPU work |
 
 ### What's not yet in the kernel
 
 | Gap | Why it's deferred |
 |-----|-------------------|
-| Framebuffer text rendering quality (Quiet-Boot legibility on AMD Zen) | Banding observed on archaemenid Quiet-Boot framebuffer; closeout-pinned at gnoboot 0.4.2 / agnos 1.30.12 after two GOP SetMode levers were falsified. Next-cycle options: HUBP `clear_tiling` port or shadow-buffer architectural eval. Doesn't block MVP (VGA-path legible). |
-| Native compositor (aethersafha) | Display-layer prereq for the GUI track; **planned / future — desktop + GUI not started** (scaffold only at 0.1.0). Closed-beta MVP runs without it (agnoshi-as-console via argonaut 1.7.0 BOOT_MINIMAL). |
+| Framebuffer text rendering quality (Quiet-Boot legibility on AMD Zen) | ✅ **Resolved + iron-validated (1.55.28 → 1.56.38)** — root cause was a surface/raster **scale** mismatch (an 800×600 firmware surface DCN-scaled to 2560×1440), not tiling and not DCC; the OSDev #57150 thesis is falsified. Fixed read-only by matching `fb_console` to the real HUBP viewport, then superseded outright: `MDO_OP_NATIVE` gives a real 2560×1440 scanout with the scaler bypassed, `MDO_OP_PAN` a hardware-scrolled console, and 1.56.37's deferred first paint removed the pre-aperture band. **Burned PASS.** ⛔ The GOP-side `SetMode` lever is finished — but not because "AMD Zen UEFI elides SetMode"; gnoboot 0.6.1's `SetMode` demonstrably works and the firmware allocates a real 2560×1440 framebuffer. `SetMode` is GOP-scoped and does not touch DCN. Native resolution is a kernel-side DCN write, not a bootloader trick. |
+| Native compositor (aethersafha) | ✅ **Kernel half shipped + iron-proven** — the compositor itself is userland, and the kernel owes it the GPU compositor seam (`#86`–`#89`, 1.55.32), the shader-op descriptor seam (`#92`, 1.56.x), shared memory, and the `EFER.NXE`-on-APs fix + cross-CPU TLB shootdown (1.56.35). On **2026-08-03** aethersafha composited two real client windows on archaemenid at `cpus online: 4` — 278 frames, keys delivered, clean quit. Closed-beta MVP still runs without a desktop (agnoshi-as-console via argonaut BOOT_MINIMAL). |
+| Pointer input (USB HID mouse) | ⛔ **Not possible today.** The xHCI enumerator matches HID class `0x03` / subclass `0x01` / **protocol `0x01` only** — the boot *keyboard*. A boot mouse (protocol `0x02`) is never claimed, so the compositor has keys but no pointer. The cheapest remaining desktop-input item; it did not block the 2026-08-03 iron run. |
+| Local-IPC channel band (`chan_*` on `#97`) | 🔧 **In flight.** TCP-on-loopback is retired as the **wrong primitive** for local display IPC (operator ruling 2026-08-03) — a local display protocol has nothing to route, checksum, window or retransmit and no business owning a port. ⚠ Retired on architecture, not on evidence: it did connect un-rigged once `net_src_for` landed. The replacement is a kernel channel band beside `pipe_*` / `shm_*` / `sock_*`, staged as a twelve-bite migration with **no fallback** — not a second transport, no compile-time option, no runtime switch. |
 | Per-backend GPT parsing | `gpt.cyr` currently only parses against `blk_active`; partitions on non-active backends aren't reachable. Deferred to next storage-cycle reopening or to a real consumer surfacing demand. |
 | ext2/ext4 write paths | ✅ **Shipped (1.33.x)** — block/inode allocator, dirent insertion/removal, file create/truncate/unlink, mkdir/rmdir/rename/ln/symlink, metadata_csum-stamping. W5 demo→base iron burn confirmed at 1.33.1 (`persist.txt` survives reboot on default `mkfs.ext4`). |
 | ext4 extent allocation | ✅ **Shipped (1.37.x)** — depth-0 append → depth-0→1 grow → multi-leaf depth-1 sibling split → depth-1→2 index-block grow (the full on-demand grow ladder). Iron-validated 1.37.3. |
 | JBD2 crash-safe journaling | ✅ **Shipped + iron-validated (1.38.x)** — probe → log reader → replay-on-mount → in-memory transaction lifecycle → write path (3-barrier sync-checkpoint) → `put_inode` integration → crash-injection smoke + hardening + CSUM_V3 write/replay. AGNOS both consumes Linux-left journals AND produces its own. **Iron-validated on real hardware (1.38.10)**: write-side commit + 100-tx crash stress + mid-cycle power-cut recovery, host `e2fsck -fn` clean throughout. |
 | FAT-family (FAT12/16/32 + exFAT) read+write | ✅ **Shipped + iron-validated (1.34.x / 1.40.13)** — partition-aware multi-backend mount, FAT-chain traversal, create/content/delete/truncate/LFN, exFAT allocation bitmap + typed dir-set + up-case table + directory growth, ESP-write guard. **Iron-validated through the shell on real hardware** — mount-namespace routing (1.40.13) makes FAT/exFAT shell verbs reachable while ext2 owns `/`. |
-| exec-from-disk (ring-3 programs off the FS) | ✅ **Shipped + iron-validated (1.40.x)** — streaming ELF64 loader (`elf_load_from_file`) → ring-3 execution + exit-code capture → ENOEXEC/E2BIG + subdir/CWD paths → multi-run + argv → process teardown/reaping (1.40.14). **Iron-validated on real Zen** (`/bin/prog2` + `/bin/argv` run in ring 3). Static-only; the interactive shell moving to userland `agnsh` is the 1.41.x shell-separation arc (software-complete + QEMU-validated, iron burn pending — see row below). |
-| Interactive shell (deliberately left the kernel) | ✅ **By design (1.41.x shell-separation arc)** — the full interactive shell is now the userland `agnsh` (agnoshi), loaded from `/bin/agnsh` and run in ring 3; the in-kernel `shell.cyr` shrank to a recovery-only REPL (1149 → 813 LOC at 1.41.9) used as fallback when `/bin/agnsh` is absent. The arc is **software-complete + QEMU-validated** (sweep.sh 7/7, FS_SYSCALL + SYSCALL_HARDEN selftests ALL PASS, agnsh-smoke PASS, check.sh 11/11) but **iron burn PENDING** — it has not booted on real hardware. Staged with the A1–A4 rubric (boot-to-agnsh ring 3 / recovery fallback / FAT-exFAT write survives power-cycle + fsck clean / no exec-storage-net regression). |
-| HTREE indexed dirs + fast/slow symlinks (ext4) | Performance optimizations + extension; linear dirent scan + indirect-tree read suffices today. Queue when a real consumer needs them. |
+| exec-from-disk (ring-3 programs off the FS) | ✅ **Shipped + iron-validated (1.40.x)** — streaming ELF64 loader (`elf_load_from_file`) → ring-3 execution + exit-code capture → ENOEXEC/E2BIG + subdir/CWD paths → multi-run + argv → process teardown/reaping (1.40.14). **Iron-validated on real Zen** (`/bin/prog2` + `/bin/argv` run in ring 3). Static-only; the interactive shell moving to userland `agnsh` is the 1.41.x shell-separation arc — see row below. |
+| Interactive shell (deliberately left the kernel) | ✅ **By design + iron-validated (1.41.x shell-separation arc)** — the full interactive shell is now the userland `agnsh` (agnoshi), loaded from `/bin/agnsh` and run in ring 3; the in-kernel `shell.cyr` shrank to a recovery-only REPL (1149 → 813 LOC at 1.41.9) used as fallback when `/bin/agnsh` is absent. The A1–A4 rubric burn cleared in **June 2026** on archaemenid (boot-to-agnsh ring 3 / recovery fallback / FAT-exFAT write survives power-cycle + fsck clean / no exec-storage-net regression). **Permanent kernel↔userland boundary locked.** |
+| HTREE indexed dirs (ext4) | Performance optimization; the linear dirent scan suffices today. Queue when a real consumer needs it. ext4 **symlinks did ship** — `symlink`#63 (fast <60 B inline / slow one-block, `e2fsck`-clean) and its introspection peer `readlink`#70, both ext2-only, landed for the ark/agnova path. |
 | Full USB hub / hot-plug | xHCI cmd-path + USB-HID + USB Mass Storage classes shipped (1.30.x → 1.31.3); hub topology + hot-add deferred to plug-and-play cycle. |
-| SMP scheduling (beyond infrastructure) | APIC/IPI/trampoline are in place; cross-core scheduler + AP-wakeup-on-real-hardware deferred. Gated on hardware-validation infra + the multi-threading kernel arc. |
+| SMP scheduling (beyond infrastructure) | ✅ **Shipped + iron-validated (1.44.x → 1.46.x)** — AP wake + park at 1.44.18, the SMP locking foundation at 1.46.0, `IF=1` preemptive `agnsh` on iron at 1.46.5. Cross-core scheduling runs on real hardware; archaemenid boots to `smp: cpus online: 4` (the box is 8c/16t and agnos parks APIC id ≥ 4 on purpose). A cross-CPU TLB shootdown IPI landed at 1.56.35. |
 | i225-V NIC driver | ✅ **r8169 shipped (1.32.x)** for AMD primary line; i225-V queued for Intel iron post-archaemenid migration (separate hardware line, not an AMD blocker). |
 | Optical via USB MS (SCSI MMC profile) | HP external USB Blu-ray on archaemenid derps the NUC at cold boot pre-power-on (firmware quirk). Deferred to plug-and-play cycle; AllInOne internal CD/DVD an alternative path. |
-| NTFS / squashfs read | Roadmap row 23. No consumer pressure; deferred. |
+| NTFS / squashfs read | No consumer pressure; deferred. ⚠ Nothing in the distribution path needs squashfs — the ISO pipeline dropped `mksquashfs` along with GRUB and xorriso, so this is a compatibility read only, not a build dependency. |
 
 ## Named Subsystems
 
@@ -277,7 +312,7 @@ Unified security and threat protection. Coordinates threat detection, quarantine
 
 ### takumi — Package Build System
 
-Compiles packages from source into `.ark` binary packages via TOML recipes. Recipes live in the `zugot` repo. Cyrius port in flight; `rust-old/` authoritative until parity.
+Compiles packages from source into `.ark` binary packages via TOML recipes. Recipes live in the `zugot` repo. Cyrius-native — the port reached parity and shipped 1.0+; `rust-old/` is kept as a historical reference, not as the authoritative tree.
 
 ### argonaut — Init System
 
@@ -305,7 +340,7 @@ Natural language terminal shell.
 
 ### aethersafha — Desktop Compositor
 
-Native compositor with plugin host architecture. **Planned / future — desktop + GUI not started.**
+Native compositor with plugin host architecture, Cyrius-native. ⚠ **Not Wayland** — that path is refused by its own ADR; it speaks the sovereign **setu** protocol over two backends: **bhumi** (agnos/host scanout + input seam) and **mehman** (swallow/guest ABI). ⭐ **Iron-proven 2026-08-03** on archaemenid at `cpus online: 4`: two real client windows — setu's `present_probe` and `crab`'s dual-pane file manager — composited on the panel, 278 frames, keys delivered, clean Esc quit, over the CPU blit path. The GPU composite path is iron-proven separately for one opaque surface. Still open: damage tracking (a full-screen clear is currently the single largest frame cost), premultiplied blend on iron, pointer input (blocked on the kernel's keyboard-only HID match), and the migration off TCP-on-loopback onto the kernel channel band.
 
 ## Security Architecture
 
@@ -368,9 +403,9 @@ gnoboot (sovereign UEFI bootloader, Path-C handoff)
 
 | Layer | Technology | Notes |
 |-------|-----------|-------|
-| Kernel | Cyrius (AGNOS-native) | 40+ subsystems, a small sovereign syscall surface (no socket/splice) |
-| Compiler | Cyrius (cycc) | self-hosting from 29KB seed, 42+ stdlib modules |
-| Bootloader | gnoboot | sovereign UEFI bootloader (PE32+ EFI Application). Replaces GRUB as of v1.30.0 Path-C. |
+| Kernel | Cyrius (AGNOS-native) | 40+ subsystems, a small sovereign syscall surface (0–95; no BSD socket family, no splice) |
+| Compiler | Cyrius (cycc) | self-hosting from 29KB seed; live release + per-repo pins in [`development/state.md`](development/state.md) |
+| Bootloader | gnoboot | sovereign UEFI bootloader (PE32+ EFI Application). Replaces GRUB as of v1.30.0 Path-C; selects the largest linear-framebuffer GOP mode at boot rather than inheriting the firmware's. |
 | User space | Cyrius | All ported subsystems compile with `cyrius build` |
 | Host bootstrap | Linux kernel configs | For building cross-compiler on existing host only |
 | Build recipes | TOML (zugot repo) | 421 base + 90 bazaar recipes |
@@ -383,18 +418,15 @@ These subsystems are still pending or in-flight (Rust authoritative):
 | Subsystem | Notes |
 |-----------|-------|
 | bhava | Rust 2.0.0 — emotion/sentiment port pending (Rust authoritative) |
-| aethersafha | Scaffold — native compositor real implementation planned / future (desktop + GUI not started) |
-| takumi | Cyrius port active, `rust-old/` authoritative until parity |
-| goonj | Acoustics — Rust authoritative, port pending |
-| naad | Audio synthesis — Rust authoritative, port pending |
+| seema | Edge fleet management — port pending; still `Cargo.toml` + all-Rust `src/`, no `cyrius.cyml` (Rust authoritative) |
 
-Recently shipped (no longer pending): phylax, shakti, hisab, **aegis** (1.0+, Cyrius-native, May 2026), **gnoboot** (sovereign UEFI bootloader, replaced GRUB at the 1.30.0 Path-C cut), **kriya** (coreutils-equivalent multi-tool, M5 grep+find+xargs closeout). See the v1.0+ [library](applications/libs/README.md) and [binaries & tools](applications/binaries.md) registries for full status.
+Recently shipped (no longer pending): phylax, shakti, hisab, **aegis** (1.0+, Cyrius-native, May 2026), **gnoboot** (sovereign UEFI bootloader, replaced GRUB at the 1.30.0 Path-C cut), **kriya** (coreutils-equivalent multi-tool, M5 grep+find+xargs closeout), **goonj** (acoustics — full Rust→Cyrius rewrite at 2.0.0, 2026-06-30, all 37 modules ported), **naad** (audio synthesis, Cyrius-native), **aethersafha** (Cyrius-native compositor — no longer a scaffold; hosted two client windows on iron 2026-08-03), **takumi** (build system — the Cyrius port reached parity and shipped 1.0+; `cyrius.cyml`, no `Cargo.toml`, and `rust-old/` is a historical reference rather than the authoritative tree). See the v1.0+ [library](applications/libs/README.md) and [binaries & tools](applications/binaries.md) registries for full status.
 
 ## Design Decisions
 
 ### 1. Sovereign Kernel
 
-AGNOS has its own kernel written in Cyrius — iron-validated on NUC AMD 2026-05-15. No Linux dependency at runtime. Linux kernel configs in this repo are for host bootstrap only.
+AGNOS has its own kernel written in Cyrius — first iron-validated on NUC AMD 2026-05-15 and burned continuously on that box since, most recently for the 1.56.36–1.56.38 native-scanout cuts (released, burned, **passed**). No Linux dependency at runtime. Linux kernel configs in this repo are for host bootstrap only.
 
 ### 2. Cyrius for Everything
 

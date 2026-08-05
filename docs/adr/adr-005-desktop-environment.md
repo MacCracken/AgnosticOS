@@ -15,6 +15,26 @@
 > seam: `dhancha/docs/development/sovereign-desktop.md`. The rest of this ADR
 > (accessibility, plugins, agent-window ownership, capture/recording, gestures)
 > remains in force; preserved as historical record.
+>
+> **Update 2026-08-05 — the superseding path has SHIPPED; it is no longer
+> theoretical.** ⭐ Iron-proven 2026-08-03 on archaemenid at `smp: cpus online: 4`:
+> aethersafha composited **two real client windows** — setu's `present_probe` and
+> `crab`'s dual-pane file manager — 278 frames, keys delivered to the client, clean
+> Esc quit. Scope: the CPU blit path; the GPU composite path is iron-proven
+> separately and only for a single opaque surface. Detail:
+> `aethersafha/docs/development/planning/desktop.md`.
+>
+> ⛔ **The transport premise has moved again.** TCP on loopback:7700 — the transport
+> the native protocol first rode on agnos — is **retired as the wrong primitive** for
+> local display IPC (operator ruling 2026-08-03). The retirement is architectural,
+> not empirical: it is *not* a claim that it never worked. The replacement is a
+> kernel channel band (`chan_*`, syscall `#97`), which by rule gets no codename;
+> agnos 1.56.40 is that cycle — **open and not burned**. The band's early bites *have*
+> landed in the kernel (`#97 chan_op` answers `CH_CAPS` only; every other op is
+> `BADOP`), but **no consumer has cut over** — setu and aethersafha still ride the TCP
+> transport. Design + migration: `agnos/docs/development/planning/ipc.md`
+> §9. Live versions and burn status:
+> [`../development/state.md`](../development/state.md).
 
 ## Context
 
