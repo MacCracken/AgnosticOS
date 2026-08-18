@@ -14,31 +14,31 @@
 | Crate | Version | Domain |
 |-------|---------|--------|
 | aegis | 1.1.4 | Security daemon — absorbed agnosys's PAM at 1.1.0 (agnos → agnodrm decomposition) |
-| agnostik | 1.3.4 | Shared types & domain primitives (Cyrius, GitHub-release only) |
-| agnodrm | 1.5.0 | Device / DRM model — udev + DRM/KMS (was **agnosys**; decomposed 2026-06-19: trust→sigil, sec/mac/audit→kavach, pam→aegis, logging→sakshi, syscall layer→cyrius) |
-| ai-hwaccel | 2.3.16 | GPU detection |
-| bayan | 1.4.0 | Data-format & big-integer distfile — json/toml/cyml/csv/base64/bigint/u128 (foldable per sandhi pattern) |
-| bote | 3.3.0 | MCP core (~5us/message, streamable HTTP) |
+| agnostik | 1.3.5 | Shared types & domain primitives (Cyrius, GitHub-release only) |
+| agnodrm | 1.5.1 | Device / DRM model — udev + DRM/KMS (was **agnosys**; decomposed 2026-06-19: trust→sigil, sec/mac/audit→kavach, pam→aegis, logging→sakshi, syscall layer→cyrius) |
+| ai-hwaccel | 2.3.17 | GPU detection |
+| bayan | 1.4.1 | Data-format & big-integer distfile — json/toml/cyml/csv/base64/bigint/u128 (foldable per sandhi pattern) |
+| bote | 3.3.1 | MCP core (~5us/message, streamable HTTP) |
 | cmdit | 1.2.2 | Sovereign CLI / argument-parsing library (getopt-long shaped, zero external code) — the one place AGNOS tools register flags, parse argv, and print `--help`/`--version` instead of hand-rolling on the bare `args` primitive. API frozen at 1.0.0. Consumers: anuenue, kii, + the userland tool surface |
-| daimon | 2.0.0 | Agent orchestrator (MCP tool surface — count drifts per cut) |
-| hoosh | 2.6.0 | LLM gateway |
-| kavach | 3.11.7 | Sandbox execution — absorbed agnosys's security (Landlock/seccomp) + mac + audit at 3.5.0 (decomposition) |
-| libro | 2.8.4 | Cryptographic audit chain |
-| mabda | 4.0.8 | GPU foundation — consumes chitra for image decode; exposes the GPU compute surface attn11/puka build on |
-| majra | 2.5.3 | Queue/pub-sub |
+| daimon | 2.0.2 | Agent orchestrator (MCP tool surface — count drifts per cut) |
+| hoosh | 2.6.3 | LLM gateway |
+| kavach | 3.11.14 | Sandbox execution — absorbed agnosys's security (Landlock/seccomp) + mac + audit at 3.5.0 (decomposition) |
+| libro | 2.8.5 | Cryptographic audit chain |
+| mabda | 4.0.9 | GPU foundation — consumes chitra for image decode; exposes the GPU compute surface attn11/puka build on |
+| majra | 2.6.6 | Queue/pub-sub |
 | mihi | 1.2.1 | System-info probe library (CPU / RAM / GPU / kernel / uptime / distro / hostname) — substrate for iam, chakshu. Agnos CPU model via CPUID brand string (1.2.x) |
 | nein | 1.6.4 | Programmatic nftables firewall |
-| patra | 1.12.12 | Structured storage & SQL — B+ tree, WAL (Cyrius-native) |
+| patra | 1.13.1 | Structured storage & SQL — B+ tree, WAL (Cyrius-native) |
 | phylax | 1.2.4 | Threat detection — YARA, entropy, magic bytes, ML |
-| sakshi | 2.4.8 | Tracing, error handling, structured logging (Cyrius-native) |
+| sakshi | 2.4.10 | Tracing, error handling, structured logging (Cyrius-native) |
 | samay | 1.0.1 | Task scheduler (समय — *time*) — real cron + resource-aware, ai-hwaccel-conscious task placement; priority queue (Normal/High/Critical/Emergency), JSON snapshot/restore with a security-audited restore path, deterministic scheduling. Rust→Cyrius port complete; consumable as the committed `dist/samay.cyr` bundle (`src/main.cyr` is an in-tree demo entry, excluded from `[lib]` — the kavach / ai-hwaccel convention). **Graduated 2026-08-05** (was 0.1.0 in the planning registry). Consumers declaring `[deps.samay]` at tag 1.0.1: daimon (task scheduling), kavach (sandboxed execution, optional), stiva (`accel` feature) |
-| sankoch | 2.7.6 | Lossless compression — LZ4, DEFLATE, zlib, gzip |
-| sigil | 3.12.2 | Trust verification & crypto — AES-NI + SHA-NI hardware accel (TLS 1.3 live-verified); absorbed agnosys's trust stack at 3.9.0 (decomposition) |
+| sankoch | 2.7.8 | Lossless compression — LZ4, DEFLATE, zlib, gzip |
+| sigil | 3.12.9 | Trust verification & crypto — AES-NI + SHA-NI hardware accel (TLS 1.3 live-verified); absorbed agnosys's trust stack at 3.9.0 (decomposition) |
 | soorat | 1.0.0 | GPU rendering |
 | stiva | 3.0.16 | OCI-compatible container runtime (Romanian *stivă* — stack/pile). ⭐ **The Rust→Cyrius port is complete** — the frozen Rust crate stays at `rust-old/` as the parity oracle; 34 of 36 CLI verbs live. Real OCI image layout, registry pull/push (bearer auth, multi-arch index, digest-verified streaming), `Stivafile` build with a fingerprinted layer cache, `oci-archive`/`docker-archive` interop, gzip+zstd layers with whiteouts; stateful container manager with detached `run -d` and `exec` via `nsenter`. Built on kavach / majra / nein / bote. ⚠ **Was catalogued here as `—` "Rust-era scaffold; port pending"** — corrected 2026-08-05 against the live repo; ⚠ its 36-verb CLI makes it arguably a [binaries.md](../binaries.md) entry, an operator call |
 | szal | 2.1.0 | Workflow engine — step/flow/DAG + branching/retry/rollback. **Cyrius-native (2.0.0 = Rust → Cyrius port graduation)** |
 | t-ron | 2.1.8 | MCP security |
-| tula | 1.0.0 | **Sovereign ML weight-file format** (तुला — *balance/scale*) — safetensors/GGUF analog with a **sigil-signed header** they lack: 64B header + typed manifest (f64/int8/ternary/nf4) + 8B-aligned payload; builder/reader + heap & zero-copy-mmap read + Ed25519 sign/verify. Format v1 FROZEN (105 assertions + 2M-iter fuzz + security audit). M0 of the Type-3 chain; consumed by anukūlana (import) + attn11/tentib checkpoints + the murti load-seam |
+| tula | 1.0.1 | **Sovereign ML weight-file format** (तुला — *balance/scale*) — safetensors/GGUF analog with a **sigil-signed header** they lack: 64B header + typed manifest (f64/int8/ternary/nf4) + 8B-aligned payload; builder/reader + heap & zero-copy-mmap read + Ed25519 sign/verify. Format v1 FROZEN (105 assertions + 2M-iter fuzz + security audit). M0 of the Type-3 chain; consumed by anukūlana (import) + attn11/tentib checkpoints + the murti load-seam |
 | vidya | 2.8.0 | Programming reference |
 | yantra | 1.0.2 | Sovereign UI automation (Cyrius library) — browser + mobile; `.tcyr` files include `lib/yantra.cyr` and drive Chromium / Firefox / WebKit / Android / iOS. `cyrius test` stays the runner (not a framework). Graduated 2026-06-18 |
 | yukti | 2.3.2 | Device abstraction (USB, block, udev) |
@@ -47,12 +47,12 @@
 
 | Crate | Version | Domain |
 |-------|---------|--------|
-| abaco | 2.3.3 | Math engine |
-| avatara | 2.14.0 | Divine archetype overlay |
-| akshara | 1.0.0 | **Sovereign tokenizer** (अक्षर — *indivisible text/sound unit*) — the text→token-id layer: adaptive byte vocab, opt-in BPE (pure i64, bit-reproducible), width-generic packed token store + streaming read. Third attn11 extraction (with rosnet/tyche). **1.0.0 (2026-07-05) is a clean freeze** — no behavior change; froze what attn11 (1060-suite) + tarka exercised unchanged since 2026-06-22 (`docs/api.md`; the checkpoint-serialized `g_*` tokenizer state freezes with the surface) |
-| ganita | 1.0.4 | Linear algebra (matrix, linalg) + advanced math (transcendental + number theory); foldable per sandhi pattern. 1.0.2 made `ganita_f64_tanh` saturate for \|x\|>20 (was inf/inf=NaN for \|x\|>~709 — surfaced by anukūlana's real GPT-2 forward through GELU x³; folded into cyrius stdlib at 6.3.31) |
-| rosnet | 1.1.0 | **Sovereign dense f64 tensor algebra — the BLAS substrate under the whole ML family** (storage, BLAS-1, matmul + its hand-derived FD-gated gradient; no BLAS/libc/autodiff). Dual-profile: CPU `dist/rosnet.cyr` (mabda-free) + GPU `dist/rosnet-gpu.cyr` (`[lib.gpu]`, mabda-gated, bit-exact/~1e-13 vs the CPU oracle; provider coverage evolves under mabda — 4.0 added basic NVIDIA). **1.0.0 froze the surface six shipping consumers exercised** (attn11/tarka/tentib/prajna/rupantara/anukūlana); the no-bounds-checks caller-guarantees contract is the audited substrate design (`docs/api.md` + `docs/audit/`). **1.1.0 (2026-07-05) added conv2d/conv1d** (NCHW, per-axis stride/pad, hand-derived FD-gated gradients — the modality axis is now substrate-complete). Remaining additive lane: f32/f16/bf16 wideners (GGUF-triggered), pooling, im2col/SIMD conv optimization |
-| tyche | 1.0.0 | **Sovereign deterministic statistical PRNG** (xorshift64 + splitmix64 seed finalizer + Marsaglia-polar normal) — **NOT a CSPRNG** (crypto → sigil). **1.0.0 (2026-07-05) is a clean freeze** — no behavior change; froze the 4-fn surface four consumers exercised unchanged (attn11, tarka, rosnet `t_randn`, anukūlana via rosnet); the `_rng_state` checkpoint-capture cell freezes with it; per-stream handles = the flagged SMP-arc additive (`docs/api.md`) |
+| abaco | 2.4.2 | Math engine |
+| avatara | 2.14.1 | Divine archetype overlay |
+| akshara | 1.0.2 | **Sovereign tokenizer** (अक्षर — *indivisible text/sound unit*) — the text→token-id layer: adaptive byte vocab, opt-in BPE (pure i64, bit-reproducible), width-generic packed token store + streaming read. Third attn11 extraction (with rosnet/tyche). **1.0.0 (2026-07-05) is a clean freeze** — no behavior change; froze what attn11 (1060-suite) + tarka exercised unchanged since 2026-06-22 (`docs/api.md`; the checkpoint-serialized `g_*` tokenizer state freezes with the surface) |
+| ganita | 1.1.0 | Linear algebra (matrix, linalg) + advanced math (transcendental + number theory); foldable per sandhi pattern. 1.0.2 made `ganita_f64_tanh` saturate for \|x\|>20 (was inf/inf=NaN for \|x\|>~709 — surfaced by anukūlana's real GPT-2 forward through GELU x³; folded into cyrius stdlib at 6.3.31) |
+| rosnet | 1.1.1 | **Sovereign dense f64 tensor algebra — the BLAS substrate under the whole ML family** (storage, BLAS-1, matmul + its hand-derived FD-gated gradient; no BLAS/libc/autodiff). Dual-profile: CPU `dist/rosnet.cyr` (mabda-free) + GPU `dist/rosnet-gpu.cyr` (`[lib.gpu]`, mabda-gated, bit-exact/~1e-13 vs the CPU oracle; provider coverage evolves under mabda — 4.0 added basic NVIDIA). **1.0.0 froze the surface six shipping consumers exercised** (attn11/tarka/tentib/prajna/rupantara/anukūlana); the no-bounds-checks caller-guarantees contract is the audited substrate design (`docs/api.md` + `docs/audit/`). **1.1.0 (2026-07-05) added conv2d/conv1d** (NCHW, per-axis stride/pad, hand-derived FD-gated gradients — the modality axis is now substrate-complete). Remaining additive lane: f32/f16/bf16 wideners (GGUF-triggered), pooling, im2col/SIMD conv optimization |
+| tyche | 1.0.1 | **Sovereign deterministic statistical PRNG** (xorshift64 + splitmix64 seed finalizer + Marsaglia-polar normal) — **NOT a CSPRNG** (crypto → sigil). **1.0.0 (2026-07-05) is a clean freeze** — no behavior change; froze the 4-fn surface four consumers exercised unchanged (attn11, tarka, rosnet `t_randn`, anukūlana via rosnet); the `_rng_state` checkpoint-capture cell freezes with it; per-stream handles = the flagged SMP-arc additive (`docs/api.md`) |
 | badal | 1.1.0 | Weather/atmosphere |
 | bhava | 2.0.0 | Emotion/personality |
 | bijli | 1.1.0 | Electromagnetism |
@@ -60,8 +60,8 @@
 | brahmanda | 1.0.0 | Galactic cosmology |
 | dravya | 1.2.0 | Material science |
 | falak | 1.0.0 | Orbital mechanics |
-| hadara | 1.1.0 | Culture modeling (Cyrius-native, 50 cultures) |
-| hisab | 2.8.4 | Higher math |
+| hadara | 1.1.1 | Culture modeling (Cyrius-native, 50 cultures) |
+| hisab | 2.11.1 | Higher math |
 | hisab-mimamsa | 1.0.0 | Theoretical physics |
 | itihas | 2.4.0 | World history |
 | jantu | 1.1.0 | Ethology/behavior |
@@ -101,11 +101,11 @@
 
 | Crate | Version | Domain |
 |-------|---------|--------|
-| bhumi | 1.1.3 | Sovereign compositor **platform** backend (भूमि — *ground*) — the DRM/KMS + libinput + logind replacement trio: output via agnos `blit`#39, USB-HID keyboard input via `kbscan`#42, capability-gated single-seat (no logind/uids). 70-fn frozen API. aethersafha sits directly on it. Graduated 2026-07-02 (was pre-1.0). ⚠ **1.1.3 is load-bearing on agnos** — agnos `#38 fbinfo` returns **0** on success (the display band's 0-ok convention) while this function's published contract has always promised *bytes written* (24); the agnos arm handed the kernel's 0 straight to callers, and every caller in the ecosystem tests `== 24`, so a good query read as failure: aethersafha fell back to its hardcoded 1280x720 on an 800x600 panel, discarding the kernel's real screen geometry on every agnos boot. The fix moves the translation into a pure `_bhumi_fbinfo_rc` the host can assert (invisible off agnos, which is why it survived every test) |
-| bsp | 1.2.1 | BSP geometry (Cyrius-native) |
+| bhumi | 1.4.2 | Sovereign compositor **platform** backend (भूमि — *ground*) — the DRM/KMS + libinput + logind replacement trio: output via agnos `blit`#39, USB-HID keyboard input via `kbscan`#42, capability-gated single-seat (no logind/uids). 70-fn frozen API. aethersafha sits directly on it. Graduated 2026-07-02 (was pre-1.0). ⚠ **1.1.3 is load-bearing on agnos** — agnos `#38 fbinfo` returns **0** on success (the display band's 0-ok convention) while this function's published contract has always promised *bytes written* (24); the agnos arm handed the kernel's 0 straight to callers, and every caller in the ecosystem tests `== 24`, so a good query read as failure: aethersafha fell back to its hardcoded 1280x720 on an 800x600 panel, discarding the kernel's real screen geometry on every agnos boot. The fix moves the translation into a pure `_bhumi_fbinfo_rc` the host can assert (invisible off agnos, which is why it survived every test) |
+| bsp | 1.2.4 | BSP geometry (Cyrius-native) |
 | kiran | 1.0.0 | Game engine (ECS, scene hierarchy) |
-| mehman | 1.0.1 | Sovereign compositor **compat / "swallow"** backend (مهمان — *guest*) — hosts foreign-ABI app surfaces as kavach-sandboxed guests (XWayland's actual job, done sovereign); orthogonal to bhumi the platform backend. Graduated 2026-07-03 (was pre-1.0) |
-| ranga | 1.0.0 | Image processing (color, blend, GPU compute) |
+| mehman | 1.0.2 | Sovereign compositor **compat / "swallow"** backend (مهمان — *guest*) — hosts foreign-ABI app surfaces as kavach-sandboxed guests (XWayland's actual job, done sovereign); orthogonal to bhumi the platform backend. Graduated 2026-07-03 (was pre-1.0) |
+| ranga | 1.0.1 | Image processing (color, blend, GPU compute) |
 
 ## Language & Navigation (3)
 
@@ -121,7 +121,7 @@
 |-------|---------|--------|
 | impetus | 1.3.0 | Physics |
 | pavan | 1.1.0 | Aerodynamics |
-| prakash | 2.0.0 | Optics/light |
+| prakash | 2.2.3 | Optics/light |
 | pravash | 1.2.0 | Fluid dynamics |
 | tanmatra | 1.2.1 | Atomic physics |
 | ushma | 1.3.0 | Thermodynamics |
